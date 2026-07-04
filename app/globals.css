@@ -1,26 +1,132 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Lato:wght@300;400;700&family=Great+Vibes&family=Dancing+Script:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
+/* ============================================================
+   MAISON D'ORÉ — DESIGN TOKENS
+   Ported from the legacy base44 project. The legacy app set
+   these at runtime via JS (lib/maisonTheme.js → resetPalette).
+   Here they are baked in as the static "classic" palette.
+   ============================================================ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ivory: #FAF7F2;
+  --gold: #C9A96E;
+  --gold-light: #D4B896;
+  --brown: #2C2416;
+  --taupe: #8B7355;
+  --linen: #F0E6D3;
+  --border: #E8DDD0;
+  --surface: #F5EFE2;
+
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Lato', system-ui, sans-serif;
+  --font-script: 'Great Vibes', cursive;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+html { scroll-behavior: smooth; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background-color: var(--ivory);
+  color: var(--brown);
+  font-family: var(--font-sans);
+  font-weight: 300;
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  color: var(--brown);
+  line-height: 1.2;
+}
+
+/* ── MAISON BUTTON ── */
+.mdo-btn {
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--taupe);
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 12px 28px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-block;
+  text-decoration: none;
+}
+.mdo-btn:hover {
+  background: var(--gold);
+  color: white;
+}
+
+/* ── MAISON CARD ── */
+.mdo-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  box-shadow: 0 2px 20px rgba(44, 36, 22, 0.06);
+}
+
+/* ── SECTION DIVIDER ── */
+.mdo-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 3rem 0;
+  color: var(--gold-light);
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+}
+.mdo-divider::before,
+.mdo-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── INPUT STYLE ── */
+.mdo-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--brown);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 300;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.mdo-input:focus { border-color: var(--gold); }
+
+/* ── ANIMATIONS ── */
+@keyframes gold-ink-reveal {
+  0%   { clip-path: inset(0 100% 0 0); opacity: 0.3; }
+  100% { clip-path: inset(0 0% 0 0);   opacity: 1; }
+}
+.gold-ink-reveal {
+  animation: gold-ink-reveal 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  color: var(--gold);
+  display: inline-block;
+}
+
+@keyframes breathe {
+  0%   { transform: scale(1); }
+  100% { transform: scale(1.04); }
+}
+.hero-breathe {
+  animation: breathe 8s ease-in-out infinite alternate;
+  transform-origin: center center;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
