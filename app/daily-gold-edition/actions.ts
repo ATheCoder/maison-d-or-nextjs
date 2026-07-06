@@ -51,6 +51,16 @@ function rowToRecord(row: DailyGoldEditionRow): EditionRecord {
   };
 }
 
+/** A single edition by its id (used by the storybook route). */
+export async function getEditionById(id: string): Promise<EditionRecord | null> {
+  const rows = await db
+    .select()
+    .from(dailyGoldEdition)
+    .where(eq(dailyGoldEdition.id, id))
+    .limit(1);
+  return rows[0] ? rowToRecord(rows[0]) : null;
+}
+
 /** The most recent edition for a given date (there can be more than one). */
 export async function getEditionByDate(date: string): Promise<EditionRecord | null> {
   const rows = await db
