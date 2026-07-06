@@ -1,0 +1,2 @@
+ALTER TABLE "daily_gold_edition" DROP CONSTRAINT "daily_gold_edition_edition_date_unique";--> statement-breakpoint
+CREATE INDEX "daily_gold_edition_edition_date_idx" ON "daily_gold_edition" USING btree ("edition_date");
