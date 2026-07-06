@@ -5,7 +5,7 @@
  * Press animation: stamp-down + page-turn rotateY flip to new date.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { base44 } from '@/api/base44Client';
+import { getEditionByDate, getEditionDates } from '@/app/daily-gold-edition/actions';
 import { useTheme } from '@/components/theme/ThemeContext';
 
 // SVG seal face — vintage engraved arrow as the clear primary mark,
@@ -102,7 +102,7 @@ function WaxSeal({ direction, disabled, onPress, pressing }) {
   );
 }
 
-export default function DGWaxSealNavigator({ currentDate, onEditionChange }) {
+export default function DGWaxSealNavigator({ currentDate, onEditionChange, initialDates = [] }) {
   const [allDates, setAllDates] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [pressing, setPressing] = useState(null); // 'back' | 'forward' | null
@@ -113,20 +113,19 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange }) {
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  // Load all available edition dates on mount
+  // Load all available edition dates on mount (from the local DB via a server
+  // action, or reuse the list already fetched on the server).
   useEffect(() => {
-    base44.entities.DailyGoldEdition
-      .list('-edition_date', 50)
-      .then(editions => {
-        const dates = editions
-          .filter(e => e.edition_date)
-          .map(e => e.edition_date)
-          .sort(); // ascending
-        setAllDates(dates);
-        const idx = dates.indexOf(currentDate);
-        setCurrentIndex(idx !== -1 ? idx : dates.length - 1);
-      })
-      .catch(() => {});
+    const init = (dates) => {
+      setAllDates(dates);
+      const idx = dates.indexOf(currentDate);
+      setCurrentIndex(idx !== -1 ? idx : dates.length - 1);
+    };
+    if (initialDates && initialDates.length) {
+      init(initialDates);
+    } else {
+      getEditionDates().then(init).catch(() => {});
+    }
   }, []);
 
   // Sync index when currentDate changes externally
@@ -171,10 +170,9 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange }) {
     // Load the edition for this date
     setLoading(true);
     try {
-      const editions = await base44.entities.DailyGoldEdition
-        .filter({ edition_date: targetDate }, '-created_date', 1);
-      if (editions.length > 0) {
-        onEditionChange(editions[0]);
+      const record = await getEditionByDate(targetDate);
+      if (record) {
+        onEditionChange(record);
       }
     } catch (_) {}
     setLoading(false);

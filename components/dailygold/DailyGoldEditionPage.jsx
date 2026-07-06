@@ -95,11 +95,55 @@ function getSessionChild() {
   return null;
 }
 
-export default function DailyGoldEdition() {
+// Map a raw edition record (snake_case, as returned by the Drizzle-backed
+// server actions) into the view-model the child components consume.
+function mapRecord(record) {
+  const edition = {
+    id: record.id,
+    date: record.edition_date,
+    destination_name: record.destination_country,
+    born_today: record.born_today || [],
+    good_news: record.good_news || [],
+    on_this_day: record.on_this_day || [],
+    greatest_moments: record.greatest_moments || [],
+    destination: {
+      name: record.destination_country,
+      atmosphere: record.destination_description,
+      image_url: record.destination_image_url || null,
+      taste_of_day: record.taste_of_day ? { name: record.taste_of_day } : null,
+      sound_of_day: record.sound_of_day ? { name: record.sound_of_day } : null,
+      nature_detail: record.nature_detail ? { name: record.nature_detail } : null,
+      tiny_phrase: record.tiny_phrase ? {
+        word: record.tiny_phrase,
+        translation: record.tiny_phrase_translation,
+        language: record.tiny_phrase_language || null,
+      } : null,
+      child_life: record.child_life || null,
+    },
+    images: {
+      destination: record.destination_image_url || null,
+      hero: record.hero_image_url || null,
+    },
+    generated_at: record.generated_at,
+  };
+  return { edition, rawPost: { image_url: record.destination_image_url, id: record.id } };
+}
+
+/**
+ * @param {{ initialEdition?: any, initialDates?: string[] }} props
+ */
+export default function DailyGoldEdition({ initialEdition = null, initialDates = [] }) {
   const router = useRouter();
-  const [edition, setEdition] = useState(SAMPLE_EDITION);
-  const [rawPost, setRawPost] = useState(null);
-  const [generating, setGenerating] = useState(false);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const dateLabel = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  console.log(initialEdition)
+
+  // The edition is fetched on the server (SSR, via Drizzle) and passed in.
+  const initial = initialEdition ? mapRecord(initialEdition) : { edition: SAMPLE_EDITION, rawPost: null };
+
+  const [edition, setEdition] = useState(initial.edition);
+  const [rawPost, setRawPost] = useState(initial.rawPost);
   const [user, setUser] = useState(null);
   const [child, setChild] = useState(null);
   const [timeSpent, setTimeSpent] = useState(0);
@@ -107,15 +151,17 @@ export default function DailyGoldEdition() {
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [celebration, setCelebration] = useState(null);
   const [showCollection, setShowCollection] = useState(false);
-  const [loading, setLoading] = useState(true);
   const pendingEarns = useRef(new Set());
   const startTime = useRef(Date.now());
 
-  const [viewedDate, setViewedDate] = useState(new Date().toISOString().slice(0, 10));
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const dateLabel = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const [viewedDate, setViewedDate] = useState(initialEdition?.edition_date || todayStr);
 
-  // Load all data in parallel on mount
+  // SSR provides the edition up-front, so there is no client-side loading gate.
+  const loading = false;
+  const generating = false;
+
+  // The edition is already provided by the server; only the (optional) child
+  // profile still loads on the client.
   useEffect(() => {
     const childId = '69fc48b9acd4bfd93fc44220';
 
@@ -123,54 +169,20 @@ export default function DailyGoldEdition() {
     const cachedChild = getSessionChild();
     if (cachedChild) setChild(cachedChild);
 
-    // Fetch child and edition in parallel (no auth)
-    Promise.all([
-      base44.entities.Child.filter({ id: childId }, '-created_date', 1).then(kids => kids[0] || null).catch(() => null),
-      base44.entities.DailyGoldEdition.filter({ edition_date: todayStr }, '-created_date', 1).then(editions => editions[0] || null).catch(() => null),
-    ]).then(async ([fetchedChild, fetchedEdition]) => {
-      // Set child
-      if (fetchedChild) {
-        setChild(fetchedChild);
-        sessionStorage.setItem('dg_active_child_obj', JSON.stringify(fetchedChild));
-      } else if (!cachedChild) {
-        // No child available — clear stale cache and continue with null child
-        sessionStorage.removeItem('dg_active_child_id');
-        sessionStorage.removeItem('dg_active_child_obj');
-      }
-
-      // Set edition
-      if (fetchedEdition) {
-        parseEditionRecord(fetchedEdition);
-        setViewedDate(fetchedEdition.edition_date);
-      } else {
-        // Try to get most recent edition
-        const recentEditions = await base44.entities.DailyGoldEdition
-          .list('-edition_date', 1)
-          .catch(() => []);
-        if (recentEditions.length > 0) {
-          parseEditionRecord(recentEditions[0]);
-          setViewedDate(recentEditions[0].edition_date);
-        } else {
-          // Generate new edition
-          setGenerating(true);
-          await base44.functions.invoke('generateDailyGoldWithMoodboard', {}).catch(() => {});
-          const fresh = await base44.entities.DailyGoldEdition
-          .filter({ edition_date: todayStr }, '-created_date', 1)
-          .catch(() => []);
-          if (fresh.length > 0) {
-            parseEditionRecord(fresh[0]);
-            setViewedDate(fresh[0].edition_date);
-          }
-          setGenerating(false);
+    base44.entities.Child
+      .filter({ id: childId }, '-created_date', 1)
+      .then(kids => kids[0] || null)
+      .then(fetchedChild => {
+        if (fetchedChild) {
+          setChild(fetchedChild);
+          sessionStorage.setItem('dg_active_child_obj', JSON.stringify(fetchedChild));
+        } else if (!cachedChild) {
+          // No child available — clear stale cache and continue with null child
+          sessionStorage.removeItem('dg_active_child_id');
+          sessionStorage.removeItem('dg_active_child_obj');
         }
-      }
-
-      // All data loaded — hide loading screen with smooth fade
-      setLoading(false);
-    }).catch(() => {
-      // On error, still hide loading screen and show what we have
-      setLoading(false);
-    });
+      })
+      .catch(() => {});
 
     // Track time spent
     const interval = setInterval(() => {
@@ -180,41 +192,10 @@ export default function DailyGoldEdition() {
   }, []);
 
   const handleEditionChange = (record) => {
-    parseEditionRecord(record);
-    setViewedDate(record.edition_date);
-  };
-
-  const parseEditionRecord = (record) => {
-    const mapped = {
-      id: record.id,
-      date: record.edition_date,
-      destination_name: record.destination_country,
-      born_today: record.born_today || [],
-      good_news: record.good_news || [],
-      on_this_day: record.on_this_day || [],
-      greatest_moments: record.greatest_moments || [],
-      destination: {
-        name: record.destination_country,
-        atmosphere: record.destination_description,
-        image_url: record.destination_image_url || null,
-        taste_of_day: record.taste_of_day ? { name: record.taste_of_day } : null,
-        sound_of_day: record.sound_of_day ? { name: record.sound_of_day } : null,
-        nature_detail: record.nature_detail ? { name: record.nature_detail } : null,
-        tiny_phrase: record.tiny_phrase ? {
-          word: record.tiny_phrase,
-          translation: record.tiny_phrase_translation,
-          language: record.tiny_phrase_language || null,
-        } : null,
-        child_life: record.child_life || null,
-      },
-      images: {
-        destination: record.destination_image_url || null,
-        hero: record.hero_image_url || null,
-      },
-      generated_at: record.generated_at,
-    };
-    setRawPost({ image_url: record.destination_image_url, id: record.id });
+    const { edition: mapped, rawPost: rp } = mapRecord(record);
     setEdition(mapped);
+    setRawPost(rp);
+    setViewedDate(record.edition_date);
   };
 
   const handleFlagEarn = useCallback(async (countryName, countryCode, source) => {
@@ -400,6 +381,7 @@ export default function DailyGoldEdition() {
 
         <DGWaxSealNavigator
           currentDate={viewedDate}
+          initialDates={initialDates}
           onEditionChange={handleEditionChange}
         />
 
