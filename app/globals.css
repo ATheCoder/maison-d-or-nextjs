@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Lato:wght@300;400;700&family=Great+Vibes&family=Dancing+Script:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600&family=Lato:wght@300;400;700&family=Great+Vibes&family=Dancing+Script:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 /* ============================================================
@@ -104,6 +104,10 @@ h1, h2, h3, h4, h5, h6 {
   transition: border-color 0.2s;
 }
 .mdo-input:focus { border-color: var(--gold); }
+
+/* ── HEADER NAV ── */
+.mdo-nav-link:hover { color: var(--gold); }
+.mdo-signin:hover { background: var(--brown); color: var(--ivory); }
 
 /* ── ANIMATIONS ── */
 @keyframes gold-ink-reveal {
