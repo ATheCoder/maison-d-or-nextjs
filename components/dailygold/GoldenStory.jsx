@@ -1,16 +1,23 @@
 'use client';
 /**
- * GoldenStory — a children's illustrated biography storybook.
- * Ported from the Maison d'Oré "Golden Story" design template
- * (templates/golden-story/GoldenStory.dc.html). Renders a single
- * born-today person: hero, chapters, timeline, treasures and lessons.
+ * GoldenStory — a children's illustrated biography rendered as an open
+ * storybook. Ported from the Maison d'Oré "Golden Story" design template
+ * (templates/golden-story/GoldenStory.dc.html): a leather-bound book of
+ * parchment spreads you flip through — cover, one spread per chapter, a life
+ * timeline, treasures & lessons, and a closing page.
+ *
+ * The person is fetched on the server (SSR, via Drizzle) and passed in as
+ * `story` (a BornTodayPerson). Real `image_url`s render in place of the
+ * template's parchment placeholders when present.
  */
-import { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const SHAPES = ['sh-circle', 'sh-diamond', 'sh-tri', 'sh-square'];
+const STAR = '✦'; // ✦
+const BOOK_W = 1300;
+const BOOK_H = 866;
 
-// Strip leading decoration (~, dashes, quotes) the source data sometimes carries.
+// Strip leading/trailing decoration (~, dashes, quotes) the source sometimes carries.
 function cleanQuote(str) {
   if (!str) return '';
   return String(str).replace(/^[\s~"'“”‚‘’\-–—]+/, '').replace(/[\s"'“”]+$/, '').trim();
@@ -23,401 +30,504 @@ function titleCase(str) {
 
 function splitParas(narrative) {
   if (!narrative) return [];
-  return String(narrative).split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+  return String(narrative).split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
 }
 
-// Portrait fill: use the provided image, else generate one (mirrors DGBornToday).
-function useHeroPortrait(story, editionId, index) {
-  const [imgUrl, setImgUrl] = useState(story?.image_url || null);
-
-  useEffect(() => {
-    if (imgUrl || !story?.name) return;
-    let alive = true;
-    base44.functions.invoke('generatePortraitImage', {
-      person_name: story.name,
-      field: story.field || story.role || '',
-      edition_id: editionId || null,
-      person_index: index ?? 0,
-    })
-      .then(res => {
-        const url = res?.data?.image_url || res?.image_url;
-        if (alive && url) setImgUrl(url);
-      })
-      .catch(() => {});
-    return () => { alive = false; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return imgUrl;
-}
-
-// Image frame — real image if available, else the parchment placeholder.
-function Frame({ src, tag, className }) {
-  if (src) {
-    return (
-      <div className={`ph ${className || ''}`} style={{ padding: 0 }}>
-        <img src={src} alt={tag || ''} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-      </div>
-    );
-  }
+// An illustration plate: the real image if we have one, else the parchment
+// placeholder that names what belongs there.
+function Plate({ className = '', art, src, vignette = true }) {
+  // Pipeline art (webp/png, see docs/golden-story-art-pipeline.md) carries
+  // its own alpha edge fade: no parchment card behind it, no crop, and
+  // multiply-blend so pale washes take on the page's own tone.
+  const alpha = !!src && /\.(webp|png)(\?|$)/i.test(src);
   return (
-    <div className={`ph ${className || ''}`}>
-      <span className="ph-tag">{tag}</span>
+    <div className={`plate ${alpha ? 'plate-alpha' : vignette ? 'plate-vignette' : ''} ${className}`}>
+      {src
+        ? <img className="plate-img" src={src} alt={art || ''} />
+        : <span className="ph-tag">{art}</span>}
     </div>
   );
 }
 
-export default function GoldenStory({ story, editionId, index = 0 }) {
-  const heroImg = useHeroPortrait(story, editionId, index);
+export default function GoldenStory({ story }) {
+  const [cur, setCur] = useState(0);
+  const scaleRef = useRef(null);
 
-  if (!story) return null;
+  // ── Map the person onto the book's content model ──────────────────────────
+  const name = story?.name || 'A Golden Life';
+  const first = name.split(' ')[0];
+  const role = story?.role || story?.field || '';
+  const storyTitle = story?.story_title || name;
+  const quote = cleanQuote(story?.famous_quote);
+  const childhood = story?.story_childhood || '';
+  const takeaway = cleanQuote(story?.story_takeaway);
+  const modern = story?.modern_interpretation || '';
 
-  const name = story.name || 'A Golden Life';
-  const firstName = name.split(' ')[0];
-  const role = story.role || story.field || '';
-  const storyTitle = story.story_title || name;
-  const quote = cleanQuote(story.famous_quote);
-  const childhood = story.story_childhood || '';
-  const takeaway = cleanQuote(story.story_takeaway);
-  const modern = story.modern_interpretation || '';
-  const editionNo = String((index ?? 0) + 1).padStart(2, '0');
+  const birthLabel = story?.birth_date
+    ? `b. ${story.birth_date}${story.death_year ? ` – ${story.death_year}` : ''}`
+    : '';
+  const coverSub = [role, story?.country, birthLabel].filter(Boolean).join('  ·  ');
 
-  const metaLine = [
-    role,
-    story.country,
-    story.birth_date ? `b. ${story.birth_date}${story.death_year ? ` – ${story.death_year}` : ''}` : '',
-  ].filter(Boolean).join('  ·  ');
-
-  const chapters = (story.chapters || []).map((c, i) => ({
-    number: String(c.number ?? i + 1),
+  const chapters = (story?.chapters || []).map((c, i) => ({
+    number: c.number ?? i + 1,
     title: c.title || '',
-    revClass: i % 2 === 1 ? 'rev' : '',
     paras: splitParas(c.narrative),
-    image_url: c.image_url || null,
+    art: `Scene — ${c.title || `Chapter ${i + 1}`}`,
+    src: c.image_url || null,
   }));
-
-  const timeline = story.timeline || [];
-  const treasures = (story.treasures || []).map((t, i) => ({
-    name: t.name || '',
-    description: t.description || '',
-    index: String(i + 1),
-    image_url: t.image_url || null,
-  }));
-  const lessons = (story.lessons || []).map((l, i) => ({
+  const timeline = (story?.timeline || []).filter((t) => t.year || t.caption);
+  const treasures = (story?.treasures || []).filter((t) => t.name);
+  const lessons = (story?.lessons || []).map((l, i) => ({
     icon: titleCase(l.icon_name),
     lesson: l.lesson || '',
     shape: SHAPES[i % SHAPES.length],
   }));
 
-  return (
-    <div className="gs-page">
-      <style>{CSS}</style>
+  const hasTimeline = timeline.length > 0;
+  const hasTreasures = treasures.length > 0;
+  const hasLessons = lessons.length > 0 || !!modern;
 
-      <header className="gs-hero">
-        <div className="gs-hero-wash" />
-        <div className="gs-wrap gs-hero-inner">
-          <div className="hero-text">
-            <div className="hero-eyebrow"><i />
-              <span>A Golden Story &#183; No. {editionNo}</span>
-            </div>
-            <h1 className="gs-title">{storyTitle}</h1>
-            <p className="hero-name">{name}</p>
-            {metaLine && <p className="hero-meta">{metaLine}</p>}
-            {quote && <blockquote className="hero-quote">{quote}</blockquote>}
+  // Total leaves (numbered pages), so "n / TOTAL" is honest for any story.
+  const middleCount = (hasTimeline ? 1 : 0) + (hasTreasures ? 1 : 0) + (hasLessons ? 1 : 0);
+  const TOTAL = 2 + 2 * (chapters.length + middleCount);
+  let pageNo = 0;
+  const P = () => `${++pageNo} / ${TOTAL}`;
+
+  // ── Build the spreads (JSX), assigning page numbers left→right in order ────
+  const spreads = [];
+  const add = (label, cls, inner) => {
+    const idx = spreads.length;
+    spreads.push(
+      <div key={idx} className={`spread ${cls} ${idx === cur ? 'on' : ''}`} data-screen-label={label}>
+        {inner}
+      </div>
+    );
+  };
+
+  // Cover + opening (childhood) spread.
+  {
+    const rNum = P();
+    add('Cover', '', (
+      <>
+        <div className="page page-cover">
+          {story?.image_url
+            ? <img className="cover-img" src={story.image_url} alt={name} />
+            : <div className="plate plate-cover"><span className="ph-tag">{`COVER — young ${first} in their world`}</span></div>}
+          <div className="cover-grad" />
+          <div className="cover-head">
+            <p className="cover-eyebrow">Born on this day</p>
+            <h1 className="cover-title">{storyTitle}</h1>
+            {coverSub && <p className="cover-sub">{coverSub}</p>}
           </div>
-          <div className="hero-portrait">
-            <Frame src={heroImg} tag={`Portrait · ${name}`} />
-            {role && <div className="hero-badge"><i />{role}</div>}
+          <p className="cover-cta">{`Begin the story →`}</p>
+        </div>
+        <div className="page page-text">
+          <span className="pg-num">{rNum}</span>
+          <h2 className="pg-title">Where the Story Begins</h2>
+          <div className="ornament"><i /><b>{STAR}</b><i /></div>
+          <div className="pg-body">
+            {splitParas(childhood).map((para, j) => <p key={j}>{para}</p>)}
+          </div>
+          <Plate className="plate-strip" art={`Soft landscape of ${story?.country || 'home'}`} />
+        </div>
+      </>
+    ));
+  }
+
+  // One spread per chapter: narrative left, illustration right.
+  chapters.forEach((ch) => {
+    const lNum = P();
+    const rNum = P();
+    add(`Chapter ${ch.number}`, '', (
+      <>
+        <div className="page page-text">
+          <span className="pg-num">{lNum}</span>
+          <p className="ch-label">{`Chapter ${ch.number}`}</p>
+          <h2 className="pg-title">{ch.title}</h2>
+          <div className="ornament"><i /><b>{STAR}</b><i /></div>
+          <div className="pg-body dropcap">
+            {ch.paras.map((para, j) => <p key={j}>{para}</p>)}
           </div>
         </div>
-      </header>
+        <div className="page page-image">
+          <span className="pg-num pg-num-r">{rNum}</span>
+          <Plate className="plate-fill" art={ch.art} src={ch.src} />
+        </div>
+      </>
+    ));
+  });
 
-      {childhood && (
-        <section className="gs-intro">
-          <div className="gs-wrap">
-            <p className="lead">{childhood}</p>
-            <div className="divider"><i /><b>&#10022;</b><i /></div>
-          </div>
-        </section>
-      )}
+  // Life timeline (spans the whole spread).
+  if (hasTimeline) {
+    const lNum = P();
+    const rNum = P();
+    add('Timeline', '', (
+      <div className="page-span page-timeline">
+        <span className="pg-num">{lNum}</span>
+        <span className="pg-num pg-num-r">{rNum}</span>
+        <h2 className="span-title">{`${first}’s Life Journey`}</h2>
+        <div className="ornament center"><i /><b>{STAR}</b><i /></div>
+        <div className="tl-track">
+          {timeline.map((t, i) => (
+            <div key={i} className="tl-item">
+              <Plate className="tl-plate" art={t.year} src={t.image_url || null} />
+              <div className="tl-dot" />
+              <p className="tl-year">{t.year}</p>
+              <p className="tl-cap">{t.caption}</p>
+            </div>
+          ))}
+        </div>
+        {quote && (
+          <p className="tl-quote">{`“${quote}”`} <span>{`— ${name}`}</span></p>
+        )}
+      </div>
+    ));
+  }
 
-      {chapters.length > 0 && (
-        <section className="gs-chapters">
-          <div className="gs-wrap">
-            {chapters.map((ch, i) => (
-              <article key={i} className={`chapter ${ch.revClass}`}>
-                <div className="ch-media">
-                  <div className="ch-numbadge">{ch.number}</div>
-                  <Frame src={ch.image_url} tag={`Ch. ${ch.number} scene · ${ch.title}`} />
-                </div>
-                <div className="ch-text">
-                  <p className="ch-num"><i />Chapter {ch.number}</p>
-                  <h2 className="ch-title">{ch.title}</h2>
-                  <div className="ch-body">
-                    {ch.paras.map((para, j) => <p key={j}>{para}</p>)}
-                  </div>
-                </div>
-              </article>
+  // Treasures left behind: gallery left, reflection right.
+  if (hasTreasures) {
+    const lNum = P();
+    const rNum = P();
+    add('Treasures', '', (
+      <>
+        <div className="page page-text">
+          <span className="pg-num">{lNum}</span>
+          <h2 className="pg-title">Treasures Left Behind</h2>
+          <div className="ornament"><i /><b>{STAR}</b><i /></div>
+          <p className="tr-intro">{`${first} left the world more than memories — gifts, ideas, and wonders that still inspire people today.`}</p>
+          <div className="tr-grid">
+            {treasures.map((t, i) => (
+              <div key={i} className="tr-cell">
+                <Plate className="tr-plate" art={t.name} src={t.image_url || null} />
+                <p className="tr-name">{t.name}</p>
+              </div>
             ))}
           </div>
-        </section>
-      )}
-
-      {timeline.length > 0 && (
-        <section className="gs-timeline">
-          <div className="gs-wrap">
-            <div className="gs-section-head">
-              <div className="eyebrow"><i /><span>A Life in Moments</span><i /></div>
-              <h2>The Journey</h2>
-              <p className="sub">Follow the footsteps, year by year</p>
-            </div>
-            <div className="tl-track">
-              {timeline.map((t, i) => (
-                <div key={i} className="tl-item">
-                  <Frame src={t.image_url} tag={t.year} />
-                  <div className="tl-dot" />
-                  <p className="tl-year">{t.year}</p>
-                  <p className="tl-cap">{t.caption}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {treasures.length > 0 && (
-        <section className="gs-treasures">
-          <div className="gs-wrap">
-            <div className="gs-section-head">
-              <div className="eyebrow"><i /><span>Treasures Left Behind</span><i /></div>
-              <h2>Gifts to the World</h2>
-              <p className="sub">The wonders this life gave to all of us</p>
-            </div>
-            <div className="tr-grid">
-              {treasures.map((tr, i) => (
-                <article key={i} className="tr-card">
-                  <Frame src={tr.image_url} tag={`Treasure · ${tr.name}`} />
-                  <div className="tr-body">
-                    <div className="tr-seal">{tr.index}</div>
-                    <h3 className="tr-name">{tr.name}</h3>
-                    <p className="tr-desc">{tr.description}</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {lessons.length > 0 && (
-        <section className="gs-lessons">
-          <div className="gs-wrap">
-            <div className="gs-section-head">
-              <div className="eyebrow"><i /><span>What We Learn</span><i /></div>
-              <h2>Little Golden Lessons</h2>
-            </div>
-            <div className="ls-grid">
-              {lessons.map((l, i) => (
-                <div key={i} className="ls-card">
-                  <div className="ls-ic"><span className={l.shape} /></div>
-                  <div>
-                    {l.icon && <p className="ls-label">{l.icon}</p>}
-                    <p className="ls-text">{l.lesson}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {modern && (
-        <section className="gs-modern">
-          <div className="gs-wrap">
-            <div className="modern-card">
-              <span className="kicker">If {firstName} were ten today&#8230;</span>
-              <h3>A young explorer for our times</h3>
-              <p>{modern}</p>
-            </div>
-          </div>
-        </section>
-      )}
-
-      <footer className="gs-closing">
-        <div className="gs-wrap">
-          <div className="star">&#10022;</div>
-          {takeaway && <p className="take">&#8220;{takeaway}&#8221;</p>}
-          <div className="foot"><i /><span>A Golden Story &#183; {name}</span><i /></div>
+          {takeaway && <p className="tr-stamp">{`${STAR} ${takeaway}`}</p>}
         </div>
-      </footer>
+        <div className="page page-text">
+          <span className="pg-num pg-num-r">{rNum}</span>
+          <h2 className="pg-title">Gifts That Live On</h2>
+          <div className="ornament"><i /><b>{STAR}</b><i /></div>
+          <div className="pg-body">
+            <p>{`Long after ${first} was gone, these gifts kept inspiring the world.`}</p>
+            <p>Because the world will always need dreamers who dare to see what others cannot.</p>
+          </div>
+          <Plate className="plate-strip" art="Treasures fading into a sunlit landscape" />
+        </div>
+      </>
+    ));
+  }
+
+  // "If they were ten today" + the little golden lessons band.
+  if (hasLessons) {
+    const lNum = P();
+    const rNum = P();
+    add('If they were ten today', '', (
+      <div className="page-span page-lessons">
+        <span className="pg-num">{lNum}</span>
+        <span className="pg-num pg-num-r">{rNum}</span>
+        <div className="ls-top">
+          <div className="ls-left">
+            <h2 className="pg-title">{`If ${first} Were 10 Today`}</h2>
+            <div className="ornament"><i /><b>{STAR}</b><i /></div>
+            <div className="pg-body">
+              {splitParas(modern).map((para, j) => <p key={j}>{para}</p>)}
+            </div>
+          </div>
+          <div className="ls-right">
+            <Plate art={`${first} as a modern ten-year-old explorer`} />
+          </div>
+        </div>
+        {lessons.length > 0 && (
+          <div className="ls-band">
+            <p className="ls-band-title">{`What Can We Learn From ${first}?`}</p>
+            <div className="ls-row">
+              {lessons.map((l, i) => (
+                <div key={i} className="ls-item">
+                  <div className="ls-ic"><span className={l.shape} /></div>
+                  {l.icon && <p className="ls-label">{l.icon}</p>}
+                  <p className="ls-text">{l.lesson}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    ));
+  }
+
+  // Closing page.
+  {
+    const lNum = P();
+    add('The End', '', (
+      <div className="page-span page-closing">
+        <span className="pg-num">{lNum}</span>
+        <div className="close-star">{STAR}</div>
+        {takeaway && <p className="close-take">{takeaway}</p>}
+        <div className="ornament center"><i /><b>{STAR}</b><i /></div>
+        <p className="close-end">The End</p>
+        <p className="close-name">{`A Golden Story · ${name}`}</p>
+      </div>
+    ));
+  }
+
+  const count = spreads.length;
+  const go = useCallback(
+    (dir) => setCur((s) => Math.max(0, Math.min(count - 1, s + dir))),
+    [count]
+  );
+
+  // Fit the fixed-size book into the viewport, and wire keyboard navigation.
+  useEffect(() => {
+    const fit = () => {
+      const el = scaleRef.current;
+      if (!el) return;
+      const s = Math.min((window.innerWidth - 40) / BOOK_W, (window.innerHeight - 40) / BOOK_H);
+      el.style.transform = `scale(${s})`;
+    };
+    const onKey = (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') { go(1); e.preventDefault(); }
+      else if (e.key === 'ArrowLeft') { go(-1); }
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('resize', fit);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [go]);
+
+  if (!story) return null;
+
+  return (
+    <div className="book-stage">
+      <style>{CSS}</style>
+
+      <button className="nav nav-prev" onClick={() => go(-1)} aria-label="Previous page">{'‹'}</button>
+
+      <div className="book-scale" ref={scaleRef}>
+        <div className="book">
+          <div className="book-leather" />
+          <div className="book-body">
+            {spreads}
+
+            <div className="book-frame">
+              {['tl', 'tr', 'bl', 'br'].map((pos) => (
+                <span key={pos} className={`corner ${pos}`}>
+                  <svg viewBox="0 0 160 160" fill="none" aria-hidden="true">
+                    <path d="M6 6 C 48 28 84 58 124 140" stroke="#9aa06a" strokeWidth="1.4" fill="none" opacity=".8" />
+                    <g fill="#a6ac72" opacity=".8">
+                      <path d="M30 26 C 44 12 62 13 70 22 C 59 35 40 37 30 26 Z" />
+                      <path d="M52 54 C 67 41 85 44 91 54 C 79 66 60 66 52 54 Z" />
+                      <path d="M74 86 C 91 76 107 80 111 90 C 99 100 82 98 74 86 Z" />
+                      <path d="M18 46 C 8 36 8 21 16 15 C 27 25 28 41 18 46 Z" />
+                      <path d="M42 78 C 30 70 28 53 36 47 C 47 57 51 72 42 78 Z" />
+                    </g>
+                  </svg>
+                </span>
+              ))}
+              <div className="spine" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button className="nav nav-next" onClick={() => go(1)} aria-label="Next page">{'›'}</button>
+      <div className="book-progress">{`${cur + 1} / ${count}`}</div>
     </div>
   );
 }
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Lato:wght@300;400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Lato:wght@300;400;700&family=Great+Vibes&display=swap');
 
-.gs-page {
-  --ivory: #F5F0E7; --card: #FBF8F1; --gold: #C8A96B; --gold-deep: #A8884A;
-  --gold-light: #D4BF8A; --mocha: #4A3B2A; --clay: #8B7355; --sage: #7C8770;
-  --sand: #EADCC2; --ink: #2C1F0E;
+.book-stage {
+  --parch: #efe4c8; --parch2: #e4d6b3; --ink: #5c4a30; --ink-soft: #7c6746;
+  --head: #a07a38; --head-deep: #7c5a28; --gold: #b9975a; --leaf: #9aa06a;
   --serif: "Playfair Display", Georgia, serif;
   --sans: Lato, "Source Sans 3", sans-serif;
+  --script: "Great Vibes", cursive;
+  position: fixed; inset: 0; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 35%, #3c2c1d 0%, #1c130c 68%, #110a05 100%);
   font-family: var(--sans);
-  color: var(--mocha);
-  background-color: var(--ivory);
-  background-image:
-    radial-gradient(ellipse at 12% 18%, rgba(139,115,80,0.06) 0%, transparent 52%),
-    radial-gradient(ellipse at 88% 82%, rgba(100,75,45,0.04) 0%, transparent 45%);
-  overflow-x: hidden;
-  min-height: 100vh;
 }
-.gs-page * { box-sizing: border-box; }
-.gs-wrap { max-width: 1080px; margin: 0 auto; padding: 0 clamp(1.25rem, 4vw, 3rem); }
+.book-stage * { box-sizing: border-box; }
 
-.gs-page .ph {
-  position: relative;
-  background-color: var(--sand);
-  background-image: repeating-linear-gradient(45deg, rgba(168,136,74,0.10) 0 11px, transparent 11px 22px);
-  border: 1px solid rgba(201,169,110,0.30);
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
+.book-scale { transform-origin: center center; }
+.book { position: relative; width: 1300px; height: 866px; --leather: #241812; }
+
+.book-leather {
+  position: absolute; inset: -28px; border-radius: 16px;
+  background: linear-gradient(135deg, #3a281c 0%, var(--leather) 55%, #170f0a 100%);
+  box-shadow: 0 46px 100px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.05);
 }
-.gs-page .ph-tag {
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 0.6rem; letter-spacing: 0.10em; text-transform: uppercase;
-  color: var(--gold-deep);
-  background: rgba(251,248,241,0.88);
-  padding: 5px 12px; border-radius: 30px;
-  border: 1px solid rgba(201,169,110,0.35);
-  text-align: center; max-width: 82%; line-height: 1.5;
+.book-leather::after {
+  content: ""; position: absolute; inset: 13px; border-radius: 9px;
+  border: 1px solid rgba(201,169,110,.20);
+}
+.book-body {
+  position: absolute; inset: 0; border-radius: 5px 9px 9px 5px; overflow: hidden;
+  box-shadow: 0 12px 34px rgba(0,0,0,.4);
 }
 
-.gs-hero { position: relative; padding: clamp(3rem,7vw,5.5rem) 0 clamp(2.5rem,5vw,4rem); }
-.gs-hero-wash {
-  position: absolute; inset: 0;
-  background: radial-gradient(ellipse 55% 45% at 50% 22%, rgba(212,175,55,0.16) 0%, transparent 68%);
-  pointer-events: none;
+.spread {
+  position: absolute; inset: 0; display: flex;
+  opacity: 0; pointer-events: none; transition: opacity .55s ease;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.06'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E") repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='560' height='560'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012' numOctaves='2' stitchTiles='stitch' seed='7'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.05'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E") repeat,
+    radial-gradient(ellipse 62% 52% at 24% 26%, rgba(255,251,238,.55), transparent 60%),
+    radial-gradient(ellipse 60% 55% at 80% 78%, rgba(120,90,50,.10), transparent 55%),
+    linear-gradient(180deg, var(--parch), var(--parch2));
 }
-.gs-hero-inner { position: relative; z-index: 2; display: grid; grid-template-columns: 1.1fr 0.9fr; gap: clamp(1.5rem,4vw,3.5rem); align-items: center; }
-.hero-eyebrow { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 1.25rem; }
-.hero-eyebrow i { height: 1px; width: 32px; background: var(--gold); display: block; }
-.hero-eyebrow span { font-size: 0.6rem; letter-spacing: 0.30em; text-transform: uppercase; color: var(--sage); }
-.gs-title {
-  font-family: var(--serif); font-weight: 700; line-height: 1.02; margin: 0 0 1.25rem;
-  font-size: clamp(2.4rem, 5.5vw, 4rem); letter-spacing: -0.015em;
-  background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 48%, var(--gold-deep) 100%);
-  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-}
-.hero-name { font-family: var(--serif); font-size: 1.5rem; font-weight: 600; color: var(--ink); margin: 0 0 0.3rem; }
-.hero-meta { font-family: var(--serif); font-style: italic; font-size: 0.95rem; color: var(--clay); margin: 0 0 1.75rem; }
-.hero-quote {
-  position: relative; padding-left: 1.1rem; margin: 0;
-  border-left: 2px solid var(--gold-light);
-  font-family: var(--serif); font-style: italic; font-size: 1.02rem; color: var(--mocha); line-height: 1.7;
-}
-.hero-portrait { position: relative; }
-.hero-portrait .ph { aspect-ratio: 4 / 5; border-radius: 26px; box-shadow: 0 18px 44px rgba(90,60,20,0.18); }
-.hero-badge {
-  position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%);
-  display: inline-flex; align-items: center; gap: 0.5rem;
-  padding: 0.5rem 1.35rem; background: var(--card);
-  border: 1px solid rgba(201,169,110,0.4); border-radius: 30px;
-  box-shadow: 0 6px 18px rgba(90,60,20,0.12);
-  font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold-deep); white-space: nowrap;
-}
-.hero-badge i { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); display: block; }
-
-.gs-intro { padding: clamp(2.5rem,5vw,4rem) 0; text-align: center; }
-.gs-intro .lead { font-family: var(--serif); font-style: italic; font-size: clamp(1.05rem,2.1vw,1.4rem); color: var(--clay); line-height: 1.8; max-width: 760px; margin: 0 auto; }
-.divider { display: flex; align-items: center; gap: 0.85rem; justify-content: center; margin: 2.5rem 0; }
-.divider i { height: 1px; width: 60px; background: rgba(201,169,110,0.45); display: block; }
-.divider b { color: var(--gold); font-size: 1.05rem; line-height: 1; }
-
-.gs-chapters { padding: 1rem 0 3rem; }
-.chapter { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1.5rem,4vw,3.25rem); align-items: center; margin-bottom: clamp(3.5rem,7vw,6rem); }
-.chapter.rev .ch-media { order: 2; }
-.ch-num { font-family: var(--serif); font-weight: 700; font-size: 0.72rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--gold); margin: 0 0 0.6rem; display: flex; align-items: center; gap: 0.7rem; }
-.ch-num i { height: 1px; width: 30px; background: var(--gold-light); display: block; }
-.ch-title { font-family: var(--serif); font-weight: 700; font-size: clamp(1.7rem,3.4vw,2.4rem); color: var(--ink); margin: 0 0 1.25rem; line-height: 1.12; letter-spacing: -0.01em; }
-.ch-body p { font-weight: 300; font-size: 1rem; color: var(--mocha); line-height: 1.9; margin: 0 0 1rem; }
-.ch-body p:first-child::first-letter {
-  font-family: var(--serif); font-weight: 700; font-size: 3.2rem; float: left;
-  line-height: 0.82; padding: 0.28rem 0.7rem 0 0; color: var(--gold);
-}
-.ch-media { position: relative; }
-.ch-media .ph { aspect-ratio: 5 / 6; border-radius: 24px; box-shadow: 0 14px 38px rgba(90,60,20,0.16); }
-.ch-media .ch-numbadge {
-  position: absolute; top: 14px; left: 14px; z-index: 3;
-  width: 44px; height: 44px; border-radius: 50%;
-  background: rgba(251,248,241,0.94); border: 1.5px solid rgba(201,169,110,0.6);
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--serif); font-weight: 700; font-size: 1.1rem; color: var(--gold-deep);
-  box-shadow: 0 4px 12px rgba(90,60,20,0.14);
+.spread.on { opacity: 1; pointer-events: auto; }
+.spread::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  box-shadow: inset 0 0 130px rgba(90,60,25,.26), inset 0 0 44px rgba(70,45,20,.16);
 }
 
-.gs-section-head { text-align: center; margin-bottom: 3rem; }
-.gs-section-head .eyebrow { display: flex; align-items: center; gap: 0.7rem; justify-content: center; margin-bottom: 0.75rem; }
-.gs-section-head .eyebrow i { height: 1px; width: 34px; background: rgba(201,169,110,0.5); display: block; }
-.gs-section-head .eyebrow span { font-size: 0.58rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--sage); }
-.gs-section-head h2 { font-family: var(--serif); font-weight: 700; font-size: clamp(1.9rem,4vw,2.8rem); color: var(--gold); margin: 0; line-height: 1.12; }
-.gs-section-head .sub { font-family: var(--serif); font-style: italic; font-size: 0.95rem; color: var(--clay); margin: 0.6rem 0 0; }
+/* Each leaf is exactly half the spread. flex-basis:50% (not flex:1 / basis 0%)
+   keeps the fold on the true centre — with basis 0%, a padded page grows ~half
+   its own padding past centre, shoving the facing image page off the binder. */
+.page { position: relative; flex: 1 1 50%; min-width: 0; padding: 52px 60px; overflow: hidden; display: flex; flex-direction: column; }
+.spread > .page:first-child:not(.page-cover) { padding-right: 88px; }
+.spread > .page:first-child:not(.page-cover) .pg-num { left: 58px; }
+.spread > .page + .page { padding-left: 88px; }
+.spread > .page + .page .plate-strip { margin-left: 0; }
+.pg-num { position: absolute; top: 34px; left: 58px; font-family: var(--serif); font-size: 13px; letter-spacing: .16em; color: var(--head-deep); opacity: .55; z-index: 4; }
+.pg-num-r { left: auto; right: 58px; }
 
-.gs-timeline { padding: clamp(3rem,6vw,5rem) 0; background: linear-gradient(to bottom, transparent, rgba(234,220,194,0.35), transparent); }
-.tl-track { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; }
-.tl-track::before { content: ""; position: absolute; top: 118px; left: 6%; right: 6%; height: 2px; background: repeating-linear-gradient(to right, var(--gold-light) 0 8px, transparent 8px 16px); }
+.pg-title { font-family: var(--serif); font-weight: 700; font-size: 37px; line-height: 1.08; color: var(--head-deep); margin: 44px 0 0; letter-spacing: -.01em; }
+.ch-label { font-family: var(--serif); font-size: 12px; letter-spacing: .26em; text-transform: uppercase; color: var(--gold); margin: 40px 0 4px; }
+.ch-label + .pg-title { margin-top: 0; }
+.ornament { display: flex; align-items: center; gap: 10px; margin: 15px 0 22px; }
+.ornament i { height: 1px; width: 44px; background: linear-gradient(90deg, transparent, var(--gold)); display: block; }
+.ornament i:last-child { background: linear-gradient(90deg, var(--gold), transparent); }
+.ornament b { color: var(--gold); font-size: 13px; line-height: 1; }
+.ornament.center { justify-content: center; }
+
+.pg-body { font-family: var(--sans); flex: 1; overflow-y: auto; padding-right: 6px; min-height: 0; }
+.pg-body p { font-size: 16.5px; line-height: 1.78; color: var(--ink); margin: 0 0 15px; font-weight: 400; }
+.pg-body::-webkit-scrollbar { width: 5px; }
+.pg-body::-webkit-scrollbar-thumb { background: rgba(185,151,90,.4); border-radius: 4px; }
+.dropcap p:first-child::first-letter { font-family: var(--serif); font-weight: 700; font-size: 58px; float: left; line-height: .78; padding: 6px 10px 0 0; color: var(--head); }
+
+.plate { position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  background:
+    repeating-linear-gradient(48deg, rgba(120,90,45,.06) 0 9px, transparent 9px 18px),
+    linear-gradient(158deg, #d9c49b 0%, #c6ac7d 60%, #b89e70 100%);
+}
+.plate-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.plate-vignette {
+  -webkit-mask-image: radial-gradient(ellipse 82% 86% at 50% 46%, #000 50%, rgba(0,0,0,.35) 76%, transparent 100%);
+  mask-image: radial-gradient(ellipse 82% 86% at 50% 46%, #000 50%, rgba(0,0,0,.35) 76%, transparent 100%);
+}
+.plate-alpha { background: none; }
+.plate-alpha .plate-img { object-fit: contain; mix-blend-mode: multiply; }
+.ph-tag { font-family: ui-monospace, Menlo, monospace; font-size: 9px; letter-spacing: .07em; text-transform: uppercase; color: #7c5a28; background: rgba(255,250,238,.72); padding: 5px 10px; border-radius: 20px; border: 1px solid rgba(185,151,90,.4); max-width: 78%; text-align: center; line-height: 1.5; position: relative; z-index: 2; }
+
+.page-cover { padding: 0; }
+.plate-cover { position: absolute; inset: 0; }
+.cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 42%; }
+.cover-grad { position: absolute; inset: 0; z-index: 2; background: linear-gradient(180deg, rgba(28,18,9,.42) 0%, rgba(28,18,9,.05) 28%, transparent 50%, rgba(24,15,7,.55) 100%); }
+.cover-head { position: absolute; top: 54px; left: 52px; right: 52px; z-index: 3; }
+.cover-eyebrow { font-family: var(--serif); font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: #f1e4c2; margin: 0 0 12px; text-shadow: 0 1px 6px rgba(0,0,0,.5); }
+.cover-title { font-family: var(--serif); font-weight: 700; font-size: 50px; line-height: 1.02; color: #fbf3df; margin: 0; text-shadow: 0 2px 16px rgba(0,0,0,.5); }
+.cover-sub { font-family: var(--serif); font-style: italic; font-size: 15px; color: #efe0bc; margin: 14px 0 0; letter-spacing: .02em; text-shadow: 0 1px 8px rgba(0,0,0,.5); }
+.cover-cta { position: absolute; bottom: 46px; left: 52px; z-index: 3; font-family: var(--script); font-size: 31px; color: #f4e7c6; text-shadow: 0 2px 10px rgba(0,0,0,.5); margin: 0; }
+
+.page-image { padding: 0; }
+.spread > .page + .page.page-image { padding: 0; }
+.plate-fill { position: absolute; inset: 0; border-radius: 0; }
+.page-image .pg-num-r { top: 24px; right: 24px; color: #f4e7c6; opacity: .85; text-shadow: 0 1px 5px rgba(0,0,0,.55); }
+/* Full-page chapter art fills the whole page — right to the binder — rather than
+   being letterboxed or edge-faded. Drop the vignette mask so the image reaches
+   every edge, and cover the box (alpha art too) so nothing is left letterboxed. */
+.page-image .plate-vignette { -webkit-mask-image: none; mask-image: none; }
+.page-image .plate-img { object-fit: cover; }
+.plate-strip { margin-top: auto; height: 158px; border-radius: 5px; flex-shrink: 0; }
+
+.page-span { position: relative; flex: 1; padding: 54px 68px; display: flex; flex-direction: column; }
+.span-title { font-family: var(--serif); font-weight: 700; font-size: 39px; color: var(--head-deep); text-align: center; margin: 30px 0 0; line-height: 1.08; }
+
+.tl-track { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; margin: 38px 0 0; flex: 1; align-content: center; }
+.tl-track::before { content: ""; position: absolute; left: 7%; right: 7%; top: 172px; height: 2px; background: repeating-linear-gradient(90deg, var(--gold) 0 7px, transparent 7px 15px); opacity: .55; }
 .tl-item { display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; z-index: 2; }
-.tl-item .ph { width: 100%; aspect-ratio: 1/1; border-radius: 18px; margin-bottom: 1rem; box-shadow: 0 8px 22px rgba(90,60,20,0.14); }
-.tl-dot { width: 16px; height: 16px; border-radius: 50%; background: var(--card); border: 3px solid var(--gold); margin-bottom: 0.85rem; box-shadow: 0 2px 8px rgba(90,60,20,0.15); }
-.tl-year { font-family: var(--serif); font-weight: 700; font-size: 1.15rem; color: var(--gold-deep); margin: 0 0 0.4rem; }
-.tl-cap { font-weight: 300; font-size: 0.76rem; color: var(--clay); margin: 0; line-height: 1.55; max-width: 15ch; }
+.tl-plate { width: 150px; height: 150px; border-radius: 8px; }
+.tl-dot { width: 15px; height: 15px; border-radius: 50%; background: var(--parch); border: 3px solid var(--gold); margin: 16px 0 12px; box-shadow: 0 2px 7px rgba(90,60,20,.2); }
+.tl-year { font-family: var(--serif); font-weight: 700; font-size: 22px; color: var(--head-deep); margin: 0 0 6px; }
+.tl-cap { font-size: 12.5px; line-height: 1.55; color: var(--ink-soft); max-width: 17ch; margin: 0; }
+.tl-quote { text-align: center; font-family: var(--script); font-size: 27px; color: var(--gold); margin: 28px 0 0; }
+.tl-quote span { font-family: var(--serif); font-style: italic; font-size: 15px; color: var(--ink-soft); }
 
-.gs-treasures { padding: clamp(3rem,6vw,5rem) 0; }
-.tr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-.tr-card { background: var(--card); border: 1px solid rgba(201,169,110,0.18); border-radius: 22px; overflow: hidden; box-shadow: 0 6px 22px rgba(90,60,20,0.09); display: flex; flex-direction: column; transition: transform .25s ease, box-shadow .25s ease; }
-.tr-card:hover { transform: translateY(-5px); box-shadow: 0 16px 36px rgba(90,60,20,0.16); }
-.tr-card .ph { aspect-ratio: 3/2; }
-.tr-body { padding: 1.35rem 1.4rem 1.6rem; }
-.tr-seal { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #FAF7F2 0%, #EDE0CC 55%, #D8CCBA 100%); border: 2px solid rgba(201,169,110,0.6); color: var(--gold-deep); font-family: var(--serif); font-weight: 700; font-size: 0.8rem; margin-bottom: 0.85rem; box-shadow: inset 0 1px 0 rgba(255,255,255,0.7); }
-.tr-name { font-family: var(--serif); font-weight: 600; font-size: 1.12rem; color: var(--gold); margin: 0 0 0.55rem; line-height: 1.25; }
-.tr-desc { font-weight: 300; font-size: 0.86rem; color: var(--mocha); margin: 0; line-height: 1.7; }
+.tr-intro { font-size: 14.5px; line-height: 1.7; color: var(--ink); margin: 0 0 20px; }
+.tr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px 16px; }
+.tr-cell { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.tr-plate { width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; }
+.tr-name { font-family: var(--serif); font-size: 12px; line-height: 1.4; color: var(--ink-soft); margin: 8px 0 0; }
+.tr-stamp { margin: 20px 0 0; font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--head-deep); text-align: center; border: 1px solid rgba(185,151,90,.4); border-radius: 9px; padding: 12px 16px; background: rgba(255,250,238,.5); }
 
-.gs-lessons { padding: clamp(3rem,6vw,5rem) 0; background: linear-gradient(135deg, rgba(201,169,110,0.14) 0%, rgba(232,220,195,0.22) 50%, rgba(201,169,110,0.10) 100%); border-top: 1px solid rgba(201,169,110,0.22); border-bottom: 1px solid rgba(201,169,110,0.22); }
-.ls-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; max-width: 880px; margin: 0 auto; }
-.ls-card { display: flex; gap: 1.1rem; align-items: flex-start; background: rgba(251,248,241,0.72); border: 1px solid rgba(201,169,110,0.22); border-radius: 18px; padding: 1.4rem 1.5rem; }
-.ls-ic { flex-shrink: 0; width: 46px; height: 46px; border-radius: 14px; background: rgba(201,169,110,0.16); border: 1px solid rgba(201,169,110,0.4); display: flex; align-items: center; justify-content: center; }
-.ls-ic span { width: 18px; height: 18px; display: block; }
-.ls-ic .sh-diamond { transform: rotate(45deg); border: 2px solid var(--gold-deep); }
-.ls-ic .sh-circle { border-radius: 50%; border: 2px solid var(--gold-deep); }
-.ls-ic .sh-square { border-radius: 4px; border: 2px solid var(--gold-deep); }
-.ls-ic .sh-tri { width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 17px solid var(--gold-deep); }
-.ls-label { font-size: 0.56rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-deep); margin: 0 0 0.45rem; }
-.ls-text { font-family: var(--serif); font-size: 1rem; color: var(--mocha); margin: 0; line-height: 1.55; }
+.page-lessons { padding: 52px 60px 0; }
+.ls-top { display: flex; gap: 40px; flex: 1; min-height: 0; }
+.ls-left { flex: 1.05; display: flex; flex-direction: column; }
+.ls-left .pg-body p { font-size: 17px; line-height: 1.85; }
+.ls-right { flex: 1; position: relative; }
+.ls-right .plate { position: absolute; inset: 8px 0 24px; border-radius: 6px; }
+.ls-band { margin: 0 -60px; background: rgba(230,217,188,.6); border-top: 1px solid rgba(185,151,90,.35); padding: 24px 60px 28px; }
+.ls-band-title { text-align: center; font-family: var(--serif); font-size: 21px; color: var(--head-deep); margin: 0 0 18px; }
+.ls-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+.ls-item { text-align: center; display: flex; flex-direction: column; align-items: center; }
+.ls-ic { width: 44px; height: 44px; border-radius: 12px; background: rgba(185,151,90,.14); border: 1px solid rgba(185,151,90,.4); display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+.ls-ic span { width: 17px; height: 17px; display: block; }
+.ls-ic .sh-diamond { transform: rotate(45deg); border: 2px solid var(--head-deep); }
+.ls-ic .sh-circle { border-radius: 50%; border: 2px solid var(--head-deep); }
+.ls-ic .sh-square { border-radius: 3px; border: 2px solid var(--head-deep); }
+.ls-ic .sh-tri { width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; border-bottom: 16px solid var(--head-deep); }
+.ls-label { font-family: var(--serif); font-size: 14px; color: var(--head-deep); margin: 0 0 4px; }
+.ls-text { font-size: 12px; line-height: 1.5; color: var(--ink-soft); max-width: 21ch; margin: 0; }
 
-.gs-modern { padding: clamp(3rem,6vw,5rem) 0; }
-.modern-card { max-width: 820px; margin: 0 auto; background: var(--card); border: 1px solid rgba(201,169,110,0.2); border-radius: 26px; padding: clamp(2rem,4vw,3rem); box-shadow: 0 10px 30px rgba(90,60,20,0.1); text-align: center; }
-.modern-card .kicker { display: inline-block; font-size: 0.58rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--sage); margin-bottom: 1rem; }
-.modern-card h3 { font-family: var(--serif); font-weight: 700; font-size: clamp(1.4rem,3vw,2rem); color: var(--gold); margin: 0 0 1.25rem; line-height: 1.2; }
-.modern-card p { font-weight: 300; font-size: 1rem; color: var(--mocha); line-height: 1.85; margin: 0; }
+.page-closing { align-items: center; justify-content: center; text-align: center; padding: 60px; }
+.close-star { color: var(--gold); font-size: 24px; margin-bottom: 18px; }
+.close-take { font-family: var(--script); font-size: 44px; line-height: 1.35; color: var(--head); max-width: 20ch; margin: 0; }
+.close-end { font-family: var(--serif); font-weight: 700; font-size: 27px; color: var(--head-deep); letter-spacing: .05em; margin: 26px 0 0; }
+.close-name { font-family: var(--serif); font-size: 12px; letter-spacing: .16em; color: var(--ink-soft); margin: 13px 0 0; text-transform: uppercase; }
 
-.gs-closing { padding: clamp(3.5rem,7vw,6rem) 0; text-align: center; }
-.gs-closing .star { color: var(--gold); font-size: 1.4rem; margin-bottom: 1.25rem; }
-.gs-closing .take { font-family: var(--serif); font-style: italic; font-weight: 600; font-size: clamp(1.5rem,3.6vw,2.5rem); color: var(--gold); line-height: 1.4; max-width: 720px; margin: 0 auto 2rem; }
-.gs-closing .foot { display: flex; align-items: center; gap: 1rem; justify-content: center; }
-.gs-closing .foot i { height: 1px; width: 60px; background: rgba(201,169,110,0.35); display: block; }
-.gs-closing .foot span { font-family: var(--serif); font-size: 0.85rem; color: rgba(139,115,85,0.7); letter-spacing: 0.08em; }
+.book-frame { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
+/* Central binding gutter. A dark fold at the exact centre with a soft shadow
+   ramp to either side reads as the pages dipping down into the spine; the two
+   pale highlight bands flanking it are the paper curving back up to the flat of
+   the page, which sells the book-like curl even over a full-bleed illustration. */
+.spine { position: absolute; top: 0; bottom: 0; left: 50%; width: 150px; transform: translateX(-50%);
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(60,40,18,.05) 28%,
+    rgba(48,32,15,.20) 43%,
+    rgba(26,16,7,.46) 50%,
+    rgba(48,32,15,.20) 57%,
+    rgba(60,40,18,.05) 72%,
+    transparent 100%); }
+.spine::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg,
+    transparent 32%,
+    rgba(255,249,231,.14) 40%,
+    transparent 47%,
+    transparent 53%,
+    rgba(255,249,231,.14) 60%,
+    transparent 68%); }
+.spine::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; transform: translateX(-50%); background: rgba(24,14,6,.5); }
+.corner { position: absolute; width: 152px; height: 152px; opacity: .5; }
+.corner svg { width: 100%; height: 100%; display: block; }
+.corner.tl { top: 14px; left: 14px; }
+.corner.tr { top: 14px; right: 14px; transform: scaleX(-1); }
+.corner.bl { bottom: 14px; left: 14px; transform: scaleY(-1); }
+.corner.br { bottom: 14px; right: 14px; transform: scale(-1,-1); }
 
-@media (max-width: 820px) {
-  .gs-hero-inner { grid-template-columns: 1fr; }
-  .hero-portrait { max-width: 360px; margin: 0 auto; }
-  .chapter, .chapter.rev { grid-template-columns: 1fr; }
-  .chapter.rev .ch-media { order: 0; }
-  .tr-grid { grid-template-columns: 1fr 1fr; }
-  .tl-track { grid-template-columns: repeat(2, 1fr); gap: 2rem; }
-  .tl-track::before { display: none; }
-  .ls-grid { grid-template-columns: 1fr; }
-}
-@media (max-width: 520px) {
-  .tr-grid { grid-template-columns: 1fr; }
-  .tl-track { grid-template-columns: 1fr; }
-}
+.nav { position: fixed; top: 50%; transform: translateY(-50%); width: 54px; height: 54px; border-radius: 50%;
+  border: 1px solid rgba(201,169,110,.4); background: rgba(30,20,12,.5); color: #e8d3a2; font-size: 26px; cursor: pointer;
+  z-index: 50; display: flex; align-items: center; justify-content: center; transition: background .2s, transform .2s; font-family: var(--serif); line-height: 1; }
+.nav:hover { background: rgba(60,42,24,.85); }
+.nav-prev { left: 22px; } .nav-next { right: 22px; }
+.book-progress { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); color: rgba(232,211,162,.7); font-family: var(--serif); font-size: 13px; letter-spacing: .22em; z-index: 50; }
 `;
