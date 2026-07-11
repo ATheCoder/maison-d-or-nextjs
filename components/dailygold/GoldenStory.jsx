@@ -128,7 +128,7 @@ export default function GoldenStory({ story }) {
           <div className="pg-body">
             {splitParas(childhood).map((para, j) => <p key={j}>{para}</p>)}
           </div>
-          <Plate className="plate-strip" art={`Soft landscape of ${story?.country || 'home'}`} />
+          <Plate className="plate-strip" art={`Soft landscape of ${story?.country || 'home'}`} src={story?.childhood_image_url || null} />
         </div>
       </>
     ));
@@ -213,7 +213,7 @@ export default function GoldenStory({ story }) {
             <p>{`Long after ${first} was gone, these gifts kept inspiring the world.`}</p>
             <p>Because the world will always need dreamers who dare to see what others cannot.</p>
           </div>
-          <Plate className="plate-strip" art="Treasures fading into a sunlit landscape" />
+          <Plate className="plate-strip" art="Treasures fading into a sunlit landscape" src={story?.treasures_image_url || null} />
         </div>
       </>
     ));
@@ -396,7 +396,8 @@ const CSS = `
 .spread > .page:first-child:not(.page-cover) { padding-right: 88px; }
 .spread > .page:first-child:not(.page-cover) .pg-num { left: 58px; }
 .spread > .page + .page { padding-left: 88px; }
-.spread > .page + .page .plate-strip { margin-left: 0; }
+.spread > .page + .page .plate-strip { margin-left: -88px; }
+.spread > .page:first-child:not(.page-cover) .plate-strip { margin-right: -88px; }
 .pg-num { position: absolute; top: 34px; left: 58px; font-family: var(--serif); font-size: 13px; letter-spacing: .16em; color: var(--head-deep); opacity: .55; z-index: 4; }
 .pg-num-r { left: auto; right: 58px; }
 
@@ -448,7 +449,16 @@ const CSS = `
    every edge, and cover the box (alpha art too) so nothing is left letterboxed. */
 .page-image .plate-vignette { -webkit-mask-image: none; mask-image: none; }
 .page-image .plate-img { object-fit: cover; }
-.plate-strip { margin-top: auto; height: 158px; border-radius: 5px; flex-shrink: 0; }
+/* Break out of the page padding so the strip sits flush against the page's
+   bottom and side edges — a full-bleed band. margin-top:auto keeps it pinned to
+   the bottom of the flex column (body text stays above it); the negative side/
+   bottom margins reach the page edges (side margins are refined per page below).
+   No vignette/alpha treatment here: the band must reach both edges, not fade. */
+.plate-strip { margin: auto -60px -52px; height: auto; border-radius: 0; flex-shrink: 0; -webkit-mask-image: none; mask-image: none; background: none; display: block; }
+/* Let the image drive its own height (full page width, natural aspect ratio,
+   never clamped) and multiply onto the parchment so the paper tone shows
+   through. margin-top:auto still pins it to the page bottom as a flex item. */
+.plate-strip .plate-img { position: static; width: 100%; height: auto; object-fit: fill; mix-blend-mode: multiply; }
 
 .page-span { position: relative; flex: 1; padding: 54px 68px; display: flex; flex-direction: column; }
 .span-title { font-family: var(--serif); font-weight: 700; font-size: 39px; color: var(--head-deep); text-align: center; margin: 30px 0 0; line-height: 1.08; }

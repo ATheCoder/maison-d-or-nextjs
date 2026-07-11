@@ -1,0 +1,69 @@
+{
+  "name": "Leonardo da Vinci",
+  "role": "Painter, Inventor & Endless Dreamer",
+  "field": "Art & Science",
+  "country": "Italy",
+  "birth_date": "1452",
+  "death_year": "1519",
+  "story_title": "Leonardo da Vinci",
+  "famous_quote": "Learning never exhausts the mind.",
+
+  "image_url": "/stories/leonardo/cover.png",
+
+  "story_childhood": "In a stone farmhouse on a hillside near the little town of Vinci, a curious boy was born who never stopped asking why. Why did birds tilt their wings just so? Why did water swirl the way it did around a rock? Why did shadows soften at their edges instead of ending in a sharp line?\n\nYoung Leonardo carried a notebook everywhere. He sketched dragonflies and river currents, faces in the market and clouds over the olive groves. Where other children saw an ordinary morning, Leonardo saw a thousand puzzles waiting to be solved — and he decided, quietly, that he would try to solve them all.",
+
+  "story_takeaway": "Stay curious, and the whole world becomes your workshop.",
+
+  "modern_interpretation": "If Leonardo were ten years old today, he'd probably have a tablet stuffed with drawings, a drawer full of half-built gadgets, and a hundred browser tabs open at once. He'd film slow-motion videos of water drops, design flying machines in 3D, and ask his teachers questions they couldn't quite answer.\n\nHe'd remind us that art and science aren't opposites — they're two ways of looking closely at the same wonderful world.",
+
+  "chapters": [
+    {
+      "number": 1,
+      "title": "The Apprentice of Florence",
+      "narrative": "When Leonardo was still a teenager, his father brought him to the busy city of Florence and placed him in the workshop of a master artist named Verrocchio. It was a noisy, wonderful place — full of the smell of paint, the ring of hammered bronze, and apprentices grinding colours from stones and flowers.\n\nLeonardo learned to paint, to sculpt, and to build. The story goes that when he painted a single angel into one of his master's pictures, it was so lifelike and gentle that Verrocchio set down his own brush in amazement. The student, it seemed, had already begun to outshine the teacher.",
+      "image_url": "/stories/leonardo/2.png"
+    },
+    {
+      "number": 2,
+      "title": "The Notebooks of Wonder",
+      "narrative": "Leonardo filled thousands of pages with his ideas. He wrote them in mirror-writing, backwards, so you needed a looking-glass to read them. On those pages he drew flying machines with flapping wings, a diving suit, a giant crossbow, and even a kind of helicopter — hundreds of years before engines existed.\n\nHe studied how muscles moved and how the heart pumped blood. He mapped rivers and imagined bridges. Most of his machines were never built in his lifetime, but they showed a mind that refused to believe anything was impossible — only 'not yet figured out.'",
+      "image_url": "/stories/leonardo/3.png"
+    },
+    {
+      "number": 3,
+      "title": "A Smile That Never Fades",
+      "narrative": "Leonardo painted slowly, because he wanted everything to be perfect. For a wall in Milan he created The Last Supper, capturing the exact moment a room full of friends turned to one another in surprise. And on a small poplar panel he painted a woman with a quiet, mysterious smile — the Mona Lisa.\n\nHe softened her edges with feather-light layers of paint, a trick he had invented by watching how shadows blur in real life. Centuries later, people still travel across the world just to stand before her and wonder what she is thinking.",
+      "image_url": "/stories/leonardo/4.png"
+    },
+    {
+      "number": 4,
+      "title": "The Wandering Master",
+      "narrative": "As the years passed, Leonardo travelled from city to city — Milan, Venice, Rome — designing waterways, festivals, and machines of war and wonder. Kings and dukes wanted his genius near them.\n\nAt last, a young French king invited him to live in a manor in France, where he could think and draw in peace. There, surrounded by his beloved notebooks, the old master kept sketching and questioning until the very end. He left the world far richer than he found it — not because he finished everything he started, but because he dared to imagine so much.",
+      "image_url": "/stories/leonardo/5.png"
+    }
+  ],
+
+  "timeline": [
+    { "year": "1452", "caption": "Born near the town of Vinci, in Italy." },
+    { "year": "1466", "caption": "Becomes an apprentice in Verrocchio's Florence workshop." },
+    { "year": "1482", "caption": "Moves to Milan to serve as an artist and engineer." },
+    { "year": "1503", "caption": "Begins painting the Mona Lisa." },
+    { "year": "1519", "caption": "Dies in France, his notebooks full of unfinished dreams." }
+  ],
+
+  "treasures": [
+    { "name": "The Mona Lisa" },
+    { "name": "The Last Supper" },
+    { "name": "The Vitruvian Man" },
+    { "name": "Flying Machine Designs" },
+    { "name": "Anatomy Studies" },
+    { "name": "The Mirror-Writing Notebooks" }
+  ],
+
+  "lessons": [
+    { "icon_name": "curiosity", "lesson": "Ask 'why?' about everything — even the ordinary things." },
+    { "icon_name": "observation", "lesson": "Look closely; the answers are often hiding in plain sight." },
+    { "icon_name": "patience", "lesson": "Great work takes time, so don't rush what matters." },
+    { "icon_name": "imagination", "lesson": "Dream up what doesn't exist yet, then try to build it." }
+  ]
+}
