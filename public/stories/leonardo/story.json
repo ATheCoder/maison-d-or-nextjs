@@ -7,15 +7,12 @@
   "death_year": "1519",
   "story_title": "Leonardo da Vinci",
   "famous_quote": "Learning never exhausts the mind.",
-
   "image_url": "/stories/leonardo/cover.png",
-
-  "story_childhood": "In a stone farmhouse on a hillside near the little town of Vinci, a curious boy was born who never stopped asking why. Why did birds tilt their wings just so? Why did water swirl the way it did around a rock? Why did shadows soften at their edges instead of ending in a sharp line?\n\nYoung Leonardo carried a notebook everywhere. He sketched dragonflies and river currents, faces in the market and clouds over the olive groves. Where other children saw an ordinary morning, Leonardo saw a thousand puzzles waiting to be solved — and he decided, quietly, that he would try to solve them all.",
-
+  "story_childhood_title": "A Little Boy in Vinci",
+  "childhood_image_url": "/stories/leonardo/5.png",
+  "story_childhood": "Leonardo was born on April 15, 1452,\n in a small village called Vinci, in Italy.\n\nHe loved to wander through the hills and watch the birds.\n\nWhile other children played, he asked questions about everything.\n\nHe wanted to understand how the world worked.",
   "story_takeaway": "Stay curious, and the whole world becomes your workshop.",
-
   "modern_interpretation": "If Leonardo were ten years old today, he'd probably have a tablet stuffed with drawings, a drawer full of half-built gadgets, and a hundred browser tabs open at once. He'd film slow-motion videos of water drops, design flying machines in 3D, and ask his teachers questions they couldn't quite answer.\n\nHe'd remind us that art and science aren't opposites — they're two ways of looking closely at the same wonderful world.",
-
   "chapters": [
     {
       "number": 1,
@@ -42,28 +39,64 @@
       "image_url": "/stories/leonardo/5.png"
     }
   ],
-
   "timeline": [
-    { "year": "1452", "caption": "Born near the town of Vinci, in Italy." },
-    { "year": "1466", "caption": "Becomes an apprentice in Verrocchio's Florence workshop." },
-    { "year": "1482", "caption": "Moves to Milan to serve as an artist and engineer." },
-    { "year": "1503", "caption": "Begins painting the Mona Lisa." },
-    { "year": "1519", "caption": "Dies in France, his notebooks full of unfinished dreams." }
+    {
+      "year": "1452",
+      "caption": "Born near the town of Vinci, in Italy."
+    },
+    {
+      "year": "1466",
+      "caption": "Becomes an apprentice in Verrocchio's Florence workshop."
+    },
+    {
+      "year": "1482",
+      "caption": "Moves to Milan to serve as an artist and engineer."
+    },
+    {
+      "year": "1503",
+      "caption": "Begins painting the Mona Lisa."
+    },
+    {
+      "year": "1519",
+      "caption": "Dies in France, his notebooks full of unfinished dreams."
+    }
   ],
-
   "treasures": [
-    { "name": "The Mona Lisa" },
-    { "name": "The Last Supper" },
-    { "name": "The Vitruvian Man" },
-    { "name": "Flying Machine Designs" },
-    { "name": "Anatomy Studies" },
-    { "name": "The Mirror-Writing Notebooks" }
+    {
+      "name": "The Mona Lisa"
+    },
+    {
+      "name": "The Last Supper"
+    },
+    {
+      "name": "The Vitruvian Man"
+    },
+    {
+      "name": "Flying Machine Designs"
+    },
+    {
+      "name": "Anatomy Studies"
+    },
+    {
+      "name": "The Mirror-Writing Notebooks"
+    }
   ],
-
   "lessons": [
-    { "icon_name": "curiosity", "lesson": "Ask 'why?' about everything — even the ordinary things." },
-    { "icon_name": "observation", "lesson": "Look closely; the answers are often hiding in plain sight." },
-    { "icon_name": "patience", "lesson": "Great work takes time, so don't rush what matters." },
-    { "icon_name": "imagination", "lesson": "Dream up what doesn't exist yet, then try to build it." }
+    {
+      "icon_name": "curiosity",
+      "lesson": "Ask 'why?' about everything — even the ordinary things."
+    },
+    {
+      "icon_name": "observation",
+      "lesson": "Look closely; the answers are often hiding in plain sight."
+    },
+    {
+      "icon_name": "patience",
+      "lesson": "Great work takes time, so don't rush what matters."
+    },
+    {
+      "icon_name": "imagination",
+      "lesson": "Dream up what doesn't exist yet, then try to build it."
+    }
   ]
 }

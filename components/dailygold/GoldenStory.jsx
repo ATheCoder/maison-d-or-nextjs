@@ -10,7 +10,7 @@
  * `story` (a BornTodayPerson). Real `image_url`s render in place of the
  * template's parchment placeholders when present.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 
 const SHAPES = ['sh-circle', 'sh-diamond', 'sh-tri', 'sh-square'];
 const STAR = '✦'; // ✦
@@ -31,6 +31,21 @@ function titleCase(str) {
 function splitParas(narrative) {
   if (!narrative) return [];
   return String(narrative).split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+}
+
+// Render one paragraph. A blank line (\n\n) already split the text into
+// separate <p>s upstream; here a *single* \n becomes a hard line break
+// (<br>) within the paragraph. Spaces hugging the newline are dropped so
+// "1452,\n in a small" breaks cleanly with no leading space on the next line.
+function Para({ text }) {
+  const lines = String(text).split(/[ \t]*\n[ \t]*/);
+  return (
+    <p>
+      {lines.map((line, i) => (
+        <Fragment key={i}>{i > 0 && <br />}{line}</Fragment>
+      ))}
+    </p>
+  );
 }
 
 // An illustration plate: the real image if we have one, else the parchment
@@ -60,6 +75,7 @@ export default function GoldenStory({ story }) {
   const storyTitle = story?.story_title || name;
   const quote = cleanQuote(story?.famous_quote);
   const childhood = story?.story_childhood || '';
+  const childhoodTitle = story?.story_childhood_title || 'Where the Story Begins';
   const takeaway = cleanQuote(story?.story_takeaway);
   const modern = story?.modern_interpretation || '';
 
@@ -123,10 +139,10 @@ export default function GoldenStory({ story }) {
         </div>
         <div className="page page-text">
           <span className="pg-num">{rNum}</span>
-          <h2 className="pg-title">Where the Story Begins</h2>
+          <h2 className="pg-title">{childhoodTitle}</h2>
           <div className="ornament"><i /><b>{STAR}</b><i /></div>
           <div className="pg-body">
-            {splitParas(childhood).map((para, j) => <p key={j}>{para}</p>)}
+            {splitParas(childhood).map((para, j) => <Para key={j} text={para} />)}
           </div>
           <Plate className="plate-strip" art={`Soft landscape of ${story?.country || 'home'}`} src={story?.childhood_image_url || null} />
         </div>
@@ -146,7 +162,7 @@ export default function GoldenStory({ story }) {
           <h2 className="pg-title">{ch.title}</h2>
           <div className="ornament"><i /><b>{STAR}</b><i /></div>
           <div className="pg-body dropcap">
-            {ch.paras.map((para, j) => <p key={j}>{para}</p>)}
+            {ch.paras.map((para, j) => <Para key={j} text={para} />)}
           </div>
         </div>
         <div className="page page-image">
@@ -232,7 +248,7 @@ export default function GoldenStory({ story }) {
             <h2 className="pg-title">{`If ${first} Were 10 Today`}</h2>
             <div className="ornament"><i /><b>{STAR}</b><i /></div>
             <div className="pg-body">
-              {splitParas(modern).map((para, j) => <p key={j}>{para}</p>)}
+              {splitParas(modern).map((para, j) => <Para key={j} text={para} />)}
             </div>
           </div>
           <div className="ls-right">
