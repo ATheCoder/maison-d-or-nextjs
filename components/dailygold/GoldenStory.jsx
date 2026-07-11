@@ -90,6 +90,13 @@ export default function GoldenStory({ story }) {
     paras: splitParas(c.narrative),
     art: `Scene — ${c.title || `Chapter ${i + 1}`}`,
     src: c.image_url || null,
+    // Page layout for the chapter (`page_span` in the data):
+    //   'both'   — one full-bleed spread: art as background across BOTH leaves,
+    //              text overlaid (see .page-chapter-full).
+    //   'single' — art + text confined to ONE leaf; two consecutive
+    //              single-span chapters pair up to fill a spread.
+    //   default  — the classic two-page split: narrative left, illustration right.
+    span: c.page_span === 'both' ? 'both' : c.page_span === 'single' ? 'single' : 'default',
   }));
   const timeline = (story?.timeline || []).filter((t) => t.year || t.caption);
   const treasures = (story?.treasures || []).filter((t) => t.name);
@@ -105,7 +112,10 @@ export default function GoldenStory({ story }) {
 
   // Total leaves (numbered pages), so "n / TOTAL" is honest for any story.
   const middleCount = (hasTimeline ? 1 : 0) + (hasTreasures ? 1 : 0) + (hasLessons ? 1 : 0);
-  const TOTAL = 2 + 2 * (chapters.length + middleCount);
+  // A default chapter consumes two numbered pages; a both/single-span chapter
+  // consumes one (a both-span is one full spread, a single-span is one leaf).
+  const chapterPageCount = chapters.reduce((n, c) => n + (c.span === 'default' ? 2 : 1), 0);
+  const TOTAL = 2 + chapterPageCount + 2 * middleCount;
   let pageNo = 0;
   const P = () => `${++pageNo} / ${TOTAL}`;
 
@@ -150,8 +160,71 @@ export default function GoldenStory({ story }) {
     ));
   }
 
-  // One spread per chapter: narrative left, illustration right.
-  chapters.forEach((ch) => {
+  // One full-bleed leaf (half a spread): the illustration is the leaf's
+  // background and the text overlays it. Used for single-span chapters, which
+  // pair up two-per-spread.
+  const singleLeaf = (ch, num, side) => (
+    <div key={side} className={`page-chapter-single ${side}`}>
+      {ch.src
+        ? <img className="chapter-bg" src={ch.src} alt={ch.art} />
+        : <div className="plate plate-cover"><span className="ph-tag">{ch.art}</span></div>}
+      <div className="chapter-wash" />
+      <span className={`pg-num ${side === 'right' ? 'pg-num-r' : ''}`}>{num}</span>
+      <div className="chapter-overlay">
+        <h2 className="pg-title">{ch.title}</h2>
+        <div className="ornament"><i /><b>{STAR}</b><i /></div>
+        <div className="pg-body">
+          {ch.paras.map((para, j) => <Para key={j} text={para} />)}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Walk the chapters. Default chapters and both-span chapters are each their
+  // own spread; single-span chapters are grouped two-per-spread (left + right).
+  let ci = 0;
+  while (ci < chapters.length) {
+    const ch = chapters[ci];
+
+    // 'single' — one leaf; pair with the next chapter if it's also single-span.
+    if (ch.span === 'single') {
+      const partner = chapters[ci + 1]?.span === 'single' ? chapters[ci + 1] : null;
+      const lNum = P();
+      const rNum = partner ? P() : null;
+      add(`Chapter ${ch.number}`, 'spread-single', (
+        <>
+          {singleLeaf(ch, lNum, 'left')}
+          {partner ? singleLeaf(partner, rNum, 'right') : <div className="page" />}
+        </>
+      ));
+      ci += partner ? 2 : 1;
+      continue;
+    }
+
+    // 'both' — one full-bleed spread, art as background across both leaves.
+    if (ch.span === 'both') {
+      const nNum = P();
+      add(`Chapter ${ch.number}`, 'spread-full', (
+        <div className="page-span page-chapter-full">
+          {ch.src
+            ? <img className="chapter-bg" src={ch.src} alt={ch.art} />
+            : <div className="plate plate-cover"><span className="ph-tag">{ch.art}</span></div>}
+          <div className="chapter-wash" />
+          <span className="pg-num">{nNum}</span>
+          <div className="chapter-overlay">
+            <h2 className="pg-title">{ch.title}</h2>
+            <div className="ornament"><i /><b>{STAR}</b><i /></div>
+            <div className="pg-body">
+              {ch.paras.map((para, j) => <Para key={j} text={para} />)}
+            </div>
+          </div>
+        </div>
+      ));
+      ci += 1;
+      continue;
+    }
+
+    // default — classic two-page split: narrative left, illustration right.
     const lNum = P();
     const rNum = P();
     add(`Chapter ${ch.number}`, '', (
@@ -171,7 +244,8 @@ export default function GoldenStory({ story }) {
         </div>
       </>
     ));
-  });
+    ci += 1;
+  }
 
   // Life timeline (spans the whole spread).
   if (hasTimeline) {
@@ -475,6 +549,32 @@ const CSS = `
    never clamped) and multiply onto the parchment so the paper tone shows
    through. margin-top:auto still pins it to the page bottom as a flex item. */
 .plate-strip .plate-img { position: static; width: 100%; height: auto; object-fit: fill; mix-blend-mode: multiply; }
+
+/* Full-bleed chapters: the illustration is the background and the narrative
+   overlays it on the left. The wash keeps the text legible over the art —
+   brightest at the top-left where the words sit, clearing toward the art.
+   'both'-span fills the whole spread; 'single'-span fills one leaf, so two
+   pair up per spread. */
+.page-chapter-full { position: relative; flex: 1; padding: 0; overflow: hidden; }
+.page-chapter-single { position: relative; flex: 1 1 50%; min-width: 0; overflow: hidden; }
+/* Multiply the art onto the parchment (like the childhood plate-strip): the
+   image's white margins blend away to the page tone and the paint warms into
+   the golden background instead of sitting opaque on top. */
+.chapter-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; mix-blend-mode: multiply; }
+.page-chapter-full .plate-cover,
+.page-chapter-single .plate-cover { position: absolute; inset: 0; }
+.chapter-wash { position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background:
+    linear-gradient(102deg, rgba(244,236,214,.94) 0%, rgba(244,236,214,.82) 26%, rgba(244,236,214,.30) 48%, rgba(244,236,214,0) 64%),
+    linear-gradient(180deg, rgba(244,236,214,.55) 0%, rgba(244,236,214,0) 26%); }
+.page-chapter-full .pg-num,
+.page-chapter-single .pg-num { z-index: 4; }
+.chapter-overlay { position: absolute; top: 0; left: 0; z-index: 3;
+  height: 100%; display: flex; flex-direction: column; }
+.chapter-overlay .pg-title { margin-top: 30px; }
+.chapter-overlay .pg-body { flex: 0 1 auto; overflow: visible; }
+.page-chapter-full .chapter-overlay { width: 55%; padding: 66px 32px 60px 68px; }
+.page-chapter-single .chapter-overlay { width: 84%; padding: 54px 20px 40px 52px; }
 
 .page-span { position: relative; flex: 1; padding: 54px 68px; display: flex; flex-direction: column; }
 .span-title { font-family: var(--serif); font-weight: 700; font-size: 39px; color: var(--head-deep); text-align: center; margin: 30px 0 0; line-height: 1.08; }

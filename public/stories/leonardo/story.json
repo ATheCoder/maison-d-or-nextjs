@@ -16,24 +16,32 @@
   "chapters": [
     {
       "number": 1,
-      "title": "The Apprentice of Florence",
-      "narrative": "When Leonardo was still a teenager, his father brought him to the busy city of Florence and placed him in the workshop of a master artist named Verrocchio. It was a noisy, wonderful place — full of the smell of paint, the ring of hammered bronze, and apprentices grinding colours from stones and flowers.\n\nLeonardo learned to paint, to sculpt, and to build. The story goes that when he painted a single angel into one of his master's pictures, it was so lifelike and gentle that Verrocchio set down his own brush in amazement. The student, it seemed, had already begun to outshine the teacher.",
-      "image_url": "/stories/leonardo/2.png"
+      "page_span": "single",
+      "title": "A Curious Child",
+      "narrative": "Leonardo noticed things\nothers did not see.\n\nThe patterns in leaves.\nThe shape of clouds.\nThe way water moved\naround rocks.\n\nSometimes people thought\nhe was strange.\nHe didn't mind.\nHe kept asking anyway.",
+      "image_url": "/stories/leonardo/Page2.png"
     },
     {
       "number": 2,
+      "page_span": "single",
+      "title": "Lorem Ipsum",
+      "narrative": "Lorem ipsum dolor\nsit amet.\n\nConsectetur adipiscing elit.\nSed do eiusmod tempor.\nIncididunt ut labore\net dolore magna.\n\nUt enim ad minim veniam.\nQuis nostrud exercitation.\nUllamco laboris nisi.",
+      "image_url": "/stories/leonardo/Page2.png"
+    },
+    {
+      "number": 3,
       "title": "The Notebooks of Wonder",
       "narrative": "Leonardo filled thousands of pages with his ideas. He wrote them in mirror-writing, backwards, so you needed a looking-glass to read them. On those pages he drew flying machines with flapping wings, a diving suit, a giant crossbow, and even a kind of helicopter — hundreds of years before engines existed.\n\nHe studied how muscles moved and how the heart pumped blood. He mapped rivers and imagined bridges. Most of his machines were never built in his lifetime, but they showed a mind that refused to believe anything was impossible — only 'not yet figured out.'",
       "image_url": "/stories/leonardo/3.png"
     },
     {
-      "number": 3,
+      "number": 4,
       "title": "A Smile That Never Fades",
       "narrative": "Leonardo painted slowly, because he wanted everything to be perfect. For a wall in Milan he created The Last Supper, capturing the exact moment a room full of friends turned to one another in surprise. And on a small poplar panel he painted a woman with a quiet, mysterious smile — the Mona Lisa.\n\nHe softened her edges with feather-light layers of paint, a trick he had invented by watching how shadows blur in real life. Centuries later, people still travel across the world just to stand before her and wonder what she is thinking.",
       "image_url": "/stories/leonardo/4.png"
     },
     {
-      "number": 4,
+      "number": 5,
       "title": "The Wandering Master",
       "narrative": "As the years passed, Leonardo travelled from city to city — Milan, Venice, Rome — designing waterways, festivals, and machines of war and wonder. Kings and dukes wanted his genius near them.\n\nAt last, a young French king invited him to live in a manor in France, where he could think and draw in peace. There, surrounded by his beloved notebooks, the old master kept sketching and questioning until the very end. He left the world far richer than he found it — not because he finished everything he started, but because he dared to imagine so much.",
       "image_url": "/stories/leonardo/5.png"
