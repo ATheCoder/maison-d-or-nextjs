@@ -13,12 +13,18 @@ import GoldenStory from '@/components/dailygold/GoldenStory';
  *
  * Visit /stories/leonardo to flip through it.
  */
-export default async function LeonardoStoryPage() {
+export default async function LeonardoStoryPage({
+  params,
+}: {
+  params: Promise<{ name: string }>;
+}) {
+  const { name } = await params;
+
   const file = path.join(
     process.cwd(),
     'public',
     'stories',
-    'leonardo',
+    name,
     'story.json',
   );
   const story = JSON.parse(await readFile(file, 'utf8'));
