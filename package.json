@@ -11,7 +11,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "import:daily-gold": "node --env-file=.env --env-file-if-exists=.env.local scripts/import-daily-gold.mjs"
+    "import:daily-gold": "node --env-file=.env --env-file-if-exists=.env.local scripts/import-daily-gold.mjs",
+    "generate:story:openrouter": "node --env-file=.env --env-file-if-exists=.env.local scripts/generate-story-openrouter.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.35",

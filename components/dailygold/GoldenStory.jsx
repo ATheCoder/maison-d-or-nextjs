@@ -33,6 +33,38 @@ function splitParas(narrative) {
   return String(narrative).split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
 }
 
+// Map a chapter-shaped config object onto the book's content model. Used both
+// for `story.chapters` and for any other page that should "work like a chapter"
+// (e.g. the configurable page after the Treasures spread, see `after_treasures`).
+function toChapter(c, i) {
+  return {
+    number: c.number ?? i + 1,
+    title: c.title || '',
+    paras: splitParas(c.narrative),
+    art: `Scene — ${c.title || `Chapter ${i + 1}`}`,
+    src: c.image_url || null,
+    // Page layout for the chapter (`page_span` in the data):
+    //   'both'   — one full-bleed spread: art as background across BOTH leaves,
+    //              text overlaid (see .page-chapter-full).
+    //   'single' — art + text confined to ONE leaf.
+    //   'image'  — art only (no text) filling ONE leaf.
+    //   default  — the classic two-page split: narrative left, illustration right.
+    // 'single' and 'image' are both single-leaf: two consecutive of them pair
+    // up to fill a spread.
+    span: ['both', 'single', 'image'].includes(c.page_span) ? c.page_span : 'default',
+    // How the art meets the page (`blend` in the data):
+    //   'multiply' (default) — multiplies into the parchment so white margins
+    //              blend away and the paint warms into the page.
+    //   'normal'  — shown as-is (opaque), for full-bleed art with its own
+    //              background that shouldn't be washed out.
+    plain: c.blend === 'normal' || c.blend === 'none',
+    // The legibility wash behind the overlaid text (`fade` in the data). On by
+    // default; set `"fade": false` to drop it and let the art show through
+    // unwashed (only affects single/both spans, which overlay text on the art).
+    fade: c.fade !== false,
+  };
+}
+
 // Render one paragraph. A blank line (\n\n) already split the text into
 // separate <p>s upstream; here a *single* \n becomes a hard line break
 // (<br>) within the paragraph. Spaces hugging the newline are dropped so
@@ -77,27 +109,25 @@ export default function GoldenStory({ story }) {
   const childhood = story?.story_childhood || '';
   const childhoodTitle = story?.story_childhood_title || 'Where the Story Begins';
   const takeaway = cleanQuote(story?.story_takeaway);
-  const modern = story?.modern_interpretation || '';
 
   const birthLabel = story?.birth_date
     ? `b. ${story.birth_date}${story.death_year ? ` – ${story.death_year}` : ''}`
     : '';
   const coverSub = [role, story?.country, birthLabel].filter(Boolean).join('  ·  ');
 
-  const chapters = (story?.chapters || []).map((c, i) => ({
-    number: c.number ?? i + 1,
-    title: c.title || '',
-    paras: splitParas(c.narrative),
-    art: `Scene — ${c.title || `Chapter ${i + 1}`}`,
-    src: c.image_url || null,
-    // Page layout for the chapter (`page_span` in the data):
-    //   'both'   — one full-bleed spread: art as background across BOTH leaves,
-    //              text overlaid (see .page-chapter-full).
-    //   'single' — art + text confined to ONE leaf; two consecutive
-    //              single-span chapters pair up to fill a spread.
-    //   default  — the classic two-page split: narrative left, illustration right.
-    span: c.page_span === 'both' ? 'both' : c.page_span === 'single' ? 'single' : 'default',
-  }));
+  const chapters = (story?.chapters || []).map(toChapter);
+  // The page after the Treasures spread is configured just like a chapter
+  // (`after_treasures` in the data) and rendered through the same single-leaf
+  // path, so it behaves exactly like a `span: 'single'` chapter.
+  const afterTreasures = story?.after_treasures ? toChapter(story.after_treasures, 0) : null;
+  // The top of the modern-interpretation page is configured like a chapter
+  // (`modern` in the data — same shape as chapters), so its title, art, span,
+  // blend and fade all work exactly like a chapter. The "What Can We Learn"
+  // band below it is not configurable and always renders from `lessons`.
+  // A legacy `modern_interpretation` string is still accepted as the narrative.
+  const modernChapter = story?.modern
+    ? toChapter(story.modern, 0)
+    : (story?.modern_interpretation ? toChapter({ narrative: story.modern_interpretation }, 0) : null);
   const timeline = (story?.timeline || []).filter((t) => t.year || t.caption);
   const treasures = (story?.treasures || []).filter((t) => t.name);
   const lessons = (story?.lessons || []).map((l, i) => ({
@@ -108,7 +138,7 @@ export default function GoldenStory({ story }) {
 
   const hasTimeline = timeline.length > 0;
   const hasTreasures = treasures.length > 0;
-  const hasLessons = lessons.length > 0 || !!modern;
+  const hasLessons = lessons.length > 0 || !!modernChapter;
 
   // Total leaves (numbered pages), so "n / TOTAL" is honest for any story.
   const middleCount = (hasTimeline ? 1 : 0) + (hasTreasures ? 1 : 0) + (hasLessons ? 1 : 0);
@@ -161,34 +191,43 @@ export default function GoldenStory({ story }) {
   }
 
   // One full-bleed leaf (half a spread): the illustration is the leaf's
-  // background and the text overlays it. Used for single-span chapters, which
-  // pair up two-per-spread.
-  const singleLeaf = (ch, num, side) => (
-    <div key={side} className={`page-chapter-single ${side}`}>
-      {ch.src
-        ? <img className="chapter-bg" src={ch.src} alt={ch.art} />
-        : <div className="plate plate-cover"><span className="ph-tag">{ch.art}</span></div>}
-      <div className="chapter-wash" />
-      <span className={`pg-num ${side === 'right' ? 'pg-num-r' : ''}`}>{num}</span>
-      <div className="chapter-overlay">
-        <h2 className="pg-title">{ch.title}</h2>
-        <div className="ornament"><i /><b>{STAR}</b><i /></div>
-        <div className="pg-body">
-          {ch.paras.map((para, j) => <Para key={j} text={para} />)}
-        </div>
+  // background. 'single' leaves overlay the title + narrative on top; 'image'
+  // leaves are art only (no wash, no text). Both pair up two-per-spread.
+  const singleLeaf = (ch, num, side) => {
+    const imageOnly = ch.span === 'image';
+    return (
+      <div key={side} className={`page-chapter-single ${side}`}>
+        {ch.src
+          ? <img className={`chapter-bg${ch.plain ? ' chapter-bg-plain' : ''}`} src={ch.src} alt={ch.art} />
+          : <div className="plate plate-cover"><span className="ph-tag">{ch.art}</span></div>}
+        {!imageOnly && (
+          <>
+            {ch.fade && <div className="chapter-wash" />}
+            <span className={`pg-num ${side === 'right' ? 'pg-num-r' : ''}`}>{num}</span>
+            <div className="chapter-overlay">
+              <h2 className="pg-title">{ch.title}</h2>
+              <div className="ornament"><i /><b>{STAR}</b><i /></div>
+              <div className="pg-body">
+                {ch.paras.map((para, j) => <Para key={j} text={para} />)}
+              </div>
+            </div>
+          </>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
-  // Walk the chapters. Default chapters and both-span chapters are each their
-  // own spread; single-span chapters are grouped two-per-spread (left + right).
+  // Walk the chapters. Default and both-span chapters are each their own
+  // spread; single-leaf chapters ('single' + 'image') are grouped
+  // two-per-spread (left + right).
+  const isLeaf = (c) => c?.span === 'single' || c?.span === 'image';
   let ci = 0;
   while (ci < chapters.length) {
     const ch = chapters[ci];
 
-    // 'single' — one leaf; pair with the next chapter if it's also single-span.
-    if (ch.span === 'single') {
-      const partner = chapters[ci + 1]?.span === 'single' ? chapters[ci + 1] : null;
+    // single-leaf — one leaf; pair with the next chapter if it's also a leaf.
+    if (isLeaf(ch)) {
+      const partner = isLeaf(chapters[ci + 1]) ? chapters[ci + 1] : null;
       const lNum = P();
       const rNum = partner ? P() : null;
       add(`Chapter ${ch.number}`, 'spread-single', (
@@ -207,9 +246,9 @@ export default function GoldenStory({ story }) {
       add(`Chapter ${ch.number}`, 'spread-full', (
         <div className="page-span page-chapter-full">
           {ch.src
-            ? <img className="chapter-bg" src={ch.src} alt={ch.art} />
+            ? <img className={`chapter-bg${ch.plain ? ' chapter-bg-plain' : ''}`} src={ch.src} alt={ch.art} />
             : <div className="plate plate-cover"><span className="ph-tag">{ch.art}</span></div>}
-          <div className="chapter-wash" />
+          {ch.fade && <div className="chapter-wash" />}
           <span className="pg-num">{nNum}</span>
           <div className="chapter-overlay">
             <h2 className="pg-title">{ch.title}</h2>
@@ -295,16 +334,20 @@ export default function GoldenStory({ story }) {
           </div>
           {takeaway && <p className="tr-stamp">{`${STAR} ${takeaway}`}</p>}
         </div>
-        <div className="page page-text">
-          <span className="pg-num pg-num-r">{rNum}</span>
-          <h2 className="pg-title">Gifts That Live On</h2>
-          <div className="ornament"><i /><b>{STAR}</b><i /></div>
-          <div className="pg-body">
-            <p>{`Long after ${first} was gone, these gifts kept inspiring the world.`}</p>
-            <p>Because the world will always need dreamers who dare to see what others cannot.</p>
-          </div>
-          <Plate className="plate-strip" art="Treasures fading into a sunlit landscape" src={story?.treasures_image_url || null} />
-        </div>
+        {afterTreasures
+          ? singleLeaf(afterTreasures, rNum, 'right')
+          : (
+            <div className="page page-text">
+              <span className="pg-num pg-num-r">{rNum}</span>
+              <h2 className="pg-title">Gifts That Live On</h2>
+              <div className="ornament"><i /><b>{STAR}</b><i /></div>
+              <div className="pg-body">
+                <p>{`Long after ${first} was gone, these gifts kept inspiring the world.`}</p>
+                <p>Because the world will always need dreamers who dare to see what others cannot.</p>
+              </div>
+              <Plate className="plate-strip" art="Treasures fading into a sunlit landscape" src={story?.treasures_image_url || null} />
+            </div>
+          )}
       </>
     ));
   }
@@ -317,18 +360,41 @@ export default function GoldenStory({ story }) {
       <div className="page-span page-lessons">
         <span className="pg-num">{lNum}</span>
         <span className="pg-num pg-num-r">{rNum}</span>
-        <div className="ls-top">
-          <div className="ls-left">
-            <h2 className="pg-title">{`If ${first} Were 10 Today`}</h2>
-            <div className="ornament"><i /><b>{STAR}</b><i /></div>
-            <div className="pg-body">
-              {splitParas(modern).map((para, j) => <Para key={j} text={para} />)}
+        {modernChapter.span === 'default' ? (
+          // Classic two-column top: narrative left, illustration right.
+          <div className="ls-top">
+            <div className="ls-left">
+              <h2 className="pg-title">{modernChapter.title || `If ${first} Were 10 Today`}</h2>
+              <div className="ornament"><i /><b>{STAR}</b><i /></div>
+              <div className="pg-body">
+                {modernChapter.paras.map((para, j) => <Para key={j} text={para} />)}
+              </div>
+            </div>
+            <div className="ls-right">
+              <Plate art={`${first} as a modern ten-year-old explorer`} src={modernChapter.src} />
             </div>
           </div>
-          <div className="ls-right">
-            <Plate art={`${first} as a modern ten-year-old explorer`} />
+        ) : (
+          // Full-bleed top (single/both/image spans): art as the background,
+          // text overlaid — the same treatment as a full-bleed chapter.
+          <div className="ls-top ls-top-full">
+            {modernChapter.src
+              ? <img className={`chapter-bg${modernChapter.plain ? ' chapter-bg-plain' : ''}`} src={modernChapter.src} alt={modernChapter.title} />
+              : <div className="plate plate-cover"><span className="ph-tag">{`${first} as a modern ten-year-old explorer`}</span></div>}
+            {modernChapter.span !== 'image' && (
+              <>
+                {modernChapter.fade && <div className="chapter-wash" />}
+                <div className="chapter-overlay">
+                  <h2 className="pg-title">{modernChapter.title || `If ${first} Were 10 Today`}</h2>
+                  <div className="ornament"><i /><b>{STAR}</b><i /></div>
+                  <div className="pg-body">
+                    {modernChapter.paras.map((para, j) => <Para key={j} text={para} />)}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
-        </div>
+        )}
         {lessons.length > 0 && (
           <div className="ls-band">
             <p className="ls-band-title">{`What Can We Learn From ${first}?`}</p>
@@ -561,6 +627,8 @@ const CSS = `
    image's white margins blend away to the page tone and the paint warms into
    the golden background instead of sitting opaque on top. */
 .chapter-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; mix-blend-mode: multiply; }
+/* Opaque, shown as-is — for full-bleed art with its own background. */
+.chapter-bg-plain { mix-blend-mode: normal; }
 .page-chapter-full .plate-cover,
 .page-chapter-single .plate-cover { position: absolute; inset: 0; }
 .chapter-wash { position: absolute; inset: 0; z-index: 2; pointer-events: none;
@@ -573,16 +641,44 @@ const CSS = `
   height: 100%; display: flex; flex-direction: column; }
 .chapter-overlay .pg-title { margin-top: 30px; }
 .chapter-overlay .pg-body { flex: 0 1 auto; overflow: visible; }
-.page-chapter-full .chapter-overlay { width: 55%; padding: 66px 32px 60px 68px; }
+.page-chapter-full .chapter-overlay { width: fit-content; max-width: calc(50% - 130px); padding: 66px 32px 60px 68px; }
 .page-chapter-single .chapter-overlay { width: 84%; padding: 54px 20px 40px 52px; }
+/* On full-spread ('both') layouts the overlay shrink-wraps to the text above,
+   so the wash rides on the overlay instead of covering the whole spread: it
+   stays solid under the words and fades out just past them. The fade stops
+   are measured in px from the wash's right edge, so the tail stays equally
+   short whether the lines are short or long; max-width keeps overlay + tail
+   on the left leaf so the wash never crosses the binder. The wash div is display:none'd
+   (not removed) so \`"fade": false\` still disables the pseudo via the sibling
+   selector. Single leaves keep the original spread-wide wash. */
+/* The spread-wide wash keeps only its vertical top-dim (edge to edge, so no
+   visible seam); the horizontal text wash moves to the overlay pseudo below. */
+.page-chapter-full > .chapter-wash, .ls-top-full > .chapter-wash {
+  background: linear-gradient(180deg, rgba(244,236,214,.55) 0%, rgba(244,236,214,0) 26%);
+}
+.page-chapter-full .chapter-wash + .chapter-overlay::before,
+.ls-top-full .chapter-wash + .chapter-overlay::before {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  inset: 0 -130px 0 0;
+  background:
+    linear-gradient(to right, rgba(244,236,214,.94) 0%, rgba(244,236,214,.86) calc(100% - 260px), rgba(244,236,214,.30) calc(100% - 120px), rgba(244,236,214,0) 100%);
+}
 
 .page-span { position: relative; flex: 1; padding: 54px 68px; display: flex; flex-direction: column; }
 .span-title { font-family: var(--serif); font-weight: 700; font-size: 39px; color: var(--head-deep); text-align: center; margin: 30px 0 0; line-height: 1.08; }
 
-.tl-track { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; margin: 38px 0 0; flex: 1; align-content: center; }
-.tl-track::before { content: ""; position: absolute; left: 7%; right: 7%; top: 172px; height: 2px; background: repeating-linear-gradient(90deg, var(--gold) 0 7px, transparent 7px 15px); opacity: .55; }
-.tl-item { display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; z-index: 2; }
-.tl-plate { width: 150px; height: 150px; border-radius: 8px; }
+.tl-track { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; margin: 30px 0 0; flex: 1; align-content: center; }
+.tl-track::before { content: ""; position: absolute; left: 7%; right: 7%; top: 232px; height: 2px; background: repeating-linear-gradient(90deg, var(--gold) 0 7px, transparent 7px 15px); opacity: .55; }
+/* No z-index here: a z-index would form a stacking context that isolates the
+   plate image's mix-blend-mode, so its multiply would blend against nothing
+   instead of the parchment behind the spread. Paint order still puts each item
+   above the dashed connector (tl-track::before) because both are positioned and
+   the items come later in the DOM. */
+.tl-item { display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; }
+/* Bigger plates: fill the column and multiply into the parchment (alpha art,
+   see .plate-alpha) so each milestone illustration reads large, like the
+   childhood/chapter plates rather than a small thumbnail. */
+.tl-plate { width: 100%; aspect-ratio: 1 / 1; border-radius: 8px; }
 .tl-dot { width: 15px; height: 15px; border-radius: 50%; background: var(--parch); border: 3px solid var(--gold); margin: 16px 0 12px; box-shadow: 0 2px 7px rgba(90,60,20,.2); }
 .tl-year { font-family: var(--serif); font-weight: 700; font-size: 22px; color: var(--head-deep); margin: 0 0 6px; }
 .tl-cap { font-size: 12.5px; line-height: 1.55; color: var(--ink-soft); max-width: 17ch; margin: 0; }
@@ -598,6 +694,13 @@ const CSS = `
 
 .page-lessons { padding: 52px 60px 0; }
 .ls-top { display: flex; gap: 40px; flex: 1; min-height: 0; }
+/* Full-bleed variant of the modern-page top (single/both/image spans): the art
+   is the background and the text overlays it, like a full-bleed chapter. The
+   negative margins cancel the page's padding so the art reaches the top and side
+   edges of the spread, filling everything above the lessons band. The overlaid
+   text is held to the left leaf (width:50%, ending before the centre fold). */
+.ls-top-full { display: block; position: relative; overflow: hidden; margin: -52px -60px 0; }
+.ls-top-full .chapter-overlay { width: fit-content; max-width: calc(50% - 130px); padding: 72px 28px 36px 60px; }
 .ls-left { flex: 1.05; display: flex; flex-direction: column; }
 .ls-left .pg-body p { font-size: 17px; line-height: 1.85; }
 .ls-right { flex: 1; position: relative; }

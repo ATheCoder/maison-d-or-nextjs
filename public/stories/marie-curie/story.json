@@ -1,0 +1,134 @@
+{
+  "name": "Marie Curie",
+  "role": "Scientist, Discoverer & Quiet Fighter of the Dark",
+  "field": "Physics and Chemistry",
+  "country": "Poland and France",
+  "birth_date": "November 7, 1867",
+  "death_year": "1934",
+  "story_title": "Marie Curie",
+  "famous_quote": "Nothing in life is to be feared, it is only to be understood.",
+  "image_url": "/stories/marie-curie/cover.png",
+  "story_childhood_title": "A Little Girl in Warsaw",
+  "childhood_image_url": "/stories/marie-curie/strip-childhood.png",
+  "story_childhood": "In a busy city called Warsaw,\na baby girl was born.\n\nHer name was Maria.\nEveryone called her Manya.\n\nShe loved to read.\nShe read everything she found.\n\nHer father taught science.\nHe kept shiny tools on a shelf.\n\nManya stared at them for hours.\nShe wanted to know how things worked.",
+  "story_takeaway": "Keep working, one small step at a time, and the dark will give up its secrets.",
+  "modern": {
+    "page_span": "both",
+    "blend": "normal",
+    "title": "If Marie Were 10 Today",
+    "narrative": "If Marie were ten today,\nshe would love the library.\n\nShe would ask endless questions\nin her science class.\n\nShe might code little robots.\nShe might study glowing stars.\n\nWhen something seemed too hard,\nshe would try once more.\n\nShe would tell shy girls\nthat their ideas matter too.\n\nThe world would be her lab.",
+    "image_url": "/stories/marie-curie/modern.png"
+  },
+  "chapters": [
+    {
+      "number": 1,
+      "page_span": "single",
+      "title": "The Girl Who Loved to Learn",
+      "narrative": "Manya was very clever.\nShe won prizes at school.\n\nBut girls could not go\nto university back then.\n\nThat did not stop her.\nShe studied in secret classes.\n\nShe saved every coin.\nShe dreamed of far-off Paris.\n\nShe worked as a teacher\nto help her sister first.\n\nHer turn would come.\nShe was sure of it.",
+      "image_url": "/stories/marie-curie/chapter-1.png"
+    },
+    {
+      "number": 2,
+      "page_span": "single",
+      "title": "Paris and Pale Blue Light",
+      "narrative": "At last she reached Paris.\nShe changed her name to Marie.\n\nShe was often cold and hungry.\nShe ate only bread and tea.\n\nBut she loved her studies.\nNumbers and metals filled her days.\n\nShe met a kind man, Pierre.\nHe loved science too.\n\nTogether they wondered\nabout strange, glowing rocks.\n\nWhat made them shine?",
+      "image_url": "/stories/marie-curie/chapter-2.png"
+    },
+    {
+      "number": 3,
+      "page_span": "single",
+      "title": "The Cold, Leaky Shed",
+      "narrative": "They worked in an old shed.\nRain dripped through the roof.\n\nMarie stirred huge boiling pots.\nHer arms ached every night.\n\nShe boiled tons of rock\nto find a tiny speck.\n\nMany said she would fail.\nMarie did not listen.\n\nFor four long years\nshe stirred and waited.\n\nAt last, in the dark,\nsomething glowed.",
+      "image_url": "/stories/marie-curie/chapter-3.png"
+    },
+    {
+      "number": 4,
+      "page_span": "image",
+      "blend": "normal",
+      "image_url": "/stories/marie-curie/chapter-4.png"
+    }
+  ],
+  "timeline": [
+    {
+      "year": "1867",
+      "caption": "Maria is born in Warsaw, Poland.",
+      "image_url": "/stories/marie-curie/timeline-1.png",
+      "blend": "multiply"
+    },
+    {
+      "year": "1891",
+      "caption": "She moves to Paris to study science.",
+      "image_url": "/stories/marie-curie/timeline-2.png",
+      "blend": "multiply"
+    },
+    {
+      "year": "1898",
+      "caption": "Marie and Pierre discover radium and polonium.",
+      "image_url": "/stories/marie-curie/timeline-3.png",
+      "blend": "multiply"
+    },
+    {
+      "year": "1903",
+      "caption": "She wins her first Nobel Prize in Physics.",
+      "image_url": "/stories/marie-curie/timeline-4.png",
+      "blend": "multiply"
+    },
+    {
+      "year": "1911",
+      "caption": "She wins a second Nobel Prize, in Chemistry.",
+      "image_url": "/stories/marie-curie/timeline-5.png",
+      "blend": "multiply"
+    }
+  ],
+  "after_treasures": {
+    "page_span": "single",
+    "title": "Gifts That Live On",
+    "narrative": "Marie gave the world\nmore than shining metals.\n\nShe gave us new ideas.\nShe gave us courage.\n\nHer work helps doctors\nfind and fight disease.\n\nHer name still means\nnever, ever give up.\n\nEach gift below\ncame from her patient hands.\n\nAll from a girl\nwho loved to learn.",
+    "image_url": "/stories/marie-curie/after-treasures.png",
+    "fade": false
+  },
+  "treasures": [
+    {
+      "name": "The Discovery of Radium",
+      "image_url": "/stories/marie-curie/treasure-1.png"
+    },
+    {
+      "name": "The Discovery of Polonium",
+      "image_url": "/stories/marie-curie/treasure-2.png"
+    },
+    {
+      "name": "Two Nobel Prizes",
+      "image_url": "/stories/marie-curie/treasure-3.png"
+    },
+    {
+      "name": "The Word Radioactivity",
+      "image_url": "/stories/marie-curie/treasure-4.png"
+    },
+    {
+      "name": "Mobile X-ray Cars",
+      "image_url": "/stories/marie-curie/treasure-5.png"
+    },
+    {
+      "name": "The Radium Institute",
+      "image_url": "/stories/marie-curie/treasure-6.png"
+    }
+  ],
+  "lessons": [
+    {
+      "icon_name": "perseverance",
+      "lesson": "Keep going even when the work is slow and hard."
+    },
+    {
+      "icon_name": "curiosity",
+      "lesson": "Ask how things work, then go and find out."
+    },
+    {
+      "icon_name": "courage",
+      "lesson": "Do brave things even when others doubt you."
+    },
+    {
+      "icon_name": "generosity",
+      "lesson": "Share what you learn to help other people."
+    }
+  ]
+}
