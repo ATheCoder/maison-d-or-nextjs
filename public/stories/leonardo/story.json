@@ -7,9 +7,9 @@
   "death_year": "1519",
   "story_title": "Leonardo da Vinci",
   "famous_quote": "Learning never exhausts the mind.",
-  "image_url": "/stories/leonardo/cover.png",
+  "image_url": "/stories/leonardo/cover.webp",
   "story_childhood_title": "A Little Boy in Vinci",
-  "childhood_image_url": "/stories/leonardo/5.png",
+  "childhood_image_url": "/stories/leonardo/5.webp",
   "story_childhood": "Leonardo was born on April 15, 1452,\n in a small village called Vinci, in Italy.\n\nHe loved to wander through the hills and watch the birds.\n\nWhile other children played, he asked questions about everything.\n\nHe wanted to understand how the world worked.",
   "story_takeaway": "Stay curious, and the whole world becomes your workshop.",
   "modern": {
@@ -17,7 +17,7 @@
     "blend": "multiply",
     "title": "If Leonardo Were 10 Today",
     "narrative": "If Leonardo were ten years old today, he'd probably have a tablet stuffed with drawings, a drawer full of half-built gadgets, and a hundred browser tabs open at once. He'd film slow-motion videos of water drops, design flying machines in 3D, and ask his teachers questions they couldn't quite answer.\n\nHe'd remind us that art and science aren't opposites — they're two ways of looking closely at the same wonderful world.",
-    "image_url": "/stories/leonardo/modern.png",
+    "image_url": "/stories/leonardo/modern.webp",
     "fade": false
   },
   "chapters": [
@@ -26,58 +26,58 @@
       "page_span": "single",
       "title": "A Curious Child",
       "narrative": "Leonardo noticed things\nothers did not see.\n\nThe patterns in leaves.\nThe shape of clouds.\nThe way water moved\naround rocks.\n\nSometimes people thought\nhe was strange.\nHe didn't mind.\nHe kept asking anyway.",
-      "image_url": "/stories/leonardo/Page2.png"
+      "image_url": "/stories/leonardo/Page2.webp"
     },
     {
       "number": 2,
       "page_span": "single",
       "title": "A Dream Begins",
       "narrative": "As he grew, Leonardo dreamed\nof understanding everything\nin the world.\n\nHe filled his notebooks with\ndrawings of inventions,\nideas for machines,\nand thoughts about\nhow things work.\n\nHe had one big dream —\nto learn, to create,\nand to make life\nbetter for everyone.",
-      "image_url": "/stories/leonardo/Page3-bgr-AI.png"
+      "image_url": "/stories/leonardo/Page3-bgr-AI.webp"
     },
     {
       "number": 3,
       "page_span": "single",
       "title": "The First Challenge",
       "narrative": "Leonardo wanted to learn more and more.\nHe wanted to know how things were made,\nhow they moved, and why they worked.\n\nBut not everyone understood his questions.\nSome said he was too curious.\nOthers said he dreamed too much.\n\nStill, Leonardo never gave up.\nHe believed that every question\nwas the beginning of an answer.\n\nSo he kept drawing.\nHe kept studying.\nHe kept dreaming.\n\nEven when it was hard.",
-      "image_url": "/stories/leonardo/FirstChallenge-bgrai.png"
+      "image_url": "/stories/leonardo/FirstChallenge-bgrai.webp"
     },
     {
       "number": 4,
       "page_span": "image",
       "blend": "normal",
-      "image_url": "/stories/leonardo/FirstChallenge2-stockai.png"
+      "image_url": "/stories/leonardo/FirstChallenge2-stockai.webp"
     }
   ],
   "timeline": [
     {
       "year": "1452",
       "caption": "Born near the town of Vinci, in Italy.",
-      "image_url": "/stories/leonardo/Leonardo-Life-Journey-bgai-3.png",
+      "image_url": "/stories/leonardo/Leonardo-Life-Journey-bgai-3.webp",
       "blend": "multiply"
     },
     {
       "year": "1466",
       "caption": "Becomes an apprentice in Verrocchio's Florence workshop.",
-      "image_url": "/stories/leonardo/Life-Journey-2.png",
+      "image_url": "/stories/leonardo/Life-Journey-2.webp",
       "blend": "multiply"
     },
     {
       "year": "1482",
       "caption": "Moves to Milan to serve as an artist and engineer.",
-      "image_url": "/stories/leonardo/Life-Journey-3.png",
+      "image_url": "/stories/leonardo/Life-Journey-3.webp",
       "blend": "multiply"
     },
     {
       "year": "1503",
       "caption": "Begins painting the Mona Lisa.",
-      "image_url": "/stories/leonardo/Life-Journey-4.png",
+      "image_url": "/stories/leonardo/Life-Journey-4.webp",
       "blend": "multiply"
     },
     {
       "year": "1519",
       "caption": "Dies in France, his notebooks full of unfinished dreams.",
-      "image_url": "/stories/leonardo/Life-Journey-5.png",
+      "image_url": "/stories/leonardo/Life-Journey-5.webp",
       "blend": "multiply"
     }
   ],
@@ -85,33 +85,33 @@
     "page_span": "single",
     "title": "Gifts That Live On",
     "narrative": "Long after Leonardo was gone,\nthese gifts kept inspiring the world.\n\nBecause the world will always need\ndreamers who dare to see\nwhat others cannot.",
-    "image_url": "/stories/leonardo/NextPage.png",
+    "image_url": "/stories/leonardo/NextPage.webp",
     "fade": false
   },
   "treasures": [
     {
       "name": "The Mona Lisa",
-      "image_url": "/stories/leonardo/Treasure1.png"
+      "image_url": "/stories/leonardo/Treasure1.webp"
     },
     {
       "name": "The Last Supper",
-      "image_url": "/stories/leonardo/Treasure2.png"
+      "image_url": "/stories/leonardo/Treasure2.webp"
     },
     {
       "name": "The Vitruvian Man",
-      "image_url": "/stories/leonardo/Treasure3.png"
+      "image_url": "/stories/leonardo/Treasure3.webp"
     },
     {
       "name": "Flying Machine Designs",
-      "image_url": "/stories/leonardo/Treasure4.png"
+      "image_url": "/stories/leonardo/Treasure4.webp"
     },
     {
       "name": "Anatomy Studies",
-      "image_url": "/stories/leonardo/Treasure5.png"
+      "image_url": "/stories/leonardo/Treasure5.webp"
     },
     {
       "name": "The Mirror-Writing Notebooks",
-      "image_url": "/stories/leonardo/Treasure6.png"
+      "image_url": "/stories/leonardo/Treasure6.webp"
     }
   ],
   "lessons": [

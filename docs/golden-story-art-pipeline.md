@@ -171,6 +171,11 @@ python -m venv .venv-art && .venv-art/bin/pip install numpy Pillow
 # 3. point the image_url fields at /stories/<slug>/<name>.webp
 ```
 
+If finished art landed in `public/stories/<slug>/` as heavy PNG/JPG without
+going through `prepare-art.py` (or came from another source entirely), run
+`npm run compress:story <slug>`: it converts everything to WebP, backs the
+originals up to `art/originals/<slug>/`, and rewrites the story.json URLs.
+
 Tuning knockout mode: if faint paper haze survives in the "blank" areas,
 raise `--low` (e.g. 12–16); if pale washes are getting eaten, lower
 `--high` (e.g. 45). `--keep-bg` skips knockout entirely for a batch.
