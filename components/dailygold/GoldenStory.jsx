@@ -9,10 +9,16 @@
  * The person is fetched on the server (SSR, via Drizzle) and passed in as
  * `story` (a BornTodayPerson). Real `image_url`s render in place of the
  * template's parchment placeholders when present.
+ *
+ * Styles live in GoldenStory.module.css (scoped CSS Module).
  */
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import styles from './GoldenStory.module.css';
 
-const SHAPES = ['sh-circle', 'sh-diamond', 'sh-tri', 'sh-square'];
+// Join truthy class names.
+const cx = (...names) => names.filter(Boolean).join(' ');
+
+const SHAPES = [styles['sh-circle'], styles['sh-diamond'], styles['sh-tri'], styles['sh-square']];
 const STAR = '✦'; // ✦
 const BOOK_W = 1300;
 const BOOK_H = 866;
@@ -88,11 +94,18 @@ function Plate({ className = '', art, src, vignette = true }) {
   // multiply-blend so pale washes take on the page's own tone.
   const alpha = !!src && /\.(webp|png)(\?|$)/i.test(src);
   return (
-    <div className={`plate ${alpha ? 'plate-alpha' : vignette ? 'plate-vignette' : ''} ${className}`}>
+    <div className={cx(styles.plate, alpha ? styles['plate-alpha'] : vignette && styles['plate-vignette'], className)}>
       {src
-        ? <img className="plate-img" src={src} alt={art || ''} />
-        : <span className="ph-tag">{art}</span>}
+        ? <img className={styles['plate-img']} src={src} alt={art || ''} />
+        : <span className={styles['ph-tag']}>{art}</span>}
     </div>
+  );
+}
+
+// The gold ✦ between its two fading rules, under every title.
+function Ornament({ center = false }) {
+  return (
+    <div className={cx(styles.ornament, center && styles.center)}><i /><b>{STAR}</b><i /></div>
   );
 }
 
@@ -151,10 +164,10 @@ export default function GoldenStory({ story }) {
 
   // ── Build the spreads (JSX), assigning page numbers left→right in order ────
   const spreads = [];
-  const add = (label, cls, inner) => {
+  const add = (label, inner) => {
     const idx = spreads.length;
     spreads.push(
-      <div key={idx} className={`spread ${cls} ${idx === cur ? 'on' : ''}`} data-screen-label={label}>
+      <div key={idx} className={cx(styles.spread, idx === cur && styles.on)} data-screen-label={label}>
         {inner}
       </div>
     );
@@ -163,28 +176,28 @@ export default function GoldenStory({ story }) {
   // Cover + opening (childhood) spread.
   {
     const rNum = P();
-    add('Cover', '', (
+    add('Cover', (
       <>
-        <div className="page page-cover">
+        <div className={cx(styles.page, styles['page-cover'])}>
           {story?.image_url
-            ? <img className="cover-img" src={story.image_url} alt={name} />
-            : <div className="plate plate-cover"><span className="ph-tag">{`COVER — young ${first} in their world`}</span></div>}
-          <div className="cover-grad" />
-          <div className="cover-head">
-            <p className="cover-eyebrow">Born on this day</p>
-            <h1 className="cover-title">{storyTitle}</h1>
-            {coverSub && <p className="cover-sub">{coverSub}</p>}
+            ? <img className={styles['cover-img']} src={story.image_url} alt={name} />
+            : <div className={cx(styles.plate, styles['plate-cover'])}><span className={styles['ph-tag']}>{`COVER — young ${first} in their world`}</span></div>}
+          <div className={styles['cover-grad']} />
+          <div className={styles['cover-head']}>
+            <p className={styles['cover-eyebrow']}>Born on this day</p>
+            <h1 className={styles['cover-title']}>{storyTitle}</h1>
+            {coverSub && <p className={styles['cover-sub']}>{coverSub}</p>}
           </div>
-          <p className="cover-cta">{`Begin the story →`}</p>
+          <p className={styles['cover-cta']}>{`Begin the story →`}</p>
         </div>
-        <div className="page page-text">
-          <span className="pg-num">{rNum}</span>
-          <h2 className="pg-title">{childhoodTitle}</h2>
-          <div className="ornament"><i /><b>{STAR}</b><i /></div>
-          <div className="pg-body">
+        <div className={styles.page}>
+          <span className={styles['pg-num']}>{rNum}</span>
+          <h2 className={styles['pg-title']}>{childhoodTitle}</h2>
+          <Ornament />
+          <div className={styles['pg-body']}>
             {splitParas(childhood).map((para, j) => <Para key={j} text={para} />)}
           </div>
-          <Plate className="plate-strip" art={`Soft landscape of ${story?.country || 'home'}`} src={story?.childhood_image_url || null} />
+          <Plate className={styles['plate-strip']} art={`Soft landscape of ${story?.country || 'home'}`} src={story?.childhood_image_url || null} />
         </div>
       </>
     ));
@@ -196,18 +209,18 @@ export default function GoldenStory({ story }) {
   const singleLeaf = (ch, num, side) => {
     const imageOnly = ch.span === 'image';
     return (
-      <div key={side} className={`page-chapter-single ${side}`}>
+      <div key={side} className={styles['page-chapter-single']}>
         {ch.src
-          ? <img className={`chapter-bg${ch.plain ? ' chapter-bg-plain' : ''}`} src={ch.src} alt={ch.art} />
-          : <div className="plate plate-cover"><span className="ph-tag">{ch.art}</span></div>}
+          ? <img className={cx(styles['chapter-bg'], ch.plain && styles['chapter-bg-plain'])} src={ch.src} alt={ch.art} />
+          : <div className={cx(styles.plate, styles['plate-cover'])}><span className={styles['ph-tag']}>{ch.art}</span></div>}
         {!imageOnly && (
           <>
-            {ch.fade && <div className="chapter-wash" />}
-            <span className={`pg-num ${side === 'right' ? 'pg-num-r' : ''}`}>{num}</span>
-            <div className="chapter-overlay">
-              <h2 className="pg-title">{ch.title}</h2>
-              <div className="ornament"><i /><b>{STAR}</b><i /></div>
-              <div className="pg-body">
+            {ch.fade && <div className={styles['chapter-wash']} />}
+            <span className={cx(styles['pg-num'], side === 'right' && styles['pg-num-r'])}>{num}</span>
+            <div className={styles['chapter-overlay']}>
+              <h2 className={styles['pg-title']}>{ch.title}</h2>
+              <Ornament />
+              <div className={styles['pg-body']}>
                 {ch.paras.map((para, j) => <Para key={j} text={para} />)}
               </div>
             </div>
@@ -230,10 +243,10 @@ export default function GoldenStory({ story }) {
       const partner = isLeaf(chapters[ci + 1]) ? chapters[ci + 1] : null;
       const lNum = P();
       const rNum = partner ? P() : null;
-      add(`Chapter ${ch.number}`, 'spread-single', (
+      add(`Chapter ${ch.number}`, (
         <>
           {singleLeaf(ch, lNum, 'left')}
-          {partner ? singleLeaf(partner, rNum, 'right') : <div className="page" />}
+          {partner ? singleLeaf(partner, rNum, 'right') : <div className={styles.page} />}
         </>
       ));
       ci += partner ? 2 : 1;
@@ -243,17 +256,17 @@ export default function GoldenStory({ story }) {
     // 'both' — one full-bleed spread, art as background across both leaves.
     if (ch.span === 'both') {
       const nNum = P();
-      add(`Chapter ${ch.number}`, 'spread-full', (
-        <div className="page-span page-chapter-full">
+      add(`Chapter ${ch.number}`, (
+        <div className={cx(styles['page-span'], styles['page-chapter-full'])}>
           {ch.src
-            ? <img className={`chapter-bg${ch.plain ? ' chapter-bg-plain' : ''}`} src={ch.src} alt={ch.art} />
-            : <div className="plate plate-cover"><span className="ph-tag">{ch.art}</span></div>}
-          {ch.fade && <div className="chapter-wash" />}
-          <span className="pg-num">{nNum}</span>
-          <div className="chapter-overlay">
-            <h2 className="pg-title">{ch.title}</h2>
-            <div className="ornament"><i /><b>{STAR}</b><i /></div>
-            <div className="pg-body">
+            ? <img className={cx(styles['chapter-bg'], ch.plain && styles['chapter-bg-plain'])} src={ch.src} alt={ch.art} />
+            : <div className={cx(styles.plate, styles['plate-cover'])}><span className={styles['ph-tag']}>{ch.art}</span></div>}
+          {ch.fade && <div className={styles['chapter-wash']} />}
+          <span className={styles['pg-num']}>{nNum}</span>
+          <div className={styles['chapter-overlay']}>
+            <h2 className={styles['pg-title']}>{ch.title}</h2>
+            <Ornament />
+            <div className={styles['pg-body']}>
               {ch.paras.map((para, j) => <Para key={j} text={para} />)}
             </div>
           </div>
@@ -266,20 +279,20 @@ export default function GoldenStory({ story }) {
     // default — classic two-page split: narrative left, illustration right.
     const lNum = P();
     const rNum = P();
-    add(`Chapter ${ch.number}`, '', (
+    add(`Chapter ${ch.number}`, (
       <>
-        <div className="page page-text">
-          <span className="pg-num">{lNum}</span>
-          <p className="ch-label">{`Chapter ${ch.number}`}</p>
-          <h2 className="pg-title">{ch.title}</h2>
-          <div className="ornament"><i /><b>{STAR}</b><i /></div>
-          <div className="pg-body dropcap">
+        <div className={styles.page}>
+          <span className={styles['pg-num']}>{lNum}</span>
+          <p className={styles['ch-label']}>{`Chapter ${ch.number}`}</p>
+          <h2 className={styles['pg-title']}>{ch.title}</h2>
+          <Ornament />
+          <div className={cx(styles['pg-body'], styles.dropcap)}>
             {ch.paras.map((para, j) => <Para key={j} text={para} />)}
           </div>
         </div>
-        <div className="page page-image">
-          <span className="pg-num pg-num-r">{rNum}</span>
-          <Plate className="plate-fill" art={ch.art} src={ch.src} />
+        <div className={cx(styles.page, styles['page-image'])}>
+          <span className={cx(styles['pg-num'], styles['pg-num-r'])}>{rNum}</span>
+          <Plate className={styles['plate-fill']} art={ch.art} src={ch.src} />
         </div>
       </>
     ));
@@ -290,24 +303,24 @@ export default function GoldenStory({ story }) {
   if (hasTimeline) {
     const lNum = P();
     const rNum = P();
-    add('Timeline', '', (
-      <div className="page-span page-timeline">
-        <span className="pg-num">{lNum}</span>
-        <span className="pg-num pg-num-r">{rNum}</span>
-        <h2 className="span-title">{`${first}’s Life Journey`}</h2>
-        <div className="ornament center"><i /><b>{STAR}</b><i /></div>
-        <div className="tl-track">
+    add('Timeline', (
+      <div className={styles['page-span']}>
+        <span className={styles['pg-num']}>{lNum}</span>
+        <span className={cx(styles['pg-num'], styles['pg-num-r'])}>{rNum}</span>
+        <h2 className={styles['span-title']}>{`${first}’s Life Journey`}</h2>
+        <Ornament center />
+        <div className={styles['tl-track']}>
           {timeline.map((t, i) => (
-            <div key={i} className="tl-item">
-              <Plate className="tl-plate" art={t.year} src={t.image_url || null} />
-              <div className="tl-dot" />
-              <p className="tl-year">{t.year}</p>
-              <p className="tl-cap">{t.caption}</p>
+            <div key={i} className={styles['tl-item']}>
+              <Plate className={styles['tl-plate']} art={t.year} src={t.image_url || null} />
+              <div className={styles['tl-dot']} />
+              <p className={styles['tl-year']}>{t.year}</p>
+              <p className={styles['tl-cap']}>{t.caption}</p>
             </div>
           ))}
         </div>
         {quote && (
-          <p className="tl-quote">{`“${quote}”`} <span>{`— ${name}`}</span></p>
+          <p className={styles['tl-quote']}>{`“${quote}”`} <span>{`— ${name}`}</span></p>
         )}
       </div>
     ));
@@ -317,35 +330,35 @@ export default function GoldenStory({ story }) {
   if (hasTreasures) {
     const lNum = P();
     const rNum = P();
-    add('Treasures', '', (
+    add('Treasures', (
       <>
-        <div className="page page-text">
-          <span className="pg-num">{lNum}</span>
-          <h2 className="pg-title">Treasures Left Behind</h2>
-          <div className="ornament"><i /><b>{STAR}</b><i /></div>
-          <p className="tr-intro">{`${first} left the world more than memories — gifts, ideas, and wonders that still inspire people today.`}</p>
-          <div className="tr-grid">
+        <div className={styles.page}>
+          <span className={styles['pg-num']}>{lNum}</span>
+          <h2 className={styles['pg-title']}>Treasures Left Behind</h2>
+          <Ornament />
+          <p className={styles['tr-intro']}>{`${first} left the world more than memories — gifts, ideas, and wonders that still inspire people today.`}</p>
+          <div className={styles['tr-grid']}>
             {treasures.map((t, i) => (
-              <div key={i} className="tr-cell">
-                <Plate className="tr-plate" art={t.name} src={t.image_url || null} />
-                <p className="tr-name">{t.name}</p>
+              <div key={i} className={styles['tr-cell']}>
+                <Plate className={styles['tr-plate']} art={t.name} src={t.image_url || null} />
+                <p className={styles['tr-name']}>{t.name}</p>
               </div>
             ))}
           </div>
-          {takeaway && <p className="tr-stamp">{`${STAR} ${takeaway}`}</p>}
+          {takeaway && <p className={styles['tr-stamp']}>{`${STAR} ${takeaway}`}</p>}
         </div>
         {afterTreasures
           ? singleLeaf(afterTreasures, rNum, 'right')
           : (
-            <div className="page page-text">
-              <span className="pg-num pg-num-r">{rNum}</span>
-              <h2 className="pg-title">Gifts That Live On</h2>
-              <div className="ornament"><i /><b>{STAR}</b><i /></div>
-              <div className="pg-body">
+            <div className={styles.page}>
+              <span className={cx(styles['pg-num'], styles['pg-num-r'])}>{rNum}</span>
+              <h2 className={styles['pg-title']}>Gifts That Live On</h2>
+              <Ornament />
+              <div className={styles['pg-body']}>
                 <p>{`Long after ${first} was gone, these gifts kept inspiring the world.`}</p>
                 <p>Because the world will always need dreamers who dare to see what others cannot.</p>
               </div>
-              <Plate className="plate-strip" art="Treasures fading into a sunlit landscape" src={story?.treasures_image_url || null} />
+              <Plate className={styles['plate-strip']} art="Treasures fading into a sunlit landscape" src={story?.treasures_image_url || null} />
             </div>
           )}
       </>
@@ -356,38 +369,38 @@ export default function GoldenStory({ story }) {
   if (hasLessons) {
     const lNum = P();
     const rNum = P();
-    add('If they were ten today', '', (
-      <div className="page-span page-lessons">
-        <span className="pg-num">{lNum}</span>
-        <span className="pg-num pg-num-r">{rNum}</span>
+    add('If they were ten today', (
+      <div className={cx(styles['page-span'], styles['page-lessons'])}>
+        <span className={styles['pg-num']}>{lNum}</span>
+        <span className={cx(styles['pg-num'], styles['pg-num-r'])}>{rNum}</span>
         {modernChapter.span === 'default' ? (
           // Classic two-column top: narrative left, illustration right.
-          <div className="ls-top">
-            <div className="ls-left">
-              <h2 className="pg-title">{modernChapter.title || `If ${first} Were 10 Today`}</h2>
-              <div className="ornament"><i /><b>{STAR}</b><i /></div>
-              <div className="pg-body">
+          <div className={styles['ls-top']}>
+            <div className={styles['ls-left']}>
+              <h2 className={styles['pg-title']}>{modernChapter.title || `If ${first} Were 10 Today`}</h2>
+              <Ornament />
+              <div className={styles['pg-body']}>
                 {modernChapter.paras.map((para, j) => <Para key={j} text={para} />)}
               </div>
             </div>
-            <div className="ls-right">
+            <div className={styles['ls-right']}>
               <Plate art={`${first} as a modern ten-year-old explorer`} src={modernChapter.src} />
             </div>
           </div>
         ) : (
           // Full-bleed top (single/both/image spans): art as the background,
           // text overlaid — the same treatment as a full-bleed chapter.
-          <div className="ls-top ls-top-full">
+          <div className={cx(styles['ls-top'], styles['ls-top-full'])}>
             {modernChapter.src
-              ? <img className={`chapter-bg${modernChapter.plain ? ' chapter-bg-plain' : ''}`} src={modernChapter.src} alt={modernChapter.title} />
-              : <div className="plate plate-cover"><span className="ph-tag">{`${first} as a modern ten-year-old explorer`}</span></div>}
+              ? <img className={cx(styles['chapter-bg'], modernChapter.plain && styles['chapter-bg-plain'])} src={modernChapter.src} alt={modernChapter.title} />
+              : <div className={cx(styles.plate, styles['plate-cover'])}><span className={styles['ph-tag']}>{`${first} as a modern ten-year-old explorer`}</span></div>}
             {modernChapter.span !== 'image' && (
               <>
-                {modernChapter.fade && <div className="chapter-wash" />}
-                <div className="chapter-overlay">
-                  <h2 className="pg-title">{modernChapter.title || `If ${first} Were 10 Today`}</h2>
-                  <div className="ornament"><i /><b>{STAR}</b><i /></div>
-                  <div className="pg-body">
+                {modernChapter.fade && <div className={styles['chapter-wash']} />}
+                <div className={styles['chapter-overlay']}>
+                  <h2 className={styles['pg-title']}>{modernChapter.title || `If ${first} Were 10 Today`}</h2>
+                  <Ornament />
+                  <div className={styles['pg-body']}>
                     {modernChapter.paras.map((para, j) => <Para key={j} text={para} />)}
                   </div>
                 </div>
@@ -396,14 +409,14 @@ export default function GoldenStory({ story }) {
           </div>
         )}
         {lessons.length > 0 && (
-          <div className="ls-band">
-            <p className="ls-band-title">{`What Can We Learn From ${first}?`}</p>
-            <div className="ls-row">
+          <div className={styles['ls-band']}>
+            <p className={styles['ls-band-title']}>{`What Can We Learn From ${first}?`}</p>
+            <div className={styles['ls-row']}>
               {lessons.map((l, i) => (
-                <div key={i} className="ls-item">
-                  <div className="ls-ic"><span className={l.shape} /></div>
-                  {l.icon && <p className="ls-label">{l.icon}</p>}
-                  <p className="ls-text">{l.lesson}</p>
+                <div key={i} className={styles['ls-item']}>
+                  <div className={styles['ls-ic']}><span className={l.shape} /></div>
+                  {l.icon && <p className={styles['ls-label']}>{l.icon}</p>}
+                  <p className={styles['ls-text']}>{l.lesson}</p>
                 </div>
               ))}
             </div>
@@ -416,14 +429,14 @@ export default function GoldenStory({ story }) {
   // Closing page.
   {
     const lNum = P();
-    add('The End', '', (
-      <div className="page-span page-closing">
-        <span className="pg-num">{lNum}</span>
-        <div className="close-star">{STAR}</div>
-        {takeaway && <p className="close-take">{takeaway}</p>}
-        <div className="ornament center"><i /><b>{STAR}</b><i /></div>
-        <p className="close-end">The End</p>
-        <p className="close-name">{`A Golden Story · ${name}`}</p>
+    add('The End', (
+      <div className={cx(styles['page-span'], styles['page-closing'])}>
+        <span className={styles['pg-num']}>{lNum}</span>
+        <div className={styles['close-star']}>{STAR}</div>
+        {takeaway && <p className={styles['close-take']}>{takeaway}</p>}
+        <Ornament center />
+        <p className={styles['close-end']}>The End</p>
+        <p className={styles['close-name']}>{`A Golden Story · ${name}`}</p>
       </div>
     ));
   }
@@ -458,20 +471,28 @@ export default function GoldenStory({ story }) {
   if (!story) return null;
 
   return (
-    <div className="book-stage">
-      <style>{CSS}</style>
+    <div className={styles['book-stage']}>
+      {/* The bundler (Turbopack) silently drops external url() @imports from
+          CSS — including the Google Fonts import in app/globals.css — so the
+          storybook loads its own fonts here. Same families/weights the
+          original inline <style> imported; React hoists this into <head>. */}
+      <link
+        rel="stylesheet"
+        precedence="default"
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Lato:wght@300;400;700&family=Great+Vibes&display=swap"
+      />
 
-      <button className="nav nav-prev" onClick={() => go(-1)} aria-label="Previous page">{'‹'}</button>
+      <button className={cx(styles.nav, styles['nav-prev'])} onClick={() => go(-1)} aria-label="Previous page">{'‹'}</button>
 
-      <div className="book-scale" ref={scaleRef}>
-        <div className="book">
-          <div className="book-leather" />
-          <div className="book-body">
+      <div className={styles['book-scale']} ref={scaleRef}>
+        <div className={styles.book}>
+          <div className={styles['book-leather']} />
+          <div className={styles['book-body']}>
             {spreads}
 
-            <div className="book-frame">
+            <div className={styles['book-frame']}>
               {['tl', 'tr', 'bl', 'br'].map((pos) => (
-                <span key={pos} className={`corner ${pos}`}>
+                <span key={pos} className={cx(styles.corner, styles[pos])}>
                   <svg viewBox="0 0 160 160" fill="none" aria-hidden="true">
                     <path d="M6 6 C 48 28 84 58 124 140" stroke="#9aa06a" strokeWidth="1.4" fill="none" opacity=".8" />
                     <g fill="#a6ac72" opacity=".8">
@@ -484,279 +505,14 @@ export default function GoldenStory({ story }) {
                   </svg>
                 </span>
               ))}
-              <div className="spine" />
+              <div className={styles.spine} />
             </div>
           </div>
         </div>
       </div>
 
-      <button className="nav nav-next" onClick={() => go(1)} aria-label="Next page">{'›'}</button>
-      <div className="book-progress">{`${cur + 1} / ${count}`}</div>
+      <button className={cx(styles.nav, styles['nav-next'])} onClick={() => go(1)} aria-label="Next page">{'›'}</button>
+      <div className={styles['book-progress']}>{`${cur + 1} / ${count}`}</div>
     </div>
   );
 }
-
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Lato:wght@300;400;700&family=Great+Vibes&display=swap');
-
-.book-stage {
-  --parch: #efe4c8; --parch2: #e4d6b3; --ink: #5c4a30; --ink-soft: #7c6746;
-  --head: #a07a38; --head-deep: #7c5a28; --gold: #b9975a; --leaf: #9aa06a;
-  --serif: "Playfair Display", Georgia, serif;
-  --sans: Lato, "Source Sans 3", sans-serif;
-  --script: "Great Vibes", cursive;
-  position: fixed; inset: 0; overflow: hidden;
-  display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(circle at 50% 35%, #3c2c1d 0%, #1c130c 68%, #110a05 100%);
-  font-family: var(--sans);
-}
-.book-stage * { box-sizing: border-box; }
-
-.book-scale { transform-origin: center center; }
-.book { position: relative; width: 1300px; height: 866px; --leather: #241812; }
-
-.book-leather {
-  position: absolute; inset: -28px; border-radius: 16px;
-  background: linear-gradient(135deg, #3a281c 0%, var(--leather) 55%, #170f0a 100%);
-  box-shadow: 0 46px 100px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.05);
-}
-.book-leather::after {
-  content: ""; position: absolute; inset: 13px; border-radius: 9px;
-  border: 1px solid rgba(201,169,110,.20);
-}
-.book-body {
-  position: absolute; inset: 0; border-radius: 5px 9px 9px 5px; overflow: hidden;
-  box-shadow: 0 12px 34px rgba(0,0,0,.4);
-}
-
-.spread {
-  position: absolute; inset: 0; display: flex;
-  opacity: 0; pointer-events: none; transition: opacity .55s ease;
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.06'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E") repeat,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='560' height='560'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012' numOctaves='2' stitchTiles='stitch' seed='7'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.05'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E") repeat,
-    radial-gradient(ellipse 62% 52% at 24% 26%, rgba(255,251,238,.55), transparent 60%),
-    radial-gradient(ellipse 60% 55% at 80% 78%, rgba(120,90,50,.10), transparent 55%),
-    linear-gradient(180deg, var(--parch), var(--parch2));
-}
-.spread.on { opacity: 1; pointer-events: auto; }
-.spread::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  box-shadow: inset 0 0 130px rgba(90,60,25,.26), inset 0 0 44px rgba(70,45,20,.16);
-}
-
-/* Each leaf is exactly half the spread. flex-basis:50% (not flex:1 / basis 0%)
-   keeps the fold on the true centre — with basis 0%, a padded page grows ~half
-   its own padding past centre, shoving the facing image page off the binder. */
-.page { position: relative; flex: 1 1 50%; min-width: 0; padding: 52px 60px; overflow: hidden; display: flex; flex-direction: column; }
-.spread > .page:first-child:not(.page-cover) { padding-right: 88px; }
-.spread > .page:first-child:not(.page-cover) .pg-num { left: 58px; }
-.spread > .page + .page { padding-left: 88px; }
-.spread > .page + .page .plate-strip { margin-left: -88px; }
-.spread > .page:first-child:not(.page-cover) .plate-strip { margin-right: -88px; }
-.pg-num { position: absolute; top: 34px; left: 58px; font-family: var(--serif); font-size: 13px; letter-spacing: .16em; color: var(--head-deep); opacity: .55; z-index: 4; }
-.pg-num-r { left: auto; right: 58px; }
-
-.pg-title { font-family: var(--serif); font-weight: 700; font-size: 37px; line-height: 1.08; color: var(--head-deep); margin: 44px 0 0; letter-spacing: -.01em; }
-.ch-label { font-family: var(--serif); font-size: 12px; letter-spacing: .26em; text-transform: uppercase; color: var(--gold); margin: 40px 0 4px; }
-.ch-label + .pg-title { margin-top: 0; }
-.ornament { display: flex; align-items: center; gap: 10px; margin: 15px 0 22px; }
-.ornament i { height: 1px; width: 44px; background: linear-gradient(90deg, transparent, var(--gold)); display: block; }
-.ornament i:last-child { background: linear-gradient(90deg, var(--gold), transparent); }
-.ornament b { color: var(--gold); font-size: 13px; line-height: 1; }
-.ornament.center { justify-content: center; }
-
-.pg-body { font-family: var(--sans); flex: 1; overflow-y: auto; padding-right: 6px; min-height: 0; }
-.pg-body p { font-size: 16.5px; line-height: 1.78; color: var(--ink); margin: 0 0 15px; font-weight: 400; }
-.pg-body::-webkit-scrollbar { width: 5px; }
-.pg-body::-webkit-scrollbar-thumb { background: rgba(185,151,90,.4); border-radius: 4px; }
-.dropcap p:first-child::first-letter { font-family: var(--serif); font-weight: 700; font-size: 58px; float: left; line-height: .78; padding: 6px 10px 0 0; color: var(--head); }
-
-.plate { position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;
-  background:
-    repeating-linear-gradient(48deg, rgba(120,90,45,.06) 0 9px, transparent 9px 18px),
-    linear-gradient(158deg, #d9c49b 0%, #c6ac7d 60%, #b89e70 100%);
-}
-.plate-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.plate-vignette {
-  -webkit-mask-image: radial-gradient(ellipse 82% 86% at 50% 46%, #000 50%, rgba(0,0,0,.35) 76%, transparent 100%);
-  mask-image: radial-gradient(ellipse 82% 86% at 50% 46%, #000 50%, rgba(0,0,0,.35) 76%, transparent 100%);
-}
-.plate-alpha { background: none; }
-.plate-alpha .plate-img { object-fit: contain; mix-blend-mode: multiply; }
-.ph-tag { font-family: ui-monospace, Menlo, monospace; font-size: 9px; letter-spacing: .07em; text-transform: uppercase; color: #7c5a28; background: rgba(255,250,238,.72); padding: 5px 10px; border-radius: 20px; border: 1px solid rgba(185,151,90,.4); max-width: 78%; text-align: center; line-height: 1.5; position: relative; z-index: 2; }
-
-.page-cover { padding: 0; }
-.plate-cover { position: absolute; inset: 0; }
-.cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 42%; }
-.cover-grad { position: absolute; inset: 0; z-index: 2; background: linear-gradient(180deg, rgba(28,18,9,.42) 0%, rgba(28,18,9,.05) 28%, transparent 50%, rgba(24,15,7,.55) 100%); }
-.cover-head { position: absolute; top: 54px; left: 52px; right: 52px; z-index: 3; }
-.cover-eyebrow { font-family: var(--serif); font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: #f1e4c2; margin: 0 0 12px; text-shadow: 0 1px 6px rgba(0,0,0,.5); }
-.cover-title { font-family: var(--serif); font-weight: 700; font-size: 50px; line-height: 1.02; color: #fbf3df; margin: 0; text-shadow: 0 2px 16px rgba(0,0,0,.5); }
-.cover-sub { font-family: var(--serif); font-style: italic; font-size: 15px; color: #efe0bc; margin: 14px 0 0; letter-spacing: .02em; text-shadow: 0 1px 8px rgba(0,0,0,.5); }
-.cover-cta { position: absolute; bottom: 46px; left: 52px; z-index: 3; font-family: var(--script); font-size: 31px; color: #f4e7c6; text-shadow: 0 2px 10px rgba(0,0,0,.5); margin: 0; }
-
-.page-image { padding: 0; }
-.spread > .page + .page.page-image { padding: 0; }
-.plate-fill { position: absolute; inset: 0; border-radius: 0; }
-.page-image .pg-num-r { top: 24px; right: 24px; color: #f4e7c6; opacity: .85; text-shadow: 0 1px 5px rgba(0,0,0,.55); }
-/* Full-page chapter art fills the whole page — right to the binder — rather than
-   being letterboxed or edge-faded. Drop the vignette mask so the image reaches
-   every edge, and cover the box (alpha art too) so nothing is left letterboxed. */
-.page-image .plate-vignette { -webkit-mask-image: none; mask-image: none; }
-.page-image .plate-img { object-fit: cover; }
-/* Break out of the page padding so the strip sits flush against the page's
-   bottom and side edges — a full-bleed band. margin-top:auto keeps it pinned to
-   the bottom of the flex column (body text stays above it); the negative side/
-   bottom margins reach the page edges (side margins are refined per page below).
-   No vignette/alpha treatment here: the band must reach both edges, not fade. */
-.plate-strip { margin: auto -60px -52px; height: auto; border-radius: 0; flex-shrink: 0; -webkit-mask-image: none; mask-image: none; background: none; display: block; }
-/* Let the image drive its own height (full page width, natural aspect ratio,
-   never clamped) and multiply onto the parchment so the paper tone shows
-   through. margin-top:auto still pins it to the page bottom as a flex item. */
-.plate-strip .plate-img { position: static; width: 100%; height: auto; object-fit: fill; mix-blend-mode: multiply; }
-
-/* Full-bleed chapters: the illustration is the background and the narrative
-   overlays it on the left. The wash keeps the text legible over the art —
-   brightest at the top-left where the words sit, clearing toward the art.
-   'both'-span fills the whole spread; 'single'-span fills one leaf, so two
-   pair up per spread. */
-.page-chapter-full { position: relative; flex: 1; padding: 0; overflow: hidden; }
-.page-chapter-single { position: relative; flex: 1 1 50%; min-width: 0; overflow: hidden; }
-/* Multiply the art onto the parchment (like the childhood plate-strip): the
-   image's white margins blend away to the page tone and the paint warms into
-   the golden background instead of sitting opaque on top. */
-.chapter-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; mix-blend-mode: multiply; }
-/* Opaque, shown as-is — for full-bleed art with its own background. */
-.chapter-bg-plain { mix-blend-mode: normal; }
-.page-chapter-full .plate-cover,
-.page-chapter-single .plate-cover { position: absolute; inset: 0; }
-.chapter-wash { position: absolute; inset: 0; z-index: 2; pointer-events: none;
-  background:
-    linear-gradient(102deg, rgba(244,236,214,.94) 0%, rgba(244,236,214,.82) 26%, rgba(244,236,214,.30) 48%, rgba(244,236,214,0) 64%),
-    linear-gradient(180deg, rgba(244,236,214,.55) 0%, rgba(244,236,214,0) 26%); }
-.page-chapter-full .pg-num,
-.page-chapter-single .pg-num { z-index: 4; }
-.chapter-overlay { position: absolute; top: 0; left: 0; z-index: 3;
-  height: 100%; display: flex; flex-direction: column; }
-.chapter-overlay .pg-title { margin-top: 30px; }
-.chapter-overlay .pg-body { flex: 0 1 auto; overflow: visible; }
-.page-chapter-full .chapter-overlay { width: fit-content; max-width: calc(50% - 130px); padding: 66px 32px 60px 68px; }
-.page-chapter-single .chapter-overlay { width: 84%; padding: 54px 20px 40px 52px; }
-/* On full-spread ('both') layouts the overlay shrink-wraps to the text above,
-   so the wash rides on the overlay instead of covering the whole spread: it
-   stays solid under the words and fades out just past them. The fade stops
-   are measured in px from the wash's right edge, so the tail stays equally
-   short whether the lines are short or long; max-width keeps overlay + tail
-   on the left leaf so the wash never crosses the binder. The wash div is display:none'd
-   (not removed) so \`"fade": false\` still disables the pseudo via the sibling
-   selector. Single leaves keep the original spread-wide wash. */
-/* The spread-wide wash keeps only its vertical top-dim (edge to edge, so no
-   visible seam); the horizontal text wash moves to the overlay pseudo below. */
-.page-chapter-full > .chapter-wash, .ls-top-full > .chapter-wash {
-  background: linear-gradient(180deg, rgba(244,236,214,.55) 0%, rgba(244,236,214,0) 26%);
-}
-.page-chapter-full .chapter-wash + .chapter-overlay::before,
-.ls-top-full .chapter-wash + .chapter-overlay::before {
-  content: ""; position: absolute; z-index: -1; pointer-events: none;
-  inset: 0 -130px 0 0;
-  background:
-    linear-gradient(to right, rgba(244,236,214,.94) 0%, rgba(244,236,214,.86) calc(100% - 260px), rgba(244,236,214,.30) calc(100% - 120px), rgba(244,236,214,0) 100%);
-}
-
-.page-span { position: relative; flex: 1; padding: 54px 68px; display: flex; flex-direction: column; }
-.span-title { font-family: var(--serif); font-weight: 700; font-size: 39px; color: var(--head-deep); text-align: center; margin: 30px 0 0; line-height: 1.08; }
-
-.tl-track { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; margin: 30px 0 0; flex: 1; align-content: center; }
-.tl-track::before { content: ""; position: absolute; left: 7%; right: 7%; top: 232px; height: 2px; background: repeating-linear-gradient(90deg, var(--gold) 0 7px, transparent 7px 15px); opacity: .55; }
-/* No z-index here: a z-index would form a stacking context that isolates the
-   plate image's mix-blend-mode, so its multiply would blend against nothing
-   instead of the parchment behind the spread. Paint order still puts each item
-   above the dashed connector (tl-track::before) because both are positioned and
-   the items come later in the DOM. */
-.tl-item { display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; }
-/* Bigger plates: fill the column and multiply into the parchment (alpha art,
-   see .plate-alpha) so each milestone illustration reads large, like the
-   childhood/chapter plates rather than a small thumbnail. */
-.tl-plate { width: 100%; aspect-ratio: 1 / 1; border-radius: 8px; }
-.tl-dot { width: 15px; height: 15px; border-radius: 50%; background: var(--parch); border: 3px solid var(--gold); margin: 16px 0 12px; box-shadow: 0 2px 7px rgba(90,60,20,.2); }
-.tl-year { font-family: var(--serif); font-weight: 700; font-size: 22px; color: var(--head-deep); margin: 0 0 6px; }
-.tl-cap { font-size: 12.5px; line-height: 1.55; color: var(--ink-soft); max-width: 17ch; margin: 0; }
-.tl-quote { text-align: center; font-family: var(--script); font-size: 27px; color: var(--gold); margin: 28px 0 0; }
-.tl-quote span { font-family: var(--serif); font-style: italic; font-size: 15px; color: var(--ink-soft); }
-
-.tr-intro { font-size: 14.5px; line-height: 1.7; color: var(--ink); margin: 0 0 20px; }
-.tr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px 16px; }
-.tr-cell { display: flex; flex-direction: column; align-items: center; text-align: center; }
-.tr-plate { width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; }
-.tr-name { font-family: var(--serif); font-size: 12px; line-height: 1.4; color: var(--ink-soft); margin: 8px 0 0; }
-.tr-stamp { margin: 20px 0 0; font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--head-deep); text-align: center; border: 1px solid rgba(185,151,90,.4); border-radius: 9px; padding: 12px 16px; background: rgba(255,250,238,.5); }
-
-.page-lessons { padding: 52px 60px 0; }
-.ls-top { display: flex; gap: 40px; flex: 1; min-height: 0; }
-/* Full-bleed variant of the modern-page top (single/both/image spans): the art
-   is the background and the text overlays it, like a full-bleed chapter. The
-   negative margins cancel the page's padding so the art reaches the top and side
-   edges of the spread, filling everything above the lessons band. The overlaid
-   text is held to the left leaf (width:50%, ending before the centre fold). */
-.ls-top-full { display: block; position: relative; overflow: hidden; margin: -52px -60px 0; }
-.ls-top-full .chapter-overlay { width: fit-content; max-width: calc(50% - 130px); padding: 72px 28px 36px 60px; }
-.ls-left { flex: 1.05; display: flex; flex-direction: column; }
-.ls-left .pg-body p { font-size: 17px; line-height: 1.85; }
-.ls-right { flex: 1; position: relative; }
-.ls-right .plate { position: absolute; inset: 8px 0 24px; border-radius: 6px; }
-.ls-band { margin: 0 -60px; background: rgba(230,217,188,.6); border-top: 1px solid rgba(185,151,90,.35); padding: 24px 60px 28px; }
-.ls-band-title { text-align: center; font-family: var(--serif); font-size: 21px; color: var(--head-deep); margin: 0 0 18px; }
-.ls-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
-.ls-item { text-align: center; display: flex; flex-direction: column; align-items: center; }
-.ls-ic { width: 44px; height: 44px; border-radius: 12px; background: rgba(185,151,90,.14); border: 1px solid rgba(185,151,90,.4); display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
-.ls-ic span { width: 17px; height: 17px; display: block; }
-.ls-ic .sh-diamond { transform: rotate(45deg); border: 2px solid var(--head-deep); }
-.ls-ic .sh-circle { border-radius: 50%; border: 2px solid var(--head-deep); }
-.ls-ic .sh-square { border-radius: 3px; border: 2px solid var(--head-deep); }
-.ls-ic .sh-tri { width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; border-bottom: 16px solid var(--head-deep); }
-.ls-label { font-family: var(--serif); font-size: 14px; color: var(--head-deep); margin: 0 0 4px; }
-.ls-text { font-size: 12px; line-height: 1.5; color: var(--ink-soft); max-width: 21ch; margin: 0; }
-
-.page-closing { align-items: center; justify-content: center; text-align: center; padding: 60px; }
-.close-star { color: var(--gold); font-size: 24px; margin-bottom: 18px; }
-.close-take { font-family: var(--script); font-size: 44px; line-height: 1.35; color: var(--head); max-width: 20ch; margin: 0; }
-.close-end { font-family: var(--serif); font-weight: 700; font-size: 27px; color: var(--head-deep); letter-spacing: .05em; margin: 26px 0 0; }
-.close-name { font-family: var(--serif); font-size: 12px; letter-spacing: .16em; color: var(--ink-soft); margin: 13px 0 0; text-transform: uppercase; }
-
-.book-frame { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
-/* Central binding gutter. A dark fold at the exact centre with a soft shadow
-   ramp to either side reads as the pages dipping down into the spine; the two
-   pale highlight bands flanking it are the paper curving back up to the flat of
-   the page, which sells the book-like curl even over a full-bleed illustration. */
-.spine { position: absolute; top: 0; bottom: 0; left: 50%; width: 150px; transform: translateX(-50%);
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(60,40,18,.05) 28%,
-    rgba(48,32,15,.20) 43%,
-    rgba(26,16,7,.46) 50%,
-    rgba(48,32,15,.20) 57%,
-    rgba(60,40,18,.05) 72%,
-    transparent 100%); }
-.spine::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg,
-    transparent 32%,
-    rgba(255,249,231,.14) 40%,
-    transparent 47%,
-    transparent 53%,
-    rgba(255,249,231,.14) 60%,
-    transparent 68%); }
-.spine::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; transform: translateX(-50%); background: rgba(24,14,6,.5); }
-.corner { position: absolute; width: 152px; height: 152px; opacity: .5; }
-.corner svg { width: 100%; height: 100%; display: block; }
-.corner.tl { top: 14px; left: 14px; }
-.corner.tr { top: 14px; right: 14px; transform: scaleX(-1); }
-.corner.bl { bottom: 14px; left: 14px; transform: scaleY(-1); }
-.corner.br { bottom: 14px; right: 14px; transform: scale(-1,-1); }
-
-.nav { position: fixed; top: 50%; transform: translateY(-50%); width: 54px; height: 54px; border-radius: 50%;
-  border: 1px solid rgba(201,169,110,.4); background: rgba(30,20,12,.5); color: #e8d3a2; font-size: 26px; cursor: pointer;
-  z-index: 50; display: flex; align-items: center; justify-content: center; transition: background .2s, transform .2s; font-family: var(--serif); line-height: 1; }
-.nav:hover { background: rgba(60,42,24,.85); }
-.nav-prev { left: 22px; } .nav-next { right: 22px; }
-.book-progress { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); color: rgba(232,211,162,.7); font-family: var(--serif); font-size: 13px; letter-spacing: .22em; z-index: 50; }
-`;
