@@ -1,0 +1,134 @@
+{
+  "name": "Albert Einstein",
+  "role": "Dreamer, Physicist & Friend of Light",
+  "field": "Physics",
+  "country": "Germany",
+  "birth_date": "March 14, 1879",
+  "death_year": "1955",
+  "story_title": "Albert Einstein",
+  "famous_quote": "Imagination is more important than knowledge.",
+  "image_url": "/stories/albert-einstein/cover.jpg",
+  "story_childhood_title": "A Quiet Boy in Ulm",
+  "childhood_image_url": "/stories/albert-einstein/strip-childhood.jpg",
+  "story_childhood": "In a town called Ulm,\nby a wide German river,\na baby boy was born.\n\nHis name was Albert.\n\nHe did not talk much,\nnot for a long time.\nHis family began to wonder.\n\nBut inside his head,\nquiet questions were growing.\nBig, glowing, wonderful questions.",
+  "story_takeaway": "Wonder about the world, and the world will whisper back its secrets.",
+  "modern": {
+    "page_span": "both",
+    "blend": "normal",
+    "title": "If Albert Were 10 Today",
+    "narrative": "Albert would love today's world.\nHe would watch space rockets roar\nand ask a hundred questions.\n\nHe might build wobbly ramps,\ntest them again and again,\nand giggle when things went wrong.\n\nAt night he would gaze at screens\nshowing galaxies far away.\nThen he would grab his violin\nand play a tune to the stars.",
+    "image_url": "/stories/albert-einstein/modern.jpg"
+  },
+  "chapters": [
+    {
+      "number": 1,
+      "page_span": "single",
+      "title": "The Magic Needle",
+      "narrative": "When Albert was small,\nhe felt quite sick in bed.\n\nHis father brought a gift.\nA little pocket compass.\n\nAlbert turned it round and round.\nThe needle always pointed north.\n\nSomething invisible was pulling it!\nHe could not see it.\nHe could not touch it.\n\nBut it was real.\nAlbert never forgot that feeling.",
+      "image_url": "/stories/albert-einstein/chapter-1.jpg"
+    },
+    {
+      "number": 2,
+      "page_span": "single",
+      "title": "The Boy Who Asked Why",
+      "narrative": "School felt like marching.\nRules, rules, and more rules.\n\nAlbert liked to daydream instead.\n\nHe imagined riding a sunbeam.\nHow fast would the world rush by?\n\nTeachers thought he was slow.\nThey were quite wrong.\n\nHe was thinking deep thoughts,\nthoughts too big for the room.\n\nAt home he read and wondered,\nand played his violin softly.",
+      "image_url": "/stories/albert-einstein/chapter-2.jpg"
+    },
+    {
+      "number": 3,
+      "page_span": "single",
+      "title": "The Clerk with a Secret",
+      "narrative": "Albert grew into a young man.\nNo school wanted to hire him.\n\nSo he worked in an office,\nstamping papers all day long.\n\nBut his mind kept flying.\n\nAt his little desk he dreamed\nof light, and time, and space.\n\nHe scribbled ideas on scraps.\nCould time run slow or fast?\n\nOne quiet clerk\nwas changing everything.",
+      "image_url": "/stories/albert-einstein/chapter-3.jpg"
+    },
+    {
+      "number": 4,
+      "page_span": "image",
+      "blend": "normal",
+      "image_url": "/stories/albert-einstein/chapter-4.jpg"
+    }
+  ],
+  "timeline": [
+    {
+      "year": "1879",
+      "caption": "Albert is born in Ulm, Germany.",
+      "image_url": "/stories/albert-einstein/timeline-1.jpg",
+      "blend": "multiply"
+    },
+    {
+      "year": "1888",
+      "caption": "A pocket compass fills him with wonder.",
+      "image_url": "/stories/albert-einstein/timeline-2.jpg",
+      "blend": "multiply"
+    },
+    {
+      "year": "1905",
+      "caption": "A young clerk shares world-changing ideas.",
+      "image_url": "/stories/albert-einstein/timeline-3.jpg",
+      "blend": "multiply"
+    },
+    {
+      "year": "1921",
+      "caption": "Albert wins the Nobel Prize in Physics.",
+      "image_url": "/stories/albert-einstein/timeline-4.jpg",
+      "blend": "multiply"
+    },
+    {
+      "year": "1955",
+      "caption": "The dreamer's ideas light the whole world.",
+      "image_url": "/stories/albert-einstein/timeline-5.jpg",
+      "blend": "multiply"
+    }
+  ],
+  "after_treasures": {
+    "page_span": "single",
+    "title": "Gifts That Live On",
+    "narrative": "Albert left us more than answers.\n\nHe left us questions,\nbright as stars.\n\nHe showed that light can bend,\nthat time is not so simple.\n\nHe taught us to keep wondering,\nto never stop asking why.\n\nHis gifts still glow today,\nin every curious mind\nthat dares to dream.",
+    "image_url": "/stories/albert-einstein/after-treasures.jpg",
+    "fade": false
+  },
+  "treasures": [
+    {
+      "name": "Theory of Special Relativity",
+      "image_url": "/stories/albert-einstein/treasure-1.jpg"
+    },
+    {
+      "name": "E = mc² (the famous equation)",
+      "image_url": "/stories/albert-einstein/treasure-2.jpg"
+    },
+    {
+      "name": "General Relativity",
+      "image_url": "/stories/albert-einstein/treasure-3.jpg"
+    },
+    {
+      "name": "The Photoelectric Effect",
+      "image_url": "/stories/albert-einstein/treasure-4.jpg"
+    },
+    {
+      "name": "Brownian Motion Explained",
+      "image_url": "/stories/albert-einstein/treasure-5.jpg"
+    },
+    {
+      "name": "A Lifetime of Curiosity",
+      "image_url": "/stories/albert-einstein/treasure-6.jpg"
+    }
+  ],
+  "lessons": [
+    {
+      "icon_name": "imagination",
+      "lesson": "Dreaming big is where every discovery begins."
+    },
+    {
+      "icon_name": "curiosity",
+      "lesson": "Keep asking why, even when others stop."
+    },
+    {
+      "icon_name": "patience",
+      "lesson": "Great ideas grow slowly and quietly inside you."
+    },
+    {
+      "icon_name": "wonder",
+      "lesson": "The whole universe is waiting to amaze you."
+    }
+  ]
+}
