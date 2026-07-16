@@ -13,6 +13,7 @@
     "db:studio": "drizzle-kit studio",
     "import:daily-gold": "node --env-file=.env --env-file-if-exists=.env.local scripts/import-daily-gold.mjs",
     "generate:story:openrouter": "node --env-file=.env --env-file-if-exists=.env.local scripts/generate-story-openrouter.mjs",
+    "upload:story-media": "node --env-file=.env --env-file-if-exists=.env.local scripts/upload-story-media.mjs",
     "compress:story": "node scripts/compress-story-images.mjs"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1088.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
