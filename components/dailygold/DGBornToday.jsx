@@ -3,11 +3,11 @@
  * DGBornToday — Immersive 5×2 portrait gallery
  * Full-bleed portraits with edge-dissolve, text overlay, no hard-edged cards.
  */
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { base44 } from '@/api/base44Client';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
+import { formatDate, formatYear } from '@/lib/dates';
 
 // ── Country → ISO2 ────────────────────────────────────────────────────────────
 const COUNTRY_TO_ISO2 = {
@@ -61,37 +61,14 @@ const P = {
   sage:         '#7C8770',
 };
 
-// ── PORTRAIT IMAGE HOOK ───────────────────────────────────────────────────────
-function usePortraitImage(person, index, editionId) {
-  const [imgUrl, setImgUrl] = useState(person.image_url || null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (imgUrl || !person.name) return;
-    setLoading(true);
-    base44.functions.invoke('generatePortraitImage', {
-      person_name: person.name,
-      field: person.field || person.role || '',
-      edition_id: editionId || null,
-      person_index: index,
-    })
-      .then(res => {
-        const url = res?.data?.image_url || res?.image_url;
-        if (url) setImgUrl(url);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  return { imgUrl, loading };
-}
-
 // ── SINGLE PORTRAIT TILE ──────────────────────────────────────────────────────
-function PortraitTile({ person, index, editionId, onClick, child, editionDate }) {
+function PortraitTile({ person, onClick, child, editionDate }) {
   const [hovered, setHovered] = useState(false);
   const iso2 = getIso2(person);
   const initials = person.name ? person.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
-  const { imgUrl, loading } = usePortraitImage(person, index, editionId);
+  // Portraits come from remarkable_person (R2-hosted covers); people without
+  // one get the parchment placeholder below.
+  const imgUrl = person.image_url || null;
 
   return (
     <div
@@ -110,15 +87,6 @@ function PortraitTile({ person, index, editionId, onClick, child, editionDate })
       }}
     >
       {/* Portrait image */}
-      {loading && !imgUrl && (
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: `linear-gradient(90deg, ${P.parchmentMid} 25%, #EDE0BE 50%, ${P.parchmentMid} 75%)`,
-          backgroundSize: '200% 100%',
-          animation: 'dgShimmer 1.6s ease-in-out infinite',
-        }} />
-      )}
-
       {imgUrl && (
         <img
           src={imgUrl}
@@ -136,7 +104,7 @@ function PortraitTile({ person, index, editionId, onClick, child, editionDate })
       )}
 
       {/* No image placeholder */}
-      {!imgUrl && !loading && (
+      {!imgUrl && (
         <div style={{
           position: 'absolute', inset: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -238,8 +206,8 @@ function PortraitTile({ person, index, editionId, onClick, child, editionDate })
           margin: 0,
           letterSpacing: '0.1em',
         }}>
-          {person.birth_date || person.birth_year || ''}
-          {person.death_year ? ` — ${person.death_year}` : ''}
+          {formatDate(person.birth_date)}
+          {person.death_date ? ` — ${formatYear(person.death_date)}` : ''}
         </p>
 
         {/* Discover story CTA — appears on hover */}
@@ -287,7 +255,7 @@ function PortraitTile({ person, index, editionId, onClick, child, editionDate })
 }
 
 // ── MAIN EXPORT ───────────────────────────────────────────────────────────────
-export default function DGBornToday({ people = [], editionId, onTrack, onFlagEarned, child, editionDate }) {
+export default function DGBornToday({ people = [], onTrack, onFlagEarned, child, editionDate }) {
   const router = useRouter();
 
   if (!people.length) return null;
@@ -304,10 +272,6 @@ export default function DGBornToday({ people = [], editionId, onTrack, onFlagEar
     }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Lato:wght@300;400;700&display=swap');
-        @keyframes dgShimmer {
-          0%   { background-position: -200% 0; }
-          100% { background-position:  200% 0; }
-        }
         @keyframes dgFadeUp {
           from { opacity: 0; transform: translateY(16px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -354,16 +318,14 @@ export default function DGBornToday({ people = [], editionId, onTrack, onFlagEar
         marginBottom: 'clamp(0.5rem, 1.2vw, 1rem)',
       }}>
         {row1.map((person, i) => (
-          <div key={i} style={{ animation: `dgFadeUp 0.5s ease ${i * 60}ms both` }}>
+          <div key={person.slug || i} style={{ animation: `dgFadeUp 0.5s ease ${i * 60}ms both` }}>
             <PortraitTile
               person={person}
-              index={i}
-              editionId={editionId}
               child={child}
               editionDate={editionDate}
               onClick={() => {
                 onTrack?.('person', person.name);
-                router.push(`/storybook/${editionId}/${i}`);
+                if (person.slug) router.push(`/stories/${person.slug}`);
               }}
             />
           </div>
@@ -378,16 +340,14 @@ export default function DGBornToday({ people = [], editionId, onTrack, onFlagEar
           gap: 'clamp(0.5rem, 1.2vw, 1rem)',
         }}>
           {row2.map((person, i) => (
-            <div key={i + 5} style={{ animation: `dgFadeUp 0.5s ease ${(i + 5) * 60}ms both` }}>
+            <div key={person.slug || i + 5} style={{ animation: `dgFadeUp 0.5s ease ${(i + 5) * 60}ms both` }}>
               <PortraitTile
                 person={person}
-                index={i + 5}
-                editionId={editionId}
                 child={child}
                 editionDate={editionDate}
                 onClick={() => {
                   onTrack?.('person', person.name);
-                  router.push(`/storybook/${editionId}/${i + 5}`);
+                  if (person.slug) router.push(`/stories/${person.slug}`);
                 }}
               />
             </div>

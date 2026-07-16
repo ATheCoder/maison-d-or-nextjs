@@ -7,13 +7,15 @@
  * timeline, treasures & lessons, and a closing page.
  *
  * The person is fetched on the server (SSR, via Drizzle) and passed in as
- * `story` (a BornTodayPerson). Real `image_url`s render in place of the
- * template's parchment placeholders when present.
+ * `story` (a remarkable_person record in the story.json shape). Real
+ * `image_url`s render in place of the template's parchment placeholders
+ * when present.
  *
  * Styles live in GoldenStory.module.css (scoped CSS Module).
  */
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import styles from './GoldenStory.module.css';
+import { formatDate, formatYear } from '@/lib/dates';
 
 // Join truthy class names.
 const cx = (...names) => names.filter(Boolean).join(' ');
@@ -124,7 +126,7 @@ export default function GoldenStory({ story }) {
   const takeaway = cleanQuote(story?.story_takeaway);
 
   const birthLabel = story?.birth_date
-    ? `b. ${story.birth_date}${story.death_year ? ` – ${story.death_year}` : ''}`
+    ? `b. ${formatDate(story.birth_date)}${story.death_date ? ` – ${formatYear(story.death_date)}` : ''}`
     : '';
   const coverSub = [role, story?.country, birthLabel].filter(Boolean).join('  ·  ');
 

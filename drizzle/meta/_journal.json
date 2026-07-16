@@ -22,6 +22,34 @@
       "when": 1784205316291,
       "tag": "0002_wooden_loners",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784208057696,
+      "tag": "0003_misty_venom",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784208865917,
+      "tag": "0004_material_maddog",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784208903082,
+      "tag": "0005_adorable_wendell_rand",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784209544801,
+      "tag": "0006_pink_legion",
+      "breakpoints": true
     }
   ]
 }

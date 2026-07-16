@@ -1,33 +1,23 @@
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
-import GoldenStory from '@/components/dailygold/GoldenStory';
+import { getPersonBySlug } from '@/app/daily-gold-edition/actions';
+import StorybookView from '@/components/dailygold/StorybookView';
 
 /**
- * Example Golden Story served straight from static files.
- *
- * The text lives in public/stories/leonardo/story.json and the illustrations
- * are the .png files sitting beside it (referenced by the story.json's
- * image_url fields, e.g. "/stories/leonardo/cover.png"). We read the JSON at
- * request time and hand it to <GoldenStory> exactly as the Drizzle-backed
- * storybook page does — no database involved.
- *
- * Visit /stories/leonardo to flip through it.
+ * A Golden Story for one remarkable person, read from the remarkable_person
+ * table by slug (e.g. /stories/leonardo). People migrated without full art
+ * (Tier 2) render with text-only plates — <GoldenStory> shows its parchment
+ * placeholder wherever an image_url is null.
  */
-export default async function LeonardoStoryPage({
+
+// People live in the database and can be updated, so render per-request.
+export const dynamic = 'force-dynamic';
+
+export default async function StoryPage({
   params,
 }: {
   params: Promise<{ name: string }>;
 }) {
   const { name } = await params;
+  const story = await getPersonBySlug(name);
 
-  const file = path.join(
-    process.cwd(),
-    'public',
-    'stories',
-    name,
-    'story.json',
-  );
-  const story = JSON.parse(await readFile(file, 'utf8'));
-
-  return <GoldenStory story={story} />;
+  return <StorybookView story={story} />;
 }

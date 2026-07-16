@@ -9,8 +9,9 @@ export const users = pgTable('users', {
 
 // ── DailyGoldEdition ──────────────────────────────────────────────────────────
 // Mirrors the Base44 "DailyGoldEdition" entity. Scalar fields become columns;
-// the nested repeated groups (born_today, good_news, on_this_day,
-// greatest_moments) are stored as typed JSONB.
+// the nested repeated groups (good_news, on_this_day, greatest_moments) are
+// stored as typed JSONB. Born Today people live in remarkable_person, keyed
+// by their birth date's month-day rather than per-edition.
 
 export type Chapter = {
   number?: number;
@@ -37,31 +38,6 @@ export type TimelineEntry = {
 export type Lesson = {
   icon_name?: string;
   lesson?: string;
-};
-
-export type BornTodayPerson = {
-  name?: string;
-  role?: string;
-  birth_date?: string;
-  death_year?: string;
-  country?: string;
-  image_url?: string | null;
-  appearance_description?: string;
-  story_title?: string;
-  story_childhood?: string;
-  story_curiosity?: string;
-  story_dream?: string;
-  story_turning_point?: string;
-  story_contribution?: string;
-  story_takeaway?: string;
-  emotional_themes?: string[];
-  chapters?: Chapter[];
-  chapter_images?: string[];
-  treasures?: Treasure[];
-  timeline?: TimelineEntry[];
-  modern_interpretation?: string;
-  lessons?: Lesson[];
-  famous_quote?: string;
 };
 
 export type GoodNewsItem = {
@@ -119,12 +95,13 @@ export const remarkablePerson = pgTable('remarkable_person', {
   field: text('field'),
   country: text('country'),
 
-  // Display string as written in the story ("March 14, 1879" or just "1452").
-  birthDate: text('birth_date'),
-  // 'MM-DD' when the full birth date is known — the Born Today lookup key.
-  // Null when the story only records a year (e.g. Leonardo, "1452").
-  birthMonthDay: text('birth_month_day'),
-  deathYear: text('death_year'),
+  // Full precision required — Born Today matches on its month-day, so a
+  // person can't be surfaced without one. Read back as 'YYYY-MM-DD'.
+  birthDate: date('birth_date'),
+  // ISO-8601 text at known precision: "1955-04-18" when the full date is
+  // known, "1955" when only the year is (frontend formats accordingly,
+  // lib/dates.js). Null while the person is living.
+  deathDate: text('death_date'),
 
   storyTitle: text('story_title'),
   famousQuote: text('famous_quote'),
@@ -144,9 +121,7 @@ export const remarkablePerson = pgTable('remarkable_person', {
 
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-}, (t) => [
-  index('remarkable_person_birth_month_day_idx').on(t.birthMonthDay),
-]);
+});
 
 export type RemarkablePersonRow = typeof remarkablePerson.$inferSelect;
 export type NewRemarkablePerson = typeof remarkablePerson.$inferInsert;
@@ -172,7 +147,6 @@ export const dailyGoldEdition = pgTable('daily_gold_edition', {
   tinyPhraseLanguage: text('tiny_phrase_language'),
   tinyPhraseTranslation: text('tiny_phrase_translation'),
 
-  bornToday: jsonb('born_today').$type<BornTodayPerson[]>().notNull().default([]),
   goodNews: jsonb('good_news').$type<GoodNewsItem[]>().notNull().default([]),
   onThisDay: jsonb('on_this_day').$type<OnThisDayItem[]>().notNull().default([]),
   greatestMoments: jsonb('greatest_moments').$type<GreatestMoment[]>().notNull().default([]),

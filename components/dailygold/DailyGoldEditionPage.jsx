@@ -19,6 +19,7 @@ import FlagSealCelebration from '@/components/dailygold/FlagSealCelebration';
 import FlagCollectionView from '@/components/dailygold/FlagCollectionView';
 import ChildGreetingStrip from '@/components/dailygold/ChildGreetingStrip';
 import { ThemeProvider } from '@/components/theme/ThemeContext';
+import { getPeopleForDate } from '@/app/daily-gold-edition/actions';
 
 /**
  * PAGE — /daily-gold-edition
@@ -56,12 +57,6 @@ const SAMPLE_EDITION = {
     { headline: "Young Scientist Discovers New Way to Clean Ocean Plastic", story: "A 14-year-old inventor has created a simple device that can collect microplastics from seawater using only sunlight and natural materials. The invention is already being tested in three coastal communities.", mood: "innovation" },
     { headline: "Ancient Forest Reborn: Million Trees Planted in Scotland", story: "The largest reforestation project in British history has reached its milestone, bringing native woodlands back to landscapes that have been bare for centuries.", mood: "hope" },
     { headline: "Children's Book Translated into 50 Languages for Free", story: "A global initiative is making beautiful stories accessible to children everywhere, breaking down language barriers and helping young readers understand each other's worlds.", mood: "kindness" },
-  ],
-  born_today: [
-    { name: "Marie Curie", birth_year: "1867", field: "Scientist", nationality: "Polish-French", headline: "Pioneer of radioactivity research", story: "Born Maria Skłodowska in Warsaw, she moved to Paris to study science at a time when women were rarely welcomed in laboratories. Her curiosity about invisible rays led to the discovery of radium and polonium. She became the first person to win two Nobel Prizes.", achievement: "First person to win two Nobel Prizes in different sciences", emotional_takeaway: "Curiosity and persistence can change the world." },
-    { name: "Pablo Picasso", birth_year: "1881", field: "Artist", nationality: "Spanish", headline: "Artist who saw the world in new shapes", story: "As a child in Spain, Pablo could draw before he could speak. He grew up to become one of the most influential artists ever, co-founding Cubism. He believed that every child is born an artist.", achievement: "Created over 50,000 artworks and revolutionized modern art", emotional_takeaway: "There is no single right way to see the world." },
-    { name: "Amelia Earhart", birth_year: "1897", field: "Explorer", nationality: "American", headline: "Pilot who flew beyond boundaries", story: "Amelia grew up climbing trees and collecting bugs, refusing to be limited by what girls were supposed to do. She became the first woman to fly solo across the Atlantic Ocean.", achievement: "First woman to fly solo across the Atlantic", emotional_takeaway: "Courage means flying toward your dreams." },
-    { name: "David Attenborough", birth_year: "1926", field: "Naturalist", nationality: "British", headline: "The voice that made us fall in love with nature", story: "From a young age David was fascinated by fossils and newts. He went on to make documentaries that brought the natural world into every living room on earth, changing how we see our planet.", achievement: "Over 70 years of nature documentary filmmaking", emotional_takeaway: "Every creature on Earth has a story worth telling." },
   ],
   on_this_day: [
     { year: "1969", headline: "Humans Walk on the Moon", story: "Apollo 11 landed on the lunar surface, and Neil Armstrong became the first human to step onto another world.", significance: "First time humans set foot on another celestial body" },
@@ -102,7 +97,6 @@ function mapRecord(record) {
     id: record.id,
     date: record.edition_date,
     destination_name: record.destination_country,
-    born_today: record.born_today || [],
     good_news: record.good_news || [],
     on_this_day: record.on_this_day || [],
     greatest_moments: record.greatest_moments || [],
@@ -130,9 +124,9 @@ function mapRecord(record) {
 }
 
 /**
- * @param {{ initialEdition?: any, initialDates?: string[] }} props
+ * @param {{ initialEdition?: any, initialDates?: string[], initialPeople?: any[] }} props
  */
-export default function DailyGoldEdition({ initialEdition = null, initialDates = [] }) {
+export default function DailyGoldEdition({ initialEdition = null, initialDates = [], initialPeople = [] }) {
   const router = useRouter();
   const todayStr = new Date().toISOString().slice(0, 10);
   const dateLabel = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -143,6 +137,7 @@ export default function DailyGoldEdition({ initialEdition = null, initialDates =
   const initial = initialEdition ? mapRecord(initialEdition) : { edition: SAMPLE_EDITION, rawPost: null };
 
   const [edition, setEdition] = useState(initial.edition);
+  const [people, setPeople] = useState(initialPeople);
   const [rawPost, setRawPost] = useState(initial.rawPost);
   const [user, setUser] = useState(null);
   const [child, setChild] = useState(null);
@@ -196,6 +191,10 @@ export default function DailyGoldEdition({ initialEdition = null, initialDates =
     setEdition(mapped);
     setRawPost(rp);
     setViewedDate(record.edition_date);
+    // Born Today is keyed by the viewed date's month-day, not the edition row.
+    getPeopleForDate(record.edition_date)
+      .then(setPeople)
+      .catch(() => setPeople([]));
   };
 
   const handleFlagEarn = useCallback(async (countryName, countryCode, source) => {
@@ -385,7 +384,7 @@ export default function DailyGoldEdition({ initialEdition = null, initialDates =
           onEditionChange={handleEditionChange}
         />
 
-        <DGBornToday people={edition.born_today || []} editionId={edition.id || rawPost?.id} onTrack={trackInteraction} onFlagEarned={handleFlagEarn} child={child} editionDate={viewedDate} />
+        <DGBornToday people={people} onTrack={trackInteraction} onFlagEarned={handleFlagEarn} child={child} editionDate={viewedDate} />
 
         <div className="dg-three-col" style={{
           display: 'grid',

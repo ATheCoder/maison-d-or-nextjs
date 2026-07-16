@@ -1,14 +1,14 @@
 'use client';
 /**
  * StorybookView — client chrome for a single Golden Story.
- * The edition/person is fetched on the server (SSR, via Drizzle) and passed in;
+ * The person is fetched on the server (SSR, via Drizzle) and passed in;
  * this component only owns the interactive bits (back navigation, the
  * not-found fallback) and renders the GoldenStory itself.
  */
 import { useRouter } from 'next/navigation';
 import GoldenStory from '@/components/dailygold/GoldenStory';
 
-export default function StorybookView({ story, editionId, index = 0 }) {
+export default function StorybookView({ story }) {
   const router = useRouter();
 
   return (
@@ -36,7 +36,7 @@ export default function StorybookView({ story, editionId, index = 0 }) {
       </button>
 
       {story ? (
-        <GoldenStory story={story} editionId={editionId} index={index} />
+        <GoldenStory story={story} />
       ) : (
         <div style={{
           minHeight: '100vh', display: 'flex', flexDirection: 'column',

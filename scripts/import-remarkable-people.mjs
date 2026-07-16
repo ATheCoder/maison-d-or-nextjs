@@ -18,18 +18,38 @@ const MONTHS = {
   july: '07', august: '08', september: '09', october: '10', november: '11', december: '12',
 };
 
-/** "March 14, 1879" -> "03-14"; year-only dates ("1452") -> null. */
-function toMonthDay(birthDate) {
-  const m = /^([A-Za-z]+)\s+(\d{1,2}),?\s+\d{1,4}$/.exec(birthDate?.trim() ?? '');
-  if (!m) return null;
-  const month = MONTHS[m[1].toLowerCase()];
-  if (!month) return null;
-  return `${month}-${String(m[2]).padStart(2, '0')}`;
+/**
+ * Normalize a story.json date to ISO at its known precision:
+ * "March 14, 1879" -> "1879-03-14"; "1879" (or a bare number) -> "1879";
+ * already-ISO values pass through; anything else -> null.
+ */
+function toPartialIso(value) {
+  const s = value != null ? String(value).trim() : '';
+  if (!s) return null;
+  if (/^\d{4}(-\d{2}(-\d{2})?)?$/.test(s)) return s;
+  const m = /^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{1,4})$/.exec(s);
+  const month = m && MONTHS[m[1].toLowerCase()];
+  if (month) return `${m[3].padStart(4, '0')}-${month}-${m[2].padStart(2, '0')}`;
+  console.warn(`  Unparseable date "${s}" — storing null.`);
+  return null;
+}
+
+/**
+ * birth_date is a real DATE column and the Born Today lookup key, so it
+ * must be full precision; year-only values are rejected with a warning.
+ */
+function toFullIso(value, slug) {
+  const iso = toPartialIso(value);
+  if (iso && !/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+    console.warn(`  ${slug}: birth_date "${value}" has no month-day — storing null (person won't appear in Born Today).`);
+    return null;
+  }
+  return iso;
 }
 
 const COLUMNS = [
   'slug', 'name', 'role', 'field', 'country',
-  'birth_date', 'birth_month_day', 'death_year',
+  'birth_date', 'death_date',
   'story_title', 'famous_quote', 'image_url',
   'story_childhood_title', 'childhood_image_url', 'story_childhood', 'story_takeaway',
   'modern', 'chapters', 'timeline', 'after_treasures', 'treasures', 'lessons',
@@ -43,9 +63,8 @@ function toRow(slug, story) {
     role: story.role ?? null,
     field: story.field ?? null,
     country: story.country ?? null,
-    birth_date: story.birth_date ?? null,
-    birth_month_day: toMonthDay(story.birth_date),
-    death_year: story.death_year != null ? String(story.death_year) : null,
+    birth_date: toFullIso(story.birth_date, slug),
+    death_date: toPartialIso(story.death_date ?? story.death_year),
     story_title: story.story_title ?? null,
     famous_quote: story.famous_quote ?? null,
     image_url: story.image_url ?? null,
@@ -100,7 +119,7 @@ async function main() {
       const row = toRow(slug, story);
       const values = COLUMNS.map((c) => (JSON_COLUMNS.has(c) && row[c] !== null ? JSON.stringify(row[c]) : row[c]));
       await pool.query(UPSERT, values);
-      console.log(`${slug}: ${row.name} (born ${row.birth_month_day ?? 'month-day unknown'})`);
+      console.log(`${slug}: ${row.name} (born ${row.birth_date ?? 'unknown'})`);
       ok++;
     }
   } finally {
