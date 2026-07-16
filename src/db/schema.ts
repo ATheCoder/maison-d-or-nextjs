@@ -14,6 +14,8 @@ export const users = pgTable('users', {
 
 export type Chapter = {
   number?: number;
+  page_span?: string; // 'single' | 'both' | 'image' — GoldenStory layout hint
+  blend?: string;
   title?: string;
   narrative?: string;
   image_url?: string | null;
@@ -28,6 +30,7 @@ export type Treasure = {
 export type TimelineEntry = {
   year?: string;
   caption?: string;
+  blend?: string;
   image_url?: string | null;
 };
 
@@ -87,6 +90,66 @@ export type GreatestMoment = {
   story?: string;
   image_url?: string | null;
 };
+
+// ── RemarkablePerson ─────────────────────────────────────────────────────────
+// The people featured in "Born Today" and rendered as Golden Story books,
+// extracted out of daily_gold_edition.born_today into their own table so they
+// can be generated once and reused every year on their birth month-day.
+// The canonical shape is the story.json format under public/stories/<slug>/
+// (what <GoldenStory> consumes), not the legacy Base44 born_today blob.
+
+// Shared shape of the `modern` ("If X were 10 today") and `after_treasures`
+// closing sections of a Golden Story.
+export type StorySection = {
+  page_span?: string; // 'single' | 'both' | 'image'
+  blend?: string;
+  fade?: boolean;
+  title?: string;
+  narrative?: string;
+  image_url?: string | null;
+};
+
+export const remarkablePerson = pgTable('remarkable_person', {
+  // Folder name under public/stories/, e.g. 'albert-einstein'. Imports upsert
+  // on it, so re-running the importer updates instead of duplicating.
+  slug: text('slug').primaryKey(),
+
+  name: text('name').notNull(),
+  role: text('role'),
+  field: text('field'),
+  country: text('country'),
+
+  // Display string as written in the story ("March 14, 1879" or just "1452").
+  birthDate: text('birth_date'),
+  // 'MM-DD' when the full birth date is known — the Born Today lookup key.
+  // Null when the story only records a year (e.g. Leonardo, "1452").
+  birthMonthDay: text('birth_month_day'),
+  deathYear: text('death_year'),
+
+  storyTitle: text('story_title'),
+  famousQuote: text('famous_quote'),
+  imageUrl: text('image_url'), // book cover
+
+  storyChildhoodTitle: text('story_childhood_title'),
+  childhoodImageUrl: text('childhood_image_url'),
+  storyChildhood: text('story_childhood'),
+  storyTakeaway: text('story_takeaway'),
+
+  modern: jsonb('modern').$type<StorySection>(),
+  chapters: jsonb('chapters').$type<Chapter[]>().notNull().default([]),
+  timeline: jsonb('timeline').$type<TimelineEntry[]>().notNull().default([]),
+  afterTreasures: jsonb('after_treasures').$type<StorySection>(),
+  treasures: jsonb('treasures').$type<Treasure[]>().notNull().default([]),
+  lessons: jsonb('lessons').$type<Lesson[]>().notNull().default([]),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('remarkable_person_birth_month_day_idx').on(t.birthMonthDay),
+]);
+
+export type RemarkablePersonRow = typeof remarkablePerson.$inferSelect;
+export type NewRemarkablePerson = typeof remarkablePerson.$inferInsert;
 
 export const dgStatus = pgEnum('dg_status', ['generating', 'ready', 'fallback']);
 

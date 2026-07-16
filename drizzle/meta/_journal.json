@@ -15,6 +15,13 @@
       "when": 1783331315037,
       "tag": "0001_special_nebula",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784205316291,
+      "tag": "0002_wooden_loners",
+      "breakpoints": true
     }
   ]
 }

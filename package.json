@@ -12,6 +12,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "import:daily-gold": "node --env-file=.env --env-file-if-exists=.env.local scripts/import-daily-gold.mjs",
+    "import:remarkable-people": "node --env-file=.env --env-file-if-exists=.env.local scripts/import-remarkable-people.mjs",
     "generate:story:openrouter": "node --env-file=.env --env-file-if-exists=.env.local scripts/generate-story-openrouter.mjs",
     "upload:story-media": "node --env-file=.env --env-file-if-exists=.env.local scripts/upload-story-media.mjs",
     "compress:story": "node scripts/compress-story-images.mjs"
