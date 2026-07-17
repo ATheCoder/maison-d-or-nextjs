@@ -53,7 +53,6 @@ function toRow(rec) {
     rec.tiny_phrase ?? null,
     rec.tiny_phrase_language ?? null,
     rec.tiny_phrase_translation ?? null,
-    JSON.stringify(arr(rec.greatest_moments)),
     toTimestamp(rec.generated_at),
     normalizeStatus(rec.status),
   ];
@@ -63,7 +62,6 @@ const COLUMNS = [
   'id', 'edition_date', 'destination_country', 'destination_description',
   'destination_image_url', 'taste_of_day', 'sound_of_day', 'nature_detail',
   'tiny_phrase', 'tiny_phrase_language', 'tiny_phrase_translation',
-  'greatest_moments',
   'generated_at', 'status',
 ];
 
@@ -103,7 +101,9 @@ function parseCsv(str) {
   return rows;
 }
 
-const JSON_COLUMNS = new Set(['greatest_moments']);
+// The repeated content groups now live in their own tables (good_news_item,
+// on_this_day_event, greatest_moment); no jsonb columns remain on the edition.
+const JSON_COLUMNS = new Set();
 
 async function loadFromCsv(path) {
   const rows = parseCsv(await readFile(path, 'utf8'));

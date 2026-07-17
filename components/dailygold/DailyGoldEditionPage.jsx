@@ -19,7 +19,7 @@ import FlagSealCelebration from '@/components/dailygold/FlagSealCelebration';
 import FlagCollectionView from '@/components/dailygold/FlagCollectionView';
 import ChildGreetingStrip from '@/components/dailygold/ChildGreetingStrip';
 import { ThemeProvider } from '@/components/theme/ThemeContext';
-import { getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate } from '@/app/daily-gold-edition/actions';
+import { getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate, getGreatestMomentsForDate } from '@/app/daily-gold-edition/actions';
 
 /**
  * PAGE — /daily-gold-edition
@@ -87,7 +87,6 @@ function mapRecord(record) {
     id: record.id,
     date: record.edition_date,
     destination_name: record.destination_country,
-    greatest_moments: record.greatest_moments || [],
     destination: {
       name: record.destination_country,
       atmosphere: record.destination_description,
@@ -112,9 +111,9 @@ function mapRecord(record) {
 }
 
 /**
- * @param {{ initialEdition?: any, initialDates?: string[], initialPeople?: any[], initialGoodNews?: any[], initialOnThisDay?: any[] }} props
+ * @param {{ initialEdition?: any, initialDates?: string[], initialPeople?: any[], initialGoodNews?: any[], initialOnThisDay?: any[], initialGreatestMoments?: any[] }} props
  */
-export default function DailyGoldEdition({ initialEdition = null, initialDates = [], initialPeople = [], initialGoodNews = [], initialOnThisDay = [] }) {
+export default function DailyGoldEdition({ initialEdition = null, initialDates = [], initialPeople = [], initialGoodNews = [], initialOnThisDay = [], initialGreatestMoments = [] }) {
   const router = useRouter();
   const todayStr = new Date().toISOString().slice(0, 10);
   const dateLabel = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -128,6 +127,7 @@ export default function DailyGoldEdition({ initialEdition = null, initialDates =
   const [people, setPeople] = useState(initialPeople);
   const [goodNews, setGoodNews] = useState(initialGoodNews);
   const [onThisDay, setOnThisDay] = useState(initialOnThisDay);
+  const [greatestMoments, setGreatestMoments] = useState(initialGreatestMoments);
   const [rawPost, setRawPost] = useState(initial.rawPost);
   const [user, setUser] = useState(null);
   const [child, setChild] = useState(null);
@@ -193,6 +193,10 @@ export default function DailyGoldEdition({ initialEdition = null, initialDates =
     getOnThisDayForDate(record.edition_date)
       .then(setOnThisDay)
       .catch(() => setOnThisDay([]));
+    // Greatest Moments too — its own table, keyed by the month-day.
+    getGreatestMomentsForDate(record.edition_date)
+      .then(setGreatestMoments)
+      .catch(() => setGreatestMoments([]));
   };
 
   const handleFlagEarn = useCallback(async (countryName, countryCode, source) => {
@@ -397,7 +401,7 @@ export default function DailyGoldEdition({ initialEdition = null, initialDates =
         }}>
           <DGGoodNews items={goodNews} onTrack={trackInteraction} child={child} editionDate={viewedDate} />
           <DGOnThisDay events={onThisDay} editionId={edition.id || null} onTrack={trackInteraction} onFlagEarned={handleFlagEarn} child={child} editionDate={viewedDate} />
-          <DGGreatestMoments moments={edition.greatest_moments || []} editionDate={viewedDate} />
+          <DGGreatestMoments moments={greatestMoments} editionDate={viewedDate} />
         </div>
 
         <style>{`

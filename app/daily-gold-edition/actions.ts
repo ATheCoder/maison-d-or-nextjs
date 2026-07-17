@@ -12,10 +12,12 @@ import { db } from '@/src/db';
 import {
   dailyGoldEdition,
   goodNewsItem,
+  greatestMoment,
   onThisDayEvent,
   remarkablePerson,
   type DailyGoldEditionRow,
   type GoodNewsItemRow,
+  type GreatestMomentRow,
   type OnThisDayEventRow,
   type RemarkablePersonRow,
 } from '@/src/db/schema';
@@ -32,7 +34,6 @@ export type EditionRecord = {
   tiny_phrase: string | null;
   tiny_phrase_language: string | null;
   tiny_phrase_translation: string | null;
-  greatest_moments: unknown[];
   generated_at: string | null;
   status: string;
 };
@@ -106,7 +107,6 @@ function rowToRecord(row: DailyGoldEditionRow): EditionRecord {
     tiny_phrase: row.tinyPhrase,
     tiny_phrase_language: row.tinyPhraseLanguage,
     tiny_phrase_translation: row.tinyPhraseTranslation,
-    greatest_moments: row.greatestMoments ?? [],
     generated_at: row.generatedAt ? new Date(row.generatedAt).toISOString() : null,
     status: row.status,
   };
@@ -182,6 +182,31 @@ export async function getOnThisDayForDate(date: string): Promise<OnThisDayRecord
     .where(eq(onThisDayEvent.monthDay, monthDay))
     .orderBy(desc(onThisDayEvent.year), asc(onThisDayEvent.position));
   return rows.map(onThisDayToRecord);
+}
+
+// A greatest_moment row in the snake_case shape <DGGreatestMoments> consumes.
+export type GreatestMomentRecord = ReturnType<typeof momentToRecord>;
+
+function momentToRecord(row: GreatestMomentRow) {
+  return {
+    rank: row.rank,
+    year: row.year,
+    headline: row.headline,
+    story: row.story,
+    image_url: row.imageUrl,
+  };
+}
+
+/** The top-10 ranked moments for an edition date's month-day. */
+export async function getGreatestMomentsForDate(date: string): Promise<GreatestMomentRecord[]> {
+  const monthDay = date?.slice(5);
+  if (!monthDay) return [];
+  const rows = await db
+    .select()
+    .from(greatestMoment)
+    .where(eq(greatestMoment.monthDay, monthDay))
+    .orderBy(asc(greatestMoment.rank));
+  return rows.map(momentToRecord);
 }
 
 // ── On This Day enrichment write-through ─────────────────────────────────────

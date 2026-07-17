@@ -1,0 +1,1 @@
+ALTER TABLE "daily_gold_edition" DROP COLUMN "greatest_moments";

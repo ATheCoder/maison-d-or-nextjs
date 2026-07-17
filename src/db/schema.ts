@@ -8,11 +8,10 @@ export const users = pgTable('users', {
 });
 
 // ── DailyGoldEdition ──────────────────────────────────────────────────────────
-// Mirrors the Base44 "DailyGoldEdition" entity. Scalar fields become columns;
-// the nested repeated group (greatest_moments) is stored as typed JSONB.
-// Born Today people live in remarkable_person and On This Day events in
-// on_this_day_event, both keyed by month-day; Good News stories live in
-// good_news_item, keyed by their calendar date.
+// Mirrors the Base44 "DailyGoldEdition" entity, reduced to its scalar fields.
+// The repeated content groups live in their own tables: remarkable_person
+// (Born Today), on_this_day_event and greatest_moment keyed by month-day,
+// good_news_item keyed by its calendar date.
 
 export type Chapter = {
   number?: number;
@@ -39,14 +38,6 @@ export type TimelineEntry = {
 export type Lesson = {
   icon_name?: string;
   lesson?: string;
-};
-
-export type GreatestMoment = {
-  rank?: number;
-  year?: string;
-  headline?: string;
-  story?: string;
-  image_url?: string | null;
 };
 
 // ── RemarkablePerson ─────────────────────────────────────────────────────────
@@ -181,6 +172,37 @@ export const onThisDayEvent = pgTable('on_this_day_event', {
 export type OnThisDayEventRow = typeof onThisDayEvent.$inferSelect;
 export type NewOnThisDayEvent = typeof onThisDayEvent.$inferInsert;
 
+// ── GreatestMoment ───────────────────────────────────────────────────────────
+// The "Greatest Moments" top-10 ranked events, extracted out of
+// daily_gold_edition.greatest_moments. Recurring content like
+// on_this_day_event: the top moments of a calendar date apply every year, so
+// rows are keyed by month-day. rank (1–10) is both the display order and,
+// with month_day, the natural key.
+
+export const greatestMoment = pgTable('greatest_moment', {
+  id: serial('id').primaryKey(),
+
+  // 'MM-DD' — the recurrence key.
+  monthDay: text('month_day').notNull(),
+  rank: integer('rank').notNull(),
+  // All-numeric in the data; shown as the moment's year label.
+  year: integer('year').notNull(),
+
+  headline: text('headline'),
+  story: text('story'),
+  imageUrl: text('image_url'),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('greatest_moment_month_day_idx').on(t.monthDay),
+  // Lets the backfill upsert on (month_day, rank), so re-runs are idempotent.
+  uniqueIndex('greatest_moment_month_day_rank_idx').on(t.monthDay, t.rank),
+]);
+
+export type GreatestMomentRow = typeof greatestMoment.$inferSelect;
+export type NewGreatestMoment = typeof greatestMoment.$inferInsert;
+
 export const dgStatus = pgEnum('dg_status', ['generating', 'ready', 'fallback']);
 
 export const dailyGoldEdition = pgTable('daily_gold_edition', {
@@ -201,8 +223,6 @@ export const dailyGoldEdition = pgTable('daily_gold_edition', {
   tinyPhrase: text('tiny_phrase'),
   tinyPhraseLanguage: text('tiny_phrase_language'),
   tinyPhraseTranslation: text('tiny_phrase_translation'),
-
-  greatestMoments: jsonb('greatest_moments').$type<GreatestMoment[]>().notNull().default([]),
 
   generatedAt: timestamp('generated_at', { withTimezone: true }),
   status: dgStatus('status').notNull().default('generating'),
