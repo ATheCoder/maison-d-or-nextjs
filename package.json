@@ -11,6 +11,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "seed:admin": "node --env-file=.env --env-file-if-exists=.env.local scripts/seed-admin.mjs",
     "import:daily-gold": "node --env-file=.env --env-file-if-exists=.env.local scripts/import-daily-gold.mjs",
     "import:remarkable-people": "node --env-file=.env --env-file-if-exists=.env.local scripts/import-remarkable-people.mjs",
     "generate:story:openrouter": "node --env-file=.env --env-file-if-exists=.env.local scripts/generate-story-openrouter.mjs",
@@ -19,11 +20,13 @@
   },
   "dependencies": {
     "@base44/sdk": "^0.8.35",
+    "better-auth": "^1.6.23",
     "drizzle-orm": "^0.45.2",
     "next": "16.2.10",
     "pg": "^8.22.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.1088.0",

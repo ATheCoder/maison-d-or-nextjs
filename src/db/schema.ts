@@ -1,10 +1,68 @@
 import { pgTable, pgEnum, serial, integer, boolean, text, date, timestamp, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core';
 
-export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
+// ── Identity ─────────────────────────────────────────────────────────────────
+// Better Auth-managed tables (see docs/auth-plan.md §3). Only admins and
+// guardians hold accounts — children are profiles, not users. `role` is an
+// additionalField that clients can never set (input: false in lib/auth.ts);
+// the first admin is created by scripts/seed-admin.mjs.
+
+export const userRole = pgEnum('user_role', ['admin', 'guardian']);
+
+export const user = pgTable('user', {
+  id: text('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
-  createdAt: timestamp('created_at').defaultNow(),
+  emailVerified: boolean('email_verified').notNull().default(false),
+  image: text('image'),
+  role: userRole('role').notNull().default('guardian'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// DB-backed sessions (no JWTs — see docs/auth-plan.md §1). The active child
+// profile lands on this table in phase 3.
+export const session = pgTable('session', {
+  id: text('id').primaryKey(),
+  token: text('token').notNull().unique(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('session_user_id_idx').on(t.userId),
+]);
+
+// One row per credential/provider identity. Email+password lives here as
+// providerId 'credential'; Google etc. become additional rows later (SSO is
+// additive, not a migration).
+export const account = pgTable('account', {
+  id: text('id').primaryKey(),
+  accountId: text('account_id').notNull(),
+  providerId: text('provider_id').notNull(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  idToken: text('id_token'),
+  accessTokenExpiresAt: timestamp('access_token_expires_at', { withTimezone: true }),
+  refreshTokenExpiresAt: timestamp('refresh_token_expires_at', { withTimezone: true }),
+  scope: text('scope'),
+  password: text('password'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('account_user_id_idx').on(t.userId),
+]);
+
+// Email verification and password reset tokens.
+export const verification = pgTable('verification', {
+  id: text('id').primaryKey(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 // ── DailyGoldEdition ──────────────────────────────────────────────────────────
