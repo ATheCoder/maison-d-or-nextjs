@@ -53,7 +53,6 @@ function toRow(rec) {
     rec.tiny_phrase ?? null,
     rec.tiny_phrase_language ?? null,
     rec.tiny_phrase_translation ?? null,
-    JSON.stringify(arr(rec.good_news)),
     JSON.stringify(arr(rec.on_this_day)),
     JSON.stringify(arr(rec.greatest_moments)),
     toTimestamp(rec.generated_at),
@@ -65,7 +64,7 @@ const COLUMNS = [
   'id', 'edition_date', 'destination_country', 'destination_description',
   'destination_image_url', 'taste_of_day', 'sound_of_day', 'nature_detail',
   'tiny_phrase', 'tiny_phrase_language', 'tiny_phrase_translation',
-  'good_news', 'on_this_day', 'greatest_moments',
+  'on_this_day', 'greatest_moments',
   'generated_at', 'status',
 ];
 
@@ -105,7 +104,7 @@ function parseCsv(str) {
   return rows;
 }
 
-const JSON_COLUMNS = new Set(['good_news', 'on_this_day', 'greatest_moments']);
+const JSON_COLUMNS = new Set(['on_this_day', 'greatest_moments']);
 
 async function loadFromCsv(path) {
   const rows = parseCsv(await readFile(path, 'utf8'));

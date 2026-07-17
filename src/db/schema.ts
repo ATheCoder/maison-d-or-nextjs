@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, serial, text, date, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
+import { pgTable, pgEnum, serial, integer, text, date, timestamp, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -9,9 +9,10 @@ export const users = pgTable('users', {
 
 // ── DailyGoldEdition ──────────────────────────────────────────────────────────
 // Mirrors the Base44 "DailyGoldEdition" entity. Scalar fields become columns;
-// the nested repeated groups (good_news, on_this_day, greatest_moments) are
-// stored as typed JSONB. Born Today people live in remarkable_person, keyed
-// by their birth date's month-day rather than per-edition.
+// the nested repeated groups (on_this_day, greatest_moments) are stored as
+// typed JSONB. Born Today people live in remarkable_person, keyed by their
+// birth date's month-day rather than per-edition; Good News stories live in
+// good_news_item, keyed by their calendar date.
 
 export type Chapter = {
   number?: number;
@@ -38,13 +39,6 @@ export type TimelineEntry = {
 export type Lesson = {
   icon_name?: string;
   lesson?: string;
-};
-
-export type GoodNewsItem = {
-  headline?: string;
-  location?: string;
-  description?: string;
-  image_url?: string | null;
 };
 
 export type OnThisDayItem = {
@@ -126,6 +120,37 @@ export const remarkablePerson = pgTable('remarkable_person', {
 export type RemarkablePersonRow = typeof remarkablePerson.$inferSelect;
 export type NewRemarkablePerson = typeof remarkablePerson.$inferInsert;
 
+// ── GoodNewsItem ─────────────────────────────────────────────────────────────
+// The "Good News of the Day" stories, extracted out of
+// daily_gold_edition.good_news. Unlike remarkable_person (recurring by
+// month-day), good news is genuinely daily content, so rows are keyed by the
+// actual calendar date they belong to.
+
+export const goodNewsItem = pgTable('good_news_item', {
+  id: serial('id').primaryKey(),
+
+  // The day this news belongs to — the lookup key. Read back as 'YYYY-MM-DD'.
+  date: date('date').notNull(),
+  // Display order within a day.
+  position: integer('position').notNull().default(0),
+
+  headline: text('headline').notNull(),
+  description: text('description'),
+  // Mostly null in current data; feeds the flag chip if present.
+  location: text('location'),
+  imageUrl: text('image_url'),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('good_news_item_date_idx').on(t.date),
+  // Lets the backfill upsert on (date, position), so re-runs are idempotent.
+  uniqueIndex('good_news_item_date_position_idx').on(t.date, t.position),
+]);
+
+export type GoodNewsItemRow = typeof goodNewsItem.$inferSelect;
+export type NewGoodNewsItem = typeof goodNewsItem.$inferInsert;
+
 export const dgStatus = pgEnum('dg_status', ['generating', 'ready', 'fallback']);
 
 export const dailyGoldEdition = pgTable('daily_gold_edition', {
@@ -147,7 +172,6 @@ export const dailyGoldEdition = pgTable('daily_gold_edition', {
   tinyPhraseLanguage: text('tiny_phrase_language'),
   tinyPhraseTranslation: text('tiny_phrase_translation'),
 
-  goodNews: jsonb('good_news').$type<GoodNewsItem[]>().notNull().default([]),
   onThisDay: jsonb('on_this_day').$type<OnThisDayItem[]>().notNull().default([]),
   greatestMoments: jsonb('greatest_moments').$type<GreatestMoment[]>().notNull().default([]),
 

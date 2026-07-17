@@ -9,8 +9,10 @@ import { asc, desc, eq, sql } from 'drizzle-orm';
 import { db } from '@/src/db';
 import {
   dailyGoldEdition,
+  goodNewsItem,
   remarkablePerson,
   type DailyGoldEditionRow,
+  type GoodNewsItemRow,
   type RemarkablePersonRow,
 } from '@/src/db/schema';
 
@@ -26,7 +28,6 @@ export type EditionRecord = {
   tiny_phrase: string | null;
   tiny_phrase_language: string | null;
   tiny_phrase_translation: string | null;
-  good_news: unknown[];
   on_this_day: unknown[];
   greatest_moments: unknown[];
   generated_at: string | null;
@@ -35,6 +36,18 @@ export type EditionRecord = {
 
 // A remarkable_person row in the story.json shape <GoldenStory> consumes.
 export type PersonRecord = ReturnType<typeof personToRecord>;
+
+// A good_news_item row in the snake_case shape <DGGoodNews> consumes.
+export type GoodNewsRecord = ReturnType<typeof goodNewsToRecord>;
+
+function goodNewsToRecord(row: GoodNewsItemRow) {
+  return {
+    headline: row.headline,
+    description: row.description,
+    location: row.location,
+    image_url: row.imageUrl,
+  };
+}
 
 function personToRecord(row: RemarkablePersonRow) {
   return {
@@ -74,7 +87,6 @@ function rowToRecord(row: DailyGoldEditionRow): EditionRecord {
     tiny_phrase: row.tinyPhrase,
     tiny_phrase_language: row.tinyPhraseLanguage,
     tiny_phrase_translation: row.tinyPhraseTranslation,
-    good_news: row.goodNews ?? [],
     on_this_day: row.onThisDay ?? [],
     greatest_moments: row.greatestMoments ?? [],
     generated_at: row.generatedAt ? new Date(row.generatedAt).toISOString() : null,
@@ -129,6 +141,17 @@ export async function getPeopleForDate(date: string): Promise<PersonRecord[]> {
     .orderBy(asc(remarkablePerson.name))
     .limit(10);
   return rows.map(personToRecord);
+}
+
+/** The Good News stories for a calendar day, in display order. */
+export async function getGoodNewsForDate(date: string): Promise<GoodNewsRecord[]> {
+  if (!date) return [];
+  const rows = await db
+    .select()
+    .from(goodNewsItem)
+    .where(eq(goodNewsItem.date, date))
+    .orderBy(asc(goodNewsItem.position));
+  return rows.map(goodNewsToRecord);
 }
 
 /** A single person by slug — the Golden Story page. */

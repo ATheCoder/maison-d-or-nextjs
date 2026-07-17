@@ -19,7 +19,7 @@ import FlagSealCelebration from '@/components/dailygold/FlagSealCelebration';
 import FlagCollectionView from '@/components/dailygold/FlagCollectionView';
 import ChildGreetingStrip from '@/components/dailygold/ChildGreetingStrip';
 import { ThemeProvider } from '@/components/theme/ThemeContext';
-import { getPeopleForDate } from '@/app/daily-gold-edition/actions';
+import { getPeopleForDate, getGoodNewsForDate } from '@/app/daily-gold-edition/actions';
 
 /**
  * PAGE — /daily-gold-edition
@@ -53,11 +53,6 @@ const C = {
 
 const SAMPLE_EDITION = {
   editorial_opening: "Every day holds a little gold. Today, let's wander through good news, remarkable lives, hidden corners of history, and a faraway place waiting to be discovered.",
-  good_news: [
-    { headline: "Young Scientist Discovers New Way to Clean Ocean Plastic", story: "A 14-year-old inventor has created a simple device that can collect microplastics from seawater using only sunlight and natural materials. The invention is already being tested in three coastal communities.", mood: "innovation" },
-    { headline: "Ancient Forest Reborn: Million Trees Planted in Scotland", story: "The largest reforestation project in British history has reached its milestone, bringing native woodlands back to landscapes that have been bare for centuries.", mood: "hope" },
-    { headline: "Children's Book Translated into 50 Languages for Free", story: "A global initiative is making beautiful stories accessible to children everywhere, breaking down language barriers and helping young readers understand each other's worlds.", mood: "kindness" },
-  ],
   on_this_day: [
     { year: "1969", headline: "Humans Walk on the Moon", story: "Apollo 11 landed on the lunar surface, and Neil Armstrong became the first human to step onto another world.", significance: "First time humans set foot on another celestial body" },
     { year: "1928", headline: "Alexander Fleming Discovers Penicillin", story: "Returning from vacation, Fleming noticed that mold had killed bacteria in his petri dishes. This accidental observation led to the first antibiotic.", significance: "Discovery that launched the antibiotic revolution" },
@@ -97,7 +92,6 @@ function mapRecord(record) {
     id: record.id,
     date: record.edition_date,
     destination_name: record.destination_country,
-    good_news: record.good_news || [],
     on_this_day: record.on_this_day || [],
     greatest_moments: record.greatest_moments || [],
     destination: {
@@ -124,9 +118,9 @@ function mapRecord(record) {
 }
 
 /**
- * @param {{ initialEdition?: any, initialDates?: string[], initialPeople?: any[] }} props
+ * @param {{ initialEdition?: any, initialDates?: string[], initialPeople?: any[], initialGoodNews?: any[] }} props
  */
-export default function DailyGoldEdition({ initialEdition = null, initialDates = [], initialPeople = [] }) {
+export default function DailyGoldEdition({ initialEdition = null, initialDates = [], initialPeople = [], initialGoodNews = [] }) {
   const router = useRouter();
   const todayStr = new Date().toISOString().slice(0, 10);
   const dateLabel = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -138,6 +132,7 @@ export default function DailyGoldEdition({ initialEdition = null, initialDates =
 
   const [edition, setEdition] = useState(initial.edition);
   const [people, setPeople] = useState(initialPeople);
+  const [goodNews, setGoodNews] = useState(initialGoodNews);
   const [rawPost, setRawPost] = useState(initial.rawPost);
   const [user, setUser] = useState(null);
   const [child, setChild] = useState(null);
@@ -195,6 +190,10 @@ export default function DailyGoldEdition({ initialEdition = null, initialDates =
     getPeopleForDate(record.edition_date)
       .then(setPeople)
       .catch(() => setPeople([]));
+    // Good News lives in its own table, keyed by the exact date.
+    getGoodNewsForDate(record.edition_date)
+      .then(setGoodNews)
+      .catch(() => setGoodNews([]));
   };
 
   const handleFlagEarn = useCallback(async (countryName, countryCode, source) => {
@@ -397,7 +396,7 @@ export default function DailyGoldEdition({ initialEdition = null, initialDates =
           borderBottom: '1px solid rgba(201,169,110,0.10)',
           alignItems: 'start',
         }}>
-          <DGGoodNews items={edition.good_news || []} onTrack={trackInteraction} child={child} editionDate={viewedDate} />
+          <DGGoodNews items={goodNews} onTrack={trackInteraction} child={child} editionDate={viewedDate} />
           <DGOnThisDay events={edition.on_this_day || []} editionId={edition.id || null} onTrack={trackInteraction} onFlagEarned={handleFlagEarn} child={child} editionDate={viewedDate} />
           <DGGreatestMoments moments={edition.greatest_moments || []} editionDate={viewedDate} />
         </div>

@@ -1,5 +1,5 @@
 import DailyGoldEditionPage from '@/components/dailygold/DailyGoldEditionPage';
-import { getInitialEdition, getEditionDates, getPeopleForDate } from './actions';
+import { getInitialEdition, getEditionDates, getPeopleForDate, getGoodNewsForDate } from './actions';
 
 export const metadata = { title: 'Daily Gold Edition' };
 
@@ -13,17 +13,22 @@ export default async function Page() {
     getInitialEdition(todayStr),
     getEditionDates(),
   ]);
-  // Born Today follows the edition being viewed (which may be the latest
-  // edition rather than today's), keyed by its month-day.
-  const initialPeople = initialEdition
-    ? await getPeopleForDate(initialEdition.edition_date)
-    : [];
+  // Born Today and Good News follow the edition being viewed (which may be
+  // the latest edition rather than today's) — people by its month-day, news
+  // by the exact date.
+  const [initialPeople, initialGoodNews] = initialEdition
+    ? await Promise.all([
+        getPeopleForDate(initialEdition.edition_date),
+        getGoodNewsForDate(initialEdition.edition_date),
+      ])
+    : [[], []];
 
   return (
     <DailyGoldEditionPage
       initialEdition={initialEdition}
       initialDates={initialDates}
       initialPeople={initialPeople}
+      initialGoodNews={initialGoodNews}
     />
   );
 }

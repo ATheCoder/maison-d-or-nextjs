@@ -81,7 +81,7 @@ function NewsCard({ item, index, onTrack, onClick, child, editionDate }) {
           {item.headline}
         </h3>
         <p style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.85rem', color: theme.textBody, margin: 0, lineHeight: 1.75 }}>
-          {item.story}
+          {item.description}
         </p>
       </div>
     </div>
@@ -165,22 +165,12 @@ function NewsModal({ item, onClose }) {
 
           <div style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.95rem', color: theme.textBody, lineHeight: 1.9, marginBottom: '1.5rem' }}>
             {(() => {
-              const storyText = item.description || item.story || item.raw_summary;
-              if (!storyText) return <p style={{ color: theme.textMuted }}>Story content coming soon...</p>;
-              return storyText.split('\n\n').map((para, i) => (
+              if (!item.description) return <p style={{ color: theme.textMuted }}>Story content coming soon...</p>;
+              return item.description.split('\n\n').map((para, i) => (
                 <p key={i} style={{ margin: '0 0 1rem' }}>{para}</p>
               ));
             })()}
           </div>
-
-          {item.mood && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingTop: '1rem', borderTop: `1px solid ${theme.accentGold}15` }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: theme.accentGold }} />
-              <span style={{ fontFamily: theme.fontBody, fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: theme.accentGold }}>
-                {item.mood}
-              </span>
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -242,7 +232,7 @@ export default function DGGoodNews({ items = [], onTrack, child, editionDate }) 
                   itemImageUrl={primaryImg}
                   countryCode=""
                   countryName={primary.location || ''}
-                  themeTags={[(primary.mood || 'hope').toLowerCase()]}
+                  themeTags={['hope']}
                   editionDate={editionDate}
                   size="sm"
                 />
@@ -251,7 +241,7 @@ export default function DGGoodNews({ items = [], onTrack, child, editionDate }) 
                 {primary.headline}
               </h3>
               <p style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.82rem', color: theme.textBody, margin: 0, lineHeight: 1.7 }}>
-                {((primary.description || primary.story) || '').split('.').slice(0, 2).join('.').trim() + '.'}
+                {(primary.description || '').split('.').slice(0, 2).join('.').trim() + '.'}
               </p>
             </div>
           </div>
@@ -287,9 +277,9 @@ export default function DGGoodNews({ items = [], onTrack, child, editionDate }) 
               <p style={{ fontFamily: theme.fontBody, fontSize: '0.8rem', fontWeight: 500, color: theme.textHeadline, margin: '0 0 0.2rem', lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                 {item.headline}
               </p>
-              {(item.description || item.story) && (
+              {item.description && (
                 <p style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.72rem', color: theme.textBody, margin: 0, lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
-                  {(item.description || item.story).split('.')[0].trim() + '.'}
+                  {item.description.split('.')[0].trim() + '.'}
                 </p>
               )}
             </div>
