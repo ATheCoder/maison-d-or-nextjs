@@ -7,11 +7,12 @@
  *
  * Requires BETTER_AUTH_SECRET (and BETTER_AUTH_URL in production) in the env.
  */
+import { randomUUID } from 'node:crypto';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
 import { db } from '@/src/db';
-import { user, session, account, verification } from '@/src/db/schema';
+import { user, session, account, verification, family } from '@/src/db/schema';
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -32,6 +33,30 @@ export const auth = betterAuth({
         type: 'string',
         defaultValue: 'guardian',
         input: false,
+      },
+      // Set by the databaseHooks below at signup, re-pointed when an invite
+      // is accepted. Never client-writable.
+      familyId: {
+        type: 'string',
+        required: false,
+        input: false,
+      },
+    },
+  },
+
+  databaseHooks: {
+    user: {
+      create: {
+        // Guardian signup creates user + family in one step (auth-plan §6):
+        // the family row is inserted first and its id lands on the user row
+        // itself, so a guardian can never exist without a family.
+        before: async (newUser) => {
+          if ((newUser as { role?: string }).role === 'admin') return;
+          const familyId = randomUUID();
+          const firstName = newUser.name?.trim().split(/\s+/)[0] || 'New';
+          await db.insert(family).values({ id: familyId, name: `${firstName}'s Family` });
+          return { data: { ...newUser, familyId } };
+        },
       },
     },
   },

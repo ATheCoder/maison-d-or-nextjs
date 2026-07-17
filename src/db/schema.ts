@@ -8,6 +8,16 @@ import { pgTable, pgEnum, serial, integer, boolean, text, date, timestamp, jsonb
 
 export const userRole = pgEnum('user_role', ['admin', 'guardian']);
 
+// A household: many guardians, many child profiles (phase 3). Created
+// automatically when a guardian signs up (databaseHooks in lib/auth.ts), so
+// every guardian always belongs to exactly one family.
+export const family = pgTable('family', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -15,6 +25,9 @@ export const user = pgTable('user', {
   emailVerified: boolean('email_verified').notNull().default(false),
   image: text('image'),
   role: userRole('role').notNull().default('guardian'),
+  // Null for admins; guardians always have one (set by the signup hook, or
+  // re-pointed when an invite is accepted).
+  familyId: text('family_id').references(() => family.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -54,6 +67,27 @@ export const account = pgTable('account', {
 }, (t) => [
   index('account_user_id_idx').on(t.userId),
 ]);
+
+// A pending invitation for a co-guardian to join a family. The raw token is
+// the emailed secret and exists only in the invite URL — the row stores its
+// SHA-256. One live invite per (family, email); re-inviting rotates the
+// token.
+export const familyInvite = pgTable('family_invite', {
+  id: text('id').primaryKey(),
+  familyId: text('family_id').notNull().references(() => family.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(),
+  tokenHash: text('token_hash').notNull().unique(),
+  // All invites are guardians today; kept for forward compatibility.
+  role: userRole('role').notNull().default('guardian'),
+  invitedBy: text('invited_by').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('family_invite_family_email_idx').on(t.familyId, t.email),
+]);
+
+export type FamilyRow = typeof family.$inferSelect;
+export type FamilyInviteRow = typeof familyInvite.$inferSelect;
 
 // Email verification and password reset tokens.
 export const verification = pgTable('verification', {

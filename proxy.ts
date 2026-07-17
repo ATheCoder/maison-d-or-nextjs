@@ -10,7 +10,7 @@ export function proxy(request: NextRequest) {
   const hasSessionCookie = !!getSessionCookie(request);
   const { pathname } = request.nextUrl;
 
-  if (!hasSessionCookie && pathname.startsWith('/admin')) {
+  if (!hasSessionCookie && (pathname.startsWith('/admin') || pathname.startsWith('/family'))) {
     const url = new URL('/login', request.url);
     url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
@@ -24,5 +24,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/login', '/signup'],
+  matcher: ['/admin/:path*', '/family/:path*', '/login', '/signup'],
 };

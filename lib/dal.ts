@@ -9,7 +9,10 @@ import 'server-only';
 import { cache } from 'react';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { eq } from 'drizzle-orm';
 import { auth, type Session } from '@/lib/auth';
+import { db } from '@/src/db';
+import { family, type FamilyRow } from '@/src/db/schema';
 
 /** The current session (or null), read once per request. */
 export const getSession = cache(async (): Promise<Session | null> => {
@@ -35,4 +38,19 @@ export async function requireGuardian(): Promise<Session> {
   const session = await requireUser();
   if (session.user.role !== 'guardian') redirect('/admin');
   return session;
+}
+
+/**
+ * A guardian plus their family row. The signup hook guarantees every
+ * guardian has one; a missing row would mean tampered data, so it fails
+ * closed to /login.
+ */
+export async function requireFamily(): Promise<{ session: Session; family: FamilyRow }> {
+  const session = await requireGuardian();
+  const familyId = session.user.familyId;
+  const rows = familyId
+    ? await db.select().from(family).where(eq(family.id, familyId)).limit(1)
+    : [];
+  if (!rows[0]) redirect('/login');
+  return { session, family: rows[0] };
 }
