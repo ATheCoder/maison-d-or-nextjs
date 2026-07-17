@@ -66,6 +66,15 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 30,
     updateAge: 60 * 60 * 24,
+    additionalFields: {
+      // Child mode (auth-plan §4). Written only by app/profiles/actions.ts
+      // after PIN verification — never by the client (input: false).
+      activeChildProfileId: {
+        type: 'string',
+        required: false,
+        input: false,
+      },
+    },
   },
 
   // Lets server actions set the session cookie (must stay the last plugin).

@@ -10,19 +10,20 @@ export function proxy(request: NextRequest) {
   const hasSessionCookie = !!getSessionCookie(request);
   const { pathname } = request.nextUrl;
 
-  if (!hasSessionCookie && (pathname.startsWith('/admin') || pathname.startsWith('/family'))) {
+  const protectedPath = ['/admin', '/family', '/profiles', '/gate'].some((p) => pathname.startsWith(p));
+  if (!hasSessionCookie && protectedPath) {
     const url = new URL('/login', request.url);
     url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
   }
 
   if (hasSessionCookie && (pathname === '/login' || pathname === '/signup')) {
-    return NextResponse.redirect(new URL('/daily-gold-edition', request.url));
+    return NextResponse.redirect(new URL('/profiles', request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/family/:path*', '/login', '/signup'],
+  matcher: ['/admin/:path*', '/family/:path*', '/profiles/:path*', '/gate', '/login', '/signup'],
 };

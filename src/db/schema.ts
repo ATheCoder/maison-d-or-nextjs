@@ -28,16 +28,45 @@ export const user = pgTable('user', {
   // Null for admins; guardians always have one (set by the signup hook, or
   // re-pointed when an invite is accepted).
   familyId: text('family_id').references(() => family.id),
+  // Guardian PIN for the grown-up gate (scrypt hash; null until set). Not a
+  // Better Auth field — never leaves the server.
+  pinHash: text('pin_hash'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-// DB-backed sessions (no JWTs — see docs/auth-plan.md §1). The active child
-// profile lands on this table in phase 3.
+// A child in a family — a profile, never an account (auth-plan §1). Minimal
+// PII by design: nickname, birth year, preset avatar key. The optional PIN
+// is a sibling lock (auth-plan §4): scrypt-hashed and attempt-throttled, with
+// the guardian PIN/password as the override.
+export const childProfile = pgTable('child_profile', {
+  id: text('id').primaryKey(),
+  familyId: text('family_id').notNull().references(() => family.id, { onDelete: 'cascade' }),
+  displayName: text('display_name').notNull(),
+  // Age 5–17 at creation, enforced in the server action.
+  birthYear: integer('birth_year').notNull(),
+  // Key into AVATARS (lib/avatars.ts).
+  avatar: text('avatar').notNull().default('sun'),
+  pinHash: text('pin_hash'),
+  pinAttempts: integer('pin_attempts').notNull().default(0),
+  pinLockedUntil: timestamp('pin_locked_until', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('child_profile_family_id_idx').on(t.familyId),
+]);
+
+export type ChildProfileRow = typeof childProfile.$inferSelect;
+
+// DB-backed sessions (no JWTs — see docs/auth-plan.md §1). Child mode is the
+// active_child_profile_id: set server-side only, after PIN verification when
+// the profile has one, and revocable instantly by clearing it.
 export const session = pgTable('session', {
   id: text('id').primaryKey(),
   token: text('token').notNull().unique(),
   userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  activeChildProfileId: text('active_child_profile_id')
+    .references(() => childProfile.id, { onDelete: 'set null' }),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),

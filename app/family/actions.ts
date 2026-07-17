@@ -9,9 +9,12 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { and, eq, ne } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { hashPassword } from 'better-auth/crypto';
 import { db } from '@/src/db';
-import { family, familyInvite, user } from '@/src/db/schema';
+import { family, familyInvite, user, childProfile } from '@/src/db/schema';
 import { getSession, requireFamily } from '@/lib/dal';
+import { verifyGuardianCredential } from '@/lib/guardian-credential';
+import { isAvatarKey } from '@/lib/avatars';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -27,23 +30,131 @@ export type FamilyOverview = {
   name: string;
   members: { id: string; name: string; email: string; isSelf: boolean }[];
   invites: { id: string; email: string; expiresAt: string }[];
+  children: { id: string; displayName: string; birthYear: number; avatar: string; hasPin: boolean }[];
+  guardianHasPin: boolean;
 };
 
 /** Everything the /family page shows, scoped to the caller's family. */
 export async function getFamilyOverview(): Promise<FamilyOverview> {
   const { session, family: fam } = await requireFamily();
-  const [members, invites] = await Promise.all([
+  const [members, invites, children, selfRows] = await Promise.all([
     db.select({ id: user.id, name: user.name, email: user.email })
       .from(user).where(eq(user.familyId, fam.id)).orderBy(user.createdAt),
     db.select({ id: familyInvite.id, email: familyInvite.email, expiresAt: familyInvite.expiresAt })
       .from(familyInvite).where(eq(familyInvite.familyId, fam.id)).orderBy(familyInvite.createdAt),
+    db.select().from(childProfile).where(eq(childProfile.familyId, fam.id)).orderBy(childProfile.createdAt),
+    db.select({ pinHash: user.pinHash }).from(user).where(eq(user.id, session.user.id)).limit(1),
   ]);
   return {
     id: fam.id,
     name: fam.name,
     members: members.map((m) => ({ ...m, isSelf: m.id === session.user.id })),
     invites: invites.map((i) => ({ ...i, expiresAt: i.expiresAt.toISOString() })),
+    children: children.map((c) => ({
+      id: c.id,
+      displayName: c.displayName,
+      birthYear: c.birthYear,
+      avatar: c.avatar,
+      hasPin: c.pinHash != null,
+    })),
+    guardianHasPin: selfRows[0]?.pinHash != null,
   };
+}
+
+// ── Child profiles (auth-plan phase 3) ───────────────────────────────────────
+
+const MIN_AGE = 5;
+const MAX_AGE = 17;
+const validPin = (pin: unknown): pin is string => typeof pin === 'string' && /^\d{4}$/.test(pin);
+
+function validateChildInput(displayName: unknown, birthYear: unknown, avatar: unknown):
+  | { ok: true; displayName: string; birthYear: number; avatar: string }
+  | { ok: false; error: string } {
+  const name = typeof displayName === 'string' ? displayName.trim().slice(0, 40) : '';
+  if (name.length < 1) return { ok: false, error: 'Please give the profile a name.' };
+  const year = Number(birthYear);
+  const age = new Date().getFullYear() - year;
+  if (!Number.isInteger(year) || age < MIN_AGE || age > MAX_AGE) {
+    return { ok: false, error: `Children are ${MIN_AGE}–${MAX_AGE} years old.` };
+  }
+  if (!isAvatarKey(avatar)) return { ok: false, error: 'Please pick an avatar.' };
+  return { ok: true, displayName: name, birthYear: year, avatar };
+}
+
+export async function createChildProfile(input: { displayName: string; birthYear: number; avatar: string }):
+  Promise<{ ok: boolean; error?: string }> {
+  const { family: fam } = await requireFamily();
+  const v = validateChildInput(input?.displayName, input?.birthYear, input?.avatar);
+  if (!v.ok) return v;
+  await db.insert(childProfile).values({
+    id: randomUUID(),
+    familyId: fam.id,
+    displayName: v.displayName,
+    birthYear: v.birthYear,
+    avatar: v.avatar,
+  });
+  return { ok: true };
+}
+
+export async function updateChildProfile(profileId: string, input: { displayName: string; birthYear: number; avatar: string }):
+  Promise<{ ok: boolean; error?: string }> {
+  const { family: fam } = await requireFamily();
+  const v = validateChildInput(input?.displayName, input?.birthYear, input?.avatar);
+  if (!v.ok) return v;
+  await db.update(childProfile)
+    .set({ displayName: v.displayName, birthYear: v.birthYear, avatar: v.avatar, updatedAt: new Date() })
+    .where(and(eq(childProfile.id, String(profileId)), eq(childProfile.familyId, fam.id)));
+  return { ok: true };
+}
+
+export async function deleteChildProfile(profileId: string): Promise<{ ok: boolean }> {
+  const { family: fam } = await requireFamily();
+  // Scoped delete; sessions pointing here go to null via ON DELETE SET NULL.
+  await db.delete(childProfile)
+    .where(and(eq(childProfile.id, String(profileId)), eq(childProfile.familyId, fam.id)));
+  return { ok: true };
+}
+
+/** Set or change a child's PIN; also clears any lockout. */
+export async function setChildPin(profileId: string, pin: string): Promise<{ ok: boolean; error?: string }> {
+  const { family: fam } = await requireFamily();
+  if (!validPin(pin)) return { ok: false, error: 'The PIN must be exactly 4 digits.' };
+  const pinHash = await hashPassword(pin);
+  await db.update(childProfile)
+    .set({ pinHash, pinAttempts: 0, pinLockedUntil: null, updatedAt: new Date() })
+    .where(and(eq(childProfile.id, String(profileId)), eq(childProfile.familyId, fam.id)));
+  return { ok: true };
+}
+
+export async function removeChildPin(profileId: string): Promise<{ ok: boolean }> {
+  const { family: fam } = await requireFamily();
+  await db.update(childProfile)
+    .set({ pinHash: null, pinAttempts: 0, pinLockedUntil: null, updatedAt: new Date() })
+    .where(and(eq(childProfile.id, String(profileId)), eq(childProfile.familyId, fam.id)));
+  return { ok: true };
+}
+
+// ── Guardian PIN (grown-up gate credential) ──────────────────────────────────
+
+/** Set or change the guardian's own gate PIN; requires their password. */
+export async function setGuardianPin(pin: string, password: string): Promise<{ ok: boolean; error?: string }> {
+  const { session } = await requireFamily();
+  if (!validPin(pin)) return { ok: false, error: 'The PIN must be exactly 4 digits.' };
+  if (typeof password !== 'string' || !(await verifyGuardianCredential(session.user.id, password)) || /^\d{4}$/.test(password)) {
+    return { ok: false, error: 'Your password is incorrect.' };
+  }
+  const pinHash = await hashPassword(pin);
+  await db.update(user).set({ pinHash, updatedAt: new Date() }).where(eq(user.id, session.user.id));
+  return { ok: true };
+}
+
+export async function removeGuardianPin(password: string): Promise<{ ok: boolean; error?: string }> {
+  const { session } = await requireFamily();
+  if (typeof password !== 'string' || /^\d{4}$/.test(password) || !(await verifyGuardianCredential(session.user.id, password))) {
+    return { ok: false, error: 'Your password is incorrect.' };
+  }
+  await db.update(user).set({ pinHash: null, updatedAt: new Date() }).where(eq(user.id, session.user.id));
+  return { ok: true };
 }
 
 export async function renameFamily(name: string): Promise<{ ok: boolean; error?: string }> {
@@ -137,10 +248,15 @@ export async function acceptInvite(token: string): Promise<{ ok: boolean; error?
     return { ok: true };
   }
   if (currentFamilyId) {
-    const others = await db.select({ id: user.id }).from(user)
-      .where(and(eq(user.familyId, currentFamilyId), ne(user.id, session.user.id))).limit(1);
-    // TODO(phase 3): also block when the current family has child profiles.
-    if (others[0]) return { ok: false, error: 'You already belong to a family with other members.' };
+    const [others, children] = await Promise.all([
+      db.select({ id: user.id }).from(user)
+        .where(and(eq(user.familyId, currentFamilyId), ne(user.id, session.user.id))).limit(1),
+      db.select({ id: childProfile.id }).from(childProfile)
+        .where(eq(childProfile.familyId, currentFamilyId)).limit(1),
+    ]);
+    if (others[0] || children[0]) {
+      return { ok: false, error: 'You already belong to a family with other members or child profiles.' };
+    }
   }
 
   await db.transaction(async (tx) => {

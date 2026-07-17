@@ -69,11 +69,11 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
       return;
     }
 
-    // Admins land on /admin, guardians on the daily edition (the profile
-    // picker takes this place in phase 3). `next` wins when present.
+    // Admins land on /admin, guardians on the profile picker. `next` wins
+    // when present (e.g. an invite link).
     const role = 'user' in result.data ? (result.data.user as { role?: string }).role : undefined;
     const next = searchParams.get('next');
-    router.push(next || (role === 'admin' ? '/admin' : '/daily-gold-edition'));
+    router.push(next || (role === 'admin' ? '/admin' : '/profiles'));
     router.refresh();
   }
 
