@@ -64,6 +64,20 @@
       "when": 1784285391231,
       "tag": "0008_warm_fenris",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784286359878,
+      "tag": "0009_flawless_zuras",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784286616745,
+      "tag": "0010_ordinary_wallow",
+      "breakpoints": true
     }
   ]
 }

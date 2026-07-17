@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, serial, integer, text, date, timestamp, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, pgEnum, serial, integer, boolean, text, date, timestamp, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -9,9 +9,9 @@ export const users = pgTable('users', {
 
 // ── DailyGoldEdition ──────────────────────────────────────────────────────────
 // Mirrors the Base44 "DailyGoldEdition" entity. Scalar fields become columns;
-// the nested repeated groups (on_this_day, greatest_moments) are stored as
-// typed JSONB. Born Today people live in remarkable_person, keyed by their
-// birth date's month-day rather than per-edition; Good News stories live in
+// the nested repeated group (greatest_moments) is stored as typed JSONB.
+// Born Today people live in remarkable_person and On This Day events in
+// on_this_day_event, both keyed by month-day; Good News stories live in
 // good_news_item, keyed by their calendar date.
 
 export type Chapter = {
@@ -39,18 +39,6 @@ export type TimelineEntry = {
 export type Lesson = {
   icon_name?: string;
   lesson?: string;
-};
-
-export type OnThisDayItem = {
-  year?: string;
-  headline?: string;
-  story?: string;
-  location?: string;
-  image_url?: string | null;
-  maison_rewrite_done?: boolean;
-  researched_from_internet?: boolean;
-  raw_text?: string;
-  raw_extract?: string;
 };
 
 export type GreatestMoment = {
@@ -151,6 +139,48 @@ export const goodNewsItem = pgTable('good_news_item', {
 export type GoodNewsItemRow = typeof goodNewsItem.$inferSelect;
 export type NewGoodNewsItem = typeof goodNewsItem.$inferInsert;
 
+// ── OnThisDayEvent ───────────────────────────────────────────────────────────
+// The "On This Day" historical events, extracted out of
+// daily_gold_edition.on_this_day. Recurring content like remarkable_person:
+// an event from a given year belongs to its month-day every year. Most rows
+// are un-enriched stubs (only year + raw_text/raw_extract, the source
+// material the enrichment pipeline consumes); enriched rows carry the
+// child-friendly headline/story and maison_rewrite_done = true.
+
+export const onThisDayEvent = pgTable('on_this_day_event', {
+  id: serial('id').primaryKey(),
+
+  // 'MM-DD' — the recurrence key.
+  monthDay: text('month_day').notNull(),
+  // Order within the day's list. (month_day, year) is NOT unique — some days
+  // have two events in the same year — so position is the backfill key.
+  position: integer('position').notNull().default(0),
+  // All-numeric in the data (53–2026); drives the year navigator.
+  year: integer('year').notNull(),
+
+  headline: text('headline'),
+  story: text('story'),
+  location: text('location'),
+  imageUrl: text('image_url'),
+
+  maisonRewriteDone: boolean('maison_rewrite_done').notNull().default(false),
+  researchedFromInternet: boolean('researched_from_internet').notNull().default(false),
+  rawText: text('raw_text'),
+  rawExtract: text('raw_extract'),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('on_this_day_event_month_day_idx').on(t.monthDay),
+  // The per-year lookup the frontend's year navigator uses.
+  index('on_this_day_event_month_day_year_idx').on(t.monthDay, t.year),
+  // Lets the backfill upsert on (month_day, position), so re-runs are idempotent.
+  uniqueIndex('on_this_day_event_month_day_position_idx').on(t.monthDay, t.position),
+]);
+
+export type OnThisDayEventRow = typeof onThisDayEvent.$inferSelect;
+export type NewOnThisDayEvent = typeof onThisDayEvent.$inferInsert;
+
 export const dgStatus = pgEnum('dg_status', ['generating', 'ready', 'fallback']);
 
 export const dailyGoldEdition = pgTable('daily_gold_edition', {
@@ -172,7 +202,6 @@ export const dailyGoldEdition = pgTable('daily_gold_edition', {
   tinyPhraseLanguage: text('tiny_phrase_language'),
   tinyPhraseTranslation: text('tiny_phrase_translation'),
 
-  onThisDay: jsonb('on_this_day').$type<OnThisDayItem[]>().notNull().default([]),
   greatestMoments: jsonb('greatest_moments').$type<GreatestMoment[]>().notNull().default([]),
 
   generatedAt: timestamp('generated_at', { withTimezone: true }),

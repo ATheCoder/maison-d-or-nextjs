@@ -1,7 +1,8 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useTheme } from '@/components/theme/ThemeContext';
+import { saveEnrichedEvent } from '@/app/daily-gold-edition/actions';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
 
 // Location string → ISO2 (best-effort for On This Day locations)
@@ -88,13 +89,24 @@ function YearSeal({ direction, disabled, onPress, pressing }) {
   );
 }
 
-export default function DGOnThisDay({ events = [], editionId, onTrack, onFlagEarned }) {
+export default function DGOnThisDay({ events = [], editionId, editionDate, onTrack, onFlagEarned }) {
   const { theme } = useTheme();
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [pressingYear, setPressingYear] = useState(null); // 'back' | 'forward' | null
   const [loading, setLoading] = useState(false);
   const [enrichedEvents, setEnrichedEvents] = useState({});
   const [researchedEvents, setResearchedEvents] = useState({});
+
+  // Events from the on_this_day_event table, keyed by year. Already-enriched
+  // years render straight from here with no Base44 roundtrip; un-enriched
+  // stubs still go through enrichHistoricalEvent below.
+  const byYear = useMemo(() => {
+    const m = {};
+    for (const ev of events) {
+      if (ev?.maison_rewrite_done && ev.headline && ev.story && m[ev.year] == null) m[ev.year] = ev;
+    }
+    return m;
+  }, [events]);
 
   // Reset year and cache whenever the edition changes (new calendar day selected)
   useEffect(() => {
@@ -126,7 +138,7 @@ export default function DGOnThisDay({ events = [], editionId, onTrack, onFlagEar
 
   // Research/enrich event on first view (lazy loading)
   const researchEvent = useCallback(async (year) => {
-    if (!year || !editionId || enrichedEvents[year] || researchedEvents[year]) return;
+    if (!year || !editionId || byYear[year] || enrichedEvents[year] || researchedEvents[year]) return;
 
     setLoading(true);
     try {
@@ -148,35 +160,46 @@ export default function DGOnThisDay({ events = [], editionId, onTrack, onFlagEar
         if (res.data.was_researched) {
           setResearchedEvents(prev => ({ ...prev, [year]: true }));
         }
+        // Write-through: persist the enrichment in our own table so it isn't
+        // stranded in Base44 (the server rescues the image to R2).
+        if (editionDate) {
+          saveEnrichedEvent(editionDate, year, {
+            headline: res.data.headline,
+            story: res.data.story,
+            location: res.data.location,
+            image_url: res.data.image_url,
+            researched: !!res.data.was_researched,
+          }).catch(() => {});
+        }
       }
     } catch (err) {
       console.warn(`Failed to research year ${year}:`, err.message);
     } finally {
       setLoading(false);
     }
-  }, [editionId, enrichedEvents, researchedEvents]);
+  }, [editionId, editionDate, byYear, enrichedEvents, researchedEvents]);
 
   // Research current year when it changes
   useEffect(() => {
-    if (currentYear && !enrichedEvents[currentYear]) {
+    if (currentYear && !byYear[currentYear] && !enrichedEvents[currentYear]) {
       researchEvent(currentYear);
     }
-  }, [currentYear, enrichedEvents, researchEvent]);
+  }, [currentYear, byYear, enrichedEvents, researchEvent]);
 
   // Trigger flag earn when enriched event loads with a location
   const earnedYears = useRef(new Set());
   useEffect(() => {
-    const data = enrichedEvents[currentYear];
+    const data = byYear[currentYear] || enrichedEvents[currentYear];
     if (!data?.location || earnedYears.current.has(currentYear)) return;
     const iso2 = getLocationIso2(data.location);
     if (iso2) {
       earnedYears.current.add(currentYear);
       onFlagEarned?.(data.location, iso2, 'on_this_day');
     }
-  }, [enrichedEvents, currentYear]);
+  }, [byYear, enrichedEvents, currentYear]);
 
   // Get enriched data for current year
-  const enrichedData = enrichedEvents[currentYear] || {};
+  const enrichedData = byYear[currentYear] || enrichedEvents[currentYear] || {};
   const displayHeadline = enrichedData.headline;
   const displayStory = enrichedData.story;
   const displayImage = enrichedData.image_url;

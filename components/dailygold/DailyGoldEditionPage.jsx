@@ -19,7 +19,7 @@ import FlagSealCelebration from '@/components/dailygold/FlagSealCelebration';
 import FlagCollectionView from '@/components/dailygold/FlagCollectionView';
 import ChildGreetingStrip from '@/components/dailygold/ChildGreetingStrip';
 import { ThemeProvider } from '@/components/theme/ThemeContext';
-import { getPeopleForDate, getGoodNewsForDate } from '@/app/daily-gold-edition/actions';
+import { getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate } from '@/app/daily-gold-edition/actions';
 
 /**
  * PAGE — /daily-gold-edition
@@ -53,11 +53,6 @@ const C = {
 
 const SAMPLE_EDITION = {
   editorial_opening: "Every day holds a little gold. Today, let's wander through good news, remarkable lives, hidden corners of history, and a faraway place waiting to be discovered.",
-  on_this_day: [
-    { year: "1969", headline: "Humans Walk on the Moon", story: "Apollo 11 landed on the lunar surface, and Neil Armstrong became the first human to step onto another world.", significance: "First time humans set foot on another celestial body" },
-    { year: "1928", headline: "Alexander Fleming Discovers Penicillin", story: "Returning from vacation, Fleming noticed that mold had killed bacteria in his petri dishes. This accidental observation led to the first antibiotic.", significance: "Discovery that launched the antibiotic revolution" },
-    { year: "1963", headline: "Martin Luther King Jr. Delivers 'I Have a Dream'", story: "Speaking from the steps of the Lincoln Memorial, King shared his vision of equality and justice with over 250,000 people.", significance: "Defining moment of the Civil Rights Movement" },
-  ],
   destination: {
     name: "Kyoto, Japan",
     tagline: "Where ancient traditions meet quiet beauty",
@@ -92,7 +87,6 @@ function mapRecord(record) {
     id: record.id,
     date: record.edition_date,
     destination_name: record.destination_country,
-    on_this_day: record.on_this_day || [],
     greatest_moments: record.greatest_moments || [],
     destination: {
       name: record.destination_country,
@@ -118,9 +112,9 @@ function mapRecord(record) {
 }
 
 /**
- * @param {{ initialEdition?: any, initialDates?: string[], initialPeople?: any[], initialGoodNews?: any[] }} props
+ * @param {{ initialEdition?: any, initialDates?: string[], initialPeople?: any[], initialGoodNews?: any[], initialOnThisDay?: any[] }} props
  */
-export default function DailyGoldEdition({ initialEdition = null, initialDates = [], initialPeople = [], initialGoodNews = [] }) {
+export default function DailyGoldEdition({ initialEdition = null, initialDates = [], initialPeople = [], initialGoodNews = [], initialOnThisDay = [] }) {
   const router = useRouter();
   const todayStr = new Date().toISOString().slice(0, 10);
   const dateLabel = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -133,6 +127,7 @@ export default function DailyGoldEdition({ initialEdition = null, initialDates =
   const [edition, setEdition] = useState(initial.edition);
   const [people, setPeople] = useState(initialPeople);
   const [goodNews, setGoodNews] = useState(initialGoodNews);
+  const [onThisDay, setOnThisDay] = useState(initialOnThisDay);
   const [rawPost, setRawPost] = useState(initial.rawPost);
   const [user, setUser] = useState(null);
   const [child, setChild] = useState(null);
@@ -194,6 +189,10 @@ export default function DailyGoldEdition({ initialEdition = null, initialDates =
     getGoodNewsForDate(record.edition_date)
       .then(setGoodNews)
       .catch(() => setGoodNews([]));
+    // On This Day lives in its own table, keyed by the month-day.
+    getOnThisDayForDate(record.edition_date)
+      .then(setOnThisDay)
+      .catch(() => setOnThisDay([]));
   };
 
   const handleFlagEarn = useCallback(async (countryName, countryCode, source) => {
@@ -397,7 +396,7 @@ export default function DailyGoldEdition({ initialEdition = null, initialDates =
           alignItems: 'start',
         }}>
           <DGGoodNews items={goodNews} onTrack={trackInteraction} child={child} editionDate={viewedDate} />
-          <DGOnThisDay events={edition.on_this_day || []} editionId={edition.id || null} onTrack={trackInteraction} onFlagEarned={handleFlagEarn} child={child} editionDate={viewedDate} />
+          <DGOnThisDay events={onThisDay} editionId={edition.id || null} onTrack={trackInteraction} onFlagEarned={handleFlagEarn} child={child} editionDate={viewedDate} />
           <DGGreatestMoments moments={edition.greatest_moments || []} editionDate={viewedDate} />
         </div>
 
