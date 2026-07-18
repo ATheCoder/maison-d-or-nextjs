@@ -1,16 +1,18 @@
+import Link from 'next/link';
 import { requireAdmin } from '@/lib/dal';
 import SignOutButton from '@/components/auth/SignOutButton';
 
 export const metadata = { title: 'Admin — Maison d\'Oré' };
 export const dynamic = 'force-dynamic';
 
-// Stub shell (auth-plan phase 1). Content CRUD arrives in phase 4.
-const SECTIONS = [
-  'Remarkable people',
-  'Good news',
-  'On this day',
-  'Greatest moments',
-  'Editions',
+// Stub shell (auth-plan phase 1). Content CRUD arrives in phase 4; the
+// Remarkable people library is live (remarkable-person-editor phase 2).
+const SECTIONS: { title: string; href?: string; blurb: string }[] = [
+  { title: 'Remarkable people', href: '/admin/people', blurb: 'Browse, create and edit Born Today people.' },
+  { title: 'Good news', blurb: 'Content management arrives in phase 4.' },
+  { title: 'On this day', blurb: 'Content management arrives in phase 4.' },
+  { title: 'Greatest moments', blurb: 'Content management arrives in phase 4.' },
+  { title: 'Editions', blurb: 'Content management arrives in phase 4.' },
 ];
 
 export default async function AdminPage() {
@@ -36,22 +38,30 @@ export default async function AdminPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
-        {SECTIONS.map((s) => (
-          <div key={s} style={{
-            background: 'rgba(255,248,238,0.8)',
-            border: '1px solid rgba(201,169,110,0.25)',
-            borderRadius: 14,
-            padding: '1.5rem 1.25rem',
-            color: '#5C4A2A',
-          }}>
-            <h2 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontSize: '1.05rem', fontWeight: 600, margin: '0 0 0.4rem', color: '#241A0C' }}>
-              {s}
-            </h2>
-            <p style={{ fontSize: '0.78rem', margin: 0, color: '#8B7355' }}>
-              Content management arrives in phase 4.
-            </p>
-          </div>
-        ))}
+        {SECTIONS.map((s) => {
+          const live = Boolean(s.href);
+          const card = (
+            <div style={{
+              background: 'rgba(255,248,238,0.8)',
+              border: `1px solid ${live ? 'rgba(201,169,110,0.5)' : 'rgba(201,169,110,0.25)'}`,
+              borderRadius: 14,
+              padding: '1.5rem 1.25rem',
+              color: '#5C4A2A',
+              height: '100%',
+              boxSizing: 'border-box',
+            }}>
+              <h2 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontSize: '1.05rem', fontWeight: 600, margin: '0 0 0.4rem', color: '#241A0C' }}>
+                {s.title}
+              </h2>
+              <p style={{ fontSize: '0.78rem', margin: 0, color: '#8B7355' }}>
+                {s.blurb}
+              </p>
+            </div>
+          );
+          return s.href
+            ? <Link key={s.title} href={s.href} style={{ textDecoration: 'none' }}>{card}</Link>
+            : <div key={s.title}>{card}</div>;
+        })}
       </div>
     </div>
   );
