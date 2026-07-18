@@ -1,4 +1,5 @@
 import { pgTable, pgEnum, serial, integer, boolean, text, date, timestamp, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import type { Brief } from '@/lib/golden-story/brief';
 
 // ── Identity ─────────────────────────────────────────────────────────────────
 // Better Auth-managed tables (see docs/auth-plan.md §3). Only admins and
@@ -213,12 +214,85 @@ export const remarkablePerson = pgTable('remarkable_person', {
   treasures: jsonb('treasures').$type<Treasure[]>().notNull().default([]),
   lessons: jsonb('lessons').$type<Lesson[]>().notNull().default([]),
 
+  // Draft/Published gate for the editor. New rows start unpublished; public
+  // readers (getPersonBySlug, the Born Today query) filter on it, admin
+  // readers don't. The introducing migration backfills true for every existing
+  // row (they are live today).
+  published: boolean('published').notNull().default(false),
+
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
 export type RemarkablePersonRow = typeof remarkablePerson.$inferSelect;
 export type NewRemarkablePerson = typeof remarkablePerson.$inferInsert;
+
+// ── StoryBrief ───────────────────────────────────────────────────────────────
+// The writer's output for a person (lib/golden-story writeBrief), kept
+// alongside the person so scene text, the golden thread and the character
+// sheet survive editing and feed image-slot prompts. One row per person.
+
+// Per-slot override + source metadata, keyed by slot file (e.g. 'cover.png').
+// `fullPrompt` is the "Edit full prompt" escape hatch; `source`/`accepted`
+// record whether the live image was generated here or uploaded (screens ②/④).
+export type SlotOverride = {
+  fullPrompt?: string;
+  source?: 'generated' | 'uploaded';
+  accepted?: boolean;
+};
+
+export const storyBrief = pgTable('story_brief', {
+  slug: text('slug')
+    .primaryKey()
+    .references(() => remarkablePerson.slug, { onDelete: 'cascade' }),
+  brief: jsonb('brief').$type<Brief>(),
+  promptOverrides: jsonb('prompt_overrides').$type<Record<string, SlotOverride>>().notNull().default({}),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type StoryBriefRow = typeof storyBrief.$inferSelect;
+export type NewStoryBrief = typeof storyBrief.$inferInsert;
+
+// ── GenerationJob ────────────────────────────────────────────────────────────
+// A leave-and-return generation job: DB-backed row + in-process async runner +
+// client polling (no queue infra — single self-hosted admin). `progress`
+// mirrors screens ③ (staged brief writing) and ④ (per-slot image states);
+// `result` holds e.g. a rewrite proposal awaiting Accept.
+
+export const generationJobKind = pgEnum('generation_job_kind', ['brief', 'images', 'slot', 'rewrite']);
+export const generationJobState = pgEnum('generation_job_state', ['running', 'done', 'failed']);
+
+// Staged progress for a brief job; per-slot progress for image jobs.
+export type JobProgress = {
+  stages?: { key: string; label: string; state: 'pending' | 'active' | 'done' | 'failed' }[];
+  slots?: Record<string, { state: string; error?: string }>;
+};
+
+// A rewrite job's proposal (the field it targets and the proposed value).
+export type JobResult = {
+  fieldPath?: string;
+  proposal?: string;
+  [key: string]: unknown;
+};
+
+export const generationJob = pgTable('generation_job', {
+  id: serial('id').primaryKey(),
+  slug: text('slug')
+    .notNull()
+    .references(() => remarkablePerson.slug, { onDelete: 'cascade' }),
+  kind: generationJobKind('kind').notNull(),
+  state: generationJobState('state').notNull().default('running'),
+  progress: jsonb('progress').$type<JobProgress>().notNull().default({}),
+  result: jsonb('result').$type<JobResult>(),
+  error: text('error'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('generation_job_slug_idx').on(t.slug),
+]);
+
+export type GenerationJobRow = typeof generationJob.$inferSelect;
+export type NewGenerationJob = typeof generationJob.$inferInsert;
 
 // ── GoodNewsItem ─────────────────────────────────────────────────────────────
 // The "Good News of the Day" stories, extracted out of

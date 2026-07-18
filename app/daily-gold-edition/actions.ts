@@ -6,9 +6,10 @@
  * shape Base44 used to return), so no consumer mapping has to change.
  */
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
-import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { db } from '@/src/db';
+import { getS3 } from '@/lib/golden-story/storage';
 import {
   dailyGoldEdition,
   goodNewsItem,
@@ -155,7 +156,10 @@ export async function getPeopleForDate(date: string): Promise<PersonRecord[]> {
   const rows = await db
     .select()
     .from(remarkablePerson)
-    .where(sql`to_char(${remarkablePerson.birthDate}, 'MM-DD') = ${monthDay}`)
+    .where(and(
+      sql`to_char(${remarkablePerson.birthDate}, 'MM-DD') = ${monthDay}`,
+      eq(remarkablePerson.published, true),
+    ))
     .orderBy(asc(remarkablePerson.name))
     .limit(10);
   return rows.map(personToRecord);
@@ -216,23 +220,7 @@ export async function getGreatestMomentsForDate(date: string): Promise<GreatestM
 
 const R2_ENV = ['S3_API', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_DOMAIN'] as const;
 
-let s3Client: S3Client | null = null;
-function getS3() {
-  if (!s3Client) {
-    const endpointUrl = new URL(process.env.S3_API!);
-    s3Client = new S3Client({
-      region: 'auto',
-      endpoint: endpointUrl.origin,
-      forcePathStyle: true,
-      credentials: {
-        accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-      },
-    });
-  }
-  const bucket = new URL(process.env.S3_API!).pathname.replace(/^\/|\/$/g, '');
-  return { s3: s3Client, bucket };
-}
+// getS3() now lives in lib/golden-story/storage.ts (shared with the editor).
 
 // Download a Base44-hosted enrichment image, convert to WebP and store it at
 // history-media/<MM-DD>/year-<year>.webp (the year- prefix keeps it clear of
@@ -319,12 +307,12 @@ export async function saveEnrichedEvent(
   }
 }
 
-/** A single person by slug — the Golden Story page. */
+/** A single published person by slug — the public Golden Story page. */
 export async function getPersonBySlug(slug: string): Promise<PersonRecord | null> {
   const rows = await db
     .select()
     .from(remarkablePerson)
-    .where(eq(remarkablePerson.slug, slug))
+    .where(and(eq(remarkablePerson.slug, slug), eq(remarkablePerson.published, true)))
     .limit(1);
   return rows[0] ? personToRecord(rows[0]) : null;
 }
