@@ -159,6 +159,36 @@ export type ChatPrompt = {
   schema?: JsonSchema;
 };
 
+/**
+ * Run one short prompt (a rewrite or a suggestion) as a non-streamed chat
+ * completion, returning the assistant's text. These generations are small —
+ * well under undici's 5-minute headers timeout — so no SSE is needed here (the
+ * whole-book writeBrief streams because it is long). When the prompt carries a
+ * schema the model returns JSON matching it; otherwise it returns plain text.
+ */
+export async function runPrompt(prompt: ChatPrompt): Promise<string> {
+  const res = await fetch(`${OPENROUTER}/chat/completions`, {
+    method: 'POST',
+    headers: orHeaders(),
+    body: JSON.stringify({
+      model: WRITER_MODEL,
+      max_tokens: 4000,
+      messages: [
+        { role: 'system', content: prompt.system },
+        { role: 'user', content: prompt.user },
+      ],
+      ...(prompt.schema
+        ? { response_format: { type: 'json_schema', json_schema: { name: 'out', strict: true, schema: prompt.schema } } }
+        : {}),
+    }),
+  });
+  if (!res.ok) throw new Error(`openrouter ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const data = await res.json();
+  const text: string = data?.choices?.[0]?.message?.content ?? '';
+  if (!text) throw new Error('no text in model response');
+  return text;
+}
+
 // Schema for a person suggestion — a handful of candidates born on a month-day.
 export const SUGGESTIONS_SCHEMA = obj({
   suggestions: {
@@ -182,15 +212,23 @@ export function suggestPersons(monthDay: string, excludeNames: string[] = []): C
   };
 }
 
+// The context a rewrite needs — the spine (golden thread) and the art anchor
+// (character sheet), plus the person's name. A brief supplies all three, but a
+// manually-written person that was never generated has no brief, so only these
+// fields are required and the rest of Brief is optional.
+export type RewriteSeed = Pick<Brief, 'name' | 'golden_thread' | 'character_sheet'> & Partial<Brief>;
+
 /**
  * Rewrite one field of an existing brief in the house style, keeping the
  * golden thread and character sheet intact. `fieldPath` is a dotted path into
  * the brief (e.g. 'story_childhood', 'chapters.0.narrative',
  * 'chapters.2.scene'). The current value and its role are given as context;
- * the proposal is applied only on the editor's explicit Accept.
+ * the proposal is applied only on the editor's explicit Accept. Narrative
+ * fields live on the person (not the brief) and may have diverged from it, so
+ * the caller passes the live text via `currentOverride`.
  */
-export function rewriteField(brief: Brief, fieldPath: string): ChatPrompt {
-  const current = getFieldValue(brief, fieldPath);
+export function rewriteField(brief: RewriteSeed, fieldPath: string, currentOverride?: string): ChatPrompt {
+  const current = currentOverride ?? getFieldValue(brief as Brief, fieldPath);
   const isScene = fieldPath.endsWith('scene') || fieldPath.endsWith('_scene');
   const guidance = isScene
     ? `This is an image SUBJECT scene: 1-2 sentences, concrete nouns, one emotional moment, era-authentic detail, NO style words, no text in the scene. If the protagonist appears as a child, start with the character sheet sentence VERBATIM.`

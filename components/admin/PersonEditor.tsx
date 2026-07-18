@@ -7,16 +7,60 @@
  * with the rail. Phase 4 adds the per-section editors: cover identity (required
  * birth date, three-way death date), narrative fields with word-count chips,
  * the page_span/blend/fade layout pickers, chapter add/duplicate/delete +
- * drag-reorder, and timeline/treasures/lessons row editors. Image slots (the
- * cover-art card etc.) are still placeholders until Phase 6.
+ * drag-reorder, and timeline/treasures/lessons row editors. Phase 5 adds the AI
+ * writer (screen ③): the "Write with AI" panel with the whole-book generation
+ * job (staged progress, polled, autosave paused while it runs), per-narrative
+ * ✦ Rewrite with a CURRENT / AI-PROPOSES review, and the golden-thread /
+ * character-sheet panels. Image slots (the cover-art card etc.) are still
+ * placeholders until Phase 6.
  */
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import GoldenStory, { spreadCount } from '@/components/dailygold/GoldenStory';
-import { savePerson, setPublished as setPublishedAction, type EditorPerson } from '@/app/admin/people/actions';
-import type { Chapter } from '@/src/db/schema';
+import {
+  savePerson, setPublished as setPublishedAction,
+  getPersonForEditor, getStoryBrief, getPersonJobs,
+  generateBook, startRewrite, dismissJob, updateGoldenThread,
+  type EditorPerson,
+} from '@/app/admin/people/actions';
+import type { Chapter, GenerationJobRow } from '@/src/db/schema';
 import { deriveSections, type Section, type SectionStatus } from './personSections';
 import styles from './PersonEditor.module.css';
+
+// ── AI text generation (Phase 5) client types ────────────────────────────────
+
+// A per-field rewrite as the editor tracks it: running while the model drafts,
+// ready with a proposal to review, or failed. `jobId` is -1 only in the brief
+// window between kicking the job and learning its row id.
+type RewriteState = { jobId: number; status: 'running' | 'ready' | 'failed'; current?: string; proposal?: string; error?: string };
+
+// The rewrite controls threaded down to each narrative field.
+type RewriteApi = {
+  states: Record<string, RewriteState>;
+  busy: boolean; // a rewrite is already running (one at a time, server-guarded)
+  start: (fieldPath: string, current: string) => void;
+  accept: (fieldPath: string, value: string) => void;
+  reject: (fieldPath: string) => void;
+  tryAgain: (fieldPath: string, current: string) => void;
+};
+
+// Build the field→rewrite map from job rows: the field path comes from the
+// finished result, or from a running job's progress (so it is self-describing).
+function rewriteMapFromRows(rows: GenerationJobRow[]): Record<string, RewriteState> {
+  const map: Record<string, RewriteState> = {};
+  for (const r of rows) {
+    const fp = r.result?.fieldPath ?? r.progress?.fieldPath;
+    if (!fp) continue;
+    map[fp] = {
+      jobId: r.id,
+      status: r.state === 'running' ? 'running' : r.state === 'failed' ? 'failed' : 'ready',
+      current: r.result?.current,
+      proposal: r.result?.proposal,
+      error: r.error ?? undefined,
+    };
+  }
+  return map;
+}
 
 const FONT_LINK = 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Lato:wght@300;400;700&family=Great+Vibes&display=swap';
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -30,6 +74,7 @@ const DOT_CLASS: Record<SectionStatus, string> = {
 type ListKey = 'chapters' | 'timeline' | 'treasures' | 'lessons';
 
 type DraftAction =
+  | { type: 'replace'; value: EditorPerson }
   | { type: 'field'; key: keyof EditorPerson; value: unknown }
   | { type: 'chapterField'; index: number; key: string; value: unknown }
   | { type: 'objField'; key: 'modern' | 'after_treasures'; field: string; value: unknown }
@@ -67,6 +112,8 @@ function withList(state: EditorPerson, list: ListKey, next: unknown[]): EditorPe
 
 function draftReducer(state: EditorPerson, action: DraftAction): EditorPerson {
   switch (action.type) {
+    case 'replace':
+      return action.value;
     case 'field':
       return { ...state, [action.key]: action.value } as EditorPerson;
     case 'chapterField':
@@ -148,15 +195,31 @@ function TextField({ label, value, onChange, placeholder, serif }: {
   );
 }
 
-function NarrativeField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function NarrativeField({ label, value, onChange, fieldPath, rw }: {
+  label: string; value: string; onChange: (v: string) => void;
+  fieldPath?: string; rw?: RewriteApi;
+}) {
   const words = wordCount(value);
   const tone = words > 75 ? styles.chipRed : words > 70 ? styles.chipAmber : styles.chipInk;
   const chipText = words > 75 ? `Over the leaf · ${words} words` : words > 70 ? `Leaf nearly full · ${words} words` : `${words} words`;
+  const rewrite = fieldPath && rw ? rw.states[fieldPath] : undefined;
+  const canRewrite = !!(fieldPath && rw && value.trim());
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <Kick>{label}</Kick>
-        <span className={`${styles.chip} ${tone}`}>{chipText}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {fieldPath && rw && (
+            <button
+              className={`${styles.btn} ${styles.btnSm}`}
+              style={{ color: 'var(--gold-deep)', borderColor: 'var(--line2)' }}
+              disabled={!canRewrite || rw.busy || rewrite?.status === 'running'}
+              title={!value.trim() ? 'Write something first' : rw.busy ? 'Another rewrite is running' : 'Draft an alternative in the house style'}
+              onClick={() => rw.start(fieldPath, value)}
+            >✦ Rewrite</button>
+          )}
+          <span className={`${styles.chip} ${tone}`}>{chipText}</span>
+        </div>
       </div>
       <textarea
         className={styles.field}
@@ -167,6 +230,53 @@ function NarrativeField({ label, value, onChange }: { label: string; value: stri
       <div className={styles.muted} style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 11 }}>
         <span>Blank line = new stanza · single break = hard line</span>
         <span style={{ marginLeft: 'auto' }} className={styles.chipInk + ' ' + styles.chip}>House rule: 40–70 words · 6–9 per line</span>
+      </div>
+      {fieldPath && rw && rewrite && <RewriteReview fieldPath={fieldPath} rw={rw} rewrite={rewrite} liveValue={value} />}
+    </div>
+  );
+}
+
+// The CURRENT vs ✦ AI-PROPOSES review that appears under a field once a rewrite
+// is drafting or ready (screen ③'s "Rewrite one field"). Accept applies the
+// proposal to the draft; Reject discards it; Try again re-runs from the live text.
+function RewriteReview({ fieldPath, rw, rewrite, liveValue }: {
+  fieldPath: string; rw: RewriteApi; rewrite: RewriteState; liveValue: string;
+}) {
+  if (rewrite.status === 'running') {
+    return (
+      <div className={styles.callout} style={{ padding: '9px 12px', fontSize: 11.5, color: 'var(--brown)', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span className={`${styles.saveDot} ${styles.saveDotSaving}`} />
+        ✦ Drafting an alternative in the house style…
+      </div>
+    );
+  }
+  if (rewrite.status === 'failed') {
+    return (
+      <div className={styles.panel} style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, borderColor: 'rgba(181,83,58,.4)', background: 'rgba(181,83,58,.06)' }}>
+        <span style={{ fontSize: 11.5, color: 'var(--red)', flex: 1 }}>{rewrite.error ?? 'The rewrite failed.'}</span>
+        <button className={`${styles.btn} ${styles.btnSm}`} onClick={() => rw.tryAgain(fieldPath, liveValue)}>↻ Try again</button>
+        <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`} onClick={() => rw.reject(fieldPath)}>Dismiss</button>
+      </div>
+    );
+  }
+  const proposal = rewrite.proposal ?? '';
+  return (
+    <div className={styles.panel} style={{ padding: 14 }}>
+      <div className={styles.kick} style={{ color: 'var(--brown)', marginBottom: 10 }}>Rewrite · review the proposal</div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+          <div className={styles.muted} style={{ fontSize: 10.5, fontWeight: 700, marginBottom: 5 }}>CURRENT</div>
+          <div className={styles.field} style={{ padding: '11px 13px', fontSize: 12, lineHeight: 1.6, color: 'var(--brown)', minHeight: 92, whiteSpace: 'pre-wrap' }}>{rewrite.current ?? liveValue}</div>
+        </div>
+        <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, marginBottom: 5, color: 'var(--gold-deep)' }}>✦ AI PROPOSES</div>
+          <div className={styles.field} style={{ padding: '11px 13px', fontSize: 12, lineHeight: 1.6, color: 'var(--ink)', minHeight: 92, whiteSpace: 'pre-wrap', borderColor: 'var(--gold-deep)', background: 'var(--gold-soft)' }}>{proposal}</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 11, justifyContent: 'flex-end' }}>
+        <button className={`${styles.btn} ${styles.btnSm}`} onClick={() => rw.reject(fieldPath)}>✕ Reject</button>
+        <button className={`${styles.btn} ${styles.btnSm}`} onClick={() => rw.tryAgain(fieldPath, liveValue)}>↻ Try again</button>
+        <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGold}`} onClick={() => rw.accept(fieldPath, proposal)}>✓ Accept</button>
       </div>
     </div>
   );
@@ -342,9 +452,176 @@ function RowList({ count, onReorder, onDelete, onAdd, addLabel, renderRow }: {
   );
 }
 
+// ── AI panel (screen ③) ──────────────────────────────────────────────────────
+// The "Generate the story text" surface: the whole-book job with staged
+// progress on the left, the golden thread + character sheet on the right. Opened
+// from the top bar; the generation keeps running if it is closed.
+
+const STAGE_DOT: Record<string, string> = { done: styles.dDone, active: styles.dWarn, pending: styles.dEmpty, failed: styles.dWarn };
+
+function AIPanel({
+  personName, briefJob, onGenerate, onRetryGenerate, onDismissBrief, genState, genPending,
+  hasBrief, goldenThread, onSaveGoldenThread, characterSheet, rewriteCount, onClose,
+}: {
+  personName: string;
+  briefJob: GenerationJobRow | null;
+  onGenerate: (confirm?: boolean) => void;
+  onRetryGenerate: () => void;
+  onDismissBrief: () => void;
+  genState: { error?: string; needsConfirm?: boolean };
+  genPending: boolean;
+  hasBrief: boolean;
+  goldenThread: string;
+  onSaveGoldenThread: (v: string) => void;
+  characterSheet: string;
+  rewriteCount: number;
+  onClose: () => void;
+}) {
+  const [thread, setThread] = useState(goldenThread);
+  const [editingThread, setEditingThread] = useState(false);
+  const beginEdit = () => { setThread(goldenThread); setEditingThread(true); };
+
+  const running = briefJob?.state === 'running';
+  const failed = briefJob?.state === 'failed';
+  const stages = briefJob?.progress?.stages ?? [];
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(36,26,12,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '1.5rem' }}>
+      <div onClick={(e) => e.stopPropagation()} className={styles.panel} style={{ background: 'var(--ground)', padding: 22, width: 'min(940px, 100%)', maxHeight: '90vh', overflow: 'auto', display: 'flex', gap: 22, flexWrap: 'wrap' }}>
+        {/* Left — writing the whole book */}
+        <div style={{ flex: '1.35 1 380px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <Kick>AI · propose → review → accept</Kick>
+            <div className={styles.serif} style={{ fontSize: 22, fontWeight: 600, marginTop: 6, color: 'var(--ink)' }}>Writing the whole book</div>
+            <div className={styles.muted} style={{ fontSize: 13, marginTop: 6, lineHeight: 1.55 }}>
+              One action drafts every narrative, the quote, timeline, treasures and lessons — plus a scene per image slot, the character sheet, and the golden thread. It takes a few minutes; the book fills in as it finishes.
+            </div>
+          </div>
+
+          {running ? (
+            <div className={styles.panel} style={{ padding: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--ink)' }}>Drafting…</span>
+                <span className={`${styles.chip} ${styles.chipAmber}`}>running</span>
+              </div>
+              <div className={styles.prog}><i className={styles.progFill} style={{ width: `${stages.length ? (stages.filter((s) => s.state === 'done').length / stages.length) * 100 : 0}%` }} /></div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 14 }}>
+                {stages.map((s) => (
+                  <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+                    <span className={`${styles.dot} ${STAGE_DOT[s.state] ?? styles.dEmpty}`} />
+                    <span style={{ color: s.state === 'pending' ? 'var(--brown2)' : 'var(--ink)', fontWeight: s.state === 'active' ? 700 : 400 }}>{s.label}</span>
+                    <span className={`${styles.chip} ${s.state === 'done' ? styles.chipGreen : s.state === 'active' ? styles.chipAmber : styles.chipInk}`} style={{ marginLeft: 'auto' }}>
+                      {s.state === 'done' ? 'done' : s.state === 'active' ? 'writing…' : 'queued'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className={styles.callout} style={{ padding: '9px 12px', marginTop: 14, fontSize: 11.5, color: 'var(--brown)' }}>
+                You can close this and keep the tab open — the book fills in as it finishes. Autosave pauses until it is done.
+              </div>
+            </div>
+          ) : failed ? (
+            <div className={styles.panel} style={{ padding: 16, borderColor: 'rgba(181,83,58,.4)', background: 'rgba(181,83,58,.06)' }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--red)', marginBottom: 6 }}>The book couldn’t be written</div>
+              <div className={styles.muted} style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>{briefJob?.error ?? 'The writer failed. Nothing was changed.'}</div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`} onClick={onDismissBrief} disabled={genPending}>Dismiss</button>
+                <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGold}`} onClick={onRetryGenerate} disabled={genPending}>↻ Try again</button>
+              </div>
+            </div>
+          ) : (
+            <div className={styles.panel} style={{ padding: 16 }}>
+              {genState.needsConfirm ? (
+                <>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--ink)', marginBottom: 6 }}>Overwrite the existing text?</div>
+                  <div className={styles.muted} style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>
+                    <strong style={{ color: 'var(--ink)' }}>{personName}</strong> already has written content. Generating replaces every narrative, the quote, timeline, treasures and lessons. Existing illustrations are kept.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`} onClick={onClose} disabled={genPending}>Cancel</button>
+                    <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGold}`} onClick={() => onGenerate(true)} disabled={genPending}>{genPending ? 'Starting…' : 'Overwrite & write'}</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <button className={`${styles.btn} ${styles.btnGold}`} style={{ width: '100%' }} onClick={() => onGenerate(false)} disabled={genPending}>
+                    {genPending ? 'Starting…' : '✦ Generate the whole book'}
+                  </button>
+                  {genState.error && <div style={{ fontSize: 11.5, color: 'var(--red)', marginTop: 10 }}>{genState.error}</div>}
+                </>
+              )}
+            </div>
+          )}
+
+          <div className={styles.muted} style={{ fontSize: 11.5, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className={`${styles.chip} ${styles.chipInk}`}>Rewrite one field</span>
+            {rewriteCount > 0
+              ? <span>{rewriteCount} proposal{rewriteCount > 1 ? 's' : ''} to review beside {rewriteCount > 1 ? 'their fields' : 'its field'}.</span>
+              : <span>Use ✦ Rewrite on any narrative to draft an alternative in the house style.</span>}
+          </div>
+        </div>
+
+        {/* Right — golden thread + character sheet */}
+        <div style={{ flex: '1 1 260px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className={styles.panel} style={{ padding: 16, background: 'var(--gold-soft)' }}>
+            <div className={styles.kick} style={{ color: 'var(--brown)' }}>The golden thread · the story’s spine</div>
+            {editingThread ? (
+              <>
+                <textarea
+                  className={styles.field}
+                  style={{ marginTop: 8, padding: '10px 12px', fontSize: 14, minHeight: 64 }}
+                  value={thread}
+                  autoFocus
+                  onChange={(e) => setThread(e.target.value)}
+                />
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+                  <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`} onClick={() => { setThread(goldenThread); setEditingThread(false); }}>Cancel</button>
+                  <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGold}`} onClick={() => { onSaveGoldenThread(thread.trim()); setEditingThread(false); }}>Save</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className={styles.script} style={{ fontSize: 28, color: 'var(--gold-deep)', lineHeight: 1.15, marginTop: 8 }}>
+                  {goldenThread || <span className={styles.muted} style={{ fontFamily: 'var(--sans)', fontSize: 13 }}>Not set yet.</span>}
+                </div>
+                <div className={styles.muted} style={{ fontSize: 11, marginTop: 8 }}>
+                  The one defining quality every page returns to.{' '}
+                  {hasBrief
+                    ? <button className={styles.btn + ' ' + styles.btnGhost + ' ' + styles.btnSm} style={{ padding: 0, color: 'var(--gold-deep)', fontWeight: 700 }} onClick={beginEdit}>Edit</button>
+                    : <span>Generate the book to set it.</span>}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className={styles.panel} style={{ padding: 16 }}>
+            <div className={styles.kick} style={{ color: 'var(--brown)' }}>Character sheet · the art’s anchor</div>
+            <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--brown)', marginTop: 11 }}>
+              {characterSheet || <span className={styles.muted}>Set when the book is generated — one sentence fixing the child’s look.</span>}
+            </div>
+            {characterSheet && (
+              <div className={styles.muted} style={{ fontSize: 11, marginTop: 11, lineHeight: 1.5 }}>
+                Every scene that shows {personName.split(' ')[0] || 'them'} as a child starts with this text verbatim — so the face stays consistent across the book.
+              </div>
+            )}
+          </div>
+
+          <div className={styles.callout} style={{ padding: '11px 13px', fontSize: 11.5, color: 'var(--brown)' }}>
+            If a scene drops the character-sheet line, its slot shows a gentle “consistency may drift” hint — never a block.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Editor ───────────────────────────────────────────────────────────────────
 
-export default function PersonEditor({ initialPerson }: { initialPerson: EditorPerson }) {
+export default function PersonEditor({ initialPerson, initialBrief, initialJobs }: {
+  initialPerson: EditorPerson;
+  initialBrief: { goldenThread: string; characterSheet: string } | null;
+  initialJobs: { brief: GenerationJobRow | null; rewrites: GenerationJobRow[] };
+}) {
   const slug = initialPerson.slug;
   const [draft, dispatch] = useReducer(draftReducer, initialPerson);
   const [isPublished, setIsPublished] = useState(initialPerson.published);
@@ -360,6 +637,18 @@ export default function PersonEditor({ initialPerson }: { initialPerson: EditorP
   const [publishConfirm, setPublishConfirm] = useState(false);
   const [pubPending, startPub] = useTransition();
   const [dragChapter, setDragChapter] = useState<number | null>(null);
+
+  // ── AI generation state (Phase 5) ──
+  const [showAI, setShowAI] = useState(false);
+  const [goldenThread, setGoldenThread] = useState(initialBrief?.goldenThread ?? '');
+  const [characterSheet, setCharacterSheet] = useState(initialBrief?.characterSheet ?? '');
+  const [hasBrief, setHasBrief] = useState(!!initialBrief);
+  const [briefJob, setBriefJob] = useState<GenerationJobRow | null>(initialJobs.brief);
+  const [rewrites, setRewrites] = useState<Record<string, RewriteState>>(() => rewriteMapFromRows(initialJobs.rewrites));
+  const [genState, setGenState] = useState<{ error?: string; needsConfirm?: boolean }>({});
+  const [genPending, startGen] = useTransition();
+  const briefJobRef = useRef(briefJob);
+  useEffect(() => { briefJobRef.current = briefJob; }, [briefJob]);
 
   const sections = useMemo(() => deriveSections(draft), [draft]);
   const count = useMemo(() => spreadCount(draft), [draft]);
@@ -385,9 +674,12 @@ export default function PersonEditor({ initialPerson }: { initialPerson: EditorP
   const firstRender = useRef(true);
   useEffect(() => {
     if (firstRender.current) { firstRender.current = false; return; }
+    // Paused while the whole-book writer runs — it applies text server-side and
+    // the draft reloads on completion, so client saves would race it.
+    if (briefJob?.state === 'running') return;
     const t = setTimeout(() => { void doSave(draft); }, 2000);
     return () => clearTimeout(t);
-  }, [draft, doSave]);
+  }, [draft, doSave, briefJob?.state]);
 
   // Warn before leaving with unsaved work.
   useEffect(() => {
@@ -396,6 +688,115 @@ export default function PersonEditor({ initialPerson }: { initialPerson: EditorP
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
   }, [save.status]);
+
+  // ── AI jobs: poll while anything is running ─────────────────────────────────
+  // Reload the applied person + brief when the whole-book job finishes, then
+  // clear its row so the progress panel closes.
+  const handleBriefDone = useCallback(async (jobId: number) => {
+    const [fresh, brief] = await Promise.all([getPersonForEditor(slug), getStoryBrief(slug)]);
+    if (fresh) { dispatch({ type: 'replace', value: fresh }); setSave({ status: 'saved', savedAt: fresh.updated_at }); }
+    if (brief) { setGoldenThread(brief.goldenThread); setCharacterSheet(brief.characterSheet); setHasBrief(true); }
+    setBriefJob(null);
+    await dismissJob(jobId).catch(() => {});
+  }, [slug]);
+
+  const rewriteRunning = Object.values(rewrites).some((r) => r.status === 'running');
+  const polling = briefJob?.state === 'running' || rewriteRunning;
+  useEffect(() => {
+    if (!polling) return;
+    let cancelled = false;
+    const poll = async () => {
+      let res: Awaited<ReturnType<typeof getPersonJobs>>;
+      try { res = await getPersonJobs(slug); } catch { return; }
+      if (cancelled) return;
+      const prev = briefJobRef.current;
+      if (prev?.state === 'running' && res.brief && res.brief.state === 'done') {
+        void handleBriefDone(res.brief.id);
+      } else {
+        setBriefJob(res.brief);
+      }
+      setRewrites(rewriteMapFromRows(res.rewrites));
+    };
+    const iv = setInterval(poll, 2500);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, [polling, slug, handleBriefDone]);
+
+  // On return, a brief job that finished while the tab was away: the person was
+  // applied server-side (and initialBrief carried the panels), so just clear the
+  // stale row once so the progress panel doesn't reappear.
+  const initialDoneHandled = useRef(false);
+  useEffect(() => {
+    if (initialDoneHandled.current) return;
+    initialDoneHandled.current = true;
+    if (briefJob?.state === 'done') { const id = briefJob.id; setTimeout(() => void handleBriefDone(id), 0); }
+  }, [briefJob, handleBriefDone]);
+
+  // Kick the whole-book writer; on success fetch its row so the panel shows it.
+  const startBook = useCallback((confirm?: boolean) => {
+    setGenState({});
+    startGen(async () => {
+      const res = await generateBook(slug, { confirm });
+      if (res.ok) { const j = await getPersonJobs(slug); setBriefJob(j.brief); setGenState({}); }
+      else if (res.needsConfirm) setGenState({ needsConfirm: true });
+      else setGenState({ error: res.error });
+    });
+  }, [slug]);
+
+  const dismissBriefJob = useCallback(() => {
+    const job = briefJob;
+    setBriefJob(null);
+    setGenState({});
+    if (job) void dismissJob(job.id).catch(() => {});
+  }, [briefJob]);
+
+  const saveGoldenThread = useCallback((value: string) => {
+    setGoldenThread(value);
+    void updateGoldenThread(slug, value);
+  }, [slug]);
+
+  // Apply an accepted rewrite to the right draft field (narratives only in P5).
+  const applyRewriteToDraft = useCallback((fieldPath: string, value: string) => {
+    if (fieldPath === 'story_childhood') edit({ type: 'field', key: 'story_childhood', value });
+    else if (fieldPath === 'story_takeaway') edit({ type: 'field', key: 'story_takeaway', value });
+    else if (fieldPath === 'modern.narrative') edit({ type: 'objField', key: 'modern', field: 'narrative', value });
+    else if (fieldPath === 'after_treasures.narrative') edit({ type: 'objField', key: 'after_treasures', field: 'narrative', value });
+    else {
+      const m = /^chapters\.(\d+)\.narrative$/.exec(fieldPath);
+      if (m) edit({ type: 'chapterField', index: Number(m[1]), key: 'narrative', value });
+    }
+  }, [edit]);
+
+  const doStartRewrite = useCallback((fieldPath: string, current: string) => {
+    setRewrites((s) => ({ ...s, [fieldPath]: { jobId: -1, status: 'running', current } }));
+    void (async () => {
+      const res = await startRewrite(slug, fieldPath, current);
+      setRewrites((s) => (res.ok
+        ? { ...s, [fieldPath]: { jobId: res.jobId, status: 'running', current } }
+        : { ...s, [fieldPath]: { jobId: -1, status: 'failed', current, error: res.error } }));
+    })();
+  }, [slug]);
+
+  const rw: RewriteApi = useMemo(() => ({
+    states: rewrites,
+    busy: rewriteRunning,
+    start: doStartRewrite,
+    accept: (fieldPath, value) => {
+      const st = rewrites[fieldPath];
+      applyRewriteToDraft(fieldPath, value);
+      setRewrites((s) => { const n = { ...s }; delete n[fieldPath]; return n; });
+      if (st && st.jobId > 0) void dismissJob(st.jobId).catch(() => {});
+    },
+    reject: (fieldPath) => {
+      const st = rewrites[fieldPath];
+      setRewrites((s) => { const n = { ...s }; delete n[fieldPath]; return n; });
+      if (st && st.jobId > 0) void dismissJob(st.jobId).catch(() => {});
+    },
+    tryAgain: (fieldPath, current) => {
+      const st = rewrites[fieldPath];
+      if (st && st.jobId > 0) void dismissJob(st.jobId).catch(() => {});
+      doStartRewrite(fieldPath, current);
+    },
+  }), [rewrites, rewriteRunning, doStartRewrite, applyRewriteToDraft]);
 
   const selectSection = (sec: Section) => { setSelectedId(sec.id); setPage(sec.spreadIndex); };
   // Reorder chapters from the rail; selection follows the moved chapter.
@@ -477,6 +878,11 @@ export default function PersonEditor({ initialPerson }: { initialPerson: EditorP
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <button
+            className={`${styles.btn} ${styles.btnSm}`}
+            style={{ color: 'var(--gold-deep)', borderColor: briefJob?.state === 'running' ? 'var(--gold-deep)' : 'var(--line2)', background: briefJob?.state === 'running' ? 'var(--gold-soft)' : undefined }}
+            onClick={() => setShowAI(true)}
+          >{briefJob?.state === 'running' ? '✦ Writing…' : '✦ Write with AI'}</button>
           <div className={styles.muted} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <span className={`${styles.saveDot} ${saveDotClass}`} />
             <span style={{ fontSize: 12 }}>{saveText}</span>
@@ -559,7 +965,7 @@ export default function PersonEditor({ initialPerson }: { initialPerson: EditorP
 
         {/* ── Center editing panel ── */}
         <div style={{ flex: 1, minWidth: 0, padding: '22px 26px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <CenterPanel active={active} draft={draft} dispatch={edit} onSelect={setSelectedId} />
+          <CenterPanel active={active} draft={draft} dispatch={edit} onSelect={setSelectedId} rw={rw} />
         </div>
 
         {/* ── Live-book preview ── */}
@@ -610,6 +1016,25 @@ export default function PersonEditor({ initialPerson }: { initialPerson: EditorP
         )}
       </div>
 
+      {/* ── AI: generate story text (screen ③) ── */}
+      {showAI && (
+        <AIPanel
+          personName={draft.name || 'This person'}
+          briefJob={briefJob}
+          onGenerate={startBook}
+          onRetryGenerate={() => { const j = briefJob; setBriefJob(null); if (j) void dismissJob(j.id).catch(() => {}); startBook(true); }}
+          onDismissBrief={dismissBriefJob}
+          genState={genState}
+          genPending={genPending}
+          hasBrief={hasBrief}
+          goldenThread={goldenThread}
+          onSaveGoldenThread={saveGoldenThread}
+          characterSheet={characterSheet}
+          rewriteCount={Object.keys(rewrites).length}
+          onClose={() => setShowAI(false)}
+        />
+      )}
+
       {/* ── Publish confirm ── */}
       {publishConfirm && (
         <div onClick={() => setPublishConfirm(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(36,26,12,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '1.5rem' }}>
@@ -631,8 +1056,8 @@ export default function PersonEditor({ initialPerson }: { initialPerson: EditorP
 
 // ── Center panel: the selected section's fields ──────────────────────────────
 
-function CenterPanel({ active, draft, dispatch, onSelect }: {
-  active: Section; draft: EditorPerson; dispatch: React.Dispatch<DraftAction>; onSelect: (id: string) => void;
+function CenterPanel({ active, draft, dispatch, onSelect, rw }: {
+  active: Section; draft: EditorPerson; dispatch: React.Dispatch<DraftAction>; onSelect: (id: string) => void; rw: RewriteApi;
 }) {
   const set = (key: keyof EditorPerson) => (value: string) => dispatch({ type: 'field', key, value });
   const rowInput = (placeholder: string, value: string, onChange: (v: string) => void, extra?: React.CSSProperties, list?: string) => (
@@ -668,7 +1093,7 @@ function CenterPanel({ active, draft, dispatch, onSelect }: {
       return (
         <>
           <TextField label="Childhood page · title" value={draft.story_childhood_title ?? ''} onChange={set('story_childhood_title')} serif placeholder="A Little Boy in Vinci" />
-          <NarrativeField label="Narrative" value={draft.story_childhood ?? ''} onChange={set('story_childhood')} />
+          <NarrativeField label="Narrative" value={draft.story_childhood ?? ''} onChange={set('story_childhood')} fieldPath="story_childhood" rw={rw} />
         </>
       );
     case 'chapter': {
@@ -694,7 +1119,7 @@ function CenterPanel({ active, draft, dispatch, onSelect }: {
             </div>
           )}
           <TextField label="Chapter title" value={ch?.title ?? ''} onChange={(v) => dispatch({ type: 'chapterField', index: i, key: 'title', value: v })} serif />
-          <NarrativeField label="Narrative" value={ch?.narrative ?? ''} onChange={(v) => dispatch({ type: 'chapterField', index: i, key: 'narrative', value: v })} />
+          <NarrativeField label="Narrative" value={ch?.narrative ?? ''} onChange={(v) => dispatch({ type: 'chapterField', index: i, key: 'narrative', value: v })} fieldPath={`chapters.${i}.narrative`} rw={rw} />
           <LayoutPicker
             span={ch?.page_span} blend={ch?.blend} fade={ch?.fade}
             onSpan={(v) => dispatch({ type: 'chapterField', index: i, key: 'page_span', value: v })}
@@ -708,7 +1133,7 @@ function CenterPanel({ active, draft, dispatch, onSelect }: {
       return (
         <>
           <TextField label={'“If … were 10 today” · title'} value={draft.modern?.title ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'modern', field: 'title', value: v })} serif />
-          <NarrativeField label="Narrative" value={draft.modern?.narrative ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'modern', field: 'narrative', value: v })} />
+          <NarrativeField label="Narrative" value={draft.modern?.narrative ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'modern', field: 'narrative', value: v })} fieldPath="modern.narrative" rw={rw} />
           <LayoutPicker
             span={draft.modern?.page_span} blend={draft.modern?.blend} fade={draft.modern?.fade}
             onSpan={(v) => dispatch({ type: 'objField', key: 'modern', field: 'page_span', value: v })}
@@ -721,7 +1146,7 @@ function CenterPanel({ active, draft, dispatch, onSelect }: {
       return (
         <>
           <TextField label="Gifts That Live On · title" value={draft.after_treasures?.title ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'after_treasures', field: 'title', value: v })} serif />
-          <NarrativeField label="Narrative" value={draft.after_treasures?.narrative ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'after_treasures', field: 'narrative', value: v })} />
+          <NarrativeField label="Narrative" value={draft.after_treasures?.narrative ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'after_treasures', field: 'narrative', value: v })} fieldPath="after_treasures.narrative" rw={rw} />
           {/* Rendered as a single leaf on the Treasures spread — only blend + wash apply. */}
           <div className={styles.panel} style={{ padding: 16, display: 'flex', gap: 26, flexWrap: 'wrap' }}>
             <div>
@@ -742,7 +1167,7 @@ function CenterPanel({ active, draft, dispatch, onSelect }: {
         </>
       );
     case 'takeaway':
-      return <NarrativeField label="Takeaway · one closing line" value={draft.story_takeaway ?? ''} onChange={set('story_takeaway')} />;
+      return <NarrativeField label="Takeaway · one closing line" value={draft.story_takeaway ?? ''} onChange={set('story_takeaway')} fieldPath="story_takeaway" rw={rw} />;
     case 'timeline':
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

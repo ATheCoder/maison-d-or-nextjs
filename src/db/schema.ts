@@ -263,15 +263,20 @@ export type NewStoryBrief = typeof storyBrief.$inferInsert;
 export const generationJobKind = pgEnum('generation_job_kind', ['brief', 'images', 'slot', 'rewrite']);
 export const generationJobState = pgEnum('generation_job_state', ['running', 'done', 'failed']);
 
-// Staged progress for a brief job; per-slot progress for image jobs.
+// Staged progress for a brief job; per-slot progress for image jobs. A rewrite
+// job carries the dotted `fieldPath` it targets so a running rewrite is
+// self-describing (the editor can show which field is drafting on return).
 export type JobProgress = {
   stages?: { key: string; label: string; state: 'pending' | 'active' | 'done' | 'failed' }[];
   slots?: Record<string, { state: string; error?: string }>;
+  fieldPath?: string;
 };
 
-// A rewrite job's proposal (the field it targets and the proposed value).
+// A rewrite job's proposal: the field it targets, the text at the time of the
+// request (for a stable CURRENT column), and the proposed replacement.
 export type JobResult = {
   fieldPath?: string;
+  current?: string;
   proposal?: string;
   [key: string]: unknown;
 };

@@ -10,7 +10,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { slugify, SLUG_RE } from '@/lib/slug';
-import { createPerson, deletePerson, type PersonListItem } from '@/app/admin/people/actions';
+import { createPerson, deletePerson, suggestPeople, type PersonListItem, type PersonSuggestion } from '@/app/admin/people/actions';
 
 // ── House palette ────────────────────────────────────────────────────────────
 const C = {
@@ -156,13 +156,31 @@ const labelStyle: React.CSSProperties = {
   color: C.muted, display: 'block', margin: '0 0 0.35rem',
 };
 
-function CreateDialog({ onClose }: { onClose: () => void }) {
+function CreateDialog({ onClose, existingNames }: { onClose: () => void; existingNames: string[] }) {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [slugTouched, setSlugTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [collision, setCollision] = useState<string | null>(null);
   const [pending, start] = useTransition();
+
+  // "Suggest a person born on a date" (Phase 5) — the year is irrelevant, only
+  // the month-day matters for Born Today.
+  const [sugDate, setSugDate] = useState('');
+  const [suggestions, setSuggestions] = useState<PersonSuggestion[] | null>(null);
+  const [sugError, setSugError] = useState<string | null>(null);
+  const [sugPending, startSug] = useTransition();
+
+  function fetchSuggestions() {
+    setSugError(null);
+    setSuggestions(null);
+    const monthDay = sugDate.slice(5); // 'YYYY-MM-DD' → 'MM-DD'
+    startSug(async () => {
+      const res = await suggestPeople(monthDay, existingNames);
+      if (res.ok) setSuggestions(res.suggestions);
+      else setSugError(res.error);
+    });
+  }
 
   const effectiveSlug = slugTouched ? slugify(slug) : slugify(name);
   const slugValid = SLUG_RE.test(effectiveSlug);
@@ -202,6 +220,40 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
           Lowercase letters, numbers and single dashes only.
         </p>
       )}
+
+      <div style={{ marginTop: '1.1rem', padding: '0.85rem 0.9rem', borderRadius: 10, border: `1px solid ${C.border}`, background: 'rgba(201,169,110,0.08)' }}>
+        <label style={{ ...labelStyle, margin: 0, color: C.gold }}>✦ Suggest a person born on a date</label>
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', alignItems: 'center' }}>
+          <input type="date" value={sugDate} onChange={(e) => setSugDate(e.target.value)} style={{ ...inputStyle, maxWidth: 190 }} />
+          <button
+            onClick={fetchSuggestions}
+            style={{ ...btn('ghost'), opacity: !sugDate || sugPending ? 0.5 : 1, whiteSpace: 'nowrap' }}
+            disabled={!sugDate || sugPending}
+          >{sugPending ? 'Thinking…' : 'Suggest'}</button>
+        </div>
+        {sugError && <p style={{ fontFamily: sans, fontSize: '0.72rem', color: C.red, margin: '0.5rem 0 0' }}>{sugError}</p>}
+        {suggestions && suggestions.length === 0 && !sugPending && (
+          <p style={{ fontFamily: sans, fontSize: '0.72rem', color: C.muted, margin: '0.5rem 0 0' }}>No suggestions for that day.</p>
+        )}
+        {suggestions && suggestions.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.6rem' }}>
+            {suggestions.map((s) => (
+              <button
+                key={s.name}
+                onClick={() => { setName(s.name); setCollision(null); }}
+                style={{
+                  textAlign: 'left', background: 'rgba(255,255,255,0.5)', border: `1px solid ${C.border}`,
+                  borderRadius: 8, padding: '0.5rem 0.6rem', cursor: 'pointer', fontFamily: sans,
+                }}
+              >
+                <span style={{ fontWeight: 700, color: C.ink, fontSize: '0.82rem' }}>{s.name}</span>
+                <span style={{ color: C.muted, fontSize: '0.72rem' }}> · {s.birth_date} · {s.field}</span>
+                <span style={{ display: 'block', color: C.brown, fontSize: '0.72rem', marginTop: '0.15rem' }}>{s.why}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {error && <p style={{ fontFamily: sans, fontSize: '0.78rem', color: C.red, margin: '0.9rem 0 0' }}>{error}</p>}
 
@@ -362,7 +414,7 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
         </div>
       )}
 
-      {creating && <CreateDialog onClose={() => setCreating(false)} />}
+      {creating && <CreateDialog onClose={() => setCreating(false)} existingNames={people.map((p) => p.name)} />}
       {deleting && <DeleteDialog person={deleting} onClose={() => setDeleting(null)} />}
     </div>
   );
