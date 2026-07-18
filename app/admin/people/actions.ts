@@ -9,7 +9,16 @@ import { asc, eq, sql } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/src/db';
-import { remarkablePerson, storyBrief } from '@/src/db/schema';
+import {
+  remarkablePerson,
+  storyBrief,
+  type Chapter,
+  type StorySection,
+  type TimelineEntry,
+  type Treasure,
+  type Lesson,
+  type RemarkablePersonRow,
+} from '@/src/db/schema';
 import { requireAdmin } from '@/lib/dal';
 import { slugify, SLUG_RE } from '@/lib/slug';
 
@@ -148,4 +157,151 @@ export async function deletePerson(slug: string, confirmSlug: string):
   await db.delete(remarkablePerson).where(eq(remarkablePerson.slug, slug));
   revalidatePath('/admin/people');
   return { ok: true };
+}
+
+// ── Editor (Phase 3) ─────────────────────────────────────────────────────────
+// The editor edits a person in the story.json shape <GoldenStory> consumes,
+// plus its publish state and last-saved timestamp; DB-column mapping happens
+// only on save (savePerson), so the live preview is a plain prop pass.
+
+export type EditorPerson = {
+  slug: string;
+  name: string;
+  role: string | null;
+  field: string | null;
+  country: string | null;
+  birth_date: string | null;
+  death_date: string | null;
+  story_title: string | null;
+  famous_quote: string | null;
+  image_url: string | null;
+  story_childhood_title: string | null;
+  childhood_image_url: string | null;
+  story_childhood: string | null;
+  story_takeaway: string | null;
+  modern: StorySection | null;
+  chapters: Chapter[];
+  timeline: TimelineEntry[];
+  after_treasures: StorySection | null;
+  treasures: Treasure[];
+  lessons: Lesson[];
+  published: boolean;
+  updated_at: string | null;
+};
+
+function toEditorPerson(row: RemarkablePersonRow): EditorPerson {
+  return {
+    slug: row.slug,
+    name: row.name,
+    role: row.role,
+    field: row.field,
+    country: row.country,
+    birth_date: row.birthDate,
+    death_date: row.deathDate,
+    story_title: row.storyTitle,
+    famous_quote: row.famousQuote,
+    image_url: row.imageUrl,
+    story_childhood_title: row.storyChildhoodTitle,
+    childhood_image_url: row.childhoodImageUrl,
+    story_childhood: row.storyChildhood,
+    story_takeaway: row.storyTakeaway,
+    modern: row.modern,
+    chapters: row.chapters ?? [],
+    timeline: row.timeline ?? [],
+    after_treasures: row.afterTreasures,
+    treasures: row.treasures ?? [],
+    lessons: row.lessons ?? [],
+    published: row.published,
+    updated_at: row.updatedAt ? new Date(row.updatedAt).toISOString() : null,
+  };
+}
+
+/** Load one person for the editor (admin reader — no published filter). */
+export async function getPersonForEditor(slug: string): Promise<EditorPerson | null> {
+  await requireAdmin();
+  const rows = await db
+    .select()
+    .from(remarkablePerson)
+    .where(eq(remarkablePerson.slug, slug))
+    .limit(1);
+  return rows[0] ? toEditorPerson(rows[0]) : null;
+}
+
+// Trim to a string (capped) or null. Server actions are open endpoints, so the
+// whole record is treated as untrusted and coerced field by field.
+const str = (v: unknown, max: number): string | null =>
+  typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null;
+const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+const objOrNull = <T,>(v: unknown): T | null =>
+  v && typeof v === 'object' && !Array.isArray(v) ? (v as T) : null;
+
+/**
+ * Persist the editor's draft, mapping the story.json shape back to DB columns.
+ * Never touches `published` (that is setPublished) or the slug. Returns the new
+ * updated_at for the saved-timestamp indicator.
+ */
+export async function savePerson(slug: string, record: Partial<EditorPerson>):
+  Promise<{ ok: boolean; error?: string; updated_at?: string }> {
+  await requireAdmin();
+  if (typeof slug !== 'string' || !slug) return { ok: false, error: 'Missing slug.' };
+  const name = str(record?.name, 200);
+  if (!name) return { ok: false, error: 'A name is required.' };
+
+  const birth = typeof record?.birth_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(record.birth_date)
+    ? record.birth_date : null;
+  const death = typeof record?.death_date === 'string' && /^\d{4}(-\d{2}-\d{2})?$/.test(record.death_date)
+    ? record.death_date : null;
+
+  const updatedAt = new Date();
+  const result = await db
+    .update(remarkablePerson)
+    .set({
+      name,
+      role: str(record?.role, 200),
+      field: str(record?.field, 200),
+      country: str(record?.country, 200),
+      birthDate: birth,
+      deathDate: death,
+      storyTitle: str(record?.story_title, 200),
+      famousQuote: str(record?.famous_quote, 1000),
+      imageUrl: str(record?.image_url, 2000),
+      storyChildhoodTitle: str(record?.story_childhood_title, 300),
+      childhoodImageUrl: str(record?.childhood_image_url, 2000),
+      storyChildhood: str(record?.story_childhood, 5000),
+      storyTakeaway: str(record?.story_takeaway, 1000),
+      modern: objOrNull<StorySection>(record?.modern),
+      chapters: arr<Chapter>(record?.chapters),
+      timeline: arr<TimelineEntry>(record?.timeline),
+      afterTreasures: objOrNull<StorySection>(record?.after_treasures),
+      treasures: arr<Treasure>(record?.treasures),
+      lessons: arr<Lesson>(record?.lessons),
+      updatedAt,
+    })
+    .where(eq(remarkablePerson.slug, slug))
+    .returning({ slug: remarkablePerson.slug });
+
+  if (!result[0]) return { ok: false, error: 'This person no longer exists.' };
+  return { ok: true, updated_at: updatedAt.toISOString() };
+}
+
+/**
+ * Flip a person between Draft and Published. Publishing takes effect
+ * immediately — the public story page and Born Today read `published`.
+ */
+export async function setPublished(slug: string, published: boolean):
+  Promise<{ ok: boolean; error?: string; published?: boolean }> {
+  await requireAdmin();
+  if (typeof slug !== 'string' || !slug) return { ok: false, error: 'Missing slug.' };
+  const value = published === true;
+  const result = await db
+    .update(remarkablePerson)
+    .set({ published: value, updatedAt: new Date() })
+    .where(eq(remarkablePerson.slug, slug))
+    .returning({ slug: remarkablePerson.slug });
+  if (!result[0]) return { ok: false, error: 'This person no longer exists.' };
+
+  revalidatePath('/admin/people');
+  revalidatePath(`/stories/${slug}`);
+  revalidatePath('/daily-gold-edition');
+  return { ok: true, published: value };
 }

@@ -111,9 +111,65 @@ function Ornament({ center = false }) {
   );
 }
 
-export default function GoldenStory({ story }) {
-  const [cur, setCur] = useState(0);
+// The spread each editable section lands on — mirrors the pagination the
+// component performs below (cover+childhood share spread 0; single-leaf
+// chapters pair two-per-spread; treasures/after-treasures share one spread and
+// modern/lessons share the next). Kept in lockstep with the build loop so the
+// editor rail can flip the book to a section. Section ids: 'cover',
+// 'childhood', 'chapter-<i>' (0-based), 'timeline', 'treasures',
+// 'after-treasures', 'modern', 'lessons', 'takeaway'.
+function buildSectionSpreadMap(story) {
+  const chapters = (story?.chapters || []).map(toChapter);
+  const timeline = (story?.timeline || []).filter((t) => t.year || t.caption);
+  const treasures = (story?.treasures || []).filter((t) => t.name);
+  const lessons = story?.lessons || [];
+  const hasModern = !!(story?.modern || story?.modern_interpretation);
+  const hasTimeline = timeline.length > 0;
+  const hasTreasures = treasures.length > 0;
+  const hasLessons = lessons.length > 0 || hasModern;
+
+  const map = {};
+  let idx = 0;
+  map.cover = idx; map.childhood = idx; idx += 1;
+
+  const isLeaf = (c) => c?.span === 'single' || c?.span === 'image';
+  let ci = 0;
+  while (ci < chapters.length) {
+    if (isLeaf(chapters[ci])) {
+      map[`chapter-${ci}`] = idx;
+      if (isLeaf(chapters[ci + 1])) { map[`chapter-${ci + 1}`] = idx; ci += 2; } else { ci += 1; }
+    } else {
+      map[`chapter-${ci}`] = idx; ci += 1;
+    }
+    idx += 1;
+  }
+  if (hasTimeline) { map.timeline = idx; idx += 1; }
+  if (hasTreasures) { map.treasures = idx; map['after-treasures'] = idx; idx += 1; }
+  if (hasLessons) { map.modern = idx; map.lessons = idx; idx += 1; }
+  map.takeaway = idx; // closing page
+  return map;
+}
+
+/** The spread index a section id lives on (0 if unknown). See buildSectionSpreadMap. */
+export function spreadIndexFor(story, sectionId) {
+  const map = buildSectionSpreadMap(story);
+  return map[sectionId] ?? 0;
+}
+
+/**
+ * GoldenStory renders its own book by default (families' full-screen view).
+ * The editor passes `embedded` to drop the fixed full-viewport stage, scale to
+ * the host container instead of the window, and hide the built-in flip chrome
+ * and global key handler (the editor supplies its own controls). `page` +
+ * `onPageChange` make the current spread controllable; omit them and the book
+ * keeps its own internal page state, exactly as before.
+ */
+export default function GoldenStory({ story, page, onPageChange, embedded = false }) {
+  const controlled = typeof page === 'number';
+  const [internalCur, setInternalCur] = useState(0);
+  const cur = controlled ? page : internalCur;
   const scaleRef = useRef(null);
+  const stageRef = useRef(null);
 
   // ── Map the person onto the book's content model ──────────────────────────
   const name = story?.name || 'A Golden Life';
@@ -445,35 +501,55 @@ export default function GoldenStory({ story }) {
 
   const count = spreads.length;
   const go = useCallback(
-    (dir) => setCur((s) => Math.max(0, Math.min(count - 1, s + dir))),
-    [count]
+    (dir) => {
+      const clamp = (s) => Math.max(0, Math.min(count - 1, s + dir));
+      if (controlled) onPageChange?.(clamp(cur));
+      else setInternalCur(clamp);
+    },
+    [count, controlled, onPageChange, cur]
   );
 
-  // Fit the fixed-size book into the viewport, and wire keyboard navigation.
+  // Fit the fixed-size book: to the host container when embedded, otherwise to
+  // the viewport (plus keyboard nav for the full-screen view only — a global
+  // key handler would hijack arrow keys away from the editor's text fields).
   useEffect(() => {
     const fit = () => {
       const el = scaleRef.current;
       if (!el) return;
-      const s = Math.min((window.innerWidth - 40) / BOOK_W, (window.innerHeight - 40) / BOOK_H);
+      const box = embedded ? stageRef.current : null;
+      const availW = box ? box.clientWidth : window.innerWidth;
+      const availH = box ? box.clientHeight : window.innerHeight;
+      const s = Math.min((availW - 40) / BOOK_W, (availH - 40) / BOOK_H);
       el.style.transform = `scale(${s})`;
     };
+    fit();
+    let ro;
+    if (embedded && stageRef.current && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(fit);
+      ro.observe(stageRef.current);
+    } else {
+      window.addEventListener('resize', fit);
+    }
     const onKey = (e) => {
       if (e.key === 'ArrowRight' || e.key === ' ') { go(1); e.preventDefault(); }
       else if (e.key === 'ArrowLeft') { go(-1); }
     };
-    fit();
-    window.addEventListener('resize', fit);
-    window.addEventListener('keydown', onKey);
+    if (!embedded) window.addEventListener('keydown', onKey);
     return () => {
+      ro?.disconnect();
       window.removeEventListener('resize', fit);
-      window.removeEventListener('keydown', onKey);
+      if (!embedded) window.removeEventListener('keydown', onKey);
     };
-  }, [go]);
+  }, [go, embedded]);
 
   if (!story) return null;
 
   return (
-    <div className={styles['book-stage']}>
+    <div
+      className={styles['book-stage']}
+      ref={stageRef}
+      style={embedded ? { position: 'relative', inset: 'auto', width: '100%', height: '100%' } : undefined}
+    >
       {/* The bundler (Turbopack) silently drops external url() @imports from
           CSS — including the Google Fonts import in app/globals.css — so the
           storybook loads its own fonts here. Same families/weights the
@@ -484,7 +560,9 @@ export default function GoldenStory({ story }) {
         href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Lato:wght@300;400;700&family=Great+Vibes&display=swap"
       />
 
-      <button className={cx(styles.nav, styles['nav-prev'])} onClick={() => go(-1)} aria-label="Previous page">{'‹'}</button>
+      {!embedded && (
+        <button className={cx(styles.nav, styles['nav-prev'])} onClick={() => go(-1)} aria-label="Previous page">{'‹'}</button>
+      )}
 
       <div className={styles['book-scale']} ref={scaleRef}>
         <div className={styles.book}>
@@ -513,8 +591,19 @@ export default function GoldenStory({ story }) {
         </div>
       </div>
 
-      <button className={cx(styles.nav, styles['nav-next'])} onClick={() => go(1)} aria-label="Next page">{'›'}</button>
-      <div className={styles['book-progress']}>{`${cur + 1} / ${count}`}</div>
+      {!embedded && (
+        <>
+          <button className={cx(styles.nav, styles['nav-next'])} onClick={() => go(1)} aria-label="Next page">{'›'}</button>
+          <div className={styles['book-progress']}>{`${cur + 1} / ${count}`}</div>
+        </>
+      )}
     </div>
   );
+}
+
+// The number of spreads the book paginates the story into — lets the editor
+// size its flip controls (dots) and clamp the current page.
+export function spreadCount(story) {
+  const map = buildSectionSpreadMap(story);
+  return (map.takeaway ?? 0) + 1;
 }

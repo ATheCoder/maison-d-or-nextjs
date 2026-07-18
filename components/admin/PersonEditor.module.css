@@ -1,0 +1,95 @@
+/* PersonEditor — styles ported from the approved Claude Design
+   "Remarkable Person Editor" (screen ①). Palette + component vocabulary
+   (chips, completeness dots, segmented control, parchment stage) live here so
+   the editor JSX stays legible. Scoped CSS Module. */
+
+.editor {
+  --ground: #f5f0e7; --panel: #fff8ee; --panel-t: rgba(255, 248, 238, 0.82);
+  --line: rgba(201, 169, 110, 0.25); --line2: rgba(201, 169, 110, 0.45);
+  --ink: #241a0c; --brown: #5c4a2a; --brown2: #8b7355; --brown3: #a08a63;
+  --gold: #c9a96e; --gold-deep: #a8843f; --gold-soft: rgba(201, 169, 110, 0.14);
+  --green: #7d8a4e; --amber: #c08a2e; --red: #b5533a;
+  --serif: "Playfair Display", Georgia, serif;
+  --sans: "Lato", system-ui, sans-serif;
+  --script: "Great Vibes", cursive;
+
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+.editor * { box-sizing: border-box; }
+
+.serif { font-family: var(--serif); }
+.script { font-family: var(--script); }
+.kick { font: 700 10px/1.4 var(--sans); letter-spacing: 0.26em; text-transform: uppercase; color: var(--gold-deep); }
+.muted { color: var(--brown2); }
+.ink2 { color: var(--brown); }
+.mono { font-family: "Lato", monospace; font-size: 11.5px; }
+
+.panel { background: var(--panel-t); border: 1px solid var(--line); border-radius: 14px; }
+.hair { height: 1px; background: var(--line); }
+.vhair { width: 1px; align-self: stretch; background: var(--line); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; font: 700 12px/1 var(--sans); letter-spacing: 0.02em; padding: 9px 14px; border-radius: 9px; border: 1px solid var(--line2); background: #fffdf8; color: var(--brown); cursor: pointer; text-decoration: none; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btnGold { background: linear-gradient(180deg, #dcc191, #c9a96e); color: #3a2a10; border-color: var(--gold-deep); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 6px 16px rgba(168, 132, 63, 0.28); }
+.btnGhost { background: transparent; border-color: transparent; color: var(--brown2); }
+.btnSm { padding: 6px 10px; font-size: 11px; border-radius: 8px; }
+
+.chip { display: inline-flex; align-items: center; gap: 6px; font: 700 10px/1 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 9px; border-radius: 999px; border: 1px solid var(--line2); color: var(--brown); background: #fffdf8; white-space: nowrap; }
+.chipGold { background: var(--gold-soft); border-color: var(--line2); color: var(--gold-deep); }
+.chipGreen { background: rgba(125, 138, 78, 0.14); border-color: rgba(125, 138, 78, 0.4); color: #5f6c37; }
+.chipAmber { background: rgba(192, 138, 46, 0.14); border-color: rgba(192, 138, 46, 0.42); color: #96681f; }
+.chipRed { background: rgba(181, 83, 58, 0.12); border-color: rgba(181, 83, 58, 0.42); color: #96402b; }
+.chipInk { background: rgba(36, 26, 12, 0.06); border: 1px solid var(--line); color: var(--brown); text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+.dDone { background: var(--gold); box-shadow: 0 0 0 2px rgba(201, 169, 110, 0.22); }
+.dEmpty { background: transparent; border: 1.5px solid var(--brown3); opacity: 0.6; }
+.dPart { background: linear-gradient(90deg, var(--gold) 50%, transparent 50%); border: 1.5px solid var(--gold); }
+.dWarn { background: var(--amber); box-shadow: 0 0 0 2px rgba(192, 138, 46, 0.2); }
+
+.field { background: #fffdf8; border: 1px solid var(--line2); border-radius: 10px; color: var(--ink); font: 400 14px/1.6 var(--sans); width: 100%; }
+.field:focus { outline: none; border-color: var(--gold-deep); box-shadow: 0 0 0 3px var(--gold-soft); }
+textarea.field { resize: vertical; }
+
+.navrow { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 9px; cursor: pointer; color: var(--brown); font-size: 13px; text-align: left; border: 1px solid transparent; background: transparent; width: 100%; font-family: var(--sans); }
+.navrow:hover { background: rgba(201, 169, 110, 0.1); }
+.navrowOn { background: #fffdf8; border: 1px solid var(--line2); box-shadow: 0 2px 10px rgba(40, 26, 12, 0.06); color: var(--ink); font-weight: 700; }
+
+.seg { display: inline-flex; padding: 3px; background: rgba(36, 26, 12, 0.06); border: 1px solid var(--line); border-radius: 10px; gap: 2px; }
+.seg > button { font: 700 11px/1 var(--sans); letter-spacing: 0.04em; padding: 7px 12px; border-radius: 7px; color: var(--brown2); cursor: pointer; border: none; background: transparent; }
+.segOn { background: #fffdf8; color: var(--ink) !important; box-shadow: 0 1px 6px rgba(40, 26, 12, 0.1); }
+.segOnDraft { color: var(--amber) !important; }
+
+.sw { width: 36px; height: 20px; border-radius: 999px; background: var(--gold); position: relative; box-shadow: inset 0 0 0 1px var(--gold-deep); border: none; cursor: pointer; flex: 0 0 auto; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 18px; width: 16px; height: 16px; border-radius: 50%; background: #fffdf8; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); transition: left 0.15s; }
+.swOff { background: rgba(36, 26, 12, 0.15); box-shadow: none; }
+.swOff::after { left: 2px; }
+
+.saveDot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex: 0 0 auto; }
+.saveDotDirty { background: var(--amber); }
+.saveDotSaving { background: var(--gold); }
+.saveDotError { background: var(--red); }
+
+.prog { height: 5px; border-radius: 999px; background: rgba(36, 26, 12, 0.1); overflow: hidden; }
+.progFill { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-deep)); border-radius: 999px; }
+
+.callout { border-left: 2px solid var(--gold); background: var(--gold-soft); border-radius: 0 8px 8px 0; }
+
+/* The dark parchment stage the live book sits on. */
+.stage { background: radial-gradient(circle at 50% 30%, #3c2c1d 0%, #1c130c 70%, #110a05 100%); }
+
+/* Amber banner + top-bar tint while editing a Published person. */
+.publishedBar { background: rgba(192, 138, 46, 0.1); border-bottom: 1px solid rgba(192, 138, 46, 0.35); color: #8a5f18; }
+
+/* Draggable divider between the editing panel and the live-book preview. */
+.resizeHandle { flex: 0 0 6px; cursor: col-resize; background: var(--line); position: relative; touch-action: none; }
+.resizeHandle:hover, .resizeHandle.dragging { background: var(--gold); }
+/* Widen the hit area beyond the 6px visual so it's easy to grab. */
+.resizeHandle::after { content: ""; position: absolute; top: 0; bottom: 0; left: -4px; right: -4px; }
