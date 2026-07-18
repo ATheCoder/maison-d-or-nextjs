@@ -4,14 +4,17 @@
  * center editing panel / 512px live-book preview. Phase 3 delivers the shell,
  * the derived section rail with completeness dots, debounced autosave, the
  * Draft/Publish control, and the real <GoldenStory> preview flipping in lockstep
- * with the rail. The richer per-section editors (layout pickers, row editors,
- * image slots) arrive in Phases 4–6; the center panel here edits the text
- * fields, which is enough to drive autosave and the live preview.
+ * with the rail. Phase 4 adds the per-section editors: cover identity (required
+ * birth date, three-way death date), narrative fields with word-count chips,
+ * the page_span/blend/fade layout pickers, chapter add/duplicate/delete +
+ * drag-reorder, and timeline/treasures/lessons row editors. Image slots (the
+ * cover-art card etc.) are still placeholders until Phase 6.
  */
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import GoldenStory, { spreadCount } from '@/components/dailygold/GoldenStory';
 import { savePerson, setPublished as setPublishedAction, type EditorPerson } from '@/app/admin/people/actions';
+import type { Chapter } from '@/src/db/schema';
 import { deriveSections, type Section, type SectionStatus } from './personSections';
 import styles from './PersonEditor.module.css';
 
@@ -24,24 +27,73 @@ const DOT_CLASS: Record<SectionStatus, string> = {
 
 // ── Draft reducer ────────────────────────────────────────────────────────────
 
+type ListKey = 'chapters' | 'timeline' | 'treasures' | 'lessons';
+
 type DraftAction =
   | { type: 'field'; key: keyof EditorPerson; value: unknown }
-  | { type: 'chapter'; index: number; key: 'title' | 'narrative'; value: string }
-  | { type: 'obj'; key: 'modern' | 'after_treasures'; field: 'title' | 'narrative'; value: string };
+  | { type: 'chapterField'; index: number; key: string; value: unknown }
+  | { type: 'objField'; key: 'modern' | 'after_treasures'; field: string; value: unknown }
+  | { type: 'listAdd'; list: ListKey }
+  | { type: 'listDelete'; list: ListKey; index: number }
+  | { type: 'listDuplicate'; list: ListKey; index: number }
+  | { type: 'listReorder'; list: ListKey; from: number; to: number }
+  | { type: 'listItemField'; list: ListKey; index: number; key: string; value: unknown };
+
+function moveItem<T>(arr: T[], from: number, to: number): T[] {
+  if (from === to || from < 0 || to < 0 || from >= arr.length || to >= arr.length) return arr;
+  const copy = arr.slice();
+  const [item] = copy.splice(from, 1);
+  copy.splice(to, 0, item);
+  return copy;
+}
+
+// Keep chapter numbers 1..n after any reordering/insertion/removal.
+function renumber(chapters: Chapter[]): Chapter[] {
+  return chapters.map((c, i) => (c.number === i + 1 ? c : { ...c, number: i + 1 }));
+}
+
+const BLANK: Record<ListKey, () => Record<string, unknown>> = {
+  chapters: () => ({ page_span: 'single', title: '', narrative: '', image_url: null }),
+  timeline: () => ({ year: '', caption: '', blend: 'multiply', image_url: null }),
+  treasures: () => ({ name: '', image_url: null }),
+  lessons: () => ({ icon_name: '', lesson: '' }),
+};
+
+// Write a list back, renumbering chapters so `number` always matches position.
+function withList(state: EditorPerson, list: ListKey, next: unknown[]): EditorPerson {
+  if (list === 'chapters') return { ...state, chapters: renumber(next as Chapter[]) };
+  return { ...state, [list]: next } as EditorPerson;
+}
 
 function draftReducer(state: EditorPerson, action: DraftAction): EditorPerson {
   switch (action.type) {
     case 'field':
       return { ...state, [action.key]: action.value } as EditorPerson;
-    case 'chapter':
+    case 'chapterField':
       return {
         ...state,
         chapters: state.chapters.map((c, i) => (i === action.index ? { ...c, [action.key]: action.value } : c)),
       };
-    case 'obj': {
+    case 'objField': {
       const cur = state[action.key] ?? {};
       return { ...state, [action.key]: { ...cur, [action.field]: action.value } } as EditorPerson;
     }
+    case 'listAdd':
+      return withList(state, action.list, [...(state[action.list] as unknown[]), BLANK[action.list]()]);
+    case 'listDelete':
+      return withList(state, action.list, (state[action.list] as unknown[]).filter((_, i) => i !== action.index));
+    case 'listDuplicate': {
+      const arr = state[action.list] as Record<string, unknown>[];
+      if (!arr[action.index]) return state;
+      const copy = { ...arr[action.index] };
+      return withList(state, action.list, [...arr.slice(0, action.index + 1), copy, ...arr.slice(action.index + 1)]);
+    }
+    case 'listReorder':
+      return withList(state, action.list, moveItem(state[action.list] as unknown[], action.from, action.to));
+    case 'listItemField':
+      return withList(state, action.list, (state[action.list] as Record<string, unknown>[]).map(
+        (it, i) => (i === action.index ? { ...it, [action.key]: action.value } : it),
+      ));
     default:
       return state;
   }
@@ -120,23 +172,172 @@ function NarrativeField({ label, value, onChange }: { label: string; value: stri
   );
 }
 
-// A read-only summary for the row-based sections whose editors land in Phase 4.
-function RowSummaryPanel({ title, rows, empty }: { title: string; rows: string[]; empty: string }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <Kick>{title}</Kick>
-      {rows.length === 0 ? (
-        <div className={styles.muted} style={{ fontSize: 13 }}>{empty}</div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {rows.map((r, i) => (
-            <div key={i} className={styles.panel} style={{ padding: '9px 12px', fontSize: 13, color: 'var(--brown)' }}>{r}</div>
-          ))}
-        </div>
-      )}
-      <div className={styles.callout} style={{ padding: '9px 12px', fontSize: 11.5, color: 'var(--brown)' }}>
-        Row editing (add · reorder · per-row art) arrives with the section editors.
+// The four page_span layouts, mapped 1:1 onto GoldenStory's `page_span`.
+const SPAN_OPTIONS: { value: string; name: string }[] = [
+  { value: 'default', name: 'Classic' },
+  { value: 'single', name: 'Single' },
+  { value: 'both', name: 'Full-bleed' },
+  { value: 'image', name: 'Art only' },
+];
+
+// The icon_name words the data uses (rendered as a titleCased label by
+// GoldenStory) — offered as suggestions, but free text is allowed.
+const LESSON_ICONS = ['courage', 'creativity', 'curiosity', 'generosity', 'honesty', 'imagination', 'integrity', 'kindness', 'observation', 'patience', 'perseverance', 'persistence', 'wonder'];
+
+// A mini spread diagram for one page_span option.
+function SpanDiagram({ value }: { value: string }) {
+  if (value === 'single') {
+    return (
+      <div className={styles.lhSpread}>
+        <div className={`${styles.lhArt} ${styles.lhLeafFold}`} style={{ flexBasis: '55%' }} />
+        <div className={styles.lhTxt} style={{ flexBasis: '45%' }} />
       </div>
+    );
+  }
+  if (value === 'both') {
+    return (
+      <div className={styles.lhSpread} style={{ background: 'linear-gradient(140deg, #d8c48a, #b79a5c)' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(20,12,6,.32)' }} />
+        <div style={{ position: 'absolute', left: 8, top: 10, right: 8, bottom: 8, opacity: 0.8, background: 'repeating-linear-gradient(180deg, #fff 0 1.5px, transparent 1.5px 6px)', backgroundSize: '60% 100%', backgroundRepeat: 'no-repeat' }} />
+      </div>
+    );
+  }
+  if (value === 'image') {
+    return <div className={styles.lhSpread}><div className={styles.lhArt} /><div style={{ background: '#fffdf8' }} /></div>;
+  }
+  return <div className={styles.lhSpread}><div className={`${styles.lhTxt} ${styles.lhLeafFold}`} /><div className={styles.lhArt} /></div>;
+}
+
+// "How this page composes" — page_span diagrams + blend + text-wash fade.
+function LayoutPicker({ span, blend, fade, onSpan, onBlend, onFade }: {
+  span?: string; blend?: string; fade?: boolean;
+  onSpan: (v: string) => void; onBlend: (v: string) => void; onFade: (v: boolean) => void;
+}) {
+  const eff = ['both', 'single', 'image'].includes(span ?? '') ? span : 'default';
+  const blendNormal = blend === 'normal' || blend === 'none';
+  const fadeOn = fade !== false;
+  const fadeEnabled = eff === 'single' || eff === 'both'; // only overlaid-text spans wash
+
+  return (
+    <div className={styles.panel} style={{ padding: 16 }}>
+      <div className={styles.kick} style={{ marginBottom: 12 }}>How this page composes</div>
+      <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+        <div>
+          <div className={styles.muted} style={{ fontSize: 11, marginBottom: 9, fontWeight: 700 }}>Page span</div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            {SPAN_OPTIONS.map((o) => (
+              <button key={o.value} className={`${styles.lh} ${eff === o.value ? styles.lhOn : styles.lhOff}`} onClick={() => onSpan(o.value)}>
+                <SpanDiagram value={o.value} />
+                <div className={styles.lhName}>{o.name}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className={styles.vhair} />
+        <div style={{ display: 'flex', gap: 26, flexWrap: 'wrap' }}>
+          <div>
+            <div className={styles.muted} style={{ fontSize: 11, marginBottom: 9, fontWeight: 700 }}>Blend</div>
+            <div className={styles.seg}>
+              <button className={!blendNormal ? styles.segOn : ''} onClick={() => onBlend('multiply')}>Multiply</button>
+              <button className={blendNormal ? styles.segOn : ''} onClick={() => onBlend('normal')}>Normal</button>
+            </div>
+            <div className={styles.muted} style={{ fontSize: 10.5, marginTop: 8, maxWidth: 150 }}>Paint on white melts into the parchment.</div>
+          </div>
+          <div>
+            <div className={styles.muted} style={{ fontSize: 11, marginBottom: 9, fontWeight: 700 }}>
+              Text wash <span className={`${styles.chip} ${styles.chipInk}`} style={{ marginLeft: 2 }}>for overlaid text</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, opacity: fadeEnabled ? 1 : 0.5 }}>
+              <button className={`${styles.sw}${fadeOn ? '' : ` ${styles.swOff}`}`} disabled={!fadeEnabled} onClick={() => onFade(!fadeOn)} aria-label="Toggle text wash" />
+              <span style={{ fontSize: 12, color: 'var(--ink)', fontWeight: 700 }}>{fadeOn ? 'Fade on' : 'Fade off'}</span>
+            </div>
+            <div className={styles.muted} style={{ fontSize: 10.5, marginTop: 8, maxWidth: 160 }}>
+              {fadeEnabled ? 'Legibility wash behind overlaid text.' : 'Dimmed here — this span doesn’t overlay text.'}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Death date as full-date / year-only / living, writing the ISO text column.
+function DeathDateControl({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const initial = !value ? 'living' : /^\d{4}$/.test(value) ? 'year' : 'full';
+  const [mode, setMode] = useState<'living' | 'year' | 'full'>(initial);
+  const year = value && /^\d{4}/.test(value) ? value.slice(0, 4) : '';
+
+  const pick = (m: 'living' | 'year' | 'full') => {
+    setMode(m);
+    if (m === 'living') onChange('');
+    else if (m === 'year') onChange(year);
+    else onChange(/^\d{4}-\d{2}-\d{2}$/.test(value) ? value : (year ? `${year}-01-01` : ''));
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <Kick>Death date</Kick>
+      <div className={styles.seg} style={{ alignSelf: 'flex-start' }}>
+        <button className={mode === 'full' ? styles.segOn : ''} onClick={() => pick('full')}>Full date</button>
+        <button className={mode === 'year' ? styles.segOn : ''} onClick={() => pick('year')}>Year only</button>
+        <button className={mode === 'living' ? styles.segOn : ''} onClick={() => pick('living')}>Living</button>
+      </div>
+      {mode === 'full' && (
+        <input type="date" className={styles.field} style={{ padding: '10px 14px', maxWidth: 200 }}
+          value={/^\d{4}-\d{2}-\d{2}$/.test(value) ? value : ''} onChange={(e) => onChange(e.target.value)} />
+      )}
+      {mode === 'year' && (
+        <input type="text" inputMode="numeric" className={styles.field} style={{ padding: '10px 14px', maxWidth: 120 }} placeholder="1519"
+          value={year} onChange={(e) => onChange(e.target.value.replace(/\D/g, '').slice(0, 4))} />
+      )}
+      {mode === 'living' && <div className={styles.muted} style={{ fontSize: 12 }}>No death date — shown as still living.</div>}
+    </div>
+  );
+}
+
+// The cover art slot — a placeholder until the image tools land (Phase 6).
+function CoverImageCard({ src }: { src: string | null }) {
+  return (
+    <div className={styles.panel} style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
+      <div style={{ width: 66, height: 66, flex: '0 0 66px', borderRadius: 8, overflow: 'hidden', background: '#EDE3D2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {src
+          // eslint-disable-next-line @next/next/no-img-element
+          ? <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <span className={styles.muted} style={{ fontSize: 10 }}>No art</span>}
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <span className={styles.kick} style={{ color: 'var(--brown)' }}>Cover illustration</span>
+          {src ? <span className={`${styles.chip} ${styles.chipGreen}`}>✓ set</span> : <span className={`${styles.chip} ${styles.chipInk}`}>empty</span>}
+        </div>
+        <div className={styles.muted} style={{ fontSize: 12, marginTop: 5 }}>Full-bleed · 1024×1536 · the gradient overlay carries the title.</div>
+      </div>
+      <button className={`${styles.btn} ${styles.btnSm}`} disabled title="Image slots arrive with the art tools">Open slot ▾</button>
+    </div>
+  );
+}
+
+// A reorderable list of rows: drag the grip to move, ✕ to delete, ＋ to add.
+function RowList({ count, onReorder, onDelete, onAdd, addLabel, renderRow }: {
+  count: number; onReorder: (from: number, to: number) => void; onDelete: (i: number) => void;
+  onAdd: () => void; addLabel: string; renderRow: (i: number) => React.ReactNode;
+}) {
+  const [drag, setDrag] = useState<number | null>(null);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className={`${styles.row}${drag === i ? ` ${styles.rowDragging}` : ''}`}
+          onDragOver={(e) => { if (drag !== null) e.preventDefault(); }}
+          onDrop={() => { if (drag !== null && drag !== i) onReorder(drag, i); setDrag(null); }}
+        >
+          <span className={styles.grip} draggable onDragStart={() => setDrag(i)} onDragEnd={() => setDrag(null)} title="Drag to reorder">⋮⋮</span>
+          <div style={{ flex: 1, minWidth: 0 }}>{renderRow(i)}</div>
+          <button className={styles.iconBtn} onClick={() => onDelete(i)} title="Delete" aria-label="Delete row">✕</button>
+        </div>
+      ))}
+      <button className={`${styles.btn} ${styles.btnSm}`} style={{ alignSelf: 'flex-start' }} onClick={onAdd}>＋ {addLabel}</button>
     </div>
   );
 }
@@ -158,6 +359,7 @@ export default function PersonEditor({ initialPerson }: { initialPerson: EditorP
   const mainRef = useRef<HTMLDivElement>(null);
   const [publishConfirm, setPublishConfirm] = useState(false);
   const [pubPending, startPub] = useTransition();
+  const [dragChapter, setDragChapter] = useState<number | null>(null);
 
   const sections = useMemo(() => deriveSections(draft), [draft]);
   const count = useMemo(() => spreadCount(draft), [draft]);
@@ -196,6 +398,8 @@ export default function PersonEditor({ initialPerson }: { initialPerson: EditorP
   }, [save.status]);
 
   const selectSection = (sec: Section) => { setSelectedId(sec.id); setPage(sec.spreadIndex); };
+  // Reorder chapters from the rail; selection follows the moved chapter.
+  const moveChapter = (from: number, to: number) => { edit({ type: 'listReorder', list: 'chapters', from, to }); setSelectedId(`chapter-${to}`); };
   const goToPage = (np: number) => {
     const clamped = Math.max(0, Math.min(count - 1, np));
     setPage(clamped);
@@ -312,20 +516,34 @@ export default function PersonEditor({ initialPerson }: { initialPerson: EditorP
           display: 'flex', flexDirection: 'column', gap: 3, overflow: 'auto', background: 'rgba(255, 248, 238, .5)',
         }}>
           <div className={styles.kick} style={{ padding: '4px 10px 10px' }}>The book</div>
-          {sections.map((s) => (
-            <button
-              key={s.id}
-              className={`${styles.navrow}${s.id === active?.id ? ` ${styles.navrowOn}` : ''}`}
-              onClick={() => selectSection(s)}
-            >
-              <span className={`${styles.dot} ${DOT_CLASS[s.status]}`} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
-              {s.note && (
-                <span style={{ marginLeft: 'auto', font: '700 9px/1 var(--sans)', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--amber)' }}>{s.note}</span>
-              )}
-              {s.count && <span style={{ marginLeft: 'auto' }} className={`${styles.muted} ${styles.mono}`}>{s.count}</span>}
-            </button>
-          ))}
+          {sections.map((s) => {
+            const isChapter = s.kind === 'chapter';
+            return (
+              <button
+                key={s.id}
+                className={`${styles.navrow}${s.id === active?.id ? ` ${styles.navrowOn}` : ''}${isChapter && dragChapter === s.chapterIndex ? ` ${styles.navrowDragging}` : ''}`}
+                onClick={() => selectSection(s)}
+                draggable={isChapter}
+                onDragStart={isChapter ? () => setDragChapter(s.chapterIndex!) : undefined}
+                onDragEnd={isChapter ? () => setDragChapter(null) : undefined}
+                onDragOver={isChapter && dragChapter !== null ? (e) => e.preventDefault() : undefined}
+                onDrop={isChapter && dragChapter !== null ? () => { if (dragChapter !== s.chapterIndex) moveChapter(dragChapter, s.chapterIndex!); setDragChapter(null); } : undefined}
+              >
+                {isChapter && <span className={styles.grip} style={{ fontSize: 12, marginLeft: -4 }}>⋮⋮</span>}
+                <span className={`${styles.dot} ${DOT_CLASS[s.status]}`} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
+                {s.note && (
+                  <span style={{ marginLeft: 'auto', font: '700 9px/1 var(--sans)', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--amber)' }}>{s.note}</span>
+                )}
+                {s.count && <span style={{ marginLeft: 'auto' }} className={`${styles.muted} ${styles.mono}`}>{s.count}</span>}
+              </button>
+            );
+          })}
+          <button
+            className={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`}
+            style={{ margin: '4px 8px 2px', justifyContent: 'flex-start' }}
+            onClick={() => { edit({ type: 'listAdd', list: 'chapters' }); setSelectedId(`chapter-${draft.chapters.length}`); }}
+          >＋ Add chapter</button>
           <div className={styles.hair} style={{ margin: '12px 6px' }} />
           <div className={styles.panel} style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 9 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -341,7 +559,7 @@ export default function PersonEditor({ initialPerson }: { initialPerson: EditorP
 
         {/* ── Center editing panel ── */}
         <div style={{ flex: 1, minWidth: 0, padding: '22px 26px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <CenterPanel active={active} draft={draft} dispatch={edit} />
+          <CenterPanel active={active} draft={draft} dispatch={edit} onSelect={setSelectedId} />
         </div>
 
         {/* ── Live-book preview ── */}
@@ -413,10 +631,13 @@ export default function PersonEditor({ initialPerson }: { initialPerson: EditorP
 
 // ── Center panel: the selected section's fields ──────────────────────────────
 
-function CenterPanel({ active, draft, dispatch }: {
-  active: Section; draft: EditorPerson; dispatch: React.Dispatch<DraftAction>;
+function CenterPanel({ active, draft, dispatch, onSelect }: {
+  active: Section; draft: EditorPerson; dispatch: React.Dispatch<DraftAction>; onSelect: (id: string) => void;
 }) {
   const set = (key: keyof EditorPerson) => (value: string) => dispatch({ type: 'field', key, value });
+  const rowInput = (placeholder: string, value: string, onChange: (v: string) => void, extra?: React.CSSProperties, list?: string) => (
+    <input className={styles.field} list={list} style={{ padding: '9px 12px', fontSize: 13, ...extra }} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
+  );
 
   switch (active.kind) {
     case 'cover':
@@ -424,22 +645,23 @@ function CenterPanel({ active, draft, dispatch }: {
         <>
           <div><Kick>Cover · identity</Kick></div>
           <TextField label="Name" value={draft.name ?? ''} onChange={set('name')} serif />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 16 }}>
             <TextField label="Role (epithet)" value={draft.role ?? ''} onChange={set('role')} placeholder="Painter, Inventor & Endless Dreamer" />
             <TextField label="Field" value={draft.field ?? ''} onChange={set('field')} placeholder="Art & Science" />
             <TextField label="Country" value={draft.country ?? ''} onChange={set('country')} placeholder="Italy" />
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <Kick>Birth date</Kick>
+            <TextField label="Story title" value={draft.story_title ?? ''} onChange={set('story_title')} placeholder={draft.name ?? ''} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <Kick>Birth date <span style={{ color: 'var(--red)' }}>*</span></Kick>
               <input type="date" className={styles.field} style={{ padding: '10px 14px' }}
                 value={draft.birth_date ?? ''} onChange={(e) => dispatch({ type: 'field', key: 'birth_date', value: e.target.value })} />
-            </label>
-            <TextField label="Death date (year or full date, blank if living)" value={draft.death_date ?? ''} onChange={set('death_date')} placeholder="1519" />
-            <TextField label="Story title" value={draft.story_title ?? ''} onChange={set('story_title')} placeholder={draft.name ?? ''} />
+              <div className={styles.muted} style={{ fontSize: 10.5, color: draft.birth_date ? 'var(--brown2)' : 'var(--red)' }}>
+                Required — Born Today surfaces a person by their birth month-day.
+              </div>
+            </div>
+            <DeathDateControl value={draft.death_date ?? ''} onChange={(v) => dispatch({ type: 'field', key: 'death_date', value: v })} />
           </div>
           <TextField label="Famous quote" value={draft.famous_quote ?? ''} onChange={set('famous_quote')} placeholder="Learning never exhausts the mind." />
-          <div className={styles.callout} style={{ padding: '10px 12px', fontSize: 11.5, color: 'var(--brown)' }}>
-            The cover illustration is edited in its image slot (arriving with the art tools).
-          </div>
+          <CoverImageCard src={draft.image_url} />
         </>
       );
     case 'childhood':
@@ -453,41 +675,126 @@ function CenterPanel({ active, draft, dispatch }: {
       const i = active.chapterIndex!;
       const ch = draft.chapters[i];
       const artOnly = ch?.page_span === 'image';
+      const addChapter = () => { dispatch({ type: 'listAdd', list: 'chapters' }); onSelect(`chapter-${draft.chapters.length}`); };
+      const duplicate = () => { dispatch({ type: 'listDuplicate', list: 'chapters', index: i }); onSelect(`chapter-${i + 1}`); };
+      const remove = () => { dispatch({ type: 'listDelete', list: 'chapters', index: i }); onSelect(draft.chapters.length > 1 ? `chapter-${Math.max(0, i - 1)}` : 'cover'); };
       return (
         <>
-          <div><Kick>Chapter {ch?.number ?? i + 1} of {draft.chapters.length}</Kick></div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <Kick>Chapter {ch?.number ?? i + 1} of {draft.chapters.length}</Kick>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button className={`${styles.btn} ${styles.btnSm}`} onClick={addChapter}>＋ Add</button>
+              <button className={`${styles.btn} ${styles.btnSm}`} onClick={duplicate}>⧉ Duplicate</button>
+              <button className={`${styles.btn} ${styles.btnSm}`} onClick={remove} style={{ color: 'var(--red)', borderColor: 'rgba(181,83,58,.42)' }}>🗑 Delete</button>
+            </div>
+          </div>
           {artOnly && (
             <div className={styles.callout} style={{ padding: '10px 12px', fontSize: 11.5, color: 'var(--brown)' }}>
               This chapter is a wordless full-page illustration — its narrative is written but not shown.
             </div>
           )}
-          <TextField label="Chapter title" value={ch?.title ?? ''} onChange={(v) => dispatch({ type: 'chapter', index: i, key: 'title', value: v })} serif />
-          <NarrativeField label="Narrative" value={ch?.narrative ?? ''} onChange={(v) => dispatch({ type: 'chapter', index: i, key: 'narrative', value: v })} />
+          <TextField label="Chapter title" value={ch?.title ?? ''} onChange={(v) => dispatch({ type: 'chapterField', index: i, key: 'title', value: v })} serif />
+          <NarrativeField label="Narrative" value={ch?.narrative ?? ''} onChange={(v) => dispatch({ type: 'chapterField', index: i, key: 'narrative', value: v })} />
+          <LayoutPicker
+            span={ch?.page_span} blend={ch?.blend} fade={ch?.fade}
+            onSpan={(v) => dispatch({ type: 'chapterField', index: i, key: 'page_span', value: v })}
+            onBlend={(v) => dispatch({ type: 'chapterField', index: i, key: 'blend', value: v })}
+            onFade={(v) => dispatch({ type: 'chapterField', index: i, key: 'fade', value: v })}
+          />
         </>
       );
     }
     case 'modern':
       return (
         <>
-          <TextField label={'“If … were 10 today” · title'} value={draft.modern?.title ?? ''} onChange={(v) => dispatch({ type: 'obj', key: 'modern', field: 'title', value: v })} serif />
-          <NarrativeField label="Narrative" value={draft.modern?.narrative ?? ''} onChange={(v) => dispatch({ type: 'obj', key: 'modern', field: 'narrative', value: v })} />
+          <TextField label={'“If … were 10 today” · title'} value={draft.modern?.title ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'modern', field: 'title', value: v })} serif />
+          <NarrativeField label="Narrative" value={draft.modern?.narrative ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'modern', field: 'narrative', value: v })} />
+          <LayoutPicker
+            span={draft.modern?.page_span} blend={draft.modern?.blend} fade={draft.modern?.fade}
+            onSpan={(v) => dispatch({ type: 'objField', key: 'modern', field: 'page_span', value: v })}
+            onBlend={(v) => dispatch({ type: 'objField', key: 'modern', field: 'blend', value: v })}
+            onFade={(v) => dispatch({ type: 'objField', key: 'modern', field: 'fade', value: v })}
+          />
         </>
       );
     case 'after':
       return (
         <>
-          <TextField label="Gifts That Live On · title" value={draft.after_treasures?.title ?? ''} onChange={(v) => dispatch({ type: 'obj', key: 'after_treasures', field: 'title', value: v })} serif />
-          <NarrativeField label="Narrative" value={draft.after_treasures?.narrative ?? ''} onChange={(v) => dispatch({ type: 'obj', key: 'after_treasures', field: 'narrative', value: v })} />
+          <TextField label="Gifts That Live On · title" value={draft.after_treasures?.title ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'after_treasures', field: 'title', value: v })} serif />
+          <NarrativeField label="Narrative" value={draft.after_treasures?.narrative ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'after_treasures', field: 'narrative', value: v })} />
+          {/* Rendered as a single leaf on the Treasures spread — only blend + wash apply. */}
+          <div className={styles.panel} style={{ padding: 16, display: 'flex', gap: 26, flexWrap: 'wrap' }}>
+            <div>
+              <div className={styles.muted} style={{ fontSize: 11, marginBottom: 9, fontWeight: 700 }}>Blend</div>
+              <div className={styles.seg}>
+                <button className={!(draft.after_treasures?.blend === 'normal') ? styles.segOn : ''} onClick={() => dispatch({ type: 'objField', key: 'after_treasures', field: 'blend', value: 'multiply' })}>Multiply</button>
+                <button className={draft.after_treasures?.blend === 'normal' ? styles.segOn : ''} onClick={() => dispatch({ type: 'objField', key: 'after_treasures', field: 'blend', value: 'normal' })}>Normal</button>
+              </div>
+            </div>
+            <div>
+              <div className={styles.muted} style={{ fontSize: 11, marginBottom: 9, fontWeight: 700 }}>Text wash</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                <button className={`${styles.sw}${draft.after_treasures?.fade !== false ? '' : ` ${styles.swOff}`}`} onClick={() => dispatch({ type: 'objField', key: 'after_treasures', field: 'fade', value: draft.after_treasures?.fade === false })} aria-label="Toggle text wash" />
+                <span style={{ fontSize: 12, color: 'var(--ink)', fontWeight: 700 }}>{draft.after_treasures?.fade !== false ? 'Fade on' : 'Fade off'}</span>
+              </div>
+            </div>
+          </div>
         </>
       );
     case 'takeaway':
       return <NarrativeField label="Takeaway · one closing line" value={draft.story_takeaway ?? ''} onChange={set('story_takeaway')} />;
     case 'timeline':
-      return <RowSummaryPanel title="Life timeline" empty="No timeline milestones yet." rows={draft.timeline.map((t) => `${t.year ?? '—'} · ${t.caption ?? ''}`)} />;
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Kick>Life timeline · milestones</Kick>
+          <RowList
+            count={draft.timeline.length} addLabel="Add milestone"
+            onAdd={() => dispatch({ type: 'listAdd', list: 'timeline' })}
+            onDelete={(i) => dispatch({ type: 'listDelete', list: 'timeline', index: i })}
+            onReorder={(from, to) => dispatch({ type: 'listReorder', list: 'timeline', from, to })}
+            renderRow={(i) => (
+              <div style={{ display: 'flex', gap: 8 }}>
+                {rowInput('Year', draft.timeline[i].year ?? '', (v) => dispatch({ type: 'listItemField', list: 'timeline', index: i, key: 'year', value: v }), { flex: '0 0 88px' })}
+                {rowInput('Caption', draft.timeline[i].caption ?? '', (v) => dispatch({ type: 'listItemField', list: 'timeline', index: i, key: 'caption', value: v }), { flex: 1 })}
+              </div>
+            )}
+          />
+        </div>
+      );
     case 'treasures':
-      return <RowSummaryPanel title="Treasures" empty="No treasures yet." rows={draft.treasures.map((t) => t.name ?? '—')} />;
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Kick>Treasures · their gifts to the world</Kick>
+          <RowList
+            count={draft.treasures.length} addLabel="Add treasure"
+            onAdd={() => dispatch({ type: 'listAdd', list: 'treasures' })}
+            onDelete={(i) => dispatch({ type: 'listDelete', list: 'treasures', index: i })}
+            onReorder={(from, to) => dispatch({ type: 'listReorder', list: 'treasures', from, to })}
+            renderRow={(i) => rowInput('Name', draft.treasures[i].name ?? '', (v) => dispatch({ type: 'listItemField', list: 'treasures', index: i, key: 'name', value: v }))}
+          />
+        </div>
+      );
     case 'lessons':
-      return <RowSummaryPanel title="Lessons" empty="No lessons yet." rows={draft.lessons.map((l) => `${l.icon_name ?? '—'} · ${l.lesson ?? ''}`)} />;
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Kick>Lessons · what can we learn</Kick>
+          <datalist id="lesson-icons">
+            {LESSON_ICONS.map((ic) => <option key={ic} value={ic} />)}
+          </datalist>
+          <RowList
+            count={draft.lessons.length} addLabel="Add lesson"
+            onAdd={() => dispatch({ type: 'listAdd', list: 'lessons' })}
+            onDelete={(i) => dispatch({ type: 'listDelete', list: 'lessons', index: i })}
+            onReorder={(from, to) => dispatch({ type: 'listReorder', list: 'lessons', from, to })}
+            renderRow={(i) => (
+              <div style={{ display: 'flex', gap: 8 }}>
+                {rowInput('curiosity', draft.lessons[i].icon_name ?? '', (v) => dispatch({ type: 'listItemField', list: 'lessons', index: i, key: 'icon_name', value: v }), { flex: '0 0 130px' }, 'lesson-icons')}
+                {rowInput('The lesson…', draft.lessons[i].lesson ?? '', (v) => dispatch({ type: 'listItemField', list: 'lessons', index: i, key: 'lesson', value: v }), { flex: 1 })}
+              </div>
+            )}
+          />
+        </div>
+      );
     default:
       return null;
   }

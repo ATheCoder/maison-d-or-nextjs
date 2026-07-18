@@ -88,6 +88,27 @@ textarea.field { resize: vertical; }
 /* Amber banner + top-bar tint while editing a Published person. */
 .publishedBar { background: rgba(192, 138, 46, 0.1); border-bottom: 1px solid rgba(192, 138, 46, 0.35); color: #8a5f18; }
 
+/* Page-span layout diagrams ("How this page composes"). */
+.lh { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; background: none; border: none; padding: 0; }
+.lhSpread { width: 62px; height: 40px; border: 1px solid var(--line2); border-radius: 4px; background: #fffdf8; display: flex; overflow: hidden; position: relative; }
+.lhSpread > div { flex: 1 1 50%; }
+.lhLeafFold { border-right: 1px solid var(--line); }
+.lhTxt { background: repeating-linear-gradient(180deg, var(--brown3) 0 1.5px, transparent 1.5px 6px); background-size: 70% 100%; background-repeat: no-repeat; background-position: 6px 8px; opacity: 0.55; }
+.lhArt { background: linear-gradient(140deg, #d8c48a, #b79a5c); }
+.lhName { font: 700 10.5px/1 var(--sans); color: var(--brown); }
+.lhOn .lhSpread { border-color: var(--gold-deep); box-shadow: 0 0 0 2px var(--gold-soft), 0 4px 10px rgba(168, 132, 63, 0.2); }
+.lhOn .lhName { color: var(--gold-deep); }
+.lhOff { opacity: 0.62; }
+
+/* Row editors (timeline / treasures / lessons). */
+.row { display: flex; align-items: flex-start; gap: 8px; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: #fffdf8; }
+.rowDragging { opacity: 0.4; }
+.grip { cursor: grab; color: var(--brown3); font-size: 15px; line-height: 1.4; user-select: none; padding: 0 2px; flex: 0 0 auto; align-self: center; }
+.iconBtn { border: 1px solid var(--line2); background: #fffdf8; color: var(--brown2); border-radius: 8px; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: 0 0 auto; font-size: 13px; }
+.iconBtn:hover { color: var(--red); border-color: rgba(181, 83, 58, 0.42); }
+.iconBtn:disabled { opacity: 0.4; cursor: default; }
+.navrowDragging { opacity: 0.4; }
+
 /* Draggable divider between the editing panel and the live-book preview. */
 .resizeHandle { flex: 0 0 6px; cursor: col-resize; background: var(--line); position: relative; touch-action: none; }
 .resizeHandle:hover, .resizeHandle.dragging { background: var(--gold); }

@@ -139,6 +139,7 @@ export type Chapter = {
   number?: number;
   page_span?: string; // 'single' | 'both' | 'image' — GoldenStory layout hint
   blend?: string;
+  fade?: boolean; // legibility wash behind overlaid text (single/both spans)
   title?: string;
   narrative?: string;
   image_url?: string | null;
