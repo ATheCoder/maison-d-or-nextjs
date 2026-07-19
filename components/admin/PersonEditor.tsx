@@ -840,6 +840,12 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   // Derived, always-valid current spread (clamped as the story grows/shrinks).
   const page = Math.max(0, Math.min(pageState, count - 1));
 
+  // Keep the preview on the selected section when an edit reshuffles the
+  // pagination underneath it — changing a chapter's page span, or adding /
+  // removing / reordering chapters, all shift spread indices.
+  const activeSpread = active.spreadIndex;
+  useEffect(() => { setPage(activeSpread); }, [activeSpread]);
+
   // An edit: update the draft and mark unsaved (in the event, not an effect).
   const edit = useCallback((action: DraftAction) => {
     dispatch(action);
