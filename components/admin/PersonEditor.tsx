@@ -16,6 +16,13 @@
  */
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
+import {
+  DndContext, PointerSensor, KeyboardSensor, closestCenter,
+  useSensor, useSensors, type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { CSS as dndCSS } from '@dnd-kit/utilities';
 import GoldenStory, { spreadCount } from '@/components/dailygold/GoldenStory';
 import {
   savePerson, setPublished as setPublishedAction,
@@ -400,28 +407,111 @@ function DeathDateControl({ value, onChange }: { value: string; onChange: (v: st
   );
 }
 
-// A reorderable list of rows: drag the grip to move, ✕ to delete, ＋ to add.
+// One sortable row (dnd-kit): the grip button is the drag activator, so the
+// inputs inside stay freely clickable/selectable. While dragging, the row rides
+// the pointer and its siblings animate out of the way.
+function SortableRow({ id, onDelete, children }: { id: string; onDelete: () => void; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      className={styles.row}
+      style={{
+        transform: dndCSS.Transform.toString(transform),
+        transition,
+        ...(isDragging ? { position: 'relative' as const, zIndex: 5, boxShadow: '0 10px 24px rgba(40,26,12,.18)' } : null),
+      }}
+    >
+      <button
+        ref={setActivatorNodeRef}
+        className={styles.grip}
+        {...attributes}
+        {...listeners}
+        title="Drag to reorder"
+        aria-label="Reorder row"
+      >⋮⋮</button>
+      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+      <button className={styles.iconBtn} onClick={onDelete} title="Delete" aria-label="Delete row">✕</button>
+    </div>
+  );
+}
+
+// A reorderable list of rows: drag the grip to move (pointer, or focus the grip
+// and use Space + arrows), ✕ to delete, ＋ to add. The order commits on drop.
 function RowList({ count, onReorder, onDelete, onAdd, addLabel, renderRow }: {
   count: number; onReorder: (from: number, to: number) => void; onDelete: (i: number) => void;
   onAdd: () => void; addLabel: string; renderRow: (i: number) => React.ReactNode;
 }) {
-  const [drag, setDrag] = useState<number | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const ids = Array.from({ length: count }, (_, i) => `row-${i}`);
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    onReorder(ids.indexOf(String(active.id)), ids.indexOf(String(over.id)));
+  };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className={`${styles.row}${drag === i ? ` ${styles.rowDragging}` : ''}`}
-          onDragOver={(e) => { if (drag !== null) e.preventDefault(); }}
-          onDrop={() => { if (drag !== null && drag !== i) onReorder(drag, i); setDrag(null); }}
-        >
-          <span className={styles.grip} draggable onDragStart={() => setDrag(i)} onDragEnd={() => setDrag(null)} title="Drag to reorder">⋮⋮</span>
-          <div style={{ flex: 1, minWidth: 0 }}>{renderRow(i)}</div>
-          <button className={styles.iconBtn} onClick={() => onDelete(i)} title="Delete" aria-label="Delete row">✕</button>
-        </div>
-      ))}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+          {ids.map((id, i) => (
+            <SortableRow key={id} id={id} onDelete={() => onDelete(i)}>{renderRow(i)}</SortableRow>
+          ))}
+        </SortableContext>
+      </DndContext>
       <button className={`${styles.btn} ${styles.btnSm}`} style={{ alignSelf: 'flex-start' }} onClick={onAdd}>＋ {addLabel}</button>
     </div>
+  );
+}
+
+// ── Section rail rows ────────────────────────────────────────────────────────
+
+// The dot + label + note/count shared by every rail row.
+function NavRowInner({ s }: { s: Section }) {
+  return (
+    <>
+      <span className={`${styles.dot} ${DOT_CLASS[s.status]}`} />
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
+      {s.note && (
+        <span style={{ marginLeft: 'auto', font: '700 9px/1 var(--sans)', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--amber)' }}>{s.note}</span>
+      )}
+      {s.count && <span style={{ marginLeft: 'auto' }} className={`${styles.muted} ${styles.mono}`}>{s.count}</span>}
+    </>
+  );
+}
+
+// A chapter row in the rail (dnd-kit sortable): the grip drags, the rest of the
+// row still just selects the chapter. The grip swallows its own click so the
+// click that trails a drop doesn't re-select a shifted row.
+function SortableChapterRow({ s, isActive, onSelect }: { s: Section; isActive: boolean; onSelect: () => void }) {
+  const { listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: s.id });
+  return (
+    <button
+      ref={setNodeRef}
+      className={`${styles.navrow}${isActive ? ` ${styles.navrowOn}` : ''}`}
+      style={{
+        transform: dndCSS.Transform.toString(transform),
+        transition,
+        ...(isDragging ? { position: 'relative' as const, zIndex: 5, background: '#fffdf8', boxShadow: '0 10px 24px rgba(40,26,12,.18)' } : null),
+      }}
+      onClick={onSelect}
+    >
+      <span
+        ref={setActivatorNodeRef}
+        className={styles.grip}
+        style={{ fontSize: 12, marginLeft: -4 }}
+        {...listeners}
+        onClick={(e) => e.stopPropagation()}
+        title="Drag to reorder"
+      >⋮⋮</span>
+      <NavRowInner s={s} />
+    </button>
   );
 }
 
@@ -647,7 +737,8 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   const mainRef = useRef<HTMLDivElement>(null);
   const [publishConfirm, setPublishConfirm] = useState(false);
   const [pubPending, startPub] = useTransition();
-  const [dragChapter, setDragChapter] = useState<number | null>(null);
+  // Rail chapter reordering (dnd-kit): pointer-only, drag starts from the grip.
+  const railSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   // ── OpenRouter credits (top bar) ──
   // The AI writer/renderer spends OpenRouter credits; show the balance in the
@@ -935,6 +1026,12 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   const selectSection = (sec: Section) => { setSelectedId(sec.id); setPage(sec.spreadIndex); };
   // Reorder chapters from the rail; selection follows the moved chapter.
   const moveChapter = (from: number, to: number) => { edit({ type: 'listReorder', list: 'chapters', from, to }); setSelectedId(`chapter-${to}`); };
+  const onRailDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const from = Number(String(active.id).split('-')[1]);
+    const to = Number(String(over.id).split('-')[1]);
+    if (!Number.isNaN(from) && !Number.isNaN(to)) moveChapter(from, to);
+  };
   const goToPage = (np: number) => {
     const clamped = Math.max(0, Math.min(count - 1, np));
     setPage(clamped);
@@ -1057,29 +1154,23 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
           display: 'flex', flexDirection: 'column', gap: 3, overflow: 'auto', background: 'rgba(255, 248, 238, .5)',
         }}>
           <div className={styles.kick} style={{ padding: '4px 10px 10px' }}>The book</div>
-          {sections.map((s) => {
-            const isChapter = s.kind === 'chapter';
-            return (
-              <button
-                key={s.id}
-                className={`${styles.navrow}${s.id === active?.id ? ` ${styles.navrowOn}` : ''}${isChapter && dragChapter === s.chapterIndex ? ` ${styles.navrowDragging}` : ''}`}
-                onClick={() => selectSection(s)}
-                draggable={isChapter}
-                onDragStart={isChapter ? () => setDragChapter(s.chapterIndex!) : undefined}
-                onDragEnd={isChapter ? () => setDragChapter(null) : undefined}
-                onDragOver={isChapter && dragChapter !== null ? (e) => e.preventDefault() : undefined}
-                onDrop={isChapter && dragChapter !== null ? () => { if (dragChapter !== s.chapterIndex) moveChapter(dragChapter, s.chapterIndex!); setDragChapter(null); } : undefined}
-              >
-                {isChapter && <span className={styles.grip} style={{ fontSize: 12, marginLeft: -4 }}>⋮⋮</span>}
-                <span className={`${styles.dot} ${DOT_CLASS[s.status]}`} />
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
-                {s.note && (
-                  <span style={{ marginLeft: 'auto', font: '700 9px/1 var(--sans)', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--amber)' }}>{s.note}</span>
-                )}
-                {s.count && <span style={{ marginLeft: 'auto' }} className={`${styles.muted} ${styles.mono}`}>{s.count}</span>}
-              </button>
-            );
-          })}
+          <DndContext sensors={railSensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis]} onDragEnd={onRailDragEnd}>
+            <SortableContext items={draft.chapters.map((_, i) => `chapter-${i}`)} strategy={verticalListSortingStrategy}>
+              {sections.map((s) => (
+                s.kind === 'chapter' ? (
+                  <SortableChapterRow key={s.id} s={s} isActive={s.id === active?.id} onSelect={() => selectSection(s)} />
+                ) : (
+                  <button
+                    key={s.id}
+                    className={`${styles.navrow}${s.id === active?.id ? ` ${styles.navrowOn}` : ''}`}
+                    onClick={() => selectSection(s)}
+                  >
+                    <NavRowInner s={s} />
+                  </button>
+                )
+              ))}
+            </SortableContext>
+          </DndContext>
           <button
             className={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`}
             style={{ margin: '4px 8px 2px', justifyContent: 'flex-start' }}
