@@ -9,12 +9,14 @@
  * staging key for review; batch and upload write straight to canonical.
  */
 import 'server-only';
-import { eq } from 'drizzle-orm';
+import { NonRetriableError } from 'inngest';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '@/src/db';
+import { inngest } from '@/lib/inngest/client';
 import {
   remarkablePerson, storyBrief,
   type RemarkablePersonRow, type StorySection, type Chapter, type TimelineEntry, type Treasure,
-  type SlotOverride, type GenerationJobRow, type JobProgress,
+  type SlotOverride, type GenerationJobRow, type JobProgress, type JobResult,
 } from '@/src/db/schema';
 import type { Brief } from './brief.ts';
 import { renderImage } from './images.ts';
@@ -22,7 +24,7 @@ import { putStoryImage, putStagingImage, promoteStaging, deleteStorageObject } f
 import {
   slotDescriptors, sceneFor, promptFor, readPath, type SlotDescriptor, type SlotPerson,
 } from './slots.ts';
-import { startJob, deleteJob, jobsForSlug } from './jobs.ts';
+import { createJob, failJob, deleteJob, jobsForSlug } from './jobs.ts';
 
 const IMAGE_QUALITY = 'medium'; // the CLI default
 
@@ -73,22 +75,25 @@ function descriptorFor(person: SlotPerson, file: string): SlotDescriptor | undef
 }
 
 // ── Writes (serialized per slug) ─────────────────────────────────────────────
-// A batch renders with concurrency 3, so several workers finish at once. Person
-// and brief rows are jsonb read-modify-write, so all writes for a slug funnel
-// through one promise chain — no lost update when two slots land together.
+// Person and brief rows are jsonb read-modify-write, and batch slots render in
+// parallel — as separate Inngest step invocations, so possibly in separate
+// processes. A per-slug Postgres advisory lock (transaction-scoped) makes each
+// read-modify-write atomic across processes; the previous in-process promise
+// chain only protected a single server.
 
-const chains = new Map<string, Promise<unknown>>();
-function serialize<T>(slug: string, fn: () => Promise<T>): Promise<T> {
-  const prev = chains.get(slug) ?? Promise.resolve();
-  const next = prev.then(fn, fn);
-  chains.set(slug, next.catch(() => {}));
-  return next;
+type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+function withSlugLock<T>(slug: string, fn: (tx: DbTx) => Promise<T>): Promise<T> {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${slug}))`);
+    return fn(tx);
+  });
 }
 
 // Map a slot's dotted personPath onto its DB column and write the URL in place.
 async function applyImageUrl(slug: string, personPath: string, url: string | null): Promise<void> {
-  await serialize(slug, async () => {
-    const row = await loadPerson(slug);
+  await withSlugLock(slug, async (tx) => {
+    const [row] = await tx.select().from(remarkablePerson).where(eq(remarkablePerson.slug, slug)).limit(1);
     if (!row) return;
     const set: Partial<typeof remarkablePerson.$inferInsert> = { updatedAt: new Date() };
     if (personPath === 'image_url') set.imageUrl = url;
@@ -107,22 +112,22 @@ async function applyImageUrl(slug: string, personPath: string, url: string | nul
       else if (list === 'timeline') set.timeline = arr as TimelineEntry[];
       else set.treasures = arr as Treasure[];
     }
-    await db.update(remarkablePerson).set(set).where(eq(remarkablePerson.slug, slug));
+    await tx.update(remarkablePerson).set(set).where(eq(remarkablePerson.slug, slug));
   });
 }
 
 // Merge a patch into story_brief.prompt_overrides[file], preserving siblings.
 async function mergeOverride(slug: string, file: string, patch: Partial<SlotOverride>): Promise<void> {
-  await serialize(slug, async () => {
-    const row = await loadBriefRow(slug);
+  await withSlugLock(slug, async (tx) => {
+    const [row] = await tx.select().from(storyBrief).where(eq(storyBrief.slug, slug)).limit(1);
     const overrides = { ...(row?.promptOverrides ?? {}) };
     overrides[file] = { ...(overrides[file] ?? {}), ...patch };
     if (row) {
-      await db.update(storyBrief).set({ promptOverrides: overrides, updatedAt: new Date() }).where(eq(storyBrief.slug, slug));
+      await tx.update(storyBrief).set({ promptOverrides: overrides, updatedAt: new Date() }).where(eq(storyBrief.slug, slug));
     } else {
       // No brief yet (a manually-built person that was never generated) — a
       // bare row still records upload/source metadata for the slot.
-      await db.insert(storyBrief).values({ slug, brief: null, promptOverrides: overrides, updatedAt: new Date() })
+      await tx.insert(storyBrief).values({ slug, brief: null, promptOverrides: overrides, updatedAt: new Date() })
         .onConflictDoUpdate({ target: storyBrief.slug, set: { promptOverrides: overrides, updatedAt: new Date() } });
     }
   });
@@ -165,7 +170,13 @@ export async function saveFullPrompt(slug: string, file: string, fullPrompt: str
 
 // ── Path A: generate in-app (staging → accept/revert) ────────────────────────
 
-/** Start a single-slot render to a staging key for review. One at a time. */
+/**
+ * Start a single-slot render to a staging key for review. One at a time.
+ * Like the batch path, the render itself runs on Inngest (renderSlot in
+ * lib/inngest/functions.ts) — a retryable step that survives a redeploy and
+ * shows up in the dashboard — so this only validates the prompt, creates the
+ * job row the editor polls, and sends the triggering event.
+ */
 export async function startSlotGeneration(slug: string, file: string):
   Promise<{ ok: true; jobId: number } | { ok: false; error: string }> {
   const person = await loadPerson(slug);
@@ -175,17 +186,40 @@ export async function startSlotGeneration(slug: string, file: string):
   if (!desc) return { ok: false, error: 'Unknown slot.' };
 
   const { brief, overrides } = await getSlotData(slug);
-  const scene = sceneFor(brief, desc.briefField);
-  const prompt = promptFor(scene, desc.placement, overrides[file]);
+  const prompt = promptFor(sceneFor(brief, desc.briefField), desc.placement, overrides[file]);
   if (!prompt) return { ok: false, error: 'Add a scene (or generate the book) before rendering this slot.' };
 
-  const started = await startJob(slug, 'slot', { slots: { [file]: { state: 'running' } } }, async (job) => {
-    const png = await renderImage(prompt, desc.size, IMAGE_QUALITY);
-    const { url, key } = await putStagingImage(slug, file, job.id, png);
-    return { file, personPath: desc.personPath, stagingUrl: url, stagingKey: key };
-  });
-  if (!started.ok) return { ok: false, error: started.error };
-  return { ok: true, jobId: started.job.id };
+  const created = await createJob(slug, 'slot', { slots: { [file]: { state: 'running' } } });
+  if (!created.ok) return { ok: false, error: created.error };
+  try {
+    await inngest.send({
+      name: 'story/image.slot.requested',
+      data: { slug, jobId: created.job.id, file },
+    });
+  } catch {
+    await failJob(created.job.id, 'Could not reach Inngest to enqueue the render.');
+    return { ok: false, error: 'Could not reach Inngest to enqueue the render — is the dev server running?' };
+  }
+  return { ok: true, jobId: created.job.id };
+}
+
+/**
+ * Render one slot to a staging key and return the job result the accept/revert
+ * flow reads (acceptSlot promotes stagingKey → canonical). The body of the
+ * renderSlot Inngest step; reloads person/brief/overrides so a retried step
+ * re-derives its prompt, and throws NonRetriableError where a retry cannot help.
+ */
+export async function renderSlotToStaging(slug: string, file: string, jobId: number): Promise<JobResult> {
+  const person = await loadPerson(slug);
+  if (!person) throw new NonRetriableError('This person no longer exists.');
+  const desc = descriptorFor(toSlotPerson(person), file);
+  if (!desc) throw new NonRetriableError('Unknown slot.');
+  const { brief, overrides } = await getSlotData(slug);
+  const prompt = promptFor(sceneFor(brief, desc.briefField), desc.placement, overrides[file]);
+  if (!prompt) throw new NonRetriableError('No prompt for this slot — add a scene first.');
+  const png = await renderImage(prompt, desc.size, IMAGE_QUALITY);
+  const { url, key } = await putStagingImage(slug, file, jobId, png);
+  return { file, personPath: desc.personPath, stagingUrl: url, stagingKey: key };
 }
 
 /** Accept a staged render: promote to canonical, set the URL, clear the job. */
@@ -233,8 +267,9 @@ export async function uploadSlot(slug: string, file: string, buffer: Buffer):
 /**
  * Start the batch renderer. Without `files` it renders every empty,
  * prompt-ready slot; with `files` it re-renders exactly those (per-slot retry).
- * Concurrency 3, one retry per slot (ported from the CLI's renderAll). Each slot
- * is written the moment it lands, so a failure never discards completed art.
+ * The rendering itself runs on Inngest (lib/inngest/functions.ts) — one
+ * retryable step per slot, three at a time, resumable across deploys — so this
+ * only creates the job row the editor polls and sends the triggering event.
  */
 export async function startBatch(slug: string, files?: string[]):
   Promise<{ ok: true; jobId: number; count: number } | { ok: false; error: string }> {
@@ -252,39 +287,39 @@ export async function startBatch(slug: string, files?: string[]):
   if (!targets.length) return { ok: false, error: files?.length ? 'Nothing to retry.' : 'No missing slots can be generated — add scenes first.' };
 
   const initial: JobProgress = { slots: Object.fromEntries(targets.map((d) => [d.file, { state: 'queued' }])) };
-  const started = await startJob(slug, 'images', initial, async (job) => {
-    const progress: JobProgress = { slots: { ...initial.slots } };
-    const flush = () => serialize(slug, () => job.setProgress({ slots: { ...progress.slots } }));
-    const mark = async (file: string, state: string, error?: string) => {
-      progress.slots![file] = { state, ...(error ? { error } : {}) };
-      await flush();
-    };
+  const created = await createJob(slug, 'images', initial);
+  if (!created.ok) return { ok: false, error: created.error };
+  try {
+    await inngest.send({
+      name: 'story/images.batch.requested',
+      data: { slug, jobId: created.job.id, files: targets.map((d) => d.file) },
+    });
+  } catch {
+    await failJob(created.job.id, 'Could not reach Inngest to enqueue the renders.');
+    return { ok: false, error: 'Could not reach Inngest to enqueue the renders — is the dev server running?' };
+  }
+  return { ok: true, jobId: created.job.id, count: targets.length };
+}
 
-    const queue = [...targets];
-    const worker = async () => {
-      for (let d = queue.shift(); d; d = queue.shift()) {
-        await mark(d.file, 'running');
-        const prompt = promptFor(sceneFor(brief, d.briefField), d.placement, overrides[d.file]);
-        let done = false;
-        for (let attempt = 1; attempt <= 2 && !done; attempt++) {
-          try {
-            const png = await renderImage(prompt, d.size, IMAGE_QUALITY);
-            const base = await putStoryImage(slug, d.file, png);
-            await applyImageUrl(slug, d.personPath, `${base}?v=${job.id}`);
-            await mergeOverride(slug, d.file, { source: 'generated', accepted: true });
-            await mark(d.file, 'done');
-            done = true;
-          } catch (err) {
-            if (attempt >= 2) await mark(d.file, 'failed', err instanceof Error ? err.message.slice(0, 300) : 'render failed');
-          }
-        }
-      }
-    };
-    await Promise.all(Array.from({ length: 3 }, worker));
-    return { done: true };
-  });
-  if (!started.ok) return { ok: false, error: started.error };
-  return { ok: true, jobId: started.job.id, count: targets.length };
+/**
+ * Render one batch slot to its canonical key and write it onto the person —
+ * the body of one Inngest step. Reloads person/brief/overrides so a retried
+ * step re-derives its prompt from current data, and throws NonRetriableError
+ * where a retry cannot help. Each slot is written the moment it lands, so a
+ * failure never discards completed art.
+ */
+export async function renderSlotToCanonical(slug: string, file: string, jobId: number): Promise<void> {
+  const person = await loadPerson(slug);
+  if (!person) throw new NonRetriableError('This person no longer exists.');
+  const d = descriptorFor(toSlotPerson(person), file);
+  if (!d) throw new NonRetriableError('Unknown slot.');
+  const { brief, overrides } = await getSlotData(slug);
+  const prompt = promptFor(sceneFor(brief, d.briefField), d.placement, overrides[file]);
+  if (!prompt) throw new NonRetriableError('No prompt for this slot — add a scene first.');
+  const png = await renderImage(prompt, d.size, IMAGE_QUALITY);
+  const base = await putStoryImage(slug, file, png);
+  await applyImageUrl(slug, d.personPath, `${base}?v=${jobId}`);
+  await mergeOverride(slug, file, { source: 'generated', accepted: true });
 }
 
 async function loadJob(slug: string, jobId: number): Promise<GenerationJobRow | null> {

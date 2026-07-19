@@ -8,7 +8,7 @@
  */
 import 'server-only';
 import { after } from 'next/server';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from '@/src/db';
 import { generationJob, type GenerationJobRow, type JobProgress, type JobResult } from '@/src/db/schema';
 
@@ -40,6 +40,59 @@ export async function jobsForSlug(slug: string): Promise<GenerationJobRow[]> {
 /** Delete one job row (Reject/Accept/Dismiss on a rewrite, or clearing a job). */
 export async function deleteJob(id: number): Promise<void> {
   await db.delete(generationJob).where(eq(generationJob.id, id));
+}
+
+/** Mark a job done with its result. */
+export async function finishJob(id: number, result: JobResult | null): Promise<void> {
+  await db
+    .update(generationJob)
+    .set({ state: 'done', result, updatedAt: new Date() })
+    .where(eq(generationJob.id, id));
+}
+
+/** Mark a job failed with a trimmed error message (best-effort). */
+export async function failJob(id: number, message: string): Promise<void> {
+  await db
+    .update(generationJob)
+    .set({ state: 'failed', error: message.slice(0, 1000), updatedAt: new Date() })
+    .where(eq(generationJob.id, id))
+    .catch(() => {});
+}
+
+/**
+ * Insert a running job row without scheduling a body — for work that runs on
+ * Inngest (the batch renderer, lib/inngest/functions.ts) instead of in-process
+ * via after(). Same one-running-job-per-(slug, kind) guard as startJob; the
+ * Inngest function owns progress updates and completion.
+ */
+export async function createJob(slug: string, kind: JobKind, initialProgress: JobProgress):
+  Promise<{ ok: true; job: GenerationJobRow } | { ok: false; error: string }> {
+  if (await runningJob(slug, kind)) {
+    return { ok: false, error: `A ${kind} job is already running for this person.` };
+  }
+  const [row] = await db
+    .insert(generationJob)
+    .values({ slug, kind, state: 'running', progress: initialProgress })
+    .returning();
+  return { ok: true, job: row };
+}
+
+/**
+ * Set one slot's progress entry atomically with jsonb_set. Parallel Inngest
+ * steps may write from separate processes, so a read-modify-write of the whole
+ * progress object here would lose sibling slots' updates.
+ */
+export async function setSlotProgress(id: number, file: string, state: string, error?: string): Promise<void> {
+  const entry = JSON.stringify(error ? { state, error } : { state });
+  await db
+    .update(generationJob)
+    .set({
+      progress: sql`jsonb_set(
+        ${generationJob.progress} || jsonb_build_object('slots', coalesce(${generationJob.progress}->'slots', '{}'::jsonb)),
+        array['slots', ${file}::text], ${entry}::jsonb)`,
+      updatedAt: new Date(),
+    })
+    .where(eq(generationJob.id, id));
 }
 
 /**
@@ -74,17 +127,9 @@ export async function startJob(
   after(async () => {
     try {
       const result = await run(handle);
-      await db
-        .update(generationJob)
-        .set({ state: 'done', result: (result ?? null) as JobResult | null, updatedAt: new Date() })
-        .where(eq(generationJob.id, row.id));
+      await finishJob(row.id, (result ?? null) as JobResult | null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      await db
-        .update(generationJob)
-        .set({ state: 'failed', error: message.slice(0, 1000), updatedAt: new Date() })
-        .where(eq(generationJob.id, row.id))
-        .catch(() => {});
+      await failJob(row.id, err instanceof Error ? err.message : String(err));
     }
   });
 

@@ -19,5 +19,23 @@ services:
       timeout: 5s
       retries: 5
 
+  inngest:
+    image: inngest/inngest:latest
+    container_name: my-app-inngest
+    restart: unless-stopped
+    # `inngest dev` runs the local dev server. `-u` points it at the Next.js app's
+    # Inngest endpoint. The app runs on the host (via `next dev`), so we reach it
+    # through host.docker.internal (mapped to the host gateway below).
+    command: >
+      inngest dev
+      -u http://host.docker.internal:3000/api/inngest
+    ports:
+      # Dev server UI + API. The SDK (in dev mode) sends events here at
+      # http://localhost:8288, so this must be published to the host.
+      - "8288:8288"
+    extra_hosts:
+      # Lets the container reach services listening on the host (Linux needs this).
+      - "host.docker.internal:host-gateway"
+
 volumes:
   postgres_data:
