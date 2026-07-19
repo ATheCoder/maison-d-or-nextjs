@@ -306,13 +306,20 @@ const SPAN_OPTIONS: { value: string; name: string }[] = [
 // GoldenStory) — offered as suggestions, but free text is allowed.
 const LESSON_ICONS = ['courage', 'creativity', 'curiosity', 'generosity', 'honesty', 'imagination', 'integrity', 'kindness', 'observation', 'patience', 'perseverance', 'persistence', 'wonder'];
 
-// A mini spread diagram for one page_span option.
+// A mini spread diagram for one page_span option, mirroring what GoldenStory
+// actually renders for that span (see the chapter walk in GoldenStory.jsx).
 function SpanDiagram({ value }: { value: string }) {
   if (value === 'single') {
+    // One leaf: art as the leaf's background, title + text overlaid on a wash.
+    // The other leaf stays blank (or takes the next single-leaf chapter).
     return (
       <div className={styles.lhSpread}>
-        <div className={`${styles.lhArt} ${styles.lhLeafFold}`} style={{ flexBasis: '55%' }} />
-        <div className={styles.lhTxt} style={{ flexBasis: '45%' }} />
+        <div className={`${styles.lhArt} ${styles.lhLeafFold}`} style={{ position: 'relative' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(20,12,6,.32)' }} />
+          <div style={{ position: 'absolute', left: '20%', right: '20%', top: 7, height: 1.5, background: '#fff', opacity: 0.9 }} />
+          <div style={{ position: 'absolute', left: 5, right: 5, top: 13, bottom: 5, opacity: 0.8, background: 'repeating-linear-gradient(180deg, #fff 0 1.5px, transparent 1.5px 6px)' }} />
+        </div>
+        <div style={{ background: '#fffdf8' }} />
       </div>
     );
   }
@@ -327,7 +334,18 @@ function SpanDiagram({ value }: { value: string }) {
   if (value === 'image') {
     return <div className={styles.lhSpread}><div className={styles.lhArt} /><div style={{ background: '#fffdf8' }} /></div>;
   }
-  return <div className={styles.lhSpread}><div className={`${styles.lhTxt} ${styles.lhLeafFold}`} /><div className={styles.lhArt} /></div>;
+  // default ("Classic"): title + ornament + narrative on the left leaf, the
+  // illustration filling the right leaf.
+  return (
+    <div className={styles.lhSpread}>
+      <div className={styles.lhLeafFold} style={{ position: 'relative', background: '#fffdf8' }}>
+        <div style={{ position: 'absolute', left: '22%', right: '22%', top: 6, height: 1.5, background: 'var(--brown2)', opacity: 0.75 }} />
+        <div style={{ position: 'absolute', left: '50%', top: 10, width: 3, height: 3, marginLeft: -1.5, background: 'var(--gold-deep)', transform: 'rotate(45deg)' }} />
+        <div style={{ position: 'absolute', left: 5, right: 5, top: 17, bottom: 5, opacity: 0.55, background: 'repeating-linear-gradient(180deg, var(--brown3) 0 1.5px, transparent 1.5px 6px)' }} />
+      </div>
+      <div className={styles.lhArt} />
+    </div>
+  );
 }
 
 // "How this page composes" — page_span diagrams + blend + text-wash fade.
@@ -1438,6 +1456,12 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
               <button className={`${styles.btn} ${styles.btnSm}`} onClick={remove} style={{ color: 'var(--red)', borderColor: 'rgba(181,83,58,.42)' }}>🗑 Delete</button>
             </div>
           </div>
+          <LayoutPicker
+            span={ch?.page_span} blend={ch?.blend} fade={ch?.fade}
+            onSpan={(v) => dispatch({ type: 'chapterField', index: i, key: 'page_span', value: v })}
+            onBlend={(v) => dispatch({ type: 'chapterField', index: i, key: 'blend', value: v })}
+            onFade={(v) => dispatch({ type: 'chapterField', index: i, key: 'fade', value: v })}
+          />
           {artOnly && (
             <div className={styles.callout} style={{ padding: '10px 12px', fontSize: 11.5, color: 'var(--brown)' }}>
               This chapter is a wordless full-page illustration — its narrative is written but not shown.
@@ -1445,12 +1469,6 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
           )}
           <TextField label="Chapter title" value={ch?.title ?? ''} onChange={(v) => dispatch({ type: 'chapterField', index: i, key: 'title', value: v })} serif />
           <NarrativeField label="Narrative" value={ch?.narrative ?? ''} onChange={(v) => dispatch({ type: 'chapterField', index: i, key: 'narrative', value: v })} fieldPath={`chapters.${i}.narrative`} rw={rw} />
-          <LayoutPicker
-            span={ch?.page_span} blend={ch?.blend} fade={ch?.fade}
-            onSpan={(v) => dispatch({ type: 'chapterField', index: i, key: 'page_span', value: v })}
-            onBlend={(v) => dispatch({ type: 'chapterField', index: i, key: 'blend', value: v })}
-            onFade={(v) => dispatch({ type: 'chapterField', index: i, key: 'fade', value: v })}
-          />
           {slotChip(`chapter-${i + 1}.png`)}
         </>
       );
@@ -1458,14 +1476,14 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
     case 'modern':
       return (
         <>
-          <TextField label={'“If … were 10 today” · title'} value={draft.modern?.title ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'modern', field: 'title', value: v })} serif />
-          <NarrativeField label="Narrative" value={draft.modern?.narrative ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'modern', field: 'narrative', value: v })} fieldPath="modern.narrative" rw={rw} />
           <LayoutPicker
             span={draft.modern?.page_span} blend={draft.modern?.blend} fade={draft.modern?.fade}
             onSpan={(v) => dispatch({ type: 'objField', key: 'modern', field: 'page_span', value: v })}
             onBlend={(v) => dispatch({ type: 'objField', key: 'modern', field: 'blend', value: v })}
             onFade={(v) => dispatch({ type: 'objField', key: 'modern', field: 'fade', value: v })}
           />
+          <TextField label={'“If … were 10 today” · title'} value={draft.modern?.title ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'modern', field: 'title', value: v })} serif />
+          <NarrativeField label="Narrative" value={draft.modern?.narrative ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'modern', field: 'narrative', value: v })} fieldPath="modern.narrative" rw={rw} />
           {slotChip('modern.png', 'Full-bleed spread · 1536×1024 · shown opaque.')}
         </>
       );
