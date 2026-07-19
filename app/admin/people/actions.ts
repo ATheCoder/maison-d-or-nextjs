@@ -494,16 +494,20 @@ export async function dismissJob(jobId: number): Promise<{ ok: boolean }> {
 /**
  * The person's active jobs for polling: the latest brief job (running, failed,
  * or freshly done so the editor reloads once) and every rewrite job (running or
- * an unresolved proposal — resolved ones are deleted on Accept/Reject).
+ * an unresolved proposal — resolved ones are deleted on Accept/Reject). Phase 6
+ * adds the latest image jobs: the single-slot Path-A render (`slot`, awaiting
+ * Accept/Revert) and the batch renderer (`images`, feeding the status board).
  */
 export async function getPersonJobs(slug: string):
-  Promise<{ brief: GenerationJobRow | null; rewrites: GenerationJobRow[] }> {
+  Promise<{ brief: GenerationJobRow | null; rewrites: GenerationJobRow[]; slot: GenerationJobRow | null; images: GenerationJobRow | null }> {
   await requireAdmin();
-  if (typeof slug !== 'string' || !slug) return { brief: null, rewrites: [] };
+  if (typeof slug !== 'string' || !slug) return { brief: null, rewrites: [], slot: null, images: null };
   const rows = await jobsForSlug(slug);
   return {
     brief: rows.find((r) => r.kind === 'brief') ?? null,
     rewrites: rows.filter((r) => r.kind === 'rewrite'),
+    slot: rows.find((r) => r.kind === 'slot') ?? null,
+    images: rows.find((r) => r.kind === 'images') ?? null,
   };
 }
 

@@ -23,8 +23,14 @@ import {
   generateBook, startRewrite, dismissJob, updateGoldenThread,
   type EditorPerson,
 } from '@/app/admin/people/actions';
-import type { Chapter, GenerationJobRow } from '@/src/db/schema';
+import { getSlotData, getSlotImages, generateImages } from '@/app/admin/people/imageActions';
+import type { Brief } from '@/lib/golden-story/brief';
+import type { Chapter, GenerationJobRow, SlotOverride } from '@/src/db/schema';
 import { deriveSections, type Section, type SectionStatus } from './personSections';
+import { buildSlotViews, type SlotView } from './imageSlots';
+import SlotCard from './SlotCard';
+import SlotChip from './SlotChip';
+import ImageStatusBoard from './ImageStatusBoard';
 import styles from './PersonEditor.module.css';
 
 // ── AI text generation (Phase 5) client types ────────────────────────────────
@@ -156,18 +162,6 @@ function bornLabel(birth: string | null): string | null {
 
 function wordCount(text: string | null | undefined): number {
   return text ? text.trim().split(/\s+/).filter(Boolean).length : 0;
-}
-
-function imageStats(draft: EditorPerson): { filled: number; total: number } {
-  const imgs: (string | null | undefined)[] = [
-    draft.image_url, draft.childhood_image_url, draft.modern?.image_url, draft.after_treasures?.image_url,
-    ...draft.chapters.map((c) => c.image_url),
-    ...draft.timeline.map((t) => t.image_url),
-    ...draft.treasures.map((t) => t.image_url),
-  ];
-  const total = imgs.length;
-  const filled = imgs.filter((u) => typeof u === 'string' && u.trim()).length;
-  return { filled, total };
 }
 
 type SaveStatus = 'saved' | 'dirty' | 'saving' | 'error';
@@ -405,28 +399,6 @@ function DeathDateControl({ value, onChange }: { value: string; onChange: (v: st
   );
 }
 
-// The cover art slot — a placeholder until the image tools land (Phase 6).
-function CoverImageCard({ src }: { src: string | null }) {
-  return (
-    <div className={styles.panel} style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
-      <div style={{ width: 66, height: 66, flex: '0 0 66px', borderRadius: 8, overflow: 'hidden', background: '#EDE3D2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {src
-          // eslint-disable-next-line @next/next/no-img-element
-          ? <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <span className={styles.muted} style={{ fontSize: 10 }}>No art</span>}
-      </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <span className={styles.kick} style={{ color: 'var(--brown)' }}>Cover illustration</span>
-          {src ? <span className={`${styles.chip} ${styles.chipGreen}`}>✓ set</span> : <span className={`${styles.chip} ${styles.chipInk}`}>empty</span>}
-        </div>
-        <div className={styles.muted} style={{ fontSize: 12, marginTop: 5 }}>Full-bleed · 1024×1536 · the gradient overlay carries the title.</div>
-      </div>
-      <button className={`${styles.btn} ${styles.btnSm}`} disabled title="Image slots arrive with the art tools">Open slot ▾</button>
-    </div>
-  );
-}
-
 // A reorderable list of rows: drag the grip to move, ✕ to delete, ＋ to add.
 function RowList({ count, onReorder, onDelete, onAdd, addLabel, renderRow }: {
   count: number; onReorder: (from: number, to: number) => void; onDelete: (i: number) => void;
@@ -617,10 +589,11 @@ function AIPanel({
 
 // ── Editor ───────────────────────────────────────────────────────────────────
 
-export default function PersonEditor({ initialPerson, initialBrief, initialJobs }: {
+export default function PersonEditor({ initialPerson, initialBrief, initialJobs, initialSlotData }: {
   initialPerson: EditorPerson;
   initialBrief: { goldenThread: string; characterSheet: string } | null;
-  initialJobs: { brief: GenerationJobRow | null; rewrites: GenerationJobRow[] };
+  initialJobs: { brief: GenerationJobRow | null; rewrites: GenerationJobRow[]; slot: GenerationJobRow | null; images: GenerationJobRow | null };
+  initialSlotData: { brief: Brief | null; overrides: Record<string, SlotOverride> };
 }) {
   const slug = initialPerson.slug;
   const [draft, dispatch] = useReducer(draftReducer, initialPerson);
@@ -650,10 +623,47 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs 
   const briefJobRef = useRef(briefJob);
   useEffect(() => { briefJobRef.current = briefJob; }, [briefJob]);
 
+  // ── Image slots (Phase 6) ──
+  // Scenes (from the brief) + per-slot overrides drive the slot cards; live
+  // image URLs come straight off the draft, so buildSlotViews takes the draft.
+  const [slotBrief, setSlotBrief] = useState<Brief | null>(initialSlotData.brief);
+  const [overrides, setOverrides] = useState<Record<string, SlotOverride>>(initialSlotData.overrides);
+  const [slotJob, setSlotJob] = useState<GenerationJobRow | null>(initialJobs.slot);
+  const [imagesJob, setImagesJob] = useState<GenerationJobRow | null>(initialJobs.images);
+  const [openSlotFile, setOpenSlotFile] = useState<string | null>(null);
+  const [showBoard, setShowBoard] = useState(false);
+  // Current draft, read by async job handlers that would otherwise close over a
+  // stale value (they run long after their poll tick captured the draft).
+  const draftRef = useRef(draft);
+  useEffect(() => { draftRef.current = draft; });
+
+  const slotViews = useMemo(
+    () => buildSlotViews(draft, slotBrief, overrides, { slot: slotJob, images: imagesJob }),
+    [draft, slotBrief, overrides, slotJob, imagesJob],
+  );
+  const slotByFile = useMemo(() => {
+    const m: Record<string, SlotView> = {};
+    for (const v of slotViews) m[v.file] = v;
+    return m;
+  }, [slotViews]);
+
   const sections = useMemo(() => deriveSections(draft), [draft]);
   const count = useMemo(() => spreadCount(draft), [draft]);
   const active = sections.find((s) => s.id === selectedId) ?? sections[0];
-  const stats = imageStats(draft);
+  // Illustration summary for the rail panel + status board, from the slot model.
+  const illus = useMemo(() => {
+    const failedSlots = slotViews.filter((s) => s.status === 'failed');
+    const generatable = slotViews.filter((s) => (s.status === 'empty' || s.status === 'prompt-ready') && s.hasPrompt);
+    return {
+      total: slotViews.length,
+      filled: slotViews.filter((s) => s.status === 'generated' || s.status === 'uploaded').length,
+      generating: slotViews.filter((s) => s.status === 'generating').length,
+      generatable: generatable.length,
+      failed: failedSlots.length,
+      failedFiles: failedSlots.map((s) => s.file),
+      batchRunning: imagesJob?.state === 'running',
+    };
+  }, [slotViews, imagesJob?.state]);
   // Derived, always-valid current spread (clamped as the story grows/shrinks).
   const page = Math.max(0, Math.min(pageState, count - 1));
 
@@ -674,12 +684,13 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs 
   const firstRender = useRef(true);
   useEffect(() => {
     if (firstRender.current) { firstRender.current = false; return; }
-    // Paused while the whole-book writer runs — it applies text server-side and
-    // the draft reloads on completion, so client saves would race it.
-    if (briefJob?.state === 'running') return;
+    // Paused while a job that writes the person server-side runs — the whole-
+    // book writer (text) and the batch/slot renderers (image URLs) both write
+    // columns directly, so a client save would race them and clobber the URLs.
+    if (briefJob?.state === 'running' || imagesJob?.state === 'running' || slotJob?.state === 'running') return;
     const t = setTimeout(() => { void doSave(draft); }, 2000);
     return () => clearTimeout(t);
-  }, [draft, doSave, briefJob?.state]);
+  }, [draft, doSave, briefJob?.state, imagesJob?.state, slotJob?.state]);
 
   // Warn before leaving with unsaved work.
   useEffect(() => {
@@ -700,8 +711,39 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs 
     await dismissJob(jobId).catch(() => {});
   }, [slug]);
 
+  // Write a slot's freshly-landed image URL into the draft silently (no dirty /
+  // no autosave) — the server already wrote the column, so this only mirrors it.
+  const applyImageToDraft = useCallback((personPath: string, url: string | null) => {
+    if (personPath === 'image_url') dispatch({ type: 'field', key: 'image_url', value: url });
+    else if (personPath === 'childhood_image_url') dispatch({ type: 'field', key: 'childhood_image_url', value: url });
+    else if (personPath === 'modern.image_url') dispatch({ type: 'objField', key: 'modern', field: 'image_url', value: url });
+    else if (personPath === 'after_treasures.image_url') dispatch({ type: 'objField', key: 'after_treasures', field: 'image_url', value: url });
+    else {
+      const m = /^(chapters|timeline|treasures)\.(\d+)\.image_url$/.exec(personPath);
+      if (!m) return;
+      const [, list, idx] = m;
+      if (list === 'chapters') dispatch({ type: 'chapterField', index: Number(idx), key: 'image_url', value: url });
+      else dispatch({ type: 'listItemField', list: list as 'timeline' | 'treasures', index: Number(idx), key: 'image_url', value: url });
+    }
+  }, []);
+
+  // Pull every slot's live URL and mirror any that changed into the draft. Used
+  // after a batch/slot job so the preview and rail fill in without a reload.
+  const refreshSlotImages = useCallback(async () => {
+    const [imgs, data] = await Promise.all([getSlotImages(slug), getSlotData(slug)]);
+    for (const view of buildSlotViews(draftRef.current, slotBrief, data.overrides, { slot: null, images: null })) {
+      const fresh = imgs[view.file] ?? null;
+      if (fresh !== view.imageUrl) applyImageToDraft(view.personPath, fresh);
+    }
+    setOverrides(data.overrides);
+    if (data.brief) setSlotBrief(data.brief);
+  }, [slug, slotBrief, applyImageToDraft]);
+
   const rewriteRunning = Object.values(rewrites).some((r) => r.status === 'running');
-  const polling = briefJob?.state === 'running' || rewriteRunning;
+  const slotJobRef = useRef(slotJob); useEffect(() => { slotJobRef.current = slotJob; }, [slotJob]);
+  const imagesJobRef = useRef(imagesJob); useEffect(() => { imagesJobRef.current = imagesJob; }, [imagesJob]);
+  const polling = briefJob?.state === 'running' || rewriteRunning
+    || slotJob?.state === 'running' || imagesJob?.state === 'running';
   useEffect(() => {
     if (!polling) return;
     let cancelled = false;
@@ -716,10 +758,17 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs 
         setBriefJob(res.brief);
       }
       setRewrites(rewriteMapFromRows(res.rewrites));
+      // Image jobs: when the batch finishes, mirror the landed URLs into the
+      // draft. The single-slot (Path A) job stays put until Accept/Revert.
+      if (imagesJobRef.current?.state === 'running' && res.images && res.images.state !== 'running') {
+        void refreshSlotImages();
+      }
+      setImagesJob(res.images);
+      setSlotJob(res.slot);
     };
     const iv = setInterval(poll, 2500);
     return () => { cancelled = true; clearInterval(iv); };
-  }, [polling, slug, handleBriefDone]);
+  }, [polling, slug, handleBriefDone, refreshSlotImages]);
 
   // On return, a brief job that finished while the tab was away: the person was
   // applied server-side (and initialBrief carried the panels), so just clear the
@@ -753,6 +802,35 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs 
     setGoldenThread(value);
     void updateGoldenThread(slug, value);
   }, [slug]);
+
+  // ── Image slots (Phase 6): batch start + per-card change handler ──
+  // Start (or retry) the batch renderer, then begin polling by pulling its row.
+  const startImagesBatch = useCallback((files?: string[]) => {
+    void (async () => {
+      const res = await generateImages(slug, files);
+      if (res.ok) { const j = await getPersonJobs(slug); setImagesJob(j.images); }
+    })();
+  }, [slug]);
+
+  // A slot card reported a change: refresh scenes/overrides + jobs (so a fresh
+  // Path-A job starts polling), and on an accepted/uploaded image mirror the new
+  // URL into the draft. Server writes are authoritative; this only reflects them.
+  const onSlotChanged = useCallback((what: 'scene' | 'override' | 'image') => {
+    void (async () => {
+      const [data, jobs] = await Promise.all([getSlotData(slug), getPersonJobs(slug)]);
+      setOverrides(data.overrides);
+      if (data.brief) setSlotBrief(data.brief);
+      setSlotJob(jobs.slot);
+      setImagesJob(jobs.images);
+      if (what === 'image') {
+        const imgs = await getSlotImages(slug);
+        for (const view of buildSlotViews(draftRef.current, data.brief, data.overrides, { slot: null, images: null })) {
+          const fresh = imgs[view.file] ?? null;
+          if (fresh !== view.imageUrl) applyImageToDraft(view.personPath, fresh);
+        }
+      }
+    })();
+  }, [slug, applyImageToDraft]);
 
   // Apply an accepted rewrite to the right draft field (narratives only in P5).
   const applyRewriteToDraft = useCallback((fieldPath: string, value: string) => {
@@ -955,17 +1033,26 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <span className={styles.kick}>Illustrations</span>
               <span className={styles.serif} style={{ fontSize: 15, color: 'var(--ink)' }}>
-                {stats.filled}<span className={styles.muted} style={{ fontSize: 12 }}> / {stats.total}</span>
+                {illus.filled}<span className={styles.muted} style={{ fontSize: 12 }}> / {illus.total}</span>
               </span>
             </div>
-            <div className={styles.prog}><i className={styles.progFill} style={{ width: `${stats.total ? (stats.filled / stats.total) * 100 : 0}%` }} /></div>
-            <button className={`${styles.btn} ${styles.btnSm}`} disabled title="Batch generation arrives with the image slots">Generate all missing</button>
+            <div className={styles.prog}><i className={styles.progFill} style={{ width: `${illus.total ? (illus.filled / illus.total) * 100 : 0}%` }} /></div>
+            {illus.failed > 0 && (
+              <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGold}`} onClick={() => startImagesBatch(illus.failedFiles)} disabled={illus.batchRunning}>Retry failed ({illus.failed})</button>
+            )}
+            <button
+              className={`${styles.btn} ${styles.btnSm}`}
+              onClick={() => startImagesBatch()}
+              disabled={illus.batchRunning || illus.generatable === 0}
+              title={illus.generatable === 0 ? 'Every renderable slot is filled — add scenes to generate more' : undefined}
+            >{illus.batchRunning ? `Generating… ${illus.generating} left` : `Generate all missing${illus.generatable ? ` (${illus.generatable})` : ''}`}</button>
+            <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`} style={{ justifyContent: 'flex-start' }} onClick={() => setShowBoard(true)}>▦ Status board · all {illus.total} slots</button>
           </div>
         </div>
 
         {/* ── Center editing panel ── */}
         <div style={{ flex: 1, minWidth: 0, padding: '22px 26px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <CenterPanel active={active} draft={draft} dispatch={edit} onSelect={setSelectedId} rw={rw} />
+          <CenterPanel active={active} draft={draft} dispatch={edit} onSelect={setSelectedId} rw={rw} slotByFile={slotByFile} onOpenSlot={setOpenSlotFile} />
         </div>
 
         {/* ── Live-book preview ── */}
@@ -1035,6 +1122,29 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs 
         />
       )}
 
+      {/* ── Image status board (screen ④) ── */}
+      {showBoard && (
+        <ImageStatusBoard
+          slots={slotViews}
+          batchRunning={illus.batchRunning}
+          onStartBatch={startImagesBatch}
+          onOpenSlot={(file) => { setShowBoard(false); setOpenSlotFile(file); }}
+          onClose={() => setShowBoard(false)}
+        />
+      )}
+
+      {/* ── Image slot card (screen ②) ── */}
+      {openSlotFile && slotByFile[openSlotFile] && (
+        <SlotCard
+          slug={slug}
+          slot={slotByFile[openSlotFile]}
+          characterSheet={characterSheet}
+          slotJob={slotJob}
+          onClose={() => setOpenSlotFile(null)}
+          onChanged={onSlotChanged}
+        />
+      )}
+
       {/* ── Publish confirm ── */}
       {publishConfirm && (
         <div onClick={() => setPublishConfirm(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(36,26,12,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '1.5rem' }}>
@@ -1056,9 +1166,33 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs 
 
 // ── Center panel: the selected section's fields ──────────────────────────────
 
-function CenterPanel({ active, draft, dispatch, onSelect, rw }: {
+function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpenSlot }: {
   active: Section; draft: EditorPerson; dispatch: React.Dispatch<DraftAction>; onSelect: (id: string) => void; rw: RewriteApi;
+  slotByFile: Record<string, SlotView>; onOpenSlot: (file: string) => void;
 }) {
+  const slotChip = (file: string, hint?: string) => {
+    const slot = slotByFile[file];
+    return slot ? <SlotChip slot={slot} hint={hint} onOpen={() => onOpenSlot(file)} /> : null;
+  };
+  // A compact per-row art affordance (timeline vignettes, treasure spots): the
+  // thumbnail-or-status button that opens the slot card.
+  const slotMini = (file: string) => {
+    const slot = slotByFile[file];
+    if (!slot) return null;
+    const set = slot.status === 'generated' || slot.status === 'uploaded';
+    return (
+      <button
+        onClick={() => onOpenSlot(file)}
+        title={`${slot.label} · ${slot.status}`}
+        style={{
+          flex: '0 0 34px', width: 34, height: 34, borderRadius: 8, cursor: 'pointer', overflow: 'hidden',
+          border: '1px solid var(--line2)', backgroundColor: '#fffdf8', backgroundSize: 'cover', backgroundPosition: 'center',
+          backgroundImage: set && slot.imageUrl ? `url(${slot.imageUrl})` : undefined,
+          color: slot.status === 'failed' ? 'var(--red)' : 'var(--brown2)', fontSize: 13, alignSelf: 'center',
+        }}
+      >{set ? '' : slot.status === 'generating' ? '…' : slot.status === 'failed' ? '↻' : '🖼'}</button>
+    );
+  };
   const set = (key: keyof EditorPerson) => (value: string) => dispatch({ type: 'field', key, value });
   const rowInput = (placeholder: string, value: string, onChange: (v: string) => void, extra?: React.CSSProperties, list?: string) => (
     <input className={styles.field} list={list} style={{ padding: '9px 12px', fontSize: 13, ...extra }} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
@@ -1086,7 +1220,7 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw }: {
             <DeathDateControl value={draft.death_date ?? ''} onChange={(v) => dispatch({ type: 'field', key: 'death_date', value: v })} />
           </div>
           <TextField label="Famous quote" value={draft.famous_quote ?? ''} onChange={set('famous_quote')} placeholder="Learning never exhausts the mind." />
-          <CoverImageCard src={draft.image_url} />
+          {slotChip('cover.png', 'Full-bleed · 1024×1536 · the gradient overlay carries the title.')}
         </>
       );
     case 'childhood':
@@ -1094,6 +1228,7 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw }: {
         <>
           <TextField label="Childhood page · title" value={draft.story_childhood_title ?? ''} onChange={set('story_childhood_title')} serif placeholder="A Little Boy in Vinci" />
           <NarrativeField label="Narrative" value={draft.story_childhood ?? ''} onChange={set('story_childhood')} fieldPath="story_childhood" rw={rw} />
+          {slotChip('strip-childhood.png', 'Landscape strip · 1536×640 · dissolves into the page at the top.')}
         </>
       );
     case 'chapter': {
@@ -1126,6 +1261,7 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw }: {
             onBlend={(v) => dispatch({ type: 'chapterField', index: i, key: 'blend', value: v })}
             onFade={(v) => dispatch({ type: 'chapterField', index: i, key: 'fade', value: v })}
           />
+          {slotChip(`chapter-${i + 1}.png`)}
         </>
       );
     }
@@ -1140,6 +1276,7 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw }: {
             onBlend={(v) => dispatch({ type: 'objField', key: 'modern', field: 'blend', value: v })}
             onFade={(v) => dispatch({ type: 'objField', key: 'modern', field: 'fade', value: v })}
           />
+          {slotChip('modern.png', 'Full-bleed spread · 1536×1024 · shown opaque.')}
         </>
       );
     case 'after':
@@ -1164,6 +1301,7 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw }: {
               </div>
             </div>
           </div>
+          {slotChip('after-treasures.png')}
         </>
       );
     case 'takeaway':
@@ -1181,6 +1319,7 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw }: {
               <div style={{ display: 'flex', gap: 8 }}>
                 {rowInput('Year', draft.timeline[i].year ?? '', (v) => dispatch({ type: 'listItemField', list: 'timeline', index: i, key: 'year', value: v }), { flex: '0 0 88px' })}
                 {rowInput('Caption', draft.timeline[i].caption ?? '', (v) => dispatch({ type: 'listItemField', list: 'timeline', index: i, key: 'caption', value: v }), { flex: 1 })}
+                {slotMini(`timeline-${i + 1}.png`)}
               </div>
             )}
           />
@@ -1195,7 +1334,12 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw }: {
             onAdd={() => dispatch({ type: 'listAdd', list: 'treasures' })}
             onDelete={(i) => dispatch({ type: 'listDelete', list: 'treasures', index: i })}
             onReorder={(from, to) => dispatch({ type: 'listReorder', list: 'treasures', from, to })}
-            renderRow={(i) => rowInput('Name', draft.treasures[i].name ?? '', (v) => dispatch({ type: 'listItemField', list: 'treasures', index: i, key: 'name', value: v }))}
+            renderRow={(i) => (
+              <div style={{ display: 'flex', gap: 8 }}>
+                {rowInput('Name', draft.treasures[i].name ?? '', (v) => dispatch({ type: 'listItemField', list: 'treasures', index: i, key: 'name', value: v }), { flex: 1 })}
+                {slotMini(`treasure-${i + 1}.png`)}
+              </div>
+            )}
           />
         </div>
       );

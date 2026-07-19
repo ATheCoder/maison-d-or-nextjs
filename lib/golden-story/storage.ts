@@ -5,7 +5,7 @@
  * upload-story-media.mjs already uses) as sharp-converted webp, served from
  * ${R2_DOMAIN}/<key>.
  */
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, CopyObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 
 let s3Client: S3Client | null = null;
@@ -35,11 +35,57 @@ export function getS3(): { s3: S3Client; bucket: string } {
  * lands at 'cover.webp' like the CLI-uploaded art.
  */
 export async function putStoryImage(slug: string, file: string, buffer: Buffer): Promise<string> {
-  const name = `${file.replace(/\.[^./]+$/, '')}.webp`;
-  const key = `story-media/${slug}/${name}`;
+  return putWebp(canonicalKey(slug, file), buffer);
+}
+
+// The canonical (public) key a slot's accepted art lives at, and the staging
+// key a Path-A generation renders to before the admin accepts it. Staging keys
+// carry the job id so each ✦ Regenerate is a fresh object (no CDN cache to
+// fight) and an abandoned preview can be swept up.
+function baseName(file: string): string {
+  return file.replace(/\.[^./]+$/, '');
+}
+export function canonicalKey(slug: string, file: string): string {
+  return `story-media/${slug}/${baseName(file)}.webp`;
+}
+export function stagingKey(slug: string, file: string, jobId: number): string {
+  return `story-media/${slug}/_staging/${baseName(file)}.${jobId}.webp`;
+}
+
+function publicUrl(key: string): string {
+  return `${process.env.R2_DOMAIN!.replace(/\/$/, '')}/${key}`;
+}
+
+// Convert a buffer to webp and PUT it at an explicit key, returning its URL.
+async function putWebp(key: string, buffer: Buffer): Promise<string> {
   const webp = await sharp(buffer).webp({ quality: 82 }).toBuffer();
   const { s3, bucket } = getS3();
   await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: webp, ContentType: 'image/webp' }));
-  const publicBase = process.env.R2_DOMAIN!.replace(/\/$/, '');
-  return `${publicBase}/${key}`;
+  return publicUrl(key);
+}
+
+/** Render a Path-A preview to a per-job staging key (not yet the live art). */
+export async function putStagingImage(slug: string, file: string, jobId: number, buffer: Buffer):
+  Promise<{ url: string; key: string }> {
+  const key = stagingKey(slug, file, jobId);
+  return { url: await putWebp(key, buffer), key };
+}
+
+/**
+ * Promote an accepted staging object to its canonical key and return the public
+ * URL with a cache-busting version query (the canonical key is stable across
+ * regenerations, so families would otherwise see a cached older render).
+ */
+export async function promoteStaging(slug: string, file: string, stagingK: string, version: number):
+  Promise<string> {
+  const key = canonicalKey(slug, file);
+  const { s3, bucket } = getS3();
+  await s3.send(new CopyObjectCommand({ Bucket: bucket, Key: key, CopySource: `${bucket}/${stagingK}`, ContentType: 'image/webp', MetadataDirective: 'REPLACE' }));
+  return `${publicUrl(key)}?v=${version}`;
+}
+
+/** Best-effort delete (sweeping an abandoned or promoted staging object). */
+export async function deleteStorageObject(key: string): Promise<void> {
+  const { s3, bucket } = getS3();
+  await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key })).catch(() => {});
 }

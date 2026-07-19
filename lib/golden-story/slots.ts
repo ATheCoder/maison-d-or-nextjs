@@ -1,0 +1,165 @@
+/**
+ * The editor's image-slot model (Phase 6, screens ② and ④). Pure and
+ * client-safe: no `server-only`, no env, no fetch — it only reads the person
+ * draft, the brief (for scenes) and the per-slot overrides, and assembles the
+ * same prompts `buildSlots` does. The editor derives slot cards and the status
+ * board from this; the server reuses it to render Path A / batch images.
+ *
+ * The slot LIST is derived from the person (so it tracks live edits — added
+ * chapters, reordered timeline — and works before any brief exists), while each
+ * slot's SUBJECT scene is read from the brief by position. Placement/blend come
+ * from the person's own layout hints so the prompt's bleed block and the
+ * "needs white bg" rule match what the book actually renders.
+ */
+import { STYLE, COVER_BLEED, STRIP_BLEED, SINGLE_BLEED, OPAQUE, PAPER, type SlotPlacement, type SlotBlend } from './prompts.ts';
+import type { Brief } from './brief.ts';
+import type { SlotOverride } from '@/src/db/schema';
+
+// The person shape this reads — a structural subset of EditorPerson, declared
+// locally so the module stays free of the server actions' types.
+export type SlotPerson = {
+  image_url?: string | null;
+  childhood_image_url?: string | null;
+  modern?: { image_url?: string | null; blend?: string } | null;
+  after_treasures?: { image_url?: string | null; blend?: string } | null;
+  chapters: { image_url?: string | null; page_span?: string; blend?: string }[];
+  timeline: { image_url?: string | null }[];
+  treasures: { image_url?: string | null }[];
+};
+
+export type SlotStatus = 'empty' | 'prompt-ready' | 'generating' | 'generated' | 'uploaded' | 'failed';
+
+// One slot's static descriptor: what it is, where its art lives on the person,
+// where its scene lives in the brief, and how the art meets the page.
+export type SlotDescriptor = {
+  file: string;        // 'cover.png', 'chapter-1.png', 'timeline-1.png'
+  label: string;       // 'Chapter 2 · illustration'
+  shortLabel: string;  // 'Chapter 2' — the status-board tile caption
+  personPath: string;  // dotted path to the image field, e.g. 'chapters.1.image_url'
+  briefField: string;  // dotted path to the scene, e.g. 'chapters.1.scene'
+  size: string;        // '1024x1536'
+  placement: SlotPlacement;
+  blend: SlotBlend;    // 'multiply' ⇒ needs a flat-white background
+  showsProtagonist: boolean; // whether the scene should carry the character sheet
+};
+
+const TAIL: Record<SlotPlacement, string> = {
+  cover: COVER_BLEED,
+  strip: STRIP_BLEED,
+  single: SINGLE_BLEED,
+  opaque: OPAQUE,
+  paper: PAPER,
+};
+
+const isNormalBlend = (blend?: string): boolean => blend === 'normal' || blend === 'none';
+
+/** The ordered slot descriptors for a person — one per image the book holds. */
+export function slotDescriptors(person: SlotPerson): SlotDescriptor[] {
+  const out: SlotDescriptor[] = [
+    { file: 'cover.png', label: 'Cover', shortLabel: 'Cover', personPath: 'image_url', briefField: 'cover_scene', size: '1024x1536', placement: 'cover', blend: 'normal', showsProtagonist: true },
+    { file: 'strip-childhood.png', label: 'Childhood strip', shortLabel: 'Childhood', personPath: 'childhood_image_url', briefField: 'childhood_scene', size: '1536x640', placement: 'strip', blend: 'multiply', showsProtagonist: false },
+  ];
+
+  person.chapters.forEach((c, i) => {
+    const normal = isNormalBlend(c.blend);
+    const opaque = c.page_span === 'image' || c.page_span === 'both' || normal;
+    out.push({
+      file: `chapter-${i + 1}.png`,
+      label: `Chapter ${i + 1} · illustration`,
+      shortLabel: `Chapter ${i + 1}`,
+      personPath: `chapters.${i}.image_url`,
+      briefField: `chapters.${i}.scene`,
+      size: '1024x1536',
+      placement: opaque ? 'opaque' : 'single',
+      blend: normal ? 'normal' : 'multiply',
+      showsProtagonist: true,
+    });
+  });
+
+  out.push({
+    file: 'modern.png', label: 'Modern spread', shortLabel: 'Modern', personPath: 'modern.image_url', briefField: 'modern.scene',
+    size: '1536x1024', placement: 'opaque', blend: person.modern?.blend === 'multiply' ? 'multiply' : 'normal', showsProtagonist: true,
+  });
+  out.push({
+    file: 'after-treasures.png', label: 'After treasures', shortLabel: 'After', personPath: 'after_treasures.image_url', briefField: 'after_treasures.scene',
+    size: '1024x1536', placement: isNormalBlend(person.after_treasures?.blend) ? 'opaque' : 'single', blend: isNormalBlend(person.after_treasures?.blend) ? 'normal' : 'multiply', showsProtagonist: true,
+  });
+
+  person.timeline.forEach((_, i) => out.push({
+    file: `timeline-${i + 1}.png`, label: `Timeline ${i + 1}`, shortLabel: `Time ${i + 1}`, personPath: `timeline.${i}.image_url`, briefField: `timeline.${i}.scene`,
+    size: '1024x1024', placement: 'paper', blend: 'multiply', showsProtagonist: true,
+  }));
+  person.treasures.forEach((_, i) => out.push({
+    file: `treasure-${i + 1}.png`, label: `Treasure ${i + 1}`, shortLabel: `Treas ${i + 1}`, personPath: `treasures.${i}.image_url`, briefField: `treasures.${i}.scene`,
+    size: '1024x1024', placement: 'paper', blend: 'multiply', showsProtagonist: false,
+  }));
+
+  return out;
+}
+
+/** Read a dotted path (numeric indices allowed) out of an object as a string. */
+export function readPath(source: unknown, path: string): string {
+  let node: unknown = source;
+  for (const key of path.split('.')) {
+    if (node == null || typeof node !== 'object') return '';
+    node = (node as Record<string, unknown>)[key];
+  }
+  return typeof node === 'string' ? node : '';
+}
+
+/** The slot's SUBJECT scene from the brief (empty when there is no brief). */
+export function sceneFor(brief: Brief | null, briefField: string): string {
+  return brief ? readPath(brief, briefField) : '';
+}
+
+/**
+ * The full assembled prompt for a slot: the "Edit full prompt" override
+ * verbatim if present, otherwise STYLE + the scene + the placement's fixed
+ * bleed block — byte-identical to `buildSlots`. Empty when there is no scene
+ * and no override (nothing to generate yet).
+ */
+export function promptFor(scene: string, placement: SlotPlacement, override?: SlotOverride): string {
+  if (override?.fullPrompt) return override.fullPrompt;
+  if (!scene.trim()) return '';
+  return `${STYLE}\n\nNew scene: ${scene}\n\n${TAIL[placement]}`;
+}
+
+/**
+ * The fixed style + composition blocks a slot always carries, shown collapsed
+ * as a read-only preamble (the scene is the editable part between them).
+ */
+export function fixedBlocksFor(placement: SlotPlacement): { style: string; composition: string } {
+  return { style: STYLE, composition: TAIL[placement] };
+}
+
+/**
+ * What "⧉ Copy prompt + parameters" puts on the clipboard: the prompt plus the
+ * generation parameters that are NOT prompt text — the pixel size and, for
+ * multiply slots, the flat-white-background requirement (the design's callout).
+ */
+export function copyPayload(prompt: string, size: string, blend: SlotBlend): string {
+  const footer = blend === 'multiply'
+    ? `\nThe background must be pure flat white (#FFFFFF) — off-white or textured backgrounds will show as a box on the page.`
+    : '';
+  return `${prompt}\n\n---\nParameters (not prompt text):\nsize ${size.replace('x', '×')}${footer}`;
+}
+
+/** Whether a scene opens with the character sheet verbatim (the art anchor). */
+export function includesCharacterSheet(scene: string, characterSheet: string): boolean {
+  const cs = characterSheet.trim();
+  if (!cs) return false;
+  return scene.trim().toLowerCase().startsWith(cs.toLowerCase());
+}
+
+/** Resolve a slot's glanceable status from its art, source and any job state. */
+export function slotStatus(o: {
+  imageUrl: string | null | undefined;
+  source?: SlotOverride['source'];
+  hasPrompt: boolean;
+  jobState?: 'running' | 'failed';
+}): SlotStatus {
+  if (o.jobState === 'running') return 'generating';
+  if (o.jobState === 'failed') return 'failed';
+  if (o.imageUrl && o.imageUrl.trim()) return o.source === 'uploaded' ? 'uploaded' : 'generated';
+  return o.hasPrompt ? 'prompt-ready' : 'empty';
+}
