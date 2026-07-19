@@ -21,7 +21,8 @@ import {
   savePerson, setPublished as setPublishedAction,
   getPersonForEditor, getStoryBrief, getPersonJobs,
   generateBook, startRewrite, dismissJob, updateGoldenThread,
-  type EditorPerson,
+  getOpenRouterCredits,
+  type EditorPerson, type OpenRouterCredits,
 } from '@/app/admin/people/actions';
 import { getSlotData, getSlotImages, generateImages } from '@/app/admin/people/imageActions';
 import type { Brief } from '@/lib/golden-story/brief';
@@ -587,6 +588,43 @@ function AIPanel({
   );
 }
 
+// ── OpenRouter credits chip (top bar) ────────────────────────────────────────
+// The balance behind the AI writer/renderer. Tone warms from green → amber →
+// red as it drains; click to refresh. A quiet dashed placeholder while loading,
+// and a muted "unavailable" if the account can't be reached.
+
+function fmtUSD(n: number): string {
+  return `$${n.toFixed(2)}`;
+}
+
+function CreditsChip({ credits, error, onRefresh }: {
+  credits: OpenRouterCredits | null; error: boolean; onRefresh: () => void;
+}) {
+  if (error) {
+    return (
+      <button
+        className={`${styles.chip} ${styles.chipInk}`}
+        style={{ cursor: 'pointer' }}
+        onClick={onRefresh}
+        title="Couldn’t reach OpenRouter — click to retry"
+      >OpenRouter · unavailable ↻</button>
+    );
+  }
+  if (!credits) {
+    return <span className={`${styles.chip} ${styles.chipInk}`} style={{ opacity: 0.6, borderStyle: 'dashed' }}>OpenRouter · …</span>;
+  }
+  const { remaining } = credits;
+  const tone = remaining <= 1 ? styles.chipRed : remaining <= 10 ? styles.chipAmber : styles.chipGreen;
+  return (
+    <button
+      className={`${styles.chip} ${tone}`}
+      style={{ cursor: 'pointer' }}
+      onClick={onRefresh}
+      title={`OpenRouter credits — ${fmtUSD(credits.totalUsage)} used of ${fmtUSD(credits.totalCredits)}. Click to refresh.`}
+    >OpenRouter · {fmtUSD(remaining)} left</button>
+  );
+}
+
 // ── Editor ───────────────────────────────────────────────────────────────────
 
 export default function PersonEditor({ initialPerson, initialBrief, initialJobs, initialSlotData }: {
@@ -610,6 +648,18 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   const [publishConfirm, setPublishConfirm] = useState(false);
   const [pubPending, startPub] = useTransition();
   const [dragChapter, setDragChapter] = useState<number | null>(null);
+
+  // ── OpenRouter credits (top bar) ──
+  // The AI writer/renderer spends OpenRouter credits; show the balance in the
+  // top bar. Fetched on mount and refreshed after a whole-book generation.
+  const [credits, setCredits] = useState<OpenRouterCredits | null>(null);
+  const [creditsError, setCreditsError] = useState(false);
+  const refreshCredits = useCallback(async () => {
+    const res = await getOpenRouterCredits();
+    if (res.ok) { setCredits(res.credits); setCreditsError(false); }
+    else { setCreditsError(true); }
+  }, []);
+  useEffect(() => { void refreshCredits(); }, [refreshCredits]);
 
   // ── AI generation state (Phase 5) ──
   const [showAI, setShowAI] = useState(false);
@@ -709,7 +759,8 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
     if (brief) { setGoldenThread(brief.goldenThread); setCharacterSheet(brief.characterSheet); setHasBrief(true); }
     setBriefJob(null);
     await dismissJob(jobId).catch(() => {});
-  }, [slug]);
+    void refreshCredits();
+  }, [slug, refreshCredits]);
 
   // Write a slot's freshly-landed image URL into the draft silently (no dirty /
   // no autosave) — the server already wrote the column, so this only mirrors it.
@@ -956,6 +1007,7 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <CreditsChip credits={credits} error={creditsError} onRefresh={refreshCredits} />
           <button
             className={`${styles.btn} ${styles.btnSm}`}
             style={{ color: 'var(--gold-deep)', borderColor: briefJob?.state === 'running' ? 'var(--gold-deep)' : 'var(--line2)', background: briefJob?.state === 'running' ? 'var(--gold-soft)' : undefined }}

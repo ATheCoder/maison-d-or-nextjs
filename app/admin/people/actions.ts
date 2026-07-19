@@ -23,12 +23,37 @@ import {
 import { requireAdmin } from '@/lib/dal';
 import { slugify, SLUG_RE } from '@/lib/slug';
 import { runPrompt, suggestPersons } from '@/lib/golden-story/brief';
+import { OPENROUTER, orHeaders } from '@/lib/golden-story/openrouter';
 import { createJob, failJob, jobsForSlug, deleteJob } from '@/lib/golden-story/jobs';
 import { initialBriefStages } from '@/lib/golden-story/textStore';
 import { inngest } from '@/lib/inngest/client';
 
 // Expected counts for a "complete" story (mirrors lib/golden-story counts).
 const EXPECTED_CHAPTERS = 4;
+
+export type OpenRouterCredits = { totalCredits: number; totalUsage: number; remaining: number };
+
+/**
+ * The OpenRouter account balance behind the AI writer/renderer — surfaced in the
+ * editor's top bar so the balance is visible before kicking a generation. Reads
+ * GET /credits ({ data: { total_credits, total_usage } }); remaining is the
+ * difference. Admin-gated: this is account-level billing data.
+ */
+export async function getOpenRouterCredits(): Promise<
+  { ok: true; credits: OpenRouterCredits } | { ok: false; error: string }
+> {
+  await requireAdmin();
+  try {
+    const res = await fetch(`${OPENROUTER}/credits`, { headers: orHeaders(), cache: 'no-store' });
+    if (!res.ok) return { ok: false, error: `OpenRouter ${res.status}` };
+    const { data } = await res.json();
+    const totalCredits = Number(data?.total_credits ?? 0);
+    const totalUsage = Number(data?.total_usage ?? 0);
+    return { ok: true, credits: { totalCredits, totalUsage, remaining: totalCredits - totalUsage } };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Failed to reach OpenRouter' };
+  }
+}
 
 export type PersonListItem = {
   slug: string;
