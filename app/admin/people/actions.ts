@@ -19,13 +19,13 @@ import {
   type Lesson,
   type RemarkablePersonRow,
   type GenerationJobRow,
-  type JobProgress,
 } from '@/src/db/schema';
 import { requireAdmin } from '@/lib/dal';
 import { slugify, SLUG_RE } from '@/lib/slug';
-import type { Brief } from '@/lib/golden-story/brief';
-import { writeBrief, runPrompt, rewriteField, suggestPersons } from '@/lib/golden-story/brief';
-import { startJob, jobsForSlug, deleteJob } from '@/lib/golden-story/jobs';
+import { runPrompt, suggestPersons } from '@/lib/golden-story/brief';
+import { createJob, failJob, jobsForSlug, deleteJob } from '@/lib/golden-story/jobs';
+import { initialBriefStages } from '@/lib/golden-story/textStore';
+import { inngest } from '@/lib/inngest/client';
 
 // Expected counts for a "complete" story (mirrors lib/golden-story counts).
 const EXPECTED_CHAPTERS = 4;
@@ -318,83 +318,6 @@ export async function setPublished(slug: string, published: boolean):
 
 const hasText = (v: unknown): boolean => typeof v === 'string' && v.trim().length > 0;
 
-// The five stages screen ③ shows, driven coarsely: the model writes the whole
-// book in one streamed call (stage "brief"), then the result is persisted and
-// applied in the ordered steps below.
-const BRIEF_STAGE_DEFS: [key: string, label: string][] = [
-  ['brief', 'Brief & structure'],
-  ['character', 'Character sheet & golden thread'],
-  ['narratives', 'Chapter narratives'],
-  ['lists', 'Timeline · treasures · lessons'],
-  ['scenes', 'Per-slot image scenes'],
-];
-
-function initialBriefStages(): JobProgress {
-  return { stages: BRIEF_STAGE_DEFS.map(([key, label], i) => ({ key, label, state: i === 0 ? 'active' : 'pending' })) };
-}
-
-// Parse the writer's human birth string ("April 15, 1452") to the YYYY-MM-DD
-// the date column needs; leave it null if unparseable (the editor requires the
-// admin to confirm the birth date anyway).
-function toIsoDate(s: string | null | undefined): string | null {
-  if (!s || typeof s !== 'string') return null;
-  const t = Date.parse(s);
-  if (Number.isNaN(t)) return null;
-  const iso = new Date(t).toISOString().slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : null;
-}
-
-// death_year is a year ("1519"), a full date, or empty (still living).
-function normalizeDeath(s: string | null | undefined): string | null {
-  if (!s || typeof s !== 'string') return null;
-  const v = s.trim();
-  return /^\d{4}$/.test(v) || /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
-}
-
-// Map a brief onto the person's story columns, mirroring toStoryJson's layout
-// defaults (single-leaf chapters with the last one image-only, full-bleed
-// modern spread, single-leaf after-treasures). Existing image URLs are kept by
-// position so re-generating text never discards art.
-function briefToColumns(brief: Brief, existing: RemarkablePersonRow) {
-  const last = brief.chapters.length - 1;
-  const exCh = existing.chapters ?? [];
-  const exTl = existing.timeline ?? [];
-  const exTr = existing.treasures ?? [];
-  return {
-    role: brief.role || null,
-    field: brief.field || null,
-    country: brief.country || null,
-    birthDate: toIsoDate(brief.birth_date) ?? existing.birthDate,
-    deathDate: normalizeDeath(brief.death_year),
-    storyTitle: brief.name || existing.name,
-    famousQuote: brief.famous_quote || null,
-    storyChildhoodTitle: brief.story_childhood_title || null,
-    storyChildhood: brief.story_childhood || null,
-    storyTakeaway: brief.story_takeaway || null,
-    modern: {
-      page_span: 'both', blend: 'normal',
-      title: brief.modern.title, narrative: brief.modern.narrative,
-      image_url: existing.modern?.image_url ?? null,
-    } as StorySection,
-    chapters: brief.chapters.map((c, i): Chapter => (i === last
-      ? { number: i + 1, page_span: 'image', blend: 'normal', image_url: exCh[i]?.image_url ?? null }
-      : { number: i + 1, page_span: 'single', title: c.title, narrative: c.narrative, image_url: exCh[i]?.image_url ?? null })),
-    timeline: brief.timeline.map((t, i): TimelineEntry => ({
-      year: t.year, caption: t.caption, blend: 'multiply', image_url: exTl[i]?.image_url ?? null,
-    })),
-    afterTreasures: {
-      page_span: 'single', blend: existing.afterTreasures?.blend ?? 'multiply', fade: false,
-      title: brief.after_treasures.title, narrative: brief.after_treasures.narrative,
-      image_url: existing.afterTreasures?.image_url ?? null,
-    } as StorySection,
-    treasures: brief.treasures.map((t, i): Treasure => ({
-      name: t.name, description: exTr[i]?.description, image_url: exTr[i]?.image_url ?? null,
-    })),
-    lessons: brief.lessons.map((l): Lesson => ({ icon_name: l.icon_name, lesson: l.lesson })),
-    updatedAt: new Date(),
-  };
-}
-
 /**
  * Kick the whole-book writer. Validates the person is empty (or the caller
  * confirmed overwriting) and has a name, then starts a `brief` job that writes
@@ -417,40 +340,18 @@ export async function generateBook(slug: string, opts?: { confirm?: boolean }):
     || (person.timeline?.length ?? 0) > 0 || (person.treasures?.length ?? 0) > 0;
   if (hasContent && !opts?.confirm) return { ok: false, needsConfirm: true };
 
-  const started = await startJob(slug, 'brief', initialBriefStages(), async (job) => {
-    let progress = initialBriefStages();
-    const advance = async (updates: Record<string, 'active' | 'done' | 'failed'>) => {
-      progress = { stages: progress.stages!.map((s) => (updates[s.key] ? { ...s, state: updates[s.key] } : s)) };
-      await job.setProgress(progress);
-    };
-
-    const brief = await writeBrief(name);
-    await advance({ brief: 'done', character: 'active' });
-
-    await db
-      .insert(storyBrief)
-      .values({ slug, brief, updatedAt: new Date() })
-      .onConflictDoUpdate({ target: storyBrief.slug, set: { brief, updatedAt: new Date() } });
-    await advance({ character: 'done', narratives: 'active' });
-
-    await db.update(remarkablePerson).set(briefToColumns(brief, person)).where(eq(remarkablePerson.slug, slug));
-    await advance({ narratives: 'done', lists: 'done', scenes: 'done' });
-
-    return { applied: true };
-  });
-
-  if (!started.ok) return { ok: false, error: started.error };
-  return { ok: true, jobId: started.job.id };
-}
-
-// Strip the odd wrapping the model sometimes adds around a single-string reply.
-function cleanProposal(raw: string): string {
-  let s = raw.trim();
-  if (s.startsWith('```')) s = s.replace(/^```[a-z]*\n?/i, '').replace(/```$/, '').trim();
-  if (s.length >= 2 && ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith('“') && s.endsWith('”')))) {
-    s = s.slice(1, -1).trim();
+  // The writing runs on Inngest (generateBrief in lib/inngest/functions.ts) — a
+  // durable, dashboard-visible run that survives a redeploy. This only creates
+  // the job row the editor polls and sends the triggering event.
+  const created = await createJob(slug, 'brief', initialBriefStages());
+  if (!created.ok) return { ok: false, error: created.error };
+  try {
+    await inngest.send({ name: 'story/brief.requested', data: { slug, jobId: created.job.id } });
+  } catch {
+    await failJob(created.job.id, 'Could not reach Inngest to enqueue the book writer.');
+    return { ok: false, error: 'Could not reach Inngest to enqueue the book writer — is the dev server running?' };
   }
-  return s;
+  return { ok: true, jobId: created.job.id };
 }
 
 /**
@@ -466,21 +367,18 @@ export async function startRewrite(slug: string, fieldPath: string, currentText:
   if (typeof fieldPath !== 'string' || !fieldPath) return { ok: false, error: 'Missing field.' };
   const current = typeof currentText === 'string' ? currentText.slice(0, 5000) : '';
 
-  const briefRow = await db.select().from(storyBrief).where(eq(storyBrief.slug, slug)).limit(1);
-  const brief = briefRow[0]?.brief;
-  const personRow = await db.select({ name: remarkablePerson.name }).from(remarkablePerson).where(eq(remarkablePerson.slug, slug)).limit(1);
-  const seed = {
-    name: personRow[0]?.name ?? '',
-    golden_thread: brief?.golden_thread ?? '',
-    character_sheet: brief?.character_sheet ?? '',
-  };
-
-  const started = await startJob(slug, 'rewrite', { fieldPath }, async () => {
-    const raw = await runPrompt(rewriteField(seed, fieldPath, current));
-    return { fieldPath, current, proposal: cleanProposal(raw) };
-  });
-  if (!started.ok) return { ok: false, error: started.error };
-  return { ok: true, jobId: started.job.id };
+  // The draft runs on Inngest (rewriteField in lib/inngest/functions.ts). The
+  // live editor value rides the event since it may differ from any brief; the
+  // prompt seed (name + golden thread + character sheet) is re-read there.
+  const created = await createJob(slug, 'rewrite', { fieldPath });
+  if (!created.ok) return { ok: false, error: created.error };
+  try {
+    await inngest.send({ name: 'story/rewrite.requested', data: { slug, jobId: created.job.id, fieldPath, current } });
+  } catch {
+    await failJob(created.job.id, 'Could not reach Inngest to enqueue the rewrite.');
+    return { ok: false, error: 'Could not reach Inngest to enqueue the rewrite — is the dev server running?' };
+  }
+  return { ok: true, jobId: created.job.id };
 }
 
 /** Delete a job row — Reject/Accept/Dismiss on a rewrite, or clearing a job. */

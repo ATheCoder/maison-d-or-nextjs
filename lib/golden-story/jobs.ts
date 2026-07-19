@@ -1,25 +1,17 @@
 /**
- * The in-process generation-job runner (Phase 5). A job is a DB-backed
- * `generation_job` row plus an async body scheduled with Next's `after()` so it
- * runs on the server after the action's response is flushed — decoupled from
- * the browser, so a family member can close the tab and the book still fills
- * in. There is no queue infra: a single self-hosted admin, the row is the
- * source of truth, and the editor polls it. One running job per (slug, kind).
+ * The generation-job store (Phase 5–6). A job is a DB-backed `generation_job`
+ * row; its work runs durably on Inngest (lib/inngest/functions.ts). There is no
+ * bespoke queue: a single self-hosted admin, the row is the source of truth, and
+ * the editor polls it while a job runs. One running job per (slug, kind). This
+ * module owns the row lifecycle (create/finish/fail/progress); the Inngest
+ * functions own execution.
  */
 import 'server-only';
-import { after } from 'next/server';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from '@/src/db';
 import { generationJob, type GenerationJobRow, type JobProgress, type JobResult } from '@/src/db/schema';
 
 export type JobKind = GenerationJobRow['kind'];
-
-// Passed to a job body so it can stamp staged progress as it works.
-export type JobHandle = {
-  id: number;
-  slug: string;
-  setProgress: (progress: JobProgress) => Promise<void>;
-};
 
 /** The running job of a kind for a slug, if any — the concurrency guard. */
 export async function runningJob(slug: string, kind: JobKind): Promise<GenerationJobRow | null> {
@@ -60,10 +52,10 @@ export async function failJob(id: number, message: string): Promise<void> {
 }
 
 /**
- * Insert a running job row without scheduling a body — for work that runs on
- * Inngest (the batch renderer, lib/inngest/functions.ts) instead of in-process
- * via after(). Same one-running-job-per-(slug, kind) guard as startJob; the
- * Inngest function owns progress updates and completion.
+ * Insert a running job row the editor polls. The work itself runs on Inngest
+ * (lib/inngest/functions.ts): the caller sends the triggering event, and the
+ * Inngest function owns progress updates and completion (finish/fail). Guards
+ * one running job per (slug, kind).
  */
 export async function createJob(slug: string, kind: JobKind, initialProgress: JobProgress):
   Promise<{ ok: true; job: GenerationJobRow } | { ok: false; error: string }> {
@@ -96,42 +88,10 @@ export async function setSlotProgress(id: number, file: string, state: string, e
 }
 
 /**
- * Insert a running job row and schedule its body to run after the response.
- * Guards one running job per (slug, kind). The body receives a handle for
- * progress updates; its return value is stored as the job `result` and the row
- * is marked done, or failed with the error message if it throws.
+ * Overwrite a job's whole progress object — the staged progress the brief writer
+ * stamps as it advances (a single-writer job, unlike the parallel-slot renderers
+ * that need setSlotProgress's atomic per-slot update).
  */
-export async function startJob(
-  slug: string,
-  kind: JobKind,
-  initialProgress: JobProgress,
-  run: (job: JobHandle) => Promise<JobResult | void>,
-): Promise<{ ok: true; job: GenerationJobRow } | { ok: false; error: string }> {
-  if (await runningJob(slug, kind)) {
-    return { ok: false, error: `A ${kind} job is already running for this person.` };
-  }
-
-  const [row] = await db
-    .insert(generationJob)
-    .values({ slug, kind, state: 'running', progress: initialProgress })
-    .returning();
-
-  const handle: JobHandle = {
-    id: row.id,
-    slug,
-    setProgress: async (progress) => {
-      await db.update(generationJob).set({ progress, updatedAt: new Date() }).where(eq(generationJob.id, row.id));
-    },
-  };
-
-  after(async () => {
-    try {
-      const result = await run(handle);
-      await finishJob(row.id, (result ?? null) as JobResult | null);
-    } catch (err) {
-      await failJob(row.id, err instanceof Error ? err.message : String(err));
-    }
-  });
-
-  return { ok: true, job: row };
+export async function setJobProgress(id: number, progress: JobProgress): Promise<void> {
+  await db.update(generationJob).set({ progress, updatedAt: new Date() }).where(eq(generationJob.id, id));
 }

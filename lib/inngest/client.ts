@@ -24,3 +24,18 @@ export type ImageSlotRequested = {
   jobId: number;
   file: string;
 };
+
+// The event generateBook sends and the whole-book writer consumes.
+export type BriefRequested = {
+  slug: string;
+  jobId: number;
+};
+
+// The event startRewrite sends and the field rewriter consumes. `current` is the
+// live editor value (may have diverged from any brief), so it rides the event.
+export type RewriteRequested = {
+  slug: string;
+  jobId: number;
+  fieldPath: string;
+  current: string;
+};

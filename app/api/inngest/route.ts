@@ -4,9 +4,9 @@
  */
 import { serve } from 'inngest/next';
 import { inngest } from '@/lib/inngest/client';
-import { renderImagesBatch, renderSlot } from '@/lib/inngest/functions';
+import { renderImagesBatch, renderSlot, generateBrief, rewriteField } from '@/lib/inngest/functions';
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [renderImagesBatch, renderSlot],
+  functions: [renderImagesBatch, renderSlot, generateBrief, rewriteField],
 });

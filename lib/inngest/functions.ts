@@ -7,8 +7,13 @@
  * already polls. One slot's failure is recorded on its progress entry and the
  * rest of the batch carries on.
  */
-import { inngest, type ImagesBatchRequested, type ImageSlotRequested } from './client';
+import {
+  inngest,
+  type ImagesBatchRequested, type ImageSlotRequested,
+  type BriefRequested, type RewriteRequested,
+} from './client';
 import { renderSlotToCanonical, renderSlotToStaging } from '@/lib/golden-story/imageStore';
+import { runBriefJob, runRewriteJob } from '@/lib/golden-story/textStore';
 import { setSlotProgress, finishJob, failJob } from '@/lib/golden-story/jobs';
 
 export const renderImagesBatch = inngest.createFunction(
@@ -67,6 +72,69 @@ export const renderSlot = inngest.createFunction(
     const { slug, file, jobId } = event.data as ImageSlotRequested;
     const result = await step.run(`render ${file}`, () => renderSlotToStaging(slug, file, jobId));
     await step.run('finish job', () => finishJob(jobId, result));
+    return { done: true };
+  },
+);
+
+/**
+ * The whole-book writer as an Inngest function — the durable replacement for the
+ * after()-scheduled body in generateBook. One retryable step writes the brief,
+ * persists it, and applies its text to the person (stamping the five stages the
+ * editor polls); a second marks the job done. On exhausted retries the job row
+ * is marked failed with the real error so the editor can surface it, rather than
+ * the generic onFailure message. onFailure stays as a last-resort safety net.
+ */
+export const generateBrief = inngest.createFunction(
+  {
+    id: 'generate-brief',
+    triggers: [{ event: 'story/brief.requested' }],
+    retries: 1, // two attempts, matching the renderers
+    concurrency: 2,
+    onFailure: async ({ event }) => {
+      const { jobId } = (event.data.event.data ?? {}) as Partial<BriefRequested>;
+      if (jobId) await failJob(jobId, 'The book writer failed unexpectedly.');
+    },
+  },
+  async ({ event, step }) => {
+    const { slug, jobId } = event.data as BriefRequested;
+    try {
+      const result = await step.run('write book', () => runBriefJob(slug, jobId));
+      await step.run('finish job', () => finishJob(jobId, result));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await step.run('mark failed', () => failJob(jobId, message));
+    }
+    return { done: true };
+  },
+);
+
+/**
+ * The per-field rewriter as an Inngest function — the durable replacement for
+ * the after()-scheduled body in startRewrite. One retryable step drafts the
+ * proposal; its result ({ fieldPath, current, proposal }) lands on the job row
+ * where the editor's CURRENT / AI-PROPOSES review reads it. Same failure
+ * handling as the book writer.
+ */
+export const rewriteField = inngest.createFunction(
+  {
+    id: 'rewrite-field',
+    triggers: [{ event: 'story/rewrite.requested' }],
+    retries: 1,
+    concurrency: 3,
+    onFailure: async ({ event }) => {
+      const { jobId } = (event.data.event.data ?? {}) as Partial<RewriteRequested>;
+      if (jobId) await failJob(jobId, 'The rewrite failed unexpectedly.');
+    },
+  },
+  async ({ event, step }) => {
+    const { slug, jobId, fieldPath, current } = event.data as RewriteRequested;
+    try {
+      const result = await step.run('draft rewrite', () => runRewriteJob(slug, fieldPath, current));
+      await step.run('finish job', () => finishJob(jobId, result));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await step.run('mark failed', () => failJob(jobId, message));
+    }
     return { done: true };
   },
 );
