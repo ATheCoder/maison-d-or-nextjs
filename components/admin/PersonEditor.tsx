@@ -407,6 +407,21 @@ function DeathDateControl({ value, onChange }: { value: string; onChange: (v: st
   );
 }
 
+// Drag-handle icon: a 2x3 dot grid, styled via currentColor so it inherits
+// .grip's color like the rest of the app's typographic icons.
+function GripIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size * 0.6} height={size} viewBox="0 0 9 15" fill="currentColor" aria-hidden="true">
+      <circle cx="1.75" cy="1.75" r="1.35" />
+      <circle cx="7.25" cy="1.75" r="1.35" />
+      <circle cx="1.75" cy="7.5" r="1.35" />
+      <circle cx="7.25" cy="7.5" r="1.35" />
+      <circle cx="1.75" cy="13.25" r="1.35" />
+      <circle cx="7.25" cy="13.25" r="1.35" />
+    </svg>
+  );
+}
+
 // One sortable row (dnd-kit): the grip button is the drag activator, so the
 // inputs inside stay freely clickable/selectable. While dragging, the row rides
 // the pointer and its siblings animate out of the way.
@@ -429,7 +444,7 @@ function SortableRow({ id, onDelete, children }: { id: string; onDelete: () => v
         {...listeners}
         title="Drag to reorder"
         aria-label="Reorder row"
-      >⋮⋮</button>
+      ><GripIcon /></button>
       <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
       <button className={styles.iconBtn} onClick={onDelete} title="Delete" aria-label="Delete row">✕</button>
     </div>
@@ -505,11 +520,11 @@ function SortableChapterRow({ s, isActive, onSelect }: { s: Section; isActive: b
       <span
         ref={setActivatorNodeRef}
         className={styles.grip}
-        style={{ fontSize: 12, marginLeft: -4 }}
+        style={{ marginLeft: -4 }}
         {...listeners}
         onClick={(e) => e.stopPropagation()}
         title="Drag to reorder"
-      >⋮⋮</span>
+      ><GripIcon size={12} /></span>
       <NavRowInner s={s} />
     </button>
   );
