@@ -754,9 +754,13 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   // Reload the applied person + brief when the whole-book job finishes, then
   // clear its row so the progress panel closes.
   const handleBriefDone = useCallback(async (jobId: number) => {
-    const [fresh, brief] = await Promise.all([getPersonForEditor(slug), getStoryBrief(slug)]);
+    const [fresh, brief, slotData] = await Promise.all([getPersonForEditor(slug), getStoryBrief(slug), getSlotData(slug)]);
     if (fresh) { dispatch({ type: 'replace', value: fresh }); setSave({ status: 'saved', savedAt: fresh.updated_at }); }
     if (brief) { setGoldenThread(brief.goldenThread); setCharacterSheet(brief.characterSheet); setHasBrief(true); }
+    // The book writer also wrote a scene per image slot onto the brief — pull
+    // the fresh brief/overrides so the slot cards show their prompts right away.
+    setOverrides(slotData.overrides);
+    if (slotData.brief) setSlotBrief(slotData.brief);
     setBriefJob(null);
     await dismissJob(jobId).catch(() => {});
     void refreshCredits();
