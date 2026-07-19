@@ -62,7 +62,7 @@ export default function MdoHome() {
             A living world for people who want to feel more alive inside their own lives.
           </p>
           <div style={{ marginTop: 'clamp(1rem, 3vw, 2rem)' }}>
-            <Link href="/journal" className="mdo-btn" style={{ alignSelf: 'flex-start' }}>Enter the Maison</Link>
+            <Link href="/daily-gold-edition" className="mdo-btn" style={{ alignSelf: 'flex-start' }}>Enter the Maison</Link>
           </div>
           <MMonogram size={60} style={{ marginTop: 'clamp(1.5rem, 4vw, 3rem)' }} />
         </div>
