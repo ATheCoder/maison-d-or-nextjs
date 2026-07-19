@@ -654,10 +654,11 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   // top bar. Fetched on mount and refreshed after a whole-book generation.
   const [credits, setCredits] = useState<OpenRouterCredits | null>(null);
   const [creditsError, setCreditsError] = useState(false);
-  const refreshCredits = useCallback(async () => {
-    const res = await getOpenRouterCredits();
-    if (res.ok) { setCredits(res.credits); setCreditsError(false); }
-    else { setCreditsError(true); }
+  const refreshCredits = useCallback(() => {
+    return getOpenRouterCredits().then((res) => {
+      if (res.ok) { setCredits(res.credits); setCreditsError(false); }
+      else { setCreditsError(true); }
+    });
   }, []);
   useEffect(() => { void refreshCredits(); }, [refreshCredits]);
 
