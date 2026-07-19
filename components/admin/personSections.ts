@@ -62,11 +62,8 @@ export function deriveSections(draft: DraftPerson): Section[] {
     out.push({ id: `chapter-${i}`, label, kind: 'chapter', chapterIndex: i, dndKey: c._key, spreadIndex: at(`chapter-${i}`), ...status });
   });
 
-  // Modern ("If X were 10 today").
-  out.push({
-    id: 'modern', label: `If ${first} were 10 today`, kind: 'modern', spreadIndex: at('modern'),
-    ...textArtStatus(draft.modern?.narrative, draft.modern?.image_url),
-  });
+  // The rows below follow the book's spread order (see GoldenStory's build
+  // loop): timeline · treasures + after-treasures · modern + lessons.
 
   // Life timeline — partial by filled art.
   out.push({ id: 'timeline', label: 'Life timeline', kind: 'timeline', spreadIndex: at('timeline'), ...listStatus(draft.timeline) });
@@ -74,17 +71,23 @@ export function deriveSections(draft: DraftPerson): Section[] {
   // Treasures — partial by filled art.
   out.push({ id: 'treasures', label: 'Treasures', kind: 'treasures', spreadIndex: at('treasures'), ...listStatus(draft.treasures) });
 
-  // Lessons — text only, no art.
+  // After-treasures ("Gifts That Live On") — the treasures spread's right leaf.
+  out.push({
+    id: 'after-treasures', label: 'Gifts That Live On', kind: 'after', spreadIndex: at('after-treasures'),
+    ...textArtStatus(draft.after_treasures?.narrative, draft.after_treasures?.image_url),
+  });
+
+  // Modern ("If X were 10 today").
+  out.push({
+    id: 'modern', label: `If ${first} were 10 today`, kind: 'modern', spreadIndex: at('modern'),
+    ...textArtStatus(draft.modern?.narrative, draft.modern?.image_url),
+  });
+
+  // Lessons — text only, no art; the band under Modern on the same spread.
   const lessonCount = draft.lessons.filter((l) => hasText(l.lesson)).length;
   out.push({
     id: 'lessons', label: 'Lessons', kind: 'lessons', spreadIndex: at('lessons'),
     status: lessonCount > 0 ? 'done' : 'empty',
-  });
-
-  // After-treasures ("Gifts That Live On").
-  out.push({
-    id: 'after-treasures', label: 'Gifts That Live On', kind: 'after', spreadIndex: at('after-treasures'),
-    ...textArtStatus(draft.after_treasures?.narrative, draft.after_treasures?.image_url),
   });
 
   // Takeaway — one line, no art.
