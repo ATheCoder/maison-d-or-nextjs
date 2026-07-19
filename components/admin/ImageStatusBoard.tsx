@@ -59,14 +59,19 @@ export default function ImageStatusBoard({ slots, batchRunning, onStartBatch, on
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, marginTop: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(128px, 1fr))', gap: 12, marginTop: 16 }}>
           {slots.map((s) => {
             const t = TILE[s.status];
+            const hasImg = (s.status === 'generated' || s.status === 'uploaded') && !!s.imageUrl;
             return (
               <button key={s.file} className={styles.slotTile} style={s.status === 'failed' ? { borderColor: 'rgba(181,83,58,.5)' } : undefined} onClick={() => onOpenSlot(s.file)} title={`Open ${s.label}`}>
-                <div className={`${styles.slotTh} ${t.th}`} style={{ backgroundImage: (s.status === 'generated' || s.status === 'uploaded') && s.imageUrl ? `url(${s.imageUrl})` : undefined }}>
-                  {s.status === 'failed' && <span style={{ color: 'var(--red)', fontSize: 15 }}>↻</span>}
-                  {s.status === 'generating' && <span className={`${styles.saveDot} ${styles.saveDotSaving}`} />}
+                <div className={`${styles.slotTh} ${hasImg ? '' : t.th}`}>
+                  {hasImg
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={s.imageUrl!} alt="" style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', display: 'block' }} />
+                    : s.status === 'failed' ? <span style={{ color: 'var(--red)', fontSize: 15 }}>↻</span>
+                      : s.status === 'generating' ? <span className={`${styles.saveDot} ${styles.saveDotSaving}`} />
+                        : null}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.shortLabel}</span>

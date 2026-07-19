@@ -250,14 +250,14 @@ export default function SlotCard({ slug, slot, characterSheet, slotJob, onClose,
               <span className={`${styles.chip} ${styles.chipGold}`}>Path A</span>
               <span style={{ fontWeight: 700, fontSize: 13 }}>Generate here</span>
             </div>
-            <div style={{ height: 120, borderRadius: 7, overflow: 'hidden', background: 'var(--parch, #efe4c8)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            <div style={{ minHeight: 120, maxHeight: 280, borderRadius: 7, overflow: 'hidden', background: 'var(--parch, #efe4c8)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
               {staged
                 // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={staged} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', mixBlendMode: slot.blend === 'multiply' ? 'multiply' : 'normal' }} />
+                ? <img src={staged} alt="" style={{ maxWidth: '100%', maxHeight: 280, width: 'auto', height: 'auto', display: 'block', mixBlendMode: slot.blend === 'multiply' ? 'multiply' : 'normal' }} />
                 : rendering ? <span className={styles.muted} style={{ fontSize: 11.5 }}>✦ Rendering… (tens of seconds)</span>
                   : slot.imageUrl
                     // eslint-disable-next-line @next/next/no-img-element
-                    ? <img src={slot.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', mixBlendMode: slot.blend === 'multiply' ? 'multiply' : 'normal' }} />
+                    ? <img src={slot.imageUrl} alt="" style={{ maxWidth: '100%', maxHeight: 280, width: 'auto', height: 'auto', display: 'block', mixBlendMode: slot.blend === 'multiply' ? 'multiply' : 'normal' }} />
                     : <span className={styles.muted} style={{ fontSize: 11 }}>No art yet</span>}
             </div>
             <div className={styles.muted} style={{ fontSize: 10.5 }}>Preview lands on the parchment with the slot’s real {slot.blend} blend.</div>

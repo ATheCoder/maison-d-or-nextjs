@@ -21,7 +21,7 @@ export default function SlotChip({ slot, hint, onOpen }: { slot: SlotView; hint?
   const chip = CHIP[slot.status];
   return (
     <div className={`${styles.panel} ${styles.slotChip}`}>
-      <div className={styles.slotChipTh} style={{ backgroundImage: slot.imageUrl ? `url(${slot.imageUrl})` : undefined }}>
+      <div className={styles.slotChipTh} style={{ aspectRatio: slot.size.replace('x', ' / '), backgroundImage: slot.imageUrl ? `url(${slot.imageUrl})` : undefined }}>
         {!slot.imageUrl && <span className={styles.muted} style={{ fontSize: 10 }}>No art</span>}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>

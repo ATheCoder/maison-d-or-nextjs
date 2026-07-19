@@ -1359,7 +1359,7 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
         onClick={() => onOpenSlot(file)}
         title={`${slot.label} · ${slot.status}`}
         style={{
-          flex: '0 0 34px', width: 34, height: 34, borderRadius: 8, cursor: 'pointer', overflow: 'hidden',
+          flex: '0 0 34px', width: 34, aspectRatio: slot.size.replace('x', ' / '), borderRadius: 8, cursor: 'pointer', overflow: 'hidden',
           border: '1px solid var(--line2)', backgroundColor: '#fffdf8', backgroundSize: 'cover', backgroundPosition: 'center',
           backgroundImage: set && slot.imageUrl ? `url(${slot.imageUrl})` : undefined,
           color: slot.status === 'failed' ? 'var(--red)' : 'var(--brown2)', fontSize: 13, alignSelf: 'center',
