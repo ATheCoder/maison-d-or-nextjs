@@ -77,6 +77,12 @@ function rewriteMapFromRows(rows: GenerationJobRow[]): Record<string, RewriteSta
   return map;
 }
 
+// How many of a batch job's slots have finished rendering — the poll mirrors
+// the landed image URLs into the draft whenever this grows.
+function doneSlotCount(job: GenerationJobRow | null): number {
+  return Object.values(job?.progress?.slots ?? {}).filter((s) => s.state === 'done').length;
+}
+
 const FONT_LINK = 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Lato:wght@300;400;700&family=Great+Vibes&display=swap';
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -930,9 +936,13 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
         setBriefJob(res.brief);
       }
       setRewrites(rewriteMapFromRows(res.rewrites));
-      // Image jobs: when the batch finishes, mirror the landed URLs into the
-      // draft. The single-slot (Path A) job stays put until Accept/Revert.
-      if (imagesJobRef.current?.state === 'running' && res.images && res.images.state !== 'running') {
+      // Image jobs: the batch renderer writes each image server-side the moment
+      // that slot lands, so mirror the URLs into the draft as slots finish (the
+      // done-count grows) and once more when the whole job ends. The single-slot
+      // (Path A) job stays put until Accept/Revert.
+      const prevImages = imagesJobRef.current;
+      if (prevImages?.state === 'running' && res.images
+        && (res.images.state !== 'running' || doneSlotCount(res.images) > doneSlotCount(prevImages))) {
         void refreshSlotImages();
       }
       setImagesJob(res.images);
