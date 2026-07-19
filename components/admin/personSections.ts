@@ -5,7 +5,7 @@
  * every edit so the rail and preview stay in lockstep.
  */
 import { spreadIndexFor } from '@/components/dailygold/GoldenStory';
-import type { EditorPerson } from '@/app/admin/people/actions';
+import type { DraftPerson } from './draftTypes';
 
 export type SectionStatus = 'done' | 'part' | 'empty' | 'warn';
 
@@ -20,12 +20,17 @@ export type Section = {
   // treasures, lessons) get their full editors in Phase 4.
   kind: 'cover' | 'childhood' | 'chapter' | 'modern' | 'timeline' | 'treasures' | 'lessons' | 'after' | 'takeaway';
   chapterIndex?: number;
+  // Chapter rows only: the draft's stable per-chapter `_key`, used as the
+  // dnd-kit sortable id so the reorder animation tracks the chapter itself
+  // rather than its slot (`id` above stays the positional `chapter-<i>` the
+  // spread-index map expects).
+  dndKey?: string;
 };
 
 const hasText = (s: unknown): boolean => typeof s === 'string' && s.trim().length > 0;
 const hasImg = (u: unknown): boolean => typeof u === 'string' && u.trim().length > 0;
 
-export function deriveSections(draft: EditorPerson): Section[] {
+export function deriveSections(draft: DraftPerson): Section[] {
   const first = (draft.name || '').trim().split(/\s+/)[0] || 'they';
   const at = (id: string) => spreadIndexFor(draft, id);
   const out: Section[] = [];
@@ -54,7 +59,7 @@ export function deriveSections(draft: EditorPerson): Section[] {
     } else {
       status = textArtStatus(c.title || c.narrative, c.image_url);
     }
-    out.push({ id: `chapter-${i}`, label, kind: 'chapter', chapterIndex: i, spreadIndex: at(`chapter-${i}`), ...status });
+    out.push({ id: `chapter-${i}`, label, kind: 'chapter', chapterIndex: i, dndKey: c._key, spreadIndex: at(`chapter-${i}`), ...status });
   });
 
   // Modern ("If X were 10 today").

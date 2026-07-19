@@ -35,6 +35,7 @@ import { getSlotData, getSlotImages, generateImages } from '@/app/admin/people/i
 import type { Brief } from '@/lib/golden-story/brief';
 import type { Chapter, GenerationJobRow, SlotOverride } from '@/src/db/schema';
 import { deriveSections, type Section, type SectionStatus } from './personSections';
+import { withKeys, stripKeys, type DraftPerson, type Keyed } from './draftTypes';
 import { buildSlotViews, type SlotView } from './imageSlots';
 import SlotCard from './SlotCard';
 import SlotChip from './SlotChip';
@@ -88,8 +89,8 @@ const DOT_CLASS: Record<SectionStatus, string> = {
 type ListKey = 'chapters' | 'timeline' | 'treasures' | 'lessons';
 
 type DraftAction =
-  | { type: 'replace'; value: EditorPerson }
-  | { type: 'field'; key: keyof EditorPerson; value: unknown }
+  | { type: 'replace'; value: DraftPerson }
+  | { type: 'field'; key: keyof DraftPerson; value: unknown }
   | { type: 'chapterField'; index: number; key: string; value: unknown }
   | { type: 'objField'; key: 'modern' | 'after_treasures'; field: string; value: unknown }
   | { type: 'listAdd'; list: ListKey }
@@ -107,29 +108,31 @@ function moveItem<T>(arr: T[], from: number, to: number): T[] {
 }
 
 // Keep chapter numbers 1..n after any reordering/insertion/removal.
-function renumber(chapters: Chapter[]): Chapter[] {
+function renumber(chapters: Keyed<Chapter>[]): Keyed<Chapter>[] {
   return chapters.map((c, i) => (c.number === i + 1 ? c : { ...c, number: i + 1 }));
 }
 
+// Each new row gets a fresh client-only `_key` (see draftTypes.ts) so dnd-kit
+// can track it across reorders regardless of its slot.
 const BLANK: Record<ListKey, () => Record<string, unknown>> = {
-  chapters: () => ({ page_span: 'single', title: '', narrative: '', image_url: null }),
-  timeline: () => ({ year: '', caption: '', blend: 'multiply', image_url: null }),
-  treasures: () => ({ name: '', image_url: null }),
-  lessons: () => ({ icon_name: '', lesson: '' }),
+  chapters: () => ({ _key: crypto.randomUUID(), page_span: 'single', title: '', narrative: '', image_url: null }),
+  timeline: () => ({ _key: crypto.randomUUID(), year: '', caption: '', blend: 'multiply', image_url: null }),
+  treasures: () => ({ _key: crypto.randomUUID(), name: '', image_url: null }),
+  lessons: () => ({ _key: crypto.randomUUID(), icon_name: '', lesson: '' }),
 };
 
 // Write a list back, renumbering chapters so `number` always matches position.
-function withList(state: EditorPerson, list: ListKey, next: unknown[]): EditorPerson {
-  if (list === 'chapters') return { ...state, chapters: renumber(next as Chapter[]) };
-  return { ...state, [list]: next } as EditorPerson;
+function withList(state: DraftPerson, list: ListKey, next: unknown[]): DraftPerson {
+  if (list === 'chapters') return { ...state, chapters: renumber(next as Keyed<Chapter>[]) };
+  return { ...state, [list]: next } as DraftPerson;
 }
 
-function draftReducer(state: EditorPerson, action: DraftAction): EditorPerson {
+function draftReducer(state: DraftPerson, action: DraftAction): DraftPerson {
   switch (action.type) {
     case 'replace':
       return action.value;
     case 'field':
-      return { ...state, [action.key]: action.value } as EditorPerson;
+      return { ...state, [action.key]: action.value } as DraftPerson;
     case 'chapterField':
       return {
         ...state,
@@ -137,7 +140,7 @@ function draftReducer(state: EditorPerson, action: DraftAction): EditorPerson {
       };
     case 'objField': {
       const cur = state[action.key] ?? {};
-      return { ...state, [action.key]: { ...cur, [action.field]: action.value } } as EditorPerson;
+      return { ...state, [action.key]: { ...cur, [action.field]: action.value } } as DraftPerson;
     }
     case 'listAdd':
       return withList(state, action.list, [...(state[action.list] as unknown[]), BLANK[action.list]()]);
@@ -146,7 +149,8 @@ function draftReducer(state: EditorPerson, action: DraftAction): EditorPerson {
     case 'listDuplicate': {
       const arr = state[action.list] as Record<string, unknown>[];
       if (!arr[action.index]) return state;
-      const copy = { ...arr[action.index] };
+      // A fresh `_key`, not the original's — it's a distinct row now, not the same one.
+      const copy = { ...arr[action.index], _key: crypto.randomUUID() };
       return withList(state, action.list, [...arr.slice(0, action.index + 1), copy, ...arr.slice(action.index + 1)]);
     }
     case 'listReorder':
@@ -453,15 +457,18 @@ function SortableRow({ id, onDelete, children }: { id: string; onDelete: () => v
 
 // A reorderable list of rows: drag the grip to move (pointer, or focus the grip
 // and use Space + arrows), ✕ to delete, ＋ to add. The order commits on drop.
-function RowList({ count, onReorder, onDelete, onAdd, addLabel, renderRow }: {
-  count: number; onReorder: (from: number, to: number) => void; onDelete: (i: number) => void;
+// `ids` must be each row's stable identity (not its slot index) — dnd-kit
+// tracks a row across a reorder by its id's position in this array, and can
+// only animate the settle-into-place transition if that position actually
+// changes when the data reorders.
+function RowList({ ids, onReorder, onDelete, onAdd, addLabel, renderRow }: {
+  ids: string[]; onReorder: (from: number, to: number) => void; onDelete: (i: number) => void;
   onAdd: () => void; addLabel: string; renderRow: (i: number) => React.ReactNode;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-  const ids = Array.from({ length: count }, (_, i) => `row-${i}`);
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
     onReorder(ids.indexOf(String(active.id)), ids.indexOf(String(over.id)));
@@ -505,7 +512,10 @@ function NavRowInner({ s }: { s: Section }) {
 // row still just selects the chapter. The grip swallows its own click so the
 // click that trails a drop doesn't re-select a shifted row.
 function SortableChapterRow({ s, isActive, onSelect }: { s: Section; isActive: boolean; onSelect: () => void }) {
-  const { listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: s.id });
+  // `s.dndKey` (the chapter's stable `_key`) drives dnd-kit's identity here,
+  // not `s.id` — `s.id` is the positional `chapter-<i>` the spread-index map
+  // expects, which never changes slot and so can't animate a reorder.
+  const { listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: s.dndKey ?? s.id });
   return (
     <button
       ref={setNodeRef}
@@ -739,7 +749,7 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   initialSlotData: { brief: Brief | null; overrides: Record<string, SlotOverride> };
 }) {
   const slug = initialPerson.slug;
-  const [draft, dispatch] = useReducer(draftReducer, initialPerson);
+  const [draft, dispatch] = useReducer(draftReducer, initialPerson, withKeys);
   const [isPublished, setIsPublished] = useState(initialPerson.published);
   const [save, setSave] = useState<{ status: SaveStatus; savedAt: string | null; error?: string }>({
     status: 'saved', savedAt: initialPerson.updated_at,
@@ -831,9 +841,9 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   }, []);
 
   // ── Autosave: debounce 2s after the last edit ──────────────────────────────
-  const doSave = useCallback(async (record: EditorPerson) => {
+  const doSave = useCallback(async (record: DraftPerson) => {
     setSave((s) => ({ ...s, status: 'saving' }));
-    const res = await savePerson(slug, record);
+    const res = await savePerson(slug, stripKeys(record));
     if (res.ok) setSave({ status: 'saved', savedAt: res.updated_at ?? new Date().toISOString() });
     else setSave((s) => ({ ...s, status: 'error', error: res.error }));
   }, [slug]);
@@ -862,7 +872,7 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   // clear its row so the progress panel closes.
   const handleBriefDone = useCallback(async (jobId: number) => {
     const [fresh, brief, slotData] = await Promise.all([getPersonForEditor(slug), getStoryBrief(slug), getSlotData(slug)]);
-    if (fresh) { dispatch({ type: 'replace', value: fresh }); setSave({ status: 'saved', savedAt: fresh.updated_at }); }
+    if (fresh) { dispatch({ type: 'replace', value: withKeys(fresh) }); setSave({ status: 'saved', savedAt: fresh.updated_at }); }
     if (brief) { setGoldenThread(brief.goldenThread); setCharacterSheet(brief.characterSheet); setHasBrief(true); }
     // The book writer also wrote a scene per image slot onto the brief — pull
     // the fresh brief/overrides so the slot cards show their prompts right away.
@@ -1043,9 +1053,10 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   const moveChapter = (from: number, to: number) => { edit({ type: 'listReorder', list: 'chapters', from, to }); setSelectedId(`chapter-${to}`); };
   const onRailDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
-    const from = Number(String(active.id).split('-')[1]);
-    const to = Number(String(over.id).split('-')[1]);
-    if (!Number.isNaN(from) && !Number.isNaN(to)) moveChapter(from, to);
+    // ids here are chapter `_key`s (see the rail's SortableContext), not slot indices.
+    const from = draft.chapters.findIndex((c) => c._key === active.id);
+    const to = draft.chapters.findIndex((c) => c._key === over.id);
+    if (from !== -1 && to !== -1) moveChapter(from, to);
   };
   const goToPage = (np: number) => {
     const clamped = Math.max(0, Math.min(count - 1, np));
@@ -1170,10 +1181,10 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
         }}>
           <div className={styles.kick} style={{ padding: '4px 10px 10px' }}>The book</div>
           <DndContext sensors={railSensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis]} onDragEnd={onRailDragEnd}>
-            <SortableContext items={draft.chapters.map((_, i) => `chapter-${i}`)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={draft.chapters.map((c) => c._key)} strategy={verticalListSortingStrategy}>
               {sections.map((s) => (
                 s.kind === 'chapter' ? (
-                  <SortableChapterRow key={s.id} s={s} isActive={s.id === active?.id} onSelect={() => selectSection(s)} />
+                  <SortableChapterRow key={s.dndKey ?? s.id} s={s} isActive={s.id === active?.id} onSelect={() => selectSection(s)} />
                 ) : (
                   <button
                     key={s.id}
@@ -1330,7 +1341,7 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
 // ── Center panel: the selected section's fields ──────────────────────────────
 
 function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpenSlot }: {
-  active: Section; draft: EditorPerson; dispatch: React.Dispatch<DraftAction>; onSelect: (id: string) => void; rw: RewriteApi;
+  active: Section; draft: DraftPerson; dispatch: React.Dispatch<DraftAction>; onSelect: (id: string) => void; rw: RewriteApi;
   slotByFile: Record<string, SlotView>; onOpenSlot: (file: string) => void;
 }) {
   const slotChip = (file: string, hint?: string) => {
@@ -1356,7 +1367,7 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
       >{set ? '' : slot.status === 'generating' ? '…' : slot.status === 'failed' ? '↻' : '🖼'}</button>
     );
   };
-  const set = (key: keyof EditorPerson) => (value: string) => dispatch({ type: 'field', key, value });
+  const set = (key: keyof DraftPerson) => (value: string) => dispatch({ type: 'field', key, value });
   const rowInput = (placeholder: string, value: string, onChange: (v: string) => void, extra?: React.CSSProperties, list?: string) => (
     <input className={styles.field} list={list} style={{ padding: '9px 12px', fontSize: 13, ...extra }} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
   );
@@ -1474,7 +1485,7 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Kick>Life timeline · milestones</Kick>
           <RowList
-            count={draft.timeline.length} addLabel="Add milestone"
+            ids={draft.timeline.map((t) => t._key)} addLabel="Add milestone"
             onAdd={() => dispatch({ type: 'listAdd', list: 'timeline' })}
             onDelete={(i) => dispatch({ type: 'listDelete', list: 'timeline', index: i })}
             onReorder={(from, to) => dispatch({ type: 'listReorder', list: 'timeline', from, to })}
@@ -1493,7 +1504,7 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Kick>Treasures · their gifts to the world</Kick>
           <RowList
-            count={draft.treasures.length} addLabel="Add treasure"
+            ids={draft.treasures.map((t) => t._key)} addLabel="Add treasure"
             onAdd={() => dispatch({ type: 'listAdd', list: 'treasures' })}
             onDelete={(i) => dispatch({ type: 'listDelete', list: 'treasures', index: i })}
             onReorder={(from, to) => dispatch({ type: 'listReorder', list: 'treasures', from, to })}
@@ -1514,7 +1525,7 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
             {LESSON_ICONS.map((ic) => <option key={ic} value={ic} />)}
           </datalist>
           <RowList
-            count={draft.lessons.length} addLabel="Add lesson"
+            ids={draft.lessons.map((l) => l._key)} addLabel="Add lesson"
             onAdd={() => dispatch({ type: 'listAdd', list: 'lessons' })}
             onDelete={(i) => dispatch({ type: 'listDelete', list: 'lessons', index: i })}
             onReorder={(from, to) => dispatch({ type: 'listReorder', list: 'lessons', from, to })}
