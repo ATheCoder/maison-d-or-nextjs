@@ -63,6 +63,11 @@ export type PersonListItem = {
   missingBirthDate: boolean;
   published: boolean;
   coverUrl: string | null;
+  // Card subtitle / meta — the story's one-liner and where they're from.
+  role: string | null;
+  field: string | null;
+  country: string | null;
+  storyTitle: string | null;
   chapterCount: number;
   timelineCount: number;
   treasureCount: number;
@@ -91,6 +96,10 @@ export async function listPeople(): Promise<PersonListItem[]> {
       name: remarkablePerson.name,
       published: remarkablePerson.published,
       coverUrl: remarkablePerson.imageUrl,
+      role: remarkablePerson.role,
+      field: remarkablePerson.field,
+      country: remarkablePerson.country,
+      storyTitle: remarkablePerson.storyTitle,
       monthDay: sql<string | null>`to_char(${remarkablePerson.birthDate}, 'MM-DD')`,
       missingBirthDate: sql<boolean>`(${remarkablePerson.birthDate} is null)`,
       chapterCount: sql<number>`jsonb_array_length(${remarkablePerson.chapters})`,
