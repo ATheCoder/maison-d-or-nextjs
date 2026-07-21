@@ -62,6 +62,9 @@ export type PersonListItem = {
   monthDay: string | null;
   missingBirthDate: boolean;
   published: boolean;
+  // Born Today display priority — higher shows first among people born the
+  // same month-day.
+  bornTodayPriority: number;
   coverUrl: string | null;
   // Card subtitle / meta — the story's one-liner and where they're from.
   role: string | null;
@@ -95,6 +98,7 @@ export async function listPeople(): Promise<PersonListItem[]> {
       slug: remarkablePerson.slug,
       name: remarkablePerson.name,
       published: remarkablePerson.published,
+      bornTodayPriority: remarkablePerson.bornTodayPriority,
       coverUrl: remarkablePerson.imageUrl,
       role: remarkablePerson.role,
       field: remarkablePerson.field,
@@ -320,6 +324,10 @@ export async function savePerson(slug: string, record: Partial<EditorPerson>):
     .returning({ slug: remarkablePerson.slug });
 
   if (!result[0]) return { ok: false, error: 'This person no longer exists.' };
+  // A priority (or any) edit changes the Born Today ordering — refresh the
+  // public page's cache alongside the library.
+  revalidatePath('/admin/people');
+  revalidatePath('/daily-gold-edition');
   return { ok: true, updated_at: updatedAt.toISOString() };
 }
 
@@ -343,6 +351,38 @@ export async function setPublished(slug: string, published: boolean):
   revalidatePath(`/stories/${slug}`);
   revalidatePath('/daily-gold-edition');
   return { ok: true, published: value };
+}
+
+/**
+ * Set the Born Today display order for a group of people (all born the same
+ * month-day) from a slug list in the desired top-to-bottom order. Priority is
+ * "higher shows first", so the first slug gets the largest value and each
+ * subsequent one steps down by 1 — the exact numbers don't matter, only their
+ * relative order within the day's set (getPeopleForDate sorts on this).
+ */
+export async function reorderBornToday(slugsInOrder: string[]):
+  Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin();
+  const slugs = Array.isArray(slugsInOrder)
+    ? slugsInOrder.filter((s): s is string => typeof s === 'string' && s.length > 0).slice(0, 100)
+    : [];
+  if (slugs.length === 0) return { ok: false, error: 'Nothing to reorder.' };
+  // Reject duplicates — a repeated slug would make the ordering ambiguous.
+  if (new Set(slugs).size !== slugs.length) return { ok: false, error: 'Duplicate people in the order.' };
+
+  const n = slugs.length;
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < slugs.length; i++) {
+      await tx
+        .update(remarkablePerson)
+        .set({ bornTodayPriority: n - i, updatedAt: new Date() })
+        .where(eq(remarkablePerson.slug, slugs[i]));
+    }
+  });
+
+  revalidatePath('/admin/people');
+  revalidatePath('/daily-gold-edition');
+  return { ok: true };
 }
 
 // ── AI text generation (Phase 5) ─────────────────────────────────────────────

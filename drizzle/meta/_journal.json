@@ -127,6 +127,13 @@
       "when": 1784381079907,
       "tag": "0017_remarkable_person_editor",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1784620349140,
+      "tag": "0018_parallel_mercury",
+      "breakpoints": true
     }
   ]
 }

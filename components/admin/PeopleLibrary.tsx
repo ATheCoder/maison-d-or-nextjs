@@ -14,8 +14,16 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import {
+  DndContext, PointerSensor, KeyboardSensor, closestCenter, useSensor, useSensors, type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext, useSortable, verticalListSortingStrategy, sortableKeyboardCoordinates, arrayMove,
+} from '@dnd-kit/sortable';
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { CSS as dndCSS } from '@dnd-kit/utilities';
 import { slugify, SLUG_RE } from '@/lib/slug';
-import { createPerson, deletePerson, suggestPeople, type PersonListItem, type PersonSuggestion } from '@/app/admin/people/actions';
+import { createPerson, deletePerson, reorderBornToday, suggestPeople, type PersonListItem, type PersonSuggestion } from '@/app/admin/people/actions';
 
 // ── House stylesheet (scoped under .lib) ─────────────────────────────────────
 const CSS = `
@@ -110,6 +118,21 @@ const CSS = `
 .lib .finput { width:100%; padding:11px 12px; border-radius:10px; box-sizing:border-box; border:1px solid var(--line2); background:#fffdf8; font-family:var(--sans); font-size:14px; color:var(--ink); outline:none; }
 .lib .finput:focus { border-color:var(--gold-deep); }
 .lib .err { font-size:12px; color:var(--red); margin:8px 0 0; }
+
+.lib .rlist { display:flex; flex-direction:column; gap:9px; }
+.lib .prow { display:flex; align-items:center; gap:13px; padding:11px 13px; position:relative; }
+.lib .prow.draft { background:repeating-linear-gradient(135deg, rgba(201,169,110,.05) 0 8px, transparent 8px 16px), var(--panel-t); }
+.lib .grip { display:flex; align-items:center; justify-content:center; width:28px; height:36px; flex:0 0 auto; border:none; background:transparent; color:var(--brown3); cursor:grab; border-radius:8px; touch-action:none; }
+.lib .grip:hover { background:var(--gold-soft); color:var(--gold-deep); }
+.lib .grip:active { cursor:grabbing; }
+.lib .grip:focus-visible { outline:2px solid var(--gold-deep); outline-offset:2px; }
+.lib .rank { flex:0 0 auto; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font:600 13px/1 var(--serif); color:#3a2a10; background:linear-gradient(180deg,#dcc191,#c9a96e); box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 3px 9px rgba(168,132,63,.26); }
+.lib .rank.off { background:rgba(36,26,12,.07); color:var(--brown3); box-shadow:none; }
+.lib .rthumb { width:38px; height:50px; flex:0 0 38px; border-radius:2px 4px 4px 2px; overflow:hidden; box-shadow:0 3px 9px rgba(40,26,12,.2); position:relative; }
+.lib .rthumb img { width:100%; height:100%; object-fit:cover; display:block; }
+.lib .rthumb.empty { box-shadow:none; background:repeating-linear-gradient(135deg, rgba(120,90,50,.07) 0 6px, transparent 6px 12px), #f3ead2; border:1px dashed rgba(120,90,50,.3); }
+.lib .rname { font-family:var(--serif); font-size:15px; font-weight:600; line-height:1.2; color:var(--ink); }
+.lib .rmeta { font-size:11.5px; color:var(--brown2); margin-top:2px; }
 
 @media (max-width:900px){ .lib .cards{ grid-template-columns:1fr 1fr; } .lib .statrow{ grid-template-columns:1fr; } .lib .wrap{ padding:28px 22px 56px; } }
 @media (max-width:620px){ .lib .cards{ grid-template-columns:1fr; } }
@@ -428,6 +451,142 @@ function DeleteDialog({ person, onClose }: { person: PersonListItem; onClose: ()
   );
 }
 
+// ── Born Today priority reorder ──────────────────────────────────────────────
+// Priority only ranks people against others born the SAME month-day (that's the
+// only set they compete in on the edition), so reordering is scoped to a single
+// calendar day — reached by clicking a day in the coverage grid above.
+
+function GripIcon() {
+  return (
+    <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor" aria-hidden="true">
+      <circle cx="3" cy="3" r="1.4" /><circle cx="9" cy="3" r="1.4" />
+      <circle cx="3" cy="8" r="1.4" /><circle cx="9" cy="8" r="1.4" />
+      <circle cx="3" cy="13" r="1.4" /><circle cx="9" cy="13" r="1.4" />
+    </svg>
+  );
+}
+
+// Highest priority first, name as the stable tie-break — mirrors getPeopleForDate.
+const byPriority = (list: PersonListItem[]) =>
+  [...list].sort((a, b) => b.bornTodayPriority - a.bornTodayPriority || a.name.localeCompare(b.name));
+
+// One sortable row (dnd-kit): the grip is the sole drag activator so the Open
+// link stays clickable. Drafts are dimmed — they don't surface to families
+// until published, but they're still ranked so the order is ready on publish.
+function PriorityRow({ p, rank }: { p: PersonListItem; rank: number }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: p.slug });
+  const meta = [p.role, [p.field, p.country].filter(Boolean).join(' · ')].filter(Boolean).join(' — ');
+  const clamp = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const;
+  return (
+    <div
+      ref={setNodeRef}
+      className={`panel prow${p.published ? '' : ' draft'}`}
+      style={{
+        transform: dndCSS.Transform.toString(transform),
+        transition,
+        ...(isDragging ? { position: 'relative' as const, zIndex: 5, boxShadow: '0 12px 30px rgba(40,26,12,.2)' } : null),
+      }}
+    >
+      <button
+        ref={setActivatorNodeRef}
+        className="grip"
+        {...attributes}
+        {...listeners}
+        title="Drag to reorder"
+        aria-label={`Reorder ${p.name}`}
+      ><GripIcon /></button>
+      <span
+        className={`rank${p.published ? '' : ' off'}`}
+        title={p.published ? `Position ${rank} for families` : 'Draft — not shown to families yet'}
+      >{rank}</span>
+      {p.coverUrl ? (
+        <div className="rthumb">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={p.coverUrl} alt="" />
+        </div>
+      ) : (
+        <div className="rthumb empty" />
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="rname" style={clamp}>{p.name}</div>
+        {meta && <div className="rmeta" style={clamp}>{meta}</div>}
+      </div>
+      {p.published
+        ? <span className="chip chip-gold">Live</span>
+        : <span className="chip chip-amber">Draft</span>}
+      <Link href={`/admin/people/${p.slug}`} className="btn btn-sm" style={{ textDecoration: 'none' }}>Open</Link>
+    </div>
+  );
+}
+
+function BornTodayReorder({ people }: { people: PersonListItem[] }) {
+  const [order, setOrder] = useState<PersonListItem[]>(() => byPriority(people));
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [, start] = useTransition();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const ids = order.map((p) => p.slug);
+
+  function handleDragEnd({ active, over }: DragEndEvent) {
+    if (!over || active.id === over.id) return;
+    const from = ids.indexOf(String(active.id));
+    const to = ids.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    const next = arrayMove(order, from, to);
+    setOrder(next); // optimistic — commit locally, persist in the background
+    setStatus('saving');
+    start(async () => {
+      const res = await reorderBornToday(next.map((p) => p.slug));
+      if (res.ok) setStatus('saved');
+      else { setStatus('error'); setOrder(byPriority(people)); } // roll back on failure
+    });
+  }
+
+  const publishedCount = order.filter((p) => p.published).length;
+
+  return (
+    <div className="panel" style={{ padding: '18px 20px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div className="kick">Drag a row to arrange the order</div>
+          <div className="muted" style={{ fontSize: 12.5, marginTop: 5, lineHeight: 1.5 }}>
+            {publishedCount > 0
+              ? <>Only the <b style={{ color: 'var(--brown)' }}>{publishedCount}</b> live {publishedCount === 1 ? 'person appears' : 'people appear'} to families, top-first; drafts are ranked for when you publish them.</>
+              : <>Nobody here is published yet — the order takes effect once you publish.</>}
+          </div>
+        </div>
+        <span
+          aria-live="polite"
+          style={{ fontSize: 11.5, minWidth: 92, textAlign: 'right', color: status === 'error' ? 'var(--red)' : 'var(--brown2)' }}
+        >
+          {status === 'saving' ? 'Saving…' : status === 'saved' ? '✓ Order saved' : status === 'error' ? 'Couldn’t save — reverted' : ''}
+        </span>
+      </div>
+
+      {order.length < 2 ? (
+        <div className="muted" style={{ fontSize: 13 }}>Only one person is born on this day — nothing to order yet.</div>
+      ) : (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+            <div className="rlist">
+              {order.map((p, i) => <PriorityRow key={p.slug} p={p} rank={i + 1} />)}
+            </div>
+          </SortableContext>
+        </DndContext>
+      )}
+    </div>
+  );
+}
+
 // ── Library ──────────────────────────────────────────────────────────────────
 
 export default function PeopleLibrary({ people }: { people: PersonListItem[] }) {
@@ -436,6 +595,7 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
   const [segment, setSegment] = useState<Segment>('all');
   const [month, setMonth] = useState<number | null>(null); // 0-11 or null = Any
   const [selectedMd, setSelectedMd] = useState<string | null>(null); // 'MM-DD' calendar-day filter
+  const [reorderMode, setReorderMode] = useState(false); // Born Today reorder view for the selected day
   const [sortKey, setSortKey] = useState<SortKey>('birthday');
   const [creating, setCreating] = useState(false);
   const [createSeed, setCreateSeed] = useState<string | null>(null);
@@ -469,10 +629,12 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
   function openCreate(seed: string | null) { setCreateSeed(seed); setCreating(true); }
 
   // Clicking a day filters the cards to people born then; clicking it again clears.
+  // Switching days always drops back out of reorder mode.
   function onCell(m: number, d: number) {
     if (d > DAYS_IN[m]) return;
     const md = `${pad(m + 1)}-${pad(d)}`;
     setSelectedMd((cur) => (cur === md ? null : md));
+    setReorderMode(false);
   }
 
   const shown = useMemo(() => {
@@ -501,6 +663,21 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
     { key: 'draft', label: 'Drafts' },
     { key: 'incomplete', label: 'Incomplete' },
   ];
+
+  // Everyone born on the selected day (unfiltered by search/segment — priority
+  // is a property of the whole day's set). Reordering is only offered when the
+  // day holds more than one story; showReorder gates the actual reorder view so
+  // a lingering reorderMode can never render against an ineligible day.
+  const dayPeople = selectedMd ? (peopleByMd.get(selectedMd) ?? []) : [];
+  const canReorder = !!selectedMd && dayPeople.length > 1;
+  const showReorder = reorderMode && canReorder;
+  // Remount the reorder panel (re-seeding its local order) whenever the day or
+  // its persisted priorities change — e.g. after a revalidating refresh. An
+  // optimistic drag leaves the props untouched, so this key stays stable and
+  // the in-progress order survives until real data arrives.
+  const reorderKey = selectedMd
+    ? `${selectedMd}:${dayPeople.map((p) => `${p.slug}:${p.bornTodayPriority}`).sort().join(',')}`
+    : '';
 
   return (
     <div className="lib">
@@ -554,7 +731,7 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
               <div className="kick">Calendar coverage · what to make next</div>
               <div className="serif" style={{ fontSize: 20, fontWeight: 600, marginTop: 6 }}>Every day of the year, at a glance</div>
               <div className="muted" style={{ fontSize: 12, marginTop: 5 }}>
-                Born&nbsp;Today surfaces a person on their birthday — click an open day to draft someone born then.
+                Born&nbsp;Today surfaces a person on their birthday — click a day to order who appears first, or an open day to draft someone born then.
               </div>
             </div>
             <div className="legend">
@@ -649,40 +826,53 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
           </div>
         </div>
 
-        {/* People */}
+        {/* People — the searchable browse grid, day-filtered when a calendar day
+            is picked. A day holding more than one story offers a button to switch
+            into Born Today reorder mode. */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 6 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <div className="serif" style={{ fontSize: 20, fontWeight: 600 }}>In the library</div>
-            <div className="muted" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="serif" style={{ fontSize: 20, fontWeight: 600 }}>
+              {showReorder ? `Born Today order · ${dayMonthLabel(selectedMd!)}` : 'In the library'}
+            </div>
+            <div className="muted" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               {selectedMd && (
                 <button
                   className="chip chip-gold"
                   style={{ cursor: 'pointer' }}
                   title="Clear day filter"
-                  onClick={() => setSelectedMd(null)}
+                  onClick={() => { setSelectedMd(null); setReorderMode(false); }}
                 >Born {dayMonthLabel(selectedMd)} ✕</button>
               )}
-              <span>Showing {shown.length} of {people.length}</span>
+              {canReorder && (
+                showReorder
+                  ? <button className="btn btn-sm" onClick={() => setReorderMode(false)}>← Back to cards</button>
+                  : <button className="btn btn-sm btn-gold" onClick={() => setReorderMode(true)}>⇅ Reorder Born Today</button>
+              )}
+              {!showReorder && <span>Showing {shown.length} of {people.length}</span>}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <div className="field search" style={{ flex: 1, minWidth: 260, maxWidth: 420 }}>
-              <span className="muted" style={{ fontSize: 15 }}>⌕</span>
-              <input placeholder="Search by name…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          {!showReorder && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div className="field search" style={{ flex: 1, minWidth: 260, maxWidth: 420 }}>
+                <span className="muted" style={{ fontSize: 15 }}>⌕</span>
+                <input placeholder="Search by name…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              </div>
+              <div className="seg">
+                {segments.map((s) => (
+                  <button key={s.key} className={segment === s.key ? 'on' : ''} onClick={() => setSegment(s.key)}>{s.label}</button>
+                ))}
+              </div>
+              <select className="control" style={{ marginLeft: 'auto' }} value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
+                <option value="birthday">Sort · Birthday</option>
+                <option value="name">Sort · Name</option>
+              </select>
             </div>
-            <div className="seg">
-              {segments.map((s) => (
-                <button key={s.key} className={segment === s.key ? 'on' : ''} onClick={() => setSegment(s.key)}>{s.label}</button>
-              ))}
-            </div>
-            <select className="control" style={{ marginLeft: 'auto' }} value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
-              <option value="birthday">Sort · Birthday</option>
-              <option value="name">Sort · Name</option>
-            </select>
-          </div>
+          )}
         </div>
 
-        {shown.length === 0 ? (
+        {showReorder ? (
+          <BornTodayReorder key={reorderKey} people={dayPeople} />
+        ) : shown.length === 0 ? (
           <div className="panel" style={{ padding: '48px 24px', textAlign: 'center', border: '1px dashed var(--line2)' }}>
             <div className="serif muted" style={{ fontSize: 16 }}>
               {people.length === 0

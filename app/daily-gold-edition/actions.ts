@@ -160,7 +160,7 @@ export async function getPeopleForDate(date: string): Promise<PersonRecord[]> {
       sql`to_char(${remarkablePerson.birthDate}, 'MM-DD') = ${monthDay}`,
       eq(remarkablePerson.published, true),
     ))
-    .orderBy(asc(remarkablePerson.name))
+    .orderBy(desc(remarkablePerson.bornTodayPriority), asc(remarkablePerson.name))
     .limit(10);
   return rows.map(personToRecord);
 }

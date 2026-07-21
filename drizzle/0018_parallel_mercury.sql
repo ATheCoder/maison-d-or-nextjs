@@ -1,0 +1,1 @@
+ALTER TABLE "remarkable_person" ADD COLUMN "born_today_priority" integer DEFAULT 0 NOT NULL;

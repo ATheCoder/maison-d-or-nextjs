@@ -221,6 +221,12 @@ export const remarkablePerson = pgTable('remarkable_person', {
   // row (they are live today).
   published: boolean('published').notNull().default(false),
 
+  // Born Today display priority: higher shows first. People are only ever
+  // ranked against others born the same month-day, so a single global integer
+  // suffices. Default 0 keeps existing rows name-sorted until an admin promotes
+  // someone.
+  bornTodayPriority: integer('born_today_priority').notNull().default(0),
+
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
