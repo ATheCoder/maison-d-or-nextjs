@@ -119,15 +119,22 @@ export default function DGHero({ dateStr, heroImageUrl }) {
     if (heroImageUrl) setImgUrl(heroImageUrl);
   }, [heroImageUrl]);
 
-  const particles = Array.from({ length: 15 }, (_, i) => ({
-    left: `${Math.random() * 100}%`,
-    top: `${Math.random() * 100}%`,
-    animationDelay: `${Math.random() * 12}s`,
-    animationDuration: `${10 + Math.random() * 8}s`,
-    width: `${2 + Math.random() * 4}px`,
-    height: `${2 + Math.random() * 4}px`,
-    opacity: 0.15 + Math.random() * 0.3,
-  }));
+  // Randomized particles must be generated client-side only; computing them
+  // during render produces different values on the server and client, which
+  // triggers a hydration mismatch. Start empty (matching SSR) and fill in
+  // after mount.
+  const [particles, setParticles] = useState([]);
+  useEffect(() => {
+    setParticles(Array.from({ length: 15 }, () => ({
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      animationDelay: `${Math.random() * 12}s`,
+      animationDuration: `${10 + Math.random() * 8}s`,
+      width: `${2 + Math.random() * 4}px`,
+      height: `${2 + Math.random() * 4}px`,
+      opacity: 0.15 + Math.random() * 0.3,
+    })));
+  }, []);
 
   return (
     <div style={{
