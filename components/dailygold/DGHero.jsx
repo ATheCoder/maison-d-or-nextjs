@@ -190,8 +190,8 @@ export default function DGHero({ dateStr, heroImageUrl }) {
         <div style={{
           position: 'absolute', inset: 0,
           background: imgUrl
-            ? `linear-gradient(180deg, rgba(243,233,216,0.75) 0%, rgba(243,233,216,0.25) 35%, rgba(243,233,216,0.75) 100%)`
-            : `linear-gradient(160deg, rgba(243,233,216,0.6) 0%, rgba(240,228,208,0.3) 40%, rgba(243,233,216,0.6) 100%)`,
+            ? `linear-gradient(180deg, rgba(243,233,216,0.8) 0%, rgba(243,233,216,0.6) 50%, rgba(243,233,216,0.85) 100%)`
+            : `linear-gradient(160deg, rgba(243,233,216,0.6) 0%, rgba(240,228,208,0.5) 40%, rgba(243,233,216,0.6) 100%)`,
         }} />
       </div>
 
@@ -291,7 +291,7 @@ export default function DGHero({ dateStr, heroImageUrl }) {
           justifyContent: 'center',
         }}>
           <div style={{ height: 1, width: 32, background: `${theme.accentGold}40` }} />
-          <span style={{ fontFamily: theme.fontBody, fontSize: '0.55rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: `${theme.accentGold}80` }}>
+          <span style={{ fontFamily: theme.fontBody, fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: theme.accentGold }}>
             Begin exploring
           </span>
           <div style={{ height: 1, width: 32, background: `${theme.accentGold}40` }} />
