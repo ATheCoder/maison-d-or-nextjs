@@ -190,8 +190,8 @@ function Kick({ children }: { children: React.ReactNode }) {
   return <div className={styles.kick}>{children}</div>;
 }
 
-function TextField({ label, value, onChange, placeholder, serif }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string; serif?: boolean;
+function TextField({ label, value, onChange, placeholder, serif, disabled }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; serif?: boolean; disabled?: boolean;
 }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -201,21 +201,22 @@ function TextField({ label, value, onChange, placeholder, serif }: {
         style={{ padding: '11px 14px', fontSize: serif ? 18 : 14, fontWeight: serif ? 600 : 400 }}
         value={value}
         placeholder={placeholder}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
       />
     </label>
   );
 }
 
-function NarrativeField({ label, value, onChange, fieldPath, rw }: {
+function NarrativeField({ label, value, onChange, fieldPath, rw, disabled }: {
   label: string; value: string; onChange: (v: string) => void;
-  fieldPath?: string; rw?: RewriteApi;
+  fieldPath?: string; rw?: RewriteApi; disabled?: boolean;
 }) {
   const words = wordCount(value);
   const tone = words > 75 ? styles.chipRed : words > 70 ? styles.chipAmber : styles.chipInk;
   const chipText = words > 75 ? `Over the leaf · ${words} words` : words > 70 ? `Leaf nearly full · ${words} words` : `${words} words`;
   const rewrite = fieldPath && rw ? rw.states[fieldPath] : undefined;
-  const canRewrite = !!(fieldPath && rw && value.trim());
+  const canRewrite = !!(fieldPath && rw && value.trim()) && !disabled;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
@@ -237,6 +238,7 @@ function NarrativeField({ label, value, onChange, fieldPath, rw }: {
         className={styles.field}
         style={{ padding: '14px 16px', minHeight: 158, lineHeight: 1.7 }}
         value={value}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
       />
       <div className={styles.muted} style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 11 }}>
@@ -1467,8 +1469,8 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
               This chapter is a wordless full-page illustration — its narrative is written but not shown.
             </div>
           )}
-          <TextField label="Chapter title" value={ch?.title ?? ''} onChange={(v) => dispatch({ type: 'chapterField', index: i, key: 'title', value: v })} serif />
-          <NarrativeField label="Narrative" value={ch?.narrative ?? ''} onChange={(v) => dispatch({ type: 'chapterField', index: i, key: 'narrative', value: v })} fieldPath={`chapters.${i}.narrative`} rw={rw} />
+          <TextField label="Chapter title" value={ch?.title ?? ''} onChange={(v) => dispatch({ type: 'chapterField', index: i, key: 'title', value: v })} serif disabled={artOnly} />
+          <NarrativeField label="Narrative" value={ch?.narrative ?? ''} onChange={(v) => dispatch({ type: 'chapterField', index: i, key: 'narrative', value: v })} fieldPath={`chapters.${i}.narrative`} rw={rw} disabled={artOnly} />
           {slotChip(`chapter-${i + 1}.png`)}
         </>
       );

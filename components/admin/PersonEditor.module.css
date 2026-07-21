@@ -56,6 +56,7 @@
 
 .field { background: #fffdf8; border: 1px solid var(--line2); border-radius: 10px; color: var(--ink); font: 400 14px/1.6 var(--sans); width: 100%; }
 .field:focus { outline: none; border-color: var(--gold-deep); box-shadow: 0 0 0 3px var(--gold-soft); }
+.field:disabled { opacity: 0.55; cursor: not-allowed; background: rgba(201, 169, 110, 0.08); }
 textarea.field { resize: vertical; }
 
 .navrow { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 9px; cursor: pointer; color: var(--brown); font-size: 13px; text-align: left; border: 1px solid transparent; background: transparent; width: 100%; font-family: var(--sans); }
