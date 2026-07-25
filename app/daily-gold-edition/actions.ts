@@ -139,8 +139,13 @@ export async function getEditionById(id: string): Promise<EditionRecord | null> 
  * The most recent *published* edition for a given date.
  *
  * There can be more than one row per date (the table permits it and 2026-06-06
- * has two), so this still takes the newest by createdAt — but only among rows
- * that are 'ready'. A draft is invisible to the reader until it is published.
+ * has two), so this takes the newest by createdAt — but only among rows that
+ * are 'ready'. A draft is invisible to the reader until it is published.
+ *
+ * `id` breaks the tie: 2026-06-06's two rows share a createdAt to the
+ * microsecond, so ordering by createdAt alone lets Postgres return either one.
+ * The admin desk orders identically, so what it reports as the visible row is
+ * the row this returns.
  */
 export async function getEditionByDate(date: string): Promise<EditionRecord | null> {
   const rows = await db
@@ -150,7 +155,7 @@ export async function getEditionByDate(date: string): Promise<EditionRecord | nu
       eq(dailyGoldEdition.editionDate, date),
       eq(dailyGoldEdition.status, 'ready'),
     ))
-    .orderBy(desc(dailyGoldEdition.createdAt))
+    .orderBy(desc(dailyGoldEdition.createdAt), desc(dailyGoldEdition.id))
     .limit(1);
   return rows[0] ? rowToRecord(rows[0]) : null;
 }
@@ -166,7 +171,7 @@ export async function getLatestEdition(): Promise<EditionRecord | null> {
     .select()
     .from(dailyGoldEdition)
     .where(eq(dailyGoldEdition.status, 'ready'))
-    .orderBy(desc(dailyGoldEdition.editionDate), desc(dailyGoldEdition.createdAt))
+    .orderBy(desc(dailyGoldEdition.editionDate), desc(dailyGoldEdition.createdAt), desc(dailyGoldEdition.id))
     .limit(1);
   return rows[0] ? rowToRecord(rows[0]) : null;
 }

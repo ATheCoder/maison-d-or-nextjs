@@ -5,14 +5,20 @@ import SignOutButton from '@/components/auth/SignOutButton';
 export const metadata = { title: 'Admin — Maison d\'Oré' };
 export const dynamic = 'force-dynamic';
 
-// Stub shell (auth-plan phase 1). Content CRUD arrives in phase 4; the
-// Remarkable people library is live (remarkable-person-editor phase 2).
+// The four dead "arrives in phase 4" cards are gone: editions, good news, on
+// this day and greatest moments are all authored from the Daily Gold desk,
+// which answers the question those cards never could — is tomorrow ready?
 const SECTIONS: { title: string; href?: string; blurb: string }[] = [
-  { title: 'Remarkable people', href: '/admin/people', blurb: 'Browse, create and edit Born Today people.' },
-  { title: 'Good news', blurb: 'Content management arrives in phase 4.' },
-  { title: 'On this day', blurb: 'Content management arrives in phase 4.' },
-  { title: 'Greatest moments', blurb: 'Content management arrives in phase 4.' },
-  { title: 'Editions', blurb: 'Content management arrives in phase 4.' },
+  {
+    title: 'Daily Gold desk',
+    href: '/admin/daily-gold',
+    blurb: 'Editions, good news, On This Day and Greatest Moments — and what a family will see for the next seven days.',
+  },
+  {
+    title: 'Remarkable people',
+    href: '/admin/people',
+    blurb: 'Browse, create and edit Born Today people.',
+  },
 ];
 
 export default async function AdminPage() {
