@@ -1,7 +1,6 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { base44 } from '@/api/base44Client';
 import { useTheme } from '@/components/theme/ThemeContext';
 
 const C = {
@@ -9,6 +8,10 @@ const C = {
   terra: '#C46D46',
 };
 
+// The real Daily Gold house style. Nothing here renders any more — it is kept
+// as the source of truth for lib/daily-gold/prompts.ts, which harvests it, and
+// for the per-card scene text below it.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const MASTER_STYLE = "Fine art oil painting, luminous and painterly, in the style of a luxurious illustrated storybook. Rich warm natural light, soft visible brushstrokes, depth and atmosphere, golden hour glow. Warm cream, gold, sage, and earth tones. Elegant, serene, emotionally warm, museum-quality illustration. Soft focus background, beautiful composition. NOT flat, NOT cartoon, NOT vector, NOT simple graphic art. Oil on canvas texture, fine detail, painterly realism with a dreamy quality. No text, no watermarks, no logos.";
 
 const EXPLORE_CARDS = [
@@ -41,20 +44,10 @@ const EXPLORE_CARDS = [
 function ExploreCard({ card, theme }) {
   const router = useRouter();
   const [hovered, setHovered] = useState(false);
-  const [imgUrl, setImgUrl] = useState(card.image_url);
-  const [loading, setLoading] = useState(false);
-
-  useState(() => {
-    if (!imgUrl && card.prompt) {
-      setLoading(true);
-      base44.functions.invoke('generateExploreImage', { card_label: card.label, prompt: card.prompt })
-        .then(res => {
-          if (res?.data?.image_url) setImgUrl(res.data.image_url);
-        })
-        .catch(() => {})
-        .finally(() => setLoading(false));
-    }
-  }, []);
+  // The card's painting, when it has one. Rendering is all this does: the
+  // reader never calls a model (D5), so a card with no image_url keeps its
+  // placeholder gradient until one is authored in the admin.
+  const imgUrl = card.image_url;
 
   return (
     <div
@@ -73,15 +66,7 @@ function ExploreCard({ card, theme }) {
         boxShadow: hovered ? theme.shadowDeep : theme.shadowSoft,
       }}
     >
-      {loading && !imgUrl ? (
-        <div style={{
-          width: '100%', height: '100%',
-          background: theme.bgCard,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <div style={{ width: 24, height: 24, borderRadius: '50%', border: `2px solid ${theme.accentGold}40`, borderTopColor: theme.accentGold, animation: 'spin 0.8s linear infinite' }} />
-        </div>
-      ) : imgUrl ? (
+      {imgUrl ? (
         <img
           src={imgUrl}
           alt={card.label}

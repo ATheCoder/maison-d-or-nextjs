@@ -331,6 +331,25 @@ export const goodNewsItem = pgTable('good_news_item', {
   location: text('location'),
   imageUrl: text('image_url'),
 
+  // The publish gate. Readers filter on this, so an unpublished row is both a
+  // draft and — per D11 — a retrieval candidate awaiting review. It still holds
+  // a `position`, because (date, position) is unique; accepting a candidate
+  // repositions it into the next free display slot rather than keeping the
+  // arrival order it was inserted with.
+  published: boolean('published').notNull().default(false),
+
+  // Provenance (D10). A retrieved item records where its claim came from so
+  // review is verification rather than a rubber stamp; a hand-written item
+  // leaves these null.
+  sourceUrl: text('source_url'),
+  sourceTitle: text('source_title'),
+  // When the *source* published the story — compared against `date` to catch a
+  // 2019 feel-good piece being presented as today's news.
+  sourcePublishedAt: timestamp('source_published_at', { withTimezone: true }),
+  retrievedAt: timestamp('retrieved_at', { withTimezone: true }),
+  // Stamped when an admin actually checked the claim against its source.
+  reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 }, (t) => [
@@ -343,22 +362,27 @@ export type GoodNewsItemRow = typeof goodNewsItem.$inferSelect;
 export type NewGoodNewsItem = typeof goodNewsItem.$inferInsert;
 
 // ── OnThisDayEvent ───────────────────────────────────────────────────────────
-// The "On This Day" historical events, extracted out of
-// daily_gold_edition.on_this_day. Recurring content like remarkable_person:
-// an event from a given year belongs to its month-day every year. Most rows
-// are un-enriched stubs (only year + raw_text/raw_extract, the source
-// material the enrichment pipeline consumes); enriched rows carry the
-// child-friendly headline/story and maison_rewrite_done = true.
+// The "On This Day" historical events. Recurring content like
+// remarkable_person: an event from a given year belongs to its month-day every
+// year. A month-day holds a *list* per year, ordered by position — several
+// events in one year is the normal case, each publishable on its own.
+//
+// Scope is the last twenty years (the deep past is greatest_moment's job). The
+// band is rolling and governs only what gets generated: an event published for
+// 2007 stays published as the window moves past it.
+//
+// Emptied by migration 0020 — the Base44 backfill it used to hold was written
+// by the reader itself, unreviewed, and five of its thirteen "authored" rows
+// were filed under the wrong month-day. See docs/daily-gold-admin-spec.md
+// R7.13; a pg_dump of those 323 rows was taken first.
 
 export const onThisDayEvent = pgTable('on_this_day_event', {
   id: serial('id').primaryKey(),
 
   // 'MM-DD' — the recurrence key.
   monthDay: text('month_day').notNull(),
-  // Order within the day's list. (month_day, year) is NOT unique — some days
-  // have two events in the same year — so position is the backfill key.
+  // Order within the year's list, contiguous and 0-based per month-day.
   position: integer('position').notNull().default(0),
-  // All-numeric in the data (53–2026); drives the year navigator.
   year: integer('year').notNull(),
 
   headline: text('headline'),
@@ -366,10 +390,17 @@ export const onThisDayEvent = pgTable('on_this_day_event', {
   location: text('location'),
   imageUrl: text('image_url'),
 
+  // The publish gate for this table (D4) — the reader has always required it,
+  // so it needs no `published` twin. Setting it is an explicit act.
   maisonRewriteDone: boolean('maison_rewrite_done').notNull().default(false),
-  researchedFromInternet: boolean('researched_from_internet').notNull().default(false),
-  rawText: text('raw_text'),
-  rawExtract: text('raw_extract'),
+
+  // Provenance (D10), the same five columns good_news_item and greatest_moment
+  // carry, so all three content types record a citation identically.
+  sourceUrl: text('source_url'),
+  sourceTitle: text('source_title'),
+  sourcePublishedAt: timestamp('source_published_at', { withTimezone: true }),
+  retrievedAt: timestamp('retrieved_at', { withTimezone: true }),
+  reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
 
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
@@ -377,7 +408,8 @@ export const onThisDayEvent = pgTable('on_this_day_event', {
   index('on_this_day_event_month_day_idx').on(t.monthDay),
   // The per-year lookup the frontend's year navigator uses.
   index('on_this_day_event_month_day_year_idx').on(t.monthDay, t.year),
-  // Lets the backfill upsert on (month_day, position), so re-runs are idempotent.
+  // Unique, so reordering a year is a transaction rather than a series of
+  // independent updates.
   uniqueIndex('on_this_day_event_month_day_position_idx').on(t.monthDay, t.position),
 ]);
 
@@ -404,6 +436,19 @@ export const greatestMoment = pgTable('greatest_moment', {
   story: text('story'),
   imageUrl: text('image_url'),
 
+  // The publish gate, and with it the candidate mechanism (D11) — an
+  // unpublished moment holds a rank, so accepting one re-ranks it into the
+  // next free rung rather than keeping where it landed.
+  published: boolean('published').notNull().default(false),
+
+  // Provenance (D10). Year drift is this content type's standard failure, so
+  // the citation is what the admin checks the year against.
+  sourceUrl: text('source_url'),
+  sourceTitle: text('source_title'),
+  sourcePublishedAt: timestamp('source_published_at', { withTimezone: true }),
+  retrievedAt: timestamp('retrieved_at', { withTimezone: true }),
+  reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 }, (t) => [
@@ -415,7 +460,11 @@ export const greatestMoment = pgTable('greatest_moment', {
 export type GreatestMomentRow = typeof greatestMoment.$inferSelect;
 export type NewGreatestMoment = typeof greatestMoment.$inferInsert;
 
-export const dgStatus = pgEnum('dg_status', ['generating', 'ready', 'fallback']);
+// 'draft' is the edition's publish gate (D4/R7.11): prepare writes it, publish
+// writes 'ready', and only 'ready' reaches a reader. 'generating' keeps its
+// literal meaning — a generation job in flight — so the status never lies about
+// a row no model has touched.
+export const dgStatus = pgEnum('dg_status', ['draft', 'generating', 'ready', 'fallback']);
 
 export const dailyGoldEdition = pgTable('daily_gold_edition', {
   // Preserve the Base44 record id so re-imports upsert instead of duplicate.

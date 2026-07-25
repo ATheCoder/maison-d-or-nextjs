@@ -1,8 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { base44 } from '@/api/base44Client';
 import { useTheme } from '@/components/theme/ThemeContext';
-import { saveEnrichedEvent } from '@/app/daily-gold-edition/actions';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
 
 // Location string → ISO2 (best-effort for On This Day locations)
@@ -89,35 +87,41 @@ function YearSeal({ direction, disabled, onPress, pressing }) {
   );
 }
 
-export default function DGOnThisDay({ events = [], editionId, editionDate, onTrack, onFlagEarned }) {
+export default function DGOnThisDay({ events = [], editionId, onTrack, onFlagEarned }) {
   const { theme } = useTheme();
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [pressingYear, setPressingYear] = useState(null); // 'back' | 'forward' | null
-  const [loading, setLoading] = useState(false);
-  const [enrichedEvents, setEnrichedEvents] = useState({});
-  const [researchedEvents, setResearchedEvents] = useState({});
 
-  // Events from the on_this_day_event table, keyed by year. Already-enriched
-  // years render straight from here with no Base44 roundtrip; un-enriched
-  // stubs still go through enrichHistoricalEvent below.
+  // Published events from the on_this_day_event table, grouped year → list in
+  // position order. A year holds a list, not a slot: several events in one year
+  // is the normal case and the reader shows all of them. The server has already
+  // filtered on the publish gate; the headline/story guard is belt-and-braces
+  // for a row that was published while still half-written.
   const byYear = useMemo(() => {
     const m = {};
     for (const ev of events) {
-      if (ev?.maison_rewrite_done && ev.headline && ev.story && m[ev.year] == null) m[ev.year] = ev;
+      if (!ev?.headline || !ev.story) continue;
+      (m[ev.year] ||= []).push(ev);
     }
+    for (const list of Object.values(m)) list.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
     return m;
   }, [events]);
 
-  // Reset year and cache whenever the edition changes (new calendar day selected)
-  useEffect(() => {
+  // Reset the year whenever the edition changes (a new calendar day selected).
+  // Adjusted during render rather than in an effect: an effect would render the
+  // new day's events under the old day's year first, then immediately re-render.
+  const [lastEditionId, setLastEditionId] = useState(editionId);
+  if (editionId !== lastEditionId) {
+    setLastEditionId(editionId);
     setCurrentYear(new Date().getFullYear());
-    setEnrichedEvents({});
-    setResearchedEvents({});
-  }, [editionId]);
+  }
 
-  // Indefinite time travel — child can go back as far as they want
-  const MIN_YEAR = 1;
+  // On This Day is the last twenty years; the deep past belongs to Greatest
+  // Moments, which is reached by rank rather than by stepping. Flooring the
+  // navigator here is what stops a child walking back to year 1 through
+  // hundreds of empty years.
   const MAX_YEAR = new Date().getFullYear();
+  const MIN_YEAR = MAX_YEAR - 20;
 
   // Handle year navigation
   const goBackOneYear = useCallback(() => {
@@ -126,7 +130,7 @@ export default function DGOnThisDay({ events = [], editionId, editionDate, onTra
       setCurrentYear(newYear);
       onTrack?.('history', String(newYear));
     }
-  }, [currentYear, onTrack]);
+  }, [currentYear, onTrack, MIN_YEAR]);
 
   const goForwardOneYear = useCallback(() => {
     if (currentYear < MAX_YEAR) {
@@ -134,77 +138,46 @@ export default function DGOnThisDay({ events = [], editionId, editionDate, onTra
       setCurrentYear(newYear);
       onTrack?.('history', String(newYear));
     }
-  }, [currentYear, onTrack]);
+  }, [currentYear, onTrack, MAX_YEAR]);
 
-  // Research/enrich event on first view (lazy loading)
-  const researchEvent = useCallback(async (year) => {
-    if (!year || !editionId || byYear[year] || enrichedEvents[year] || researchedEvents[year]) return;
+  // Which years inside the band actually hold something, nearest first from
+  // wherever the child is standing. An unauthored year is an ordinary outcome,
+  // not a gap to fill at read time — so it offers a real destination instead of
+  // generating one (D5).
+  const authoredYears = useMemo(
+    () => Object.keys(byYear).map(Number).filter((y) => y >= MIN_YEAR && y <= MAX_YEAR).sort((a, b) => b - a),
+    [byYear, MIN_YEAR, MAX_YEAR],
+  );
 
-    setLoading(true);
-    try {
-      const res = await base44.functions.invoke('enrichHistoricalEvent', {
-        edition_id: editionId,
-        year: year,
-      });
+  const nearestAuthoredYear = useMemo(() => {
+    if (!authoredYears.length) return null;
+    // Ties go to the more recent year, which authoredYears already orders first.
+    return authoredYears.reduce((best, y) =>
+      Math.abs(y - currentYear) < Math.abs(best - currentYear) ? y : best);
+  }, [authoredYears, currentYear]);
 
-      if (res.data && res.data.headline) {
-        setEnrichedEvents(prev => ({
-          ...prev,
-          [year]: {
-            headline: res.data.headline,
-            story: res.data.story,
-            image_url: res.data.image_url,
-            location: res.data.location,
-          }
-        }));
-        if (res.data.was_researched) {
-          setResearchedEvents(prev => ({ ...prev, [year]: true }));
-        }
-        // Write-through: persist the enrichment in our own table so it isn't
-        // stranded in Base44 (the server rescues the image to R2).
-        if (editionDate) {
-          saveEnrichedEvent(editionDate, year, {
-            headline: res.data.headline,
-            story: res.data.story,
-            location: res.data.location,
-            image_url: res.data.image_url,
-            researched: !!res.data.was_researched,
-          }).catch(() => {});
-        }
+  const jumpToYear = useCallback((year) => {
+    setCurrentYear(year);
+    onTrack?.('history', String(year));
+  }, [onTrack]);
+
+  const yearEvents = useMemo(() => byYear[currentYear] || [], [byYear, currentYear]);
+
+  // Award a flag seal for each event location the child actually sees. Keyed by
+  // year and position, because a year can hold several events in different
+  // countries and each is its own collectible.
+  const earnedKeys = useRef(new Set());
+  useEffect(() => {
+    for (const ev of yearEvents) {
+      const key = `${ev.year}:${ev.position ?? 0}`;
+      if (!ev.location || earnedKeys.current.has(key)) continue;
+      const iso2 = getLocationIso2(ev.location);
+      if (iso2) {
+        earnedKeys.current.add(key);
+        onFlagEarned?.(ev.location, iso2, 'on_this_day');
       }
-    } catch (err) {
-      console.warn(`Failed to research year ${year}:`, err.message);
-    } finally {
-      setLoading(false);
     }
-  }, [editionId, editionDate, byYear, enrichedEvents, researchedEvents]);
-
-  // Research current year when it changes
-  useEffect(() => {
-    if (currentYear && !byYear[currentYear] && !enrichedEvents[currentYear]) {
-      researchEvent(currentYear);
-    }
-  }, [currentYear, byYear, enrichedEvents, researchEvent]);
-
-  // Trigger flag earn when enriched event loads with a location
-  const earnedYears = useRef(new Set());
-  useEffect(() => {
-    const data = byYear[currentYear] || enrichedEvents[currentYear];
-    if (!data?.location || earnedYears.current.has(currentYear)) return;
-    const iso2 = getLocationIso2(data.location);
-    if (iso2) {
-      earnedYears.current.add(currentYear);
-      onFlagEarned?.(data.location, iso2, 'on_this_day');
-    }
-  }, [byYear, enrichedEvents, currentYear]);
-
-  // Get enriched data for current year
-  const enrichedData = byYear[currentYear] || enrichedEvents[currentYear] || {};
-  const displayHeadline = enrichedData.headline;
-  const displayStory = enrichedData.story;
-  const displayImage = enrichedData.image_url;
-  const displayLocation = enrichedData.location;
-  const wasJustResearched = researchedEvents[currentYear];
+  }, [yearEvents, onFlagEarned]);
 
   return (
     <section style={{ background: 'transparent', borderRadius: 0, overflow: 'visible' }}>
@@ -251,69 +224,72 @@ export default function DGOnThisDay({ events = [], editionId, editionDate, onTra
             </div>
           </div>
 
-          {/* Content */}
-          {loading && !displayHeadline ? (
-            <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: '50%',
-                border: `3px solid ${theme.accentGold}40`,
-                borderTopColor: theme.accentGold,
-                animation: 'spin 1s linear infinite',
-                margin: '0 auto 1rem',
-              }} />
-              <p style={{ fontFamily: theme.fontBody, fontSize: '0.82rem', color: theme.textBody, margin: 0 }}>
-                Researching {currentYear}…
-              </p>
-            </div>
-          ) : displayHeadline && displayStory ? (
-            <>
-              {/* Image */}
-              {displayImage && (
-                <div style={{ height: 140, position: 'relative', background: `url('${displayImage}') center/cover` }}>
-                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(255,248,238,0.95) 100%)' }} />
-                </div>
-              )}
-
-              {/* Story */}
-              <div style={{ padding: '1rem 1.25rem 1.25rem' }}>
-                {displayLocation && (() => {
-                  const iso2 = getLocationIso2(displayLocation);
-                  return (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.6rem' }}>
-                      {iso2 && <FlagSealMedallion countryCode={iso2} countryName={displayLocation} size="xs" earned />}
-                      <p style={{ fontFamily: theme.fontBody, fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: theme.accentSage, margin: 0 }}>
-                        {displayLocation}
-                      </p>
+          {/* Content — every published event the year holds, in position order */}
+          {yearEvents.length > 0 ? (
+            yearEvents.map((ev, i) => {
+              const iso2 = ev.location ? getLocationIso2(ev.location) : null;
+              return (
+                <div
+                  key={`${ev.year}:${ev.position ?? i}`}
+                  style={i > 0 ? { borderTop: '1px solid rgba(201,169,110,0.12)' } : undefined}
+                >
+                  {ev.image_url && (
+                    <div style={{ height: 140, position: 'relative', background: `url('${ev.image_url}') center/cover` }}>
+                      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(255,248,238,0.95) 100%)' }} />
                     </div>
-                  );
-                })()}
+                  )}
 
-                <h3 style={{ fontFamily: theme.fontHeadline, fontSize: '1.1rem', fontWeight: 600, color: theme.textHeadline, margin: '0 0 0.6rem', lineHeight: 1.3 }}>
-                  {displayHeadline}
-                </h3>
+                  <div style={{ padding: '1rem 1.25rem 1.25rem' }}>
+                    {ev.location && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.6rem' }}>
+                        {iso2 && <FlagSealMedallion countryCode={iso2} countryName={ev.location} size="xs" earned />}
+                        <p style={{ fontFamily: theme.fontBody, fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: theme.accentSage, margin: 0 }}>
+                          {ev.location}
+                        </p>
+                      </div>
+                    )}
 
-                <p style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.82rem', color: theme.textBody, margin: 0, lineHeight: 1.75 }}>
-                  {displayStory}
-                </p>
-              </div>
-            </>
+                    <h3 style={{ fontFamily: theme.fontHeadline, fontSize: '1.1rem', fontWeight: 600, color: theme.textHeadline, margin: '0 0 0.6rem', lineHeight: 1.3 }}>
+                      {ev.headline}
+                    </h3>
+
+                    <p style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.82rem', color: theme.textBody, margin: 0, lineHeight: 1.75 }}>
+                      {ev.story}
+                    </p>
+                  </div>
+                </div>
+              );
+            })
           ) : (
+            /* An unauthored year is a designed state, not a gap. Offer the
+               nearest year that has something rather than an apology. */
             <div style={{ padding: '2rem 1.25rem', textAlign: 'center' }}>
-              <p style={{ fontFamily: theme.fontBody, fontSize: '0.82rem', color: theme.textMuted, margin: 0 }}>
-                No record found for {currentYear} — try another year.
+              <p style={{ fontFamily: theme.fontBody, fontSize: '0.82rem', color: theme.textMuted, margin: 0, lineHeight: 1.7 }}>
+                Nothing from {currentYear} yet.
               </p>
+              {nearestAuthoredYear != null && (
+                <button
+                  onClick={() => jumpToYear(nearestAuthoredYear)}
+                  style={{
+                    marginTop: '0.9rem',
+                    padding: '0.5rem 1.1rem',
+                    borderRadius: 999,
+                    border: `1px solid ${theme.accentGold}55`,
+                    background: 'rgba(255,248,238,0.9)',
+                    fontFamily: theme.fontBody,
+                    fontSize: '0.72rem',
+                    letterSpacing: '0.08em',
+                    color: theme.textHeadline,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Travel to {nearestAuthoredYear} →
+                </button>
+              )}
             </div>
           )}
         </div>
-
-
       </div>
-
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </section>
   );
 }

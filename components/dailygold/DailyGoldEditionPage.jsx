@@ -380,7 +380,7 @@ export default function DailyGoldEdition({ initialChild = null, initialEdition =
           alignItems: 'start',
         }}>
           <DGGoodNews items={goodNews} onTrack={trackInteraction} child={child} editionDate={viewedDate} />
-          <DGOnThisDay events={onThisDay} editionId={edition.id || null} onTrack={trackInteraction} onFlagEarned={handleFlagEarn} child={child} editionDate={viewedDate} />
+          <DGOnThisDay events={onThisDay} editionId={edition.id || null} onTrack={trackInteraction} onFlagEarned={handleFlagEarn} child={child} />
           <DGGreatestMoments moments={greatestMoments} editionDate={viewedDate} />
         </div>
 
