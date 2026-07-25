@@ -1,5 +1,5 @@
 import DailyGoldEditionPage from '@/components/dailygold/DailyGoldEditionPage';
-import { getInitialEdition, getEditionDates, getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate, getGreatestMomentsForDate } from './actions';
+import { getEditionByDate, getAvailableDates, getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate, getGreatestMomentsForDate } from './actions';
 
 export const metadata = { title: 'Daily Gold Edition' };
 
@@ -9,21 +9,27 @@ export const dynamic = 'force-dynamic';
 export default async function Page() {
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  const [initialEdition, initialDates] = await Promise.all([
-    getInitialEdition(todayStr),
-    getEditionDates(),
+  // The page declares one date — today — and every section shows today's
+  // content or nothing; it never borrows another day's content to fill a gap.
+  // So the edition row is today's or absent (no getLatestEdition fallback), and
+  // Born Today / On This Day / Greatest Moments are fetched unconditionally:
+  // they are keyed by today's month-day ("what happened on this day across
+  // history") and are correct whether or not an edition row exists.
+  const [
+    initialEdition,
+    initialDates,
+    initialPeople,
+    initialGoodNews,
+    initialOnThisDay,
+    initialGreatestMoments,
+  ] = await Promise.all([
+    getEditionByDate(todayStr),
+    getAvailableDates(),
+    getPeopleForDate(todayStr),
+    getGoodNewsForDate(todayStr),
+    getOnThisDayForDate(todayStr),
+    getGreatestMomentsForDate(todayStr),
   ]);
-  // Born Today, Good News, On This Day and Greatest Moments follow the
-  // edition being viewed (which may be the latest edition rather than
-  // today's) — news by the exact date, the rest by its month-day.
-  const [initialPeople, initialGoodNews, initialOnThisDay, initialGreatestMoments] = initialEdition
-    ? await Promise.all([
-        getPeopleForDate(initialEdition.edition_date),
-        getGoodNewsForDate(initialEdition.edition_date),
-        getOnThisDayForDate(initialEdition.edition_date),
-        getGreatestMomentsForDate(initialEdition.edition_date),
-      ])
-    : [[], [], [], []];
 
   return (
     <DailyGoldEditionPage

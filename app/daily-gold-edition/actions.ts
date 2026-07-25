@@ -5,7 +5,7 @@
  * them in the snake_case shape the client components already expect (the same
  * shape Base44 used to return), so no consumer mapping has to change.
  */
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import { PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { db } from '@/src/db';
@@ -134,7 +134,12 @@ export async function getEditionByDate(date: string): Promise<EditionRecord | nu
   return rows[0] ? rowToRecord(rows[0]) : null;
 }
 
-/** The single most recent edition overall. */
+/**
+ * The single most recent edition overall.
+ * Deliberately NOT the reader's fallback for "today": the reader declares one
+ * date and shows today's content or nothing, so borrowing the latest edition
+ * would put another day's content under today's masthead.
+ */
 export async function getLatestEdition(): Promise<EditionRecord | null> {
   const rows = await db
     .select()
@@ -142,11 +147,6 @@ export async function getLatestEdition(): Promise<EditionRecord | null> {
     .orderBy(desc(dailyGoldEdition.editionDate), desc(dailyGoldEdition.createdAt))
     .limit(1);
   return rows[0] ? rowToRecord(rows[0]) : null;
-}
-
-/** Today's edition if present, otherwise the most recent one. */
-export async function getInitialEdition(today: string): Promise<EditionRecord | null> {
-  return (await getEditionByDate(today)) ?? (await getLatestEdition());
 }
 
 /** People born on an edition date's month-day — the Born Today gallery. */
@@ -317,12 +317,51 @@ export async function getPersonBySlug(slug: string): Promise<PersonRecord | null
   return rows[0] ? personToRecord(rows[0]) : null;
 }
 
-/** Distinct edition dates, ascending — used by the day navigator. */
-export async function getEditionDates(): Promise<string[]> {
-  const rows = await db
-    .select({ date: dailyGoldEdition.editionDate })
-    .from(dailyGoldEdition)
-    .orderBy(desc(dailyGoldEdition.editionDate))
-    .limit(50);
-  return [...new Set(rows.map((r) => r.date))].sort();
+const isLeapYear = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+
+/**
+ * An 'MM-DD' resolved to its most recent occurrence on or before `today`.
+ * Golden Stories are keyed by birth month-day with no year, so this is what
+ * makes one reachable as a calendar day.
+ */
+function mostRecentOccurrence(monthDay: string, today: string): string | null {
+  if (!/^\d{2}-\d{2}$/.test(monthDay)) return null;
+  const thisYear = Number(today.slice(0, 4));
+  let year = monthDay <= today.slice(5) ? thisYear : thisYear - 1;
+  // 29 February exists only in leap years — step back to the most recent one.
+  if (monthDay === '02-29') while (!isLeapYear(year)) year -= 1;
+  return `${year}-${monthDay}`;
+}
+
+/**
+ * Every past day the reader can navigate to: any date with something authored
+ * for it, ascending, most recent 50.
+ *
+ * Three sources, deliberately not five. `dailyGoldEdition` and `goodNewsItem`
+ * are pinned to real dates; `remarkablePerson` is keyed by birth month-day and
+ * resolves through `mostRecentOccurrence`, which is what lets a day that only
+ * has Golden Stories (and no edition or news) be opened at all.
+ *
+ * `onThisDayEvent` and `greatestMoment` are excluded on purpose: they are
+ * backfilled per month-day, so counting them would eventually mark all 366
+ * dates available and the navigator would stop showing where the work is.
+ */
+export async function getAvailableDates(): Promise<string[]> {
+  const today = new Date().toISOString().slice(0, 10);
+  const [editionRows, newsRows, personRows] = await Promise.all([
+    db.selectDistinct({ d: dailyGoldEdition.editionDate }).from(dailyGoldEdition),
+    db.selectDistinct({ d: goodNewsItem.date }).from(goodNewsItem),
+    db
+      .selectDistinct({ md: sql<string>`to_char(${remarkablePerson.birthDate}, 'MM-DD')` })
+      .from(remarkablePerson)
+      .where(and(eq(remarkablePerson.published, true), isNotNull(remarkablePerson.birthDate))),
+  ]);
+
+  const dates = new Set<string>();
+  for (const r of [...editionRows, ...newsRows]) if (r.d) dates.add(r.d);
+  for (const r of personRows) {
+    const d = mostRecentOccurrence(r.md, today);
+    if (d) dates.add(d);
+  }
+  return [...dates].filter((d) => d <= today).sort().slice(-50);
 }

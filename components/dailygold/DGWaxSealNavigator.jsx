@@ -5,7 +5,7 @@
  * Press animation: stamp-down + page-turn rotateY flip to new date.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { getEditionByDate, getEditionDates } from '@/app/daily-gold-edition/actions';
+import { getEditionByDate, getAvailableDates } from '@/app/daily-gold-edition/actions';
 import { useTheme } from '@/components/theme/ThemeContext';
 
 // SVG seal face — vintage engraved arrow as the clear primary mark,
@@ -102,6 +102,15 @@ function WaxSeal({ direction, disabled, onPress, pressing }) {
   );
 }
 
+// Where a date sits in the edition list. A date with no edition of its own
+// (today, before it has been published) sits one past the end rather than on
+// the last edition: otherwise the navigator claims today *is* the newest
+// edition, and stepping back skips over it.
+function indexForDate(dates, date) {
+  const idx = dates.indexOf(date);
+  return idx !== -1 ? idx : dates.length;
+}
+
 export default function DGWaxSealNavigator({ currentDate, onEditionChange, initialDates = [] }) {
   const [allDates, setAllDates] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
@@ -118,21 +127,19 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
   useEffect(() => {
     const init = (dates) => {
       setAllDates(dates);
-      const idx = dates.indexOf(currentDate);
-      setCurrentIndex(idx !== -1 ? idx : dates.length - 1);
+      setCurrentIndex(indexForDate(dates, currentDate));
     };
     if (initialDates && initialDates.length) {
       init(initialDates);
     } else {
-      getEditionDates().then(init).catch(() => {});
+      getAvailableDates().then(init).catch(() => {});
     }
   }, []);
 
   // Sync index when currentDate changes externally
   useEffect(() => {
     if (allDates.length > 0) {
-      const idx = allDates.indexOf(currentDate);
-      if (idx !== -1) setCurrentIndex(idx);
+      setCurrentIndex(indexForDate(allDates, currentDate));
     }
     setDisplayDate(currentDate);
   }, [currentDate, allDates]);
@@ -167,14 +174,17 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
     await new Promise(r => setTimeout(r, 200));
     setFlipping(false);
 
-    // Load the edition for this date
+    // Load the edition for this date. A listed day need not have an edition row
+    // of its own — it may be listed for its Golden Stories alone — so the page
+    // is always notified, with the date as the authority and the record as
+    // whatever happens to exist for it. Staying silent here would leave the
+    // previous day's content under the new date.
     setLoading(true);
     try {
-      const record = await getEditionByDate(targetDate);
-      if (record) {
-        onEditionChange(record);
-      }
-    } catch (_) {}
+      onEditionChange(await getEditionByDate(targetDate), targetDate);
+    } catch (_) {
+      onEditionChange(null, targetDate);
+    }
     setLoading(false);
   }, [currentIndex, allDates, loading, onEditionChange]);
 
@@ -247,8 +257,10 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
           marginTop: '0.5rem',
         }} />
 
-        {/* Edition count indicator */}
-        {allDates.length > 1 && (
+        {/* Position in the archive. Counts days, not editions: a listed day may
+            have only Golden Stories and no edition row. Hidden on a day that
+            isn't in the list at all (today, before anything is authored). */}
+        {allDates.length > 1 && currentIndex < allDates.length && (
           <p style={{
             fontFamily: "'Cormorant Garamond', Georgia, serif",
             fontSize: '0.6rem',
@@ -257,7 +269,7 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
             letterSpacing: '0.18em',
             textTransform: 'uppercase',
           }}>
-            Edition {currentIndex + 1} of {allDates.length}
+            Day {currentIndex + 1} of {allDates.length}
           </p>
         )}
       </div>

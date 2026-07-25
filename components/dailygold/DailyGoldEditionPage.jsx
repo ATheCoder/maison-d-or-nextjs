@@ -51,24 +51,15 @@ const C = {
   ivory: '#F5F0E7',
 };
 
-const SAMPLE_EDITION = {
-  editorial_opening: "Every day holds a little gold. Today, let's wander through good news, remarkable lives, hidden corners of history, and a faraway place waiting to be discovered.",
-  destination: {
-    name: "Kyoto, Japan",
-    tagline: "Where ancient traditions meet quiet beauty",
-    continent: "Asia",
-    capital: "Kyoto",
-    language: "Japanese",
-    atmosphere: "Morning mist rises over bamboo forests. Golden temples reflect in still ponds. The air carries the scent of incense and cherry blossoms. In narrow streets, wooden machiya houses stand as they have for centuries, their sliding doors hiding courtyards filled with moss and stone lanterns.",
-    child_life: {
-      headline: "A child in Kyoto...",
-      story: "might wake to the sound of temple bells, walk past stone lanterns on the way to school, and learn calligraphy with brush and ink. After school, they might help grandparents tend a small garden. In spring, the whole city turns pink with cherry blossoms.",
-    },
-    taste_of_the_day: { name: "Matcha", story: "This vibrant green powder is made from shade-grown tea leaves. When whisked with hot water, it becomes a frothy, ceremonial drink. In tea ceremonies, every movement is deliberate, turning the simple act of drinking tea into meditation." },
-    nature_detail: { name: "Arashiyama Bamboo Grove", story: "Thousands of bamboo stalks rise like green pillars, filtering sunlight into emerald patterns. When wind moves through the grove, it creates a sound so beautiful it has been designated one of Japan's 100 Soundscapes." },
-    tiny_phrase: { word: "Komorebi", translation: "Sunlight filtering through leaves", meaning: "This word captures a moment of beauty when light meets nature — the dappled pattern on forest floors, the way leaves turn sunlight into living art." },
-  },
-  editorial_closing: "Today's gold is scattered across time, place, and human achievement. May you find something that makes you curious.",
+// Today has no edition row. An explicit absent state — never another day's
+// content, and never sample content dressed up as today's.
+const EMPTY_EDITION = {
+  id: null,
+  date: null,
+  destination_name: null,
+  destination: null,
+  images: {},
+  generated_at: null,
 };
 
 // Synchronously restore child from sessionStorage to avoid flash/redirect on back-navigation
@@ -83,11 +74,18 @@ function getSessionChild() {
 // Map a raw edition record (snake_case, as returned by the Drizzle-backed
 // server actions) into the view-model the child components consume.
 function mapRecord(record) {
+  // An edition row can exist with nothing authored in it yet. Only build a
+  // destination when there is something to show, so the section can be absent
+  // rather than rendering a shell of em-dashes.
+  const hasDestination = !!(
+    record.destination_country || record.destination_description || record.destination_image_url ||
+    record.taste_of_day || record.sound_of_day || record.nature_detail || record.tiny_phrase
+  );
   const edition = {
     id: record.id,
     date: record.edition_date,
     destination_name: record.destination_country,
-    destination: {
+    destination: hasDestination ? {
       name: record.destination_country,
       atmosphere: record.destination_description,
       image_url: record.destination_image_url || null,
@@ -100,7 +98,7 @@ function mapRecord(record) {
         language: record.tiny_phrase_language || null,
       } : null,
       child_life: record.child_life || null,
-    },
+    } : null,
     images: {
       destination: record.destination_image_url || null,
       hero: record.hero_image_url || null,
@@ -118,10 +116,8 @@ export default function DailyGoldEdition({ initialEdition = null, initialDates =
   const todayStr = new Date().toISOString().slice(0, 10);
   const dateLabel = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-  console.log(initialEdition)
-
   // The edition is fetched on the server (SSR, via Drizzle) and passed in.
-  const initial = initialEdition ? mapRecord(initialEdition) : { edition: SAMPLE_EDITION, rawPost: null };
+  const initial = initialEdition ? mapRecord(initialEdition) : { edition: EMPTY_EDITION, rawPost: null };
 
   const [edition, setEdition] = useState(initial.edition);
   const [people, setPeople] = useState(initialPeople);
@@ -176,25 +172,32 @@ export default function DailyGoldEdition({ initialEdition = null, initialDates =
     return () => clearInterval(interval);
   }, []);
 
-  const handleEditionChange = (record) => {
-    const { edition: mapped, rawPost: rp } = mapRecord(record);
+  // The navigator can land on a day that has no edition row of its own — one
+  // listed only for its Golden Stories — so `date` is the authority and
+  // `record` is whatever exists for it, possibly nothing.
+  const handleEditionChange = (record, date) => {
+    const viewed = date || record?.edition_date;
+    if (!viewed) return;
+    const { edition: mapped, rawPost: rp } = record
+      ? mapRecord(record)
+      : { edition: EMPTY_EDITION, rawPost: null };
     setEdition(mapped);
     setRawPost(rp);
-    setViewedDate(record.edition_date);
+    setViewedDate(viewed);
     // Born Today is keyed by the viewed date's month-day, not the edition row.
-    getPeopleForDate(record.edition_date)
+    getPeopleForDate(viewed)
       .then(setPeople)
       .catch(() => setPeople([]));
     // Good News lives in its own table, keyed by the exact date.
-    getGoodNewsForDate(record.edition_date)
+    getGoodNewsForDate(viewed)
       .then(setGoodNews)
       .catch(() => setGoodNews([]));
     // On This Day lives in its own table, keyed by the month-day.
-    getOnThisDayForDate(record.edition_date)
+    getOnThisDayForDate(viewed)
       .then(setOnThisDay)
       .catch(() => setOnThisDay([]));
     // Greatest Moments too — its own table, keyed by the month-day.
-    getGreatestMomentsForDate(record.edition_date)
+    getGreatestMomentsForDate(viewed)
       .then(setGreatestMoments)
       .catch(() => setGreatestMoments([]));
   };
