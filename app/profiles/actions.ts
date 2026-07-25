@@ -11,18 +11,49 @@ import { and, eq } from 'drizzle-orm';
 import { verifyPassword } from 'better-auth/crypto';
 import { db } from '@/src/db';
 import { childProfile, session as sessionTable } from '@/src/db/schema';
-import { requireGuardian } from '@/lib/dal';
+import { getActiveChild, requireGuardian } from '@/lib/dal';
 import { verifyGuardianCredential } from '@/lib/guardian-credential';
 
 const MAX_ATTEMPTS = 5;
 const LOCK_MS = 5 * 60 * 1000; // 5 minutes
 
+// Only a birth year is stored (auth-plan §7: minimal child PII), so this is
+// the age the child reaches this year — right for most of the year, a year
+// ahead before their birthday. Good enough for "Age 9" next to a name.
+function ageFromBirthYear(birthYear: number): number {
+  return new Date().getFullYear() - birthYear;
+}
+
 export type PickerProfile = {
   id: string;
   displayName: string;
   avatar: string;
+  age: number;
   hasPin: boolean;
 };
+
+/**
+ * The active child in the shape the Daily Gold client components consume
+ * (`child.id` / `child.name` / `child.age`), or null outside child mode.
+ * Identity comes from the session — the page never asks for a profile id.
+ */
+export type ActiveChildProfile = {
+  id: string;
+  name: string;
+  age: number;
+  avatar: string;
+};
+
+export async function getActiveChildProfile(): Promise<ActiveChildProfile | null> {
+  const child = await getActiveChild();
+  if (!child) return null;
+  return {
+    id: child.id,
+    name: child.displayName,
+    age: ageFromBirthYear(child.birthYear),
+    avatar: child.avatar,
+  };
+}
 
 export type EnterResult =
   | { ok: true }
@@ -43,6 +74,7 @@ export async function getProfilesForPicker(): Promise<{ userName: string; inChil
       id: c.id,
       displayName: c.displayName,
       avatar: c.avatar,
+      age: ageFromBirthYear(c.birthYear),
       hasPin: c.pinHash != null,
     })),
   };

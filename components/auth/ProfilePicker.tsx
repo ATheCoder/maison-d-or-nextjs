@@ -72,11 +72,16 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
     setPinFor(null); setPin(''); setOverrideMode(false); setCredential(''); setError(null); setLocked(false);
   }
 
+  // Never follow the push with router.refresh(): refresh() re-fetches the
+  // *current* route, so firing it alongside an in-flight push leaves the
+  // navigation pending forever and the picker frozen. It buys nothing either —
+  // /daily-gold-edition is dynamic (never client-cached), and the session
+  // cookie the action just set invalidates the client cache by itself.
   async function pickProfile(p: PickerProfile) {
     setError(null);
     if (p.hasPin) { setPinFor(p); return; }
     const res = await enterChildProfile(p.id);
-    if (res.ok) { router.push('/daily-gold-edition'); router.refresh(); }
+    if (res.ok) { router.push('/daily-gold-edition'); }
     else setError(res.error);
   }
 
@@ -88,7 +93,7 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
       ? await enterChildProfileAsGuardian(pinFor.id, credential)
       : await enterChildProfile(pinFor.id, pin);
     setPending(false);
-    if (res.ok) { router.push('/daily-gold-edition'); router.refresh(); return; }
+    if (res.ok) { router.push('/daily-gold-edition'); return; }
     setPin('');
     setError(res.error);
     if ('locked' in res && res.locked) setLocked(true);

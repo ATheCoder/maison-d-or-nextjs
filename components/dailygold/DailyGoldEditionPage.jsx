@@ -62,15 +62,6 @@ const EMPTY_EDITION = {
   generated_at: null,
 };
 
-// Synchronously restore child from sessionStorage to avoid flash/redirect on back-navigation
-function getSessionChild() {
-  try {
-    const cached = sessionStorage.getItem('dg_active_child_obj');
-    if (cached) return JSON.parse(cached);
-  } catch (_) {}
-  return null;
-}
-
 // Map a raw edition record (snake_case, as returned by the Drizzle-backed
 // server actions) into the view-model the child components consume.
 function mapRecord(record) {
@@ -109,9 +100,9 @@ function mapRecord(record) {
 }
 
 /**
- * @param {{ initialEdition?: any, initialDates?: string[], initialPeople?: any[], initialGoodNews?: any[], initialOnThisDay?: any[], initialGreatestMoments?: any[] }} props
+ * @param {{ initialChild?: any, initialEdition?: any, initialDates?: string[], initialPeople?: any[], initialGoodNews?: any[], initialOnThisDay?: any[], initialGreatestMoments?: any[] }} props
  */
-export default function DailyGoldEdition({ initialEdition = null, initialDates = [], initialPeople = [], initialGoodNews = [], initialOnThisDay = [], initialGreatestMoments = [] }) {
+export default function DailyGoldEdition({ initialChild = null, initialEdition = null, initialDates = [], initialPeople = [], initialGoodNews = [], initialOnThisDay = [], initialGreatestMoments = [] }) {
   const router = useRouter();
   const todayStr = new Date().toISOString().slice(0, 10);
   const dateLabel = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -126,7 +117,6 @@ export default function DailyGoldEdition({ initialEdition = null, initialDates =
   const [greatestMoments, setGreatestMoments] = useState(initialGreatestMoments);
   const [rawPost, setRawPost] = useState(initial.rawPost);
   const [user, setUser] = useState(null);
-  const [child, setChild] = useState(null);
   const [timeSpent, setTimeSpent] = useState(0);
   const [topicsExplored, setTopicsExplored] = useState([]);
   const [selectedDestination, setSelectedDestination] = useState(null);
@@ -141,30 +131,13 @@ export default function DailyGoldEdition({ initialEdition = null, initialDates =
   const loading = false;
   const generating = false;
 
-  // The edition is already provided by the server; only the (optional) child
-  // profile still loads on the client.
+  // The reader is resolved on the server from the session's active child
+  // profile, so there is nothing to fetch and no client-side cache to keep in
+  // sync: switching profiles refreshes the route and this prop changes.
+  // Outside child mode it stays null and every child surface below is absent.
+  const child = initialChild;
+
   useEffect(() => {
-    const childId = '69fc48b9acd4bfd93fc44220';
-
-    // Restore cached child synchronously to avoid flash on back-navigation
-    const cachedChild = getSessionChild();
-    if (cachedChild) setChild(cachedChild);
-
-    base44.entities.Child
-      .filter({ id: childId }, '-created_date', 1)
-      .then(kids => kids[0] || null)
-      .then(fetchedChild => {
-        if (fetchedChild) {
-          setChild(fetchedChild);
-          sessionStorage.setItem('dg_active_child_obj', JSON.stringify(fetchedChild));
-        } else if (!cachedChild) {
-          // No child available — clear stale cache and continue with null child
-          sessionStorage.removeItem('dg_active_child_id');
-          sessionStorage.removeItem('dg_active_child_obj');
-        }
-      })
-      .catch(() => {});
-
     // Track time spent
     const interval = setInterval(() => {
       setTimeSpent(Math.round((Date.now() - startTime.current) / 60000));

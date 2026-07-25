@@ -1,4 +1,5 @@
 import DailyGoldEditionPage from '@/components/dailygold/DailyGoldEditionPage';
+import { getActiveChildProfile } from '@/app/profiles/actions';
 import { getEditionByDate, getAvailableDates, getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate, getGreatestMomentsForDate } from './actions';
 
 export const metadata = { title: 'Daily Gold Edition' };
@@ -15,6 +16,11 @@ export default async function Page() {
   // Born Today / On This Day / Greatest Moments are fetched unconditionally:
   // they are keyed by today's month-day ("what happened on this day across
   // history") and are correct whether or not an edition row exists.
+  //
+  // The reader comes from the session's active child profile (auth-plan §1) —
+  // resolved here, never asserted by the client. Outside child mode it is
+  // null and every child-specific surface simply stays absent; the edition
+  // itself is the same for everyone, so the page still renders.
   const [
     initialEdition,
     initialDates,
@@ -22,6 +28,7 @@ export default async function Page() {
     initialGoodNews,
     initialOnThisDay,
     initialGreatestMoments,
+    initialChild,
   ] = await Promise.all([
     getEditionByDate(todayStr),
     getAvailableDates(),
@@ -29,10 +36,12 @@ export default async function Page() {
     getGoodNewsForDate(todayStr),
     getOnThisDayForDate(todayStr),
     getGreatestMomentsForDate(todayStr),
+    getActiveChildProfile(),
   ]);
 
   return (
     <DailyGoldEditionPage
+      initialChild={initialChild}
       initialEdition={initialEdition}
       initialDates={initialDates}
       initialPeople={initialPeople}

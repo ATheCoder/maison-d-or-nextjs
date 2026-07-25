@@ -2,9 +2,17 @@
 /**
  * ChildGreetingStrip
  * Warm personal greeting "Hi, [Name]" + child switcher overlay + quick personal links.
+ *
+ * The switcher is the profile picker inline: it lists the family's own child
+ * profiles and switches by changing the session server-side (auth-plan §4), so
+ * a PIN-protected profile asks for its PIN here exactly as it does on
+ * /profiles. Nothing about the reader is held on the client — a successful
+ * switch refreshes the route and the new child arrives as a prop.
  */
 import { useState, useEffect, useRef } from 'react';
-import { base44 } from '@/api/base44Client';
+import { useRouter } from 'next/navigation';
+import { getProfilesForPicker, enterChildProfile, enterChildProfileAsGuardian } from '@/app/profiles/actions';
+import { AVATARS } from '@/lib/avatars';
 
 const GOLD = '#C8A96B';
 const TEXT = '#5C4A36';
@@ -45,16 +53,47 @@ function QuickLink({ icon, label, onClick }) {
   );
 }
 
-function ChildSwitcherOverlay({ currentChildId, onSelect, onClose }) {
+function ChildSwitcherOverlay({ currentChildId, onSwitched, onClose }) {
   const [children, setChildren] = useState([]);
   const [loading, setLoading] = useState(true);
+  // The profile awaiting a PIN, if the child tapped a locked one.
+  const [pinFor, setPinFor] = useState(null);
+  const [pin, setPin] = useState('');
+  // Guardian override: the parent PIN or password opens any profile.
+  const [asGuardian, setAsGuardian] = useState(false);
+  const [error, setError] = useState(null);
+  const [pending, setPending] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
-    base44.entities.Child.list('-created_date', 20).then(kids => {
-      setChildren(kids || []);
-    }).catch(() => {}).finally(() => setLoading(false));
+    getProfilesForPicker()
+      .then(({ profiles }) => setChildren(profiles || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
+
+  async function pick(kid) {
+    if (kid.id === currentChildId) { onClose(); return; }
+    if (kid.hasPin) { setPinFor(kid); setPin(''); setError(null); return; }
+    setPending(true);
+    const res = await enterChildProfile(kid.id);
+    setPending(false);
+    if (res.ok) onSwitched();
+    else setError(res.error);
+  }
+
+  async function submitPin() {
+    if (!pinFor || pending) return;
+    setPending(true);
+    setError(null);
+    const res = asGuardian
+      ? await enterChildProfileAsGuardian(pinFor.id, pin)
+      : await enterChildProfile(pinFor.id, pin);
+    setPending(false);
+    if (res.ok) { onSwitched(); return; }
+    setPin('');
+    setError(res.error);
+  }
 
   // Close on outside click
   useEffect(() => {
@@ -78,61 +117,136 @@ function ChildSwitcherOverlay({ currentChildId, onSelect, onClose }) {
     >
       <div style={{ padding: '0.65rem 1rem 0.4rem', borderBottom: '1px solid rgba(201,169,107,0.15)' }}>
         <p style={{ fontFamily: 'Lato, sans-serif', fontSize: '0.55rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: TEXT_MUTED, margin: 0 }}>
-          Switch Reader
+          {pinFor ? (asGuardian ? 'Ask a grown-up' : `${pinFor.displayName}'s PIN`) : 'Switch Reader'}
         </p>
       </div>
-      {loading ? (
+      {pinFor ? (
+        <div style={{ padding: '0.85rem 1rem 1rem' }}>
+          <input
+            type="password"
+            inputMode={asGuardian ? 'text' : 'numeric'}
+            autoFocus
+            value={pin}
+            maxLength={asGuardian ? undefined : 4}
+            placeholder={asGuardian ? 'Parent PIN or password' : '••••'}
+            onChange={e => setPin(asGuardian ? e.target.value : e.target.value.replace(/\D/g, ''))}
+            onKeyDown={e => { if (e.key === 'Enter') submitPin(); if (e.key === 'Escape') setPinFor(null); }}
+            style={{
+              width: '100%', padding: '0.5rem 0.65rem',
+              fontFamily: 'Lato, sans-serif', fontSize: '0.8rem',
+              letterSpacing: asGuardian ? 'normal' : '0.3em', textAlign: asGuardian ? 'left' : 'center',
+              color: TEXT, background: '#FFFDF7',
+              border: `1px solid rgba(201,169,107,0.4)`, borderRadius: 8,
+              outline: 'none', boxSizing: 'border-box',
+            }}
+          />
+          {error && (
+            <p style={{ fontFamily: 'Lato, sans-serif', fontSize: '0.6rem', color: '#B4553C', margin: '0.45rem 0 0' }}>
+              {error}
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: 6, marginTop: '0.6rem' }}>
+            <button
+              onClick={submitPin}
+              disabled={pending || pin.length < (asGuardian ? 1 : 4)}
+              style={{
+                flex: 1, padding: '0.4rem', borderRadius: 8, cursor: 'pointer',
+                fontFamily: 'Lato, sans-serif', fontSize: '0.65rem', letterSpacing: '0.08em',
+                color: '#FFFDF7', background: GOLD, border: 'none',
+                opacity: pending || pin.length < (asGuardian ? 1 : 4) ? 0.5 : 1,
+              }}
+            >
+              {pending ? '…' : 'Open'}
+            </button>
+            <button
+              onClick={() => { setPinFor(null); setPin(''); setAsGuardian(false); setError(null); }}
+              style={{
+                padding: '0.4rem 0.7rem', borderRadius: 8, cursor: 'pointer',
+                fontFamily: 'Lato, sans-serif', fontSize: '0.65rem',
+                color: TEXT_MUTED, background: 'transparent', border: `1px solid rgba(201,169,107,0.3)`,
+              }}
+            >
+              Back
+            </button>
+          </div>
+          {!asGuardian && (
+            <button
+              onClick={() => { setAsGuardian(true); setPin(''); setError(null); }}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem 0 0',
+                fontFamily: 'Lato, sans-serif', fontSize: '0.58rem', color: TEXT_MUTED,
+                textDecoration: 'underline', display: 'block',
+              }}
+            >
+              Forgot it? Ask a grown-up
+            </button>
+          )}
+        </div>
+      ) : loading ? (
         <div style={{ padding: '1rem', textAlign: 'center' }}>
           <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${GOLD}40`, borderTopColor: GOLD, animation: 'dgSpin 0.7s linear infinite', margin: '0 auto' }} />
         </div>
-      ) : children.map(kid => (
-        <button
-          key={kid.id}
-          onClick={() => { sessionStorage.setItem('dg_active_child_id', kid.id); sessionStorage.setItem('dg_active_child_obj', JSON.stringify(kid)); onSelect(kid); onClose(); }}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            width: '100%', padding: '0.6rem 1rem',
-            background: kid.id === currentChildId ? `rgba(201,169,107,0.1)` : 'transparent',
-            border: 'none', cursor: 'pointer',
-            borderBottom: '1px solid rgba(201,169,107,0.08)',
-            transition: 'background 0.15s ease',
-          }}
-          onMouseEnter={e => { if (kid.id !== currentChildId) e.currentTarget.style.background = 'rgba(201,169,107,0.06)'; }}
-          onMouseLeave={e => { if (kid.id !== currentChildId) e.currentTarget.style.background = 'transparent'; }}
-        >
-          <div style={{
-            width: 28, height: 28, borderRadius: '50%',
-            background: '#E8C9A0', flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: '"Playfair Display", serif', fontSize: '0.75rem', fontWeight: 700, color: TEXT,
-            border: `1.5px solid rgba(201,169,107,${kid.id === currentChildId ? '0.7' : '0.3'})`,
-          }}>
-            {kid.name?.charAt(0)?.toUpperCase()}
-          </div>
-          <div style={{ textAlign: 'left' }}>
-            <p style={{ fontFamily: '"Playfair Display", serif', fontSize: '0.78rem', fontWeight: kid.id === currentChildId ? 700 : 400, color: TEXT, margin: 0 }}>
-              {kid.name}
+      ) : (
+        <>
+          {children.map(kid => {
+            const avatar = AVATARS[kid.avatar] || AVATARS.sun;
+            return (
+              <button
+                key={kid.id}
+                onClick={() => pick(kid)}
+                disabled={pending}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  width: '100%', padding: '0.6rem 1rem',
+                  background: kid.id === currentChildId ? `rgba(201,169,107,0.1)` : 'transparent',
+                  border: 'none', cursor: 'pointer',
+                  borderBottom: '1px solid rgba(201,169,107,0.08)',
+                  transition: 'background 0.15s ease',
+                }}
+                onMouseEnter={e => { if (kid.id !== currentChildId) e.currentTarget.style.background = 'rgba(201,169,107,0.06)'; }}
+                onMouseLeave={e => { if (kid.id !== currentChildId) e.currentTarget.style.background = 'transparent'; }}
+              >
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: avatar.bg, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.85rem',
+                  border: `1.5px solid rgba(201,169,107,${kid.id === currentChildId ? '0.7' : '0.3'})`,
+                }}>
+                  {avatar.emoji}
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <p style={{ fontFamily: '"Playfair Display", serif', fontSize: '0.78rem', fontWeight: kid.id === currentChildId ? 700 : 400, color: TEXT, margin: 0 }}>
+                    {kid.displayName}
+                  </p>
+                  {kid.age > 0 && (
+                    <p style={{ fontFamily: 'Lato, sans-serif', fontSize: '0.55rem', color: TEXT_MUTED, margin: 0 }}>
+                      Age {kid.age}
+                    </p>
+                  )}
+                </div>
+                {kid.id === currentChildId ? (
+                  <div style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%', background: GOLD, flexShrink: 0 }} />
+                ) : kid.hasPin ? (
+                  <span style={{ marginLeft: 'auto', fontSize: '0.62rem', opacity: 0.55 }}>🔒</span>
+                ) : null}
+              </button>
+            );
+          })}
+          {error && (
+            <p style={{ fontFamily: 'Lato, sans-serif', fontSize: '0.6rem', color: '#B4553C', margin: 0, padding: '0.5rem 1rem' }}>
+              {error}
             </p>
-            {kid.age && (
-              <p style={{ fontFamily: 'Lato, sans-serif', fontSize: '0.55rem', color: TEXT_MUTED, margin: 0 }}>
-                Age {kid.age}
-              </p>
-            )}
-          </div>
-          {kid.id === currentChildId && (
-            <div style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%', background: GOLD, flexShrink: 0 }} />
           )}
-        </button>
-      ))}
+        </>
+      )}
     </div>
   );
 }
 
 export default function ChildGreetingStrip({ child, onShowFlags, navigate }) {
+  const router = useRouter();
   const [showSwitcher, setShowSwitcher] = useState(false);
-  const [activeChild, setActiveChild] = useState(child);
-
-  useEffect(() => { setActiveChild(child); }, [child]);
 
   return (
     <div style={{
@@ -166,7 +280,7 @@ export default function ChildGreetingStrip({ child, onShowFlags, navigate }) {
                 display: 'flex', alignItems: 'baseline', gap: 4,
               }}
             >
-              {activeChild.name}
+              {child.name}
               <svg width="9" height="9" viewBox="0 0 10 10" fill="none" style={{ marginBottom: 1 }}>
                 <path d="M2 3.5l3 3 3-3" stroke="rgba(139,106,58,0.6)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -180,8 +294,8 @@ export default function ChildGreetingStrip({ child, onShowFlags, navigate }) {
           </p>
           {showSwitcher && (
             <ChildSwitcherOverlay
-              currentChildId={activeChild.id}
-              onSelect={setActiveChild}
+              currentChildId={child.id}
+              onSwitched={() => { setShowSwitcher(false); router.refresh(); }}
               onClose={() => setShowSwitcher(false)}
             />
           )}

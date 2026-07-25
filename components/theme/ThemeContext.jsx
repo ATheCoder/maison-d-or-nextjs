@@ -1,48 +1,54 @@
 'use client';
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import React, { createContext, useContext, useState } from 'react';
 import { THEMES, DEFAULT_THEME } from './themes';
 
 const ThemeContext = createContext();
 
+// PERSISTENCE DISABLED — `childId` is now a child_profile UUID from the
+// session, which the Base44 `Child` entity has never seen: the read below
+// would never match and the write would create an orphan row keyed to a
+// child that does not exist there. Until `child_profile.theme_preference`
+// lands (auth-plan §8, phase 5) the theme is in-memory only: switching still
+// works for the visit, it just does not survive a reload.
 export function ThemeProvider({ children, childId }) {
   const [currentTheme, setCurrentTheme] = useState(DEFAULT_THEME);
-  const [loading, setLoading] = useState(true);
+  // Nothing is fetched, so there is never a moment of not-knowing.
+  const loading = false;
 
-  // Load theme from child profile on mount
-  useEffect(() => {
-    if (!childId) {
-      setLoading(false);
-      return;
-    }
-
-    const loadTheme = async () => {
-      try {
-        const child = await base44.entities.Child.filter({ id: childId }, '-created_date', 1).catch(() => []);
-        if (child[0]?.theme_preference) {
-          setCurrentTheme(child[0].theme_preference);
-        }
-      } catch (_) {
-        // Fallback to default
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadTheme();
-  }, [childId]);
+  // // Load theme from child profile on mount
+  // useEffect(() => {
+  //   if (!childId) {
+  //     setLoading(false);
+  //     return;
+  //   }
+  //
+  //   const loadTheme = async () => {
+  //     try {
+  //       const child = await base44.entities.Child.filter({ id: childId }, '-created_date', 1).catch(() => []);
+  //       if (child[0]?.theme_preference) {
+  //         setCurrentTheme(child[0].theme_preference);
+  //       }
+  //     } catch (_) {
+  //       // Fallback to default
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  //
+  //   loadTheme();
+  // }, [childId]);
 
   const switchTheme = async (themeName) => {
     if (!THEMES[themeName]) return;
-    
+
     setCurrentTheme(themeName);
 
-    // Persist to child profile
-    if (childId) {
-      try {
-        await base44.entities.Child.update(childId, { theme_preference: themeName }).catch(() => {});
-      } catch (_) {}
-    }
+    // // Persist to child profile
+    // if (childId) {
+    //   try {
+    //     await base44.entities.Child.update(childId, { theme_preference: themeName }).catch(() => {});
+    //   } catch (_) {}
+    // }
   };
 
   const theme = THEMES[currentTheme] || THEMES[DEFAULT_THEME];

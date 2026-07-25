@@ -69,7 +69,7 @@ Domain:
 |---|---|---|
 | `family` | id, name | |
 | `family_invite` | family_id, email, hashed token, role, expires_at, invited_by | Path for additional guardians |
-| `child_profile` | family_id, display_name, birth_year, avatar (preset key), `pin_hash` (nullable — optional PIN), pin_locked_until | Age 5–17 enforced at creation. Minimal PII by design: nickname + birth year + preset avatar only |
+| `child_profile` | family_id, display_name, birth_year, avatar (preset key), `pin_hash` (nullable — optional PIN), pin_locked_until, `theme_preference` (phase 5, for `ThemeContext`) | Age 5–17 enforced at creation. Minimal PII by design: nickname + birth year + preset avatar only |
 | `saved_item` | child_profile_id, item_type, item_id, denormalized title/subtitle/image, saved_at | Replaces Base44 `SavedItem` |
 | `flag_seal` | child_profile_id, country_code, source, earned_at; unique (child_profile_id, country_code) | Replaces Base44 `FlagSeal` + `earnFlagSeal` |
 | `analytics_event` | child_profile_id, event_type, content_type, content_id, duration_seconds, occurred_at | Replaces Base44 `AnalyticsEvent`; consider daily rollup table when the dashboard lands |
@@ -164,6 +164,8 @@ moves fully server-side (until then, phase 4 gates it behind a session).
 | Base44 usage | Replacement | Phase |
 |---|---|---|
 | `Child` entity + hardcoded child id in `DailyGoldEditionPage` | `child_profile` + session context | 3 |
+| `Child.list()` in the greeting strip's reader switcher | `child_profile` scoped by family + the picker's `enterChildProfile` (PIN path included) | 3 |
+| `Child.theme_preference` in `ThemeContext` | Needs a `theme_preference` column on `child_profile` — see §3 | 5 |
 | `SavedItem` (SaveHeartSeal, saved lists) | `saved_item` + server actions | 5 |
 | `FlagSeal` + `earnFlagSeal` | `flag_seal` + one server action (new/already-earned dedupe) | 5 |
 | `AnalyticsEvent` | `analytics_event` + batched capture action | 5 |
@@ -188,9 +190,9 @@ moves fully server-side (until then, phase 4 gates it behind a session).
 |---|---|---|
 | 1 | Identity core: Better Auth + Drizzle wiring, identity tables, signup/login/logout, roles, admin seed script, `/login` + `/signup`, `proxy.ts` redirects | Guardian can sign up, log in, log out; admin seeded and redirected to a stub `/admin` |
 | 2 | Families + invites | Second guardian joins a family via emailed invite link |
-| 3 | Child profiles, picker with optional PIN gates, child mode, grown-up gate, guardian override, PIN throttling | A PIN-protected profile cannot be entered without its PIN; parent can override, set, and reset PINs |
+| 3 | Child profiles, picker with optional PIN gates, child mode, grown-up gate, guardian override, PIN throttling; Daily Gold reads its reader from the session (hardcoded child id deleted) and its greeting-strip switcher changes profile through the same PIN-gated action | A PIN-protected profile cannot be entered without its PIN; parent can override, set, and reset PINs; Daily Gold shows the active profile with no `Child` entity call |
 | 4 | Authorization sweep: DAL helpers on every existing action/page, gate `saveEnrichedEvent`, `/admin` shell with content CRUD | No unauthenticated mutation endpoints; admin can edit content without touching the DB |
-| 5 | Base44 entity exit: `saved_item`, `flag_seal`, `analytics_event`, Treasury equivalent; rewire SaveHeartSeal, flag earning, greeting strip, collection view; delete hardcoded child id | Child features work end-to-end with zero Base44 entity calls |
+| 5 | Base44 entity exit: `saved_item`, `flag_seal`, `analytics_event`, `child_profile.theme_preference`, Treasury equivalent; rewire SaveHeartSeal, flag earning, collection view, the greeting strip's flag/save links, `ThemeContext` | Child features work end-to-end with zero Base44 entity calls |
 | 6 | Parent analytics dashboard (per-child reading time, sections, saves) | Guardian sees own children only; cross-family access provably impossible |
 | 7 | Own enrichment pipeline; backfill 310 raw events; delete `saveEnrichedEvent`; remove `@base44/sdk` | `npm uninstall @base44/sdk` and the app builds and runs clean |
 | 8 | Google SSO, password reset polish, rate-limit hardening | Guardian can link/login with Google; children still cannot |

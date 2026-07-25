@@ -59,6 +59,29 @@ export async function requireFamily(): Promise<{ session: Session; family: Famil
 }
 
 /**
+ * The session's active child profile, verified to belong to the session
+ * user's family — or null when there is no session, no child mode, or the
+ * profile no longer belongs to that family.
+ *
+ * The read half of child mode, with no redirect: for surfaces that render for
+ * signed-out visitors and simply show nothing child-specific. A null is an
+ * absent child, never an authorization pass — anything that *requires* a
+ * child must use requireChildContext().
+ */
+export const getActiveChild = cache(async (): Promise<ChildProfileRow | null> => {
+  const session = await getSession();
+  const profileId = session?.session.activeChildProfileId;
+  const familyId = session?.user.familyId;
+  if (!profileId || !familyId) return null;
+  const rows = await db
+    .select()
+    .from(childProfile)
+    .where(and(eq(childProfile.id, profileId), eq(childProfile.familyId, familyId)))
+    .limit(1);
+  return rows[0] ?? null;
+});
+
+/**
  * Child mode: the session's active child profile, verified to belong to the
  * session user's family. This is the only way child identity ever reaches
  * child-scoped reads/writes — the client never asserts a profile id
@@ -66,14 +89,7 @@ export async function requireFamily(): Promise<{ session: Session; family: Famil
  */
 export async function requireChildContext(): Promise<{ session: Session; child: ChildProfileRow }> {
   const session = await requireGuardian();
-  const profileId = session.session.activeChildProfileId;
-  const familyId = session.user.familyId;
-  if (!profileId || !familyId) redirect('/profiles');
-  const rows = await db
-    .select()
-    .from(childProfile)
-    .where(and(eq(childProfile.id, profileId), eq(childProfile.familyId, familyId)))
-    .limit(1);
-  if (!rows[0]) redirect('/profiles');
-  return { session, child: rows[0] };
+  const child = await getActiveChild();
+  if (!child) redirect('/profiles');
+  return { session, child };
 }
