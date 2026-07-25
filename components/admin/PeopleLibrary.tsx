@@ -23,6 +23,7 @@ import {
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { CSS as dndCSS } from '@dnd-kit/utilities';
 import { slugify, SLUG_RE } from '@/lib/slug';
+import { flagEmoji } from '@/lib/countries';
 import { createPerson, deletePerson, reorderBornToday, suggestPeople, type PersonListItem, type PersonSuggestion } from '@/app/admin/people/actions';
 
 // ── House stylesheet (scoped under .lib) ─────────────────────────────────────
@@ -178,6 +179,7 @@ function PersonCard({ p, now, onDelete }: { p: PersonListItem; now: Date; onDele
   const filled = p.totalImages - p.emptyImages;
   const subtitle = p.role || p.storyTitle;
   const meta = [p.field, p.country].filter(Boolean).join(' · ');
+  const flag = p.countryCode ? flagEmoji(p.countryCode) : '';
   const lastName = p.name.trim().split(/\s+/).slice(-1)[0] || p.name;
   const daysUntil = p.monthDay ? daysUntilBirthday(p.monthDay, now) : null;
 
@@ -195,6 +197,11 @@ function PersonCard({ p, now, onDelete }: { p: PersonListItem; now: Date; onDele
     badges.push(<span key="done" className="chip chip-green">✓ Complete · {p.totalImages} / {p.totalImages} art</span>);
   }
   if (!p.coverUrl) badges.push(<span key="nocov" className="chip chip-amber">No cover</span>);
+  // Its absence costs the child a flag chip silently, which is why it is a
+  // badge rather than something you only notice on the reader (R5.3).
+  if (p.missingCountryCode) {
+    badges.push(<span key="nocc" className="chip chip-amber">No country code · no flag</span>);
+  }
 
   const hasContent = p.published || p.chapterCount > 0;
 
@@ -238,7 +245,7 @@ function PersonCard({ p, now, onDelete }: { p: PersonListItem; now: Date; onDele
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 'auto', flexWrap: 'wrap' }}>
           <span className="chip chip-ink">b. {p.monthDay ? dayMonthLabel(p.monthDay) : '—'}</span>
-          {meta && <span className="muted" style={{ fontSize: 11 }}>{meta}</span>}
+          {meta && <span className="muted" style={{ fontSize: 11 }}>{flag && `${flag} `}{meta}</span>}
         </div>
 
         <div className="badges">{badges}</div>

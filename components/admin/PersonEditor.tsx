@@ -41,6 +41,7 @@ import SlotCard from './SlotCard';
 import SlotChip from './SlotChip';
 import ImageStatusBoard from './ImageStatusBoard';
 import styles from './PersonEditor.module.css';
+import { COUNTRIES, countryByCode, flagEmoji, resolveNationality } from '@/lib/countries';
 
 // ── AI text generation (Phase 5) client types ────────────────────────────────
 
@@ -205,6 +206,69 @@ function TextField({ label, value, onChange, placeholder, serif, disabled }: {
         onChange={(e) => onChange(e.target.value)}
       />
     </label>
+  );
+}
+
+/**
+ * The flag code beside `country` (R5.1/R5.2).
+ *
+ * `country` holds nationality adjectives — "American", "Italian-French",
+ * "Dutch Republic (Netherlands)" — which the resolver handles unevenly, so a
+ * guess is offered but never silently saved. **A stored code is a confirmed
+ * code**: that is the whole distinction, and it needs no extra column. Until
+ * the admin accepts it, the guess is visibly a guess and the person has no
+ * flag on the reader.
+ */
+function CountryCodeField({ code, country, onChange }: {
+  code: string | null; country: string | null; onChange: (v: string) => void;
+}) {
+  const confirmed = code ? countryByCode(code) : undefined;
+  const guessCode = confirmed ? null : resolveNationality(country);
+  const guess = guessCode ? countryByCode(guessCode) : undefined;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <Kick>Flag code</Kick>
+      <select
+        className={styles.field}
+        style={{ padding: '10px 14px', fontSize: 14 }}
+        value={confirmed?.code ?? ''}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="">— no flag —</option>
+        {COUNTRIES.map((c) => (
+          <option key={c.code} value={c.code}>{`${flagEmoji(c.code)}  ${c.code} · ${c.name}`}</option>
+        ))}
+      </select>
+
+      {confirmed ? (
+        <div className={styles.muted} style={{ fontSize: 10.5, color: 'var(--brown2)' }}>
+          {flagEmoji(confirmed.code)} {confirmed.name} — confirmed.
+        </div>
+      ) : guess ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span className={`${styles.chip} ${styles.chipAmber}`}>
+            Guessed {flagEmoji(guess.code)} {guess.code}
+          </span>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnSm}`}
+            onClick={() => onChange(guess.code)}
+          >
+            Confirm {guess.name}
+          </button>
+          <span className={styles.muted} style={{ fontSize: 10.5, color: 'var(--red)' }}>
+            Unconfirmed — no seal is awarded yet.
+          </span>
+        </div>
+      ) : (
+        <div className={styles.muted} style={{ fontSize: 10.5, color: 'var(--red)' }}>
+          {country?.trim()
+            ? `“${country.trim()}” doesn’t resolve — pick a country to award a flag seal.`
+            : 'No flag seal for this person until a country is set.'}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1418,6 +1482,7 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
             <TextField label="Role (epithet)" value={draft.role ?? ''} onChange={set('role')} placeholder="Painter, Inventor & Endless Dreamer" />
             <TextField label="Field" value={draft.field ?? ''} onChange={set('field')} placeholder="Art & Science" />
             <TextField label="Country" value={draft.country ?? ''} onChange={set('country')} placeholder="Italy" />
+            <CountryCodeField code={draft.country_code ?? null} country={draft.country ?? null} onChange={set('country_code')} />
             <TextField label="Story title" value={draft.story_title ?? ''} onChange={set('story_title')} placeholder={draft.name ?? ''} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <Kick>Birth date <span style={{ color: 'var(--red)' }}>*</span></Kick>

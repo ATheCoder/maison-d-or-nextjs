@@ -22,6 +22,7 @@ import {
 } from '@/src/db/schema';
 import { requireAdmin } from '@/lib/dal';
 import { slugify, SLUG_RE } from '@/lib/slug';
+import { isValidIso2 } from '@/lib/countries';
 import { runPrompt, suggestPersons } from '@/lib/golden-story/brief';
 import { OPENROUTER, orHeaders } from '@/lib/golden-story/openrouter';
 import { createJob, failJob, jobsForSlug, deleteJob, personSubject } from '@/lib/golden-story/jobs';
@@ -70,6 +71,11 @@ export type PersonListItem = {
   role: string | null;
   field: string | null;
   country: string | null;
+  // ISO-3166-1 alpha-2, or null. Its absence silently costs a flag chip on the
+  // reader, which is exactly the class of bug that went unnoticed since the
+  // port — so the library badges it (R5.3).
+  countryCode: string | null;
+  missingCountryCode: boolean;
   storyTitle: string | null;
   chapterCount: number;
   timelineCount: number;
@@ -103,6 +109,7 @@ export async function listPeople(): Promise<PersonListItem[]> {
       role: remarkablePerson.role,
       field: remarkablePerson.field,
       country: remarkablePerson.country,
+      countryCode: remarkablePerson.countryCode,
       storyTitle: remarkablePerson.storyTitle,
       monthDay: sql<string | null>`to_char(${remarkablePerson.birthDate}, 'MM-DD')`,
       missingBirthDate: sql<boolean>`(${remarkablePerson.birthDate} is null)`,
@@ -127,8 +134,12 @@ export async function listPeople(): Promise<PersonListItem[]> {
   return rows.map((r) => {
     // Fixed image fields (cover, childhood, modern, after) + the three arrays.
     const totalImages = 4 + r.chapterCount + r.timelineCount + r.treasureCount;
-    const incomplete = r.missingBirthDate || r.chapterCount < EXPECTED_CHAPTERS || r.emptyImages > 0;
-    return { ...r, totalImages, incomplete };
+    // char(2) never pads a real value, but a legacy one-letter row would.
+    const countryCode = r.countryCode?.trim().toUpperCase() || null;
+    const missingCountryCode = !countryCode;
+    const incomplete = r.missingBirthDate || r.chapterCount < EXPECTED_CHAPTERS
+      || r.emptyImages > 0 || missingCountryCode;
+    return { ...r, countryCode, missingCountryCode, totalImages, incomplete };
   });
 }
 
@@ -169,7 +180,7 @@ export async function createPerson(input: { name?: string; slug?: string; overwr
         .set({
           name,
           published: false,
-          role: null, field: null, country: null, birthDate: null, deathDate: null,
+          role: null, field: null, country: null, countryCode: null, birthDate: null, deathDate: null,
           storyTitle: null, famousQuote: null, imageUrl: null,
           storyChildhoodTitle: null, childhoodImageUrl: null,
           storyChildhood: null, storyTakeaway: null,
@@ -213,6 +224,7 @@ export type EditorPerson = {
   role: string | null;
   field: string | null;
   country: string | null;
+  country_code: string | null;
   birth_date: string | null;
   death_date: string | null;
   story_title: string | null;
@@ -239,6 +251,7 @@ function toEditorPerson(row: RemarkablePersonRow): EditorPerson {
     role: row.role,
     field: row.field,
     country: row.country,
+    country_code: row.countryCode?.trim().toUpperCase() || null,
     birth_date: row.birthDate,
     death_date: row.deathDate,
     story_title: row.storyTitle,
@@ -275,6 +288,17 @@ export async function getPersonForEditor(slug: string): Promise<EditorPerson | n
 const str = (v: unknown, max: number): string | null =>
   typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null;
 const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+
+/**
+ * An ISO2 country code, or null. Server actions are open endpoints, so this
+ * checks the code is a real UN member rather than merely two letters — a
+ * plausible-but-wrong code would render a flag for the wrong country, which is
+ * worse than rendering none.
+ */
+const iso2 = (v: unknown): string | null => {
+  const code = typeof v === 'string' ? v.trim().toUpperCase() : '';
+  return isValidIso2(code) ? code : null;
+};
 const objOrNull = <T,>(v: unknown): T | null =>
   v && typeof v === 'object' && !Array.isArray(v) ? (v as T) : null;
 
@@ -303,6 +327,7 @@ export async function savePerson(slug: string, record: Partial<EditorPerson>):
       role: str(record?.role, 200),
       field: str(record?.field, 200),
       country: str(record?.country, 200),
+      countryCode: iso2(record?.country_code),
       birthDate: birth,
       deathDate: death,
       storyTitle: str(record?.story_title, 200),

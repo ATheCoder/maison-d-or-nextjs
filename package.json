@@ -17,6 +17,7 @@
     "import:daily-gold": "node --env-file=.env --env-file-if-exists=.env.local scripts/import-daily-gold.mjs",
     "import:remarkable-people": "node --env-file=.env --env-file-if-exists=.env.local scripts/import-remarkable-people.mjs",
     "sync:remarkable-people": "node scripts/sync-remarkable-people.mjs",
+    "backfill:country-codes": "node --env-file=.env --env-file-if-exists=.env.local scripts/backfill-country-codes.mjs",
     "generate:story:openrouter": "node --env-file=.env --env-file-if-exists=.env.local scripts/generate-story-openrouter.mjs",
     "upload:story-media": "node --env-file=.env --env-file-if-exists=.env.local scripts/upload-story-media.mjs",
     "rewrite:story-media-urls": "node --env-file=.env --env-file-if-exists=.env.local scripts/rewrite-story-media-urls.mjs",
