@@ -24,7 +24,7 @@ import { requireAdmin } from '@/lib/dal';
 import { slugify, SLUG_RE } from '@/lib/slug';
 import { runPrompt, suggestPersons } from '@/lib/golden-story/brief';
 import { OPENROUTER, orHeaders } from '@/lib/golden-story/openrouter';
-import { createJob, failJob, jobsForSlug, deleteJob } from '@/lib/golden-story/jobs';
+import { createJob, failJob, jobsForSlug, deleteJob, personSubject } from '@/lib/golden-story/jobs';
 import { initialBriefStages } from '@/lib/golden-story/textStore';
 import { inngest } from '@/lib/inngest/client';
 
@@ -417,7 +417,7 @@ export async function generateBook(slug: string, opts?: { confirm?: boolean }):
   // The writing runs on Inngest (generateBrief in lib/inngest/functions.ts) — a
   // durable, dashboard-visible run that survives a redeploy. This only creates
   // the job row the editor polls and sends the triggering event.
-  const created = await createJob(slug, 'brief', initialBriefStages());
+  const created = await createJob(personSubject(slug), 'brief', initialBriefStages());
   if (!created.ok) return { ok: false, error: created.error };
   try {
     await inngest.send({ name: 'story/brief.requested', data: { slug, jobId: created.job.id } });
@@ -444,7 +444,7 @@ export async function startRewrite(slug: string, fieldPath: string, currentText:
   // The draft runs on Inngest (rewriteField in lib/inngest/functions.ts). The
   // live editor value rides the event since it may differ from any brief; the
   // prompt seed (name + golden thread + character sheet) is re-read there.
-  const created = await createJob(slug, 'rewrite', { fieldPath });
+  const created = await createJob(personSubject(slug), 'rewrite', { fieldPath });
   if (!created.ok) return { ok: false, error: created.error };
   try {
     await inngest.send({ name: 'story/rewrite.requested', data: { slug, jobId: created.job.id, fieldPath, current } });

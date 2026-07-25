@@ -14,6 +14,7 @@
 import { STYLE, COVER_BLEED, STRIP_BLEED, SINGLE_BLEED, OPAQUE, PAPER, type SlotPlacement, type SlotBlend } from './prompts.ts';
 import type { Brief } from './brief.ts';
 import type { SlotOverride } from '@/src/db/schema';
+import type { ImageSlot, SlotTreatment } from '@/lib/daily-gold/slots.ts';
 
 // The person shape this reads — a structural subset of EditorPerson, declared
 // locally so the module stays free of the server actions' types.
@@ -162,4 +163,40 @@ export function slotStatus(o: {
   if (o.jobState === 'failed') return 'failed';
   if (o.imageUrl && o.imageUrl.trim()) return o.source === 'uploaded' ? 'uploaded' : 'generated';
   return o.hasPrompt ? 'prompt-ready' : 'empty';
+}
+
+// ── The shared-modal adapter ─────────────────────────────────────────────────
+// Phase 2 of the Daily Gold plan puts both products' slots behind one
+// descriptor interface so a single modal can serve them (R6.11/R6.12).
+//
+// The book's SlotDescriptor keeps its own extra fields — personPath,
+// briefField, showsProtagonist — because the book pipeline genuinely needs
+// them and buildSlots depends on their exact shape. Rather than reshape a live
+// pipeline, a descriptor is *projected* onto the shared interface here. The
+// modal sees one type; the book keeps its own.
+
+/** How the page composites a book slot — the modal previews through this. */
+function treatmentFor(blend: SlotBlend): SlotTreatment {
+  return blend === 'multiply'
+    // Spot art multiplies onto the leaf's parchment, which is what makes the
+    // flat-white background rule load-bearing rather than cosmetic.
+    ? { kind: 'multiply', paper: '#F5F0E7' }
+    : { kind: 'none' };
+}
+
+/** Project a book slot onto the shared image-slot interface. */
+export function toImageSlot(d: SlotDescriptor): ImageSlot {
+  return {
+    key: d.file,
+    label: d.label,
+    shortLabel: d.shortLabel,
+    size: d.size,
+    style: STYLE,
+    composition: TAIL[d.placement],
+    treatment: treatmentFor(d.blend),
+    sceneSource: d.briefField,
+    // A multiply slot vanishes into the page anywhere its background is not
+    // pure white, so uploads are checked at the corner pixels.
+    needsWhiteBackground: d.blend === 'multiply',
+  };
 }

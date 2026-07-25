@@ -6,49 +6,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
+import { resolvePerson } from '@/lib/countries';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import { formatDate, formatYear } from '@/lib/dates';
-
-// ── Country → ISO2 ────────────────────────────────────────────────────────────
-const COUNTRY_TO_ISO2 = {
-  'French': 'FR', 'France': 'FR',
-  'British': 'GB', 'English': 'GB', 'Scottish': 'GB', 'Welsh': 'GB', 'United Kingdom': 'GB', 'UK': 'GB',
-  'American': 'US', 'United States': 'US', 'USA': 'US',
-  'German': 'DE', 'Germany': 'DE', 'Italian': 'IT', 'Italy': 'IT',
-  'Spanish': 'ES', 'Spain': 'ES', 'Portuguese': 'PT', 'Portugal': 'PT',
-  'Dutch': 'NL', 'Netherlands': 'NL', 'Belgian': 'BE', 'Belgium': 'BE',
-  'Swiss': 'CH', 'Switzerland': 'CH', 'Austrian': 'AT', 'Austria': 'AT',
-  'Irish': 'IE', 'Ireland': 'IE', 'Swedish': 'SE', 'Sweden': 'SE',
-  'Norwegian': 'NO', 'Norway': 'NO', 'Danish': 'DK', 'Denmark': 'DK',
-  'Finnish': 'FI', 'Finland': 'FI', 'Greek': 'GR', 'Greece': 'GR',
-  'Russian': 'RU', 'Russia': 'RU', 'Soviet': 'RU', 'USSR': 'RU',
-  'Polish': 'PL', 'Poland': 'PL', 'Czech': 'CZ', 'Hungarian': 'HU', 'Hungary': 'HU',
-  'Romanian': 'RO', 'Romania': 'RO', 'Ukrainian': 'UA', 'Ukraine': 'UA',
-  'Canadian': 'CA', 'Canada': 'CA', 'Mexican': 'MX', 'Mexico': 'MX',
-  'Brazilian': 'BR', 'Brazil': 'BR', 'Argentine': 'AR', 'Argentina': 'AR',
-  'Chilean': 'CL', 'Chile': 'CL', 'Colombian': 'CO', 'Colombia': 'CO',
-  'Cuban': 'CU', 'Cuba': 'CU', 'Japanese': 'JP', 'Japan': 'JP',
-  'Chinese': 'CN', 'China': 'CN', 'Korean': 'KR', 'South Korea': 'KR',
-  'Indian': 'IN', 'India': 'IN', 'Pakistani': 'PK', 'Pakistan': 'PK',
-  'Thai': 'TH', 'Thailand': 'TH', 'Turkish': 'TR', 'Turkey': 'TR',
-  'Iranian': 'IR', 'Iran': 'IR', 'Persian': 'IR', 'Israeli': 'IL', 'Israel': 'IL',
-  'Egyptian': 'EG', 'Egypt': 'EG', 'Moroccan': 'MA', 'Morocco': 'MA',
-  'Nigerian': 'NG', 'Nigeria': 'NG', 'South African': 'ZA', 'South Africa': 'ZA',
-  'Australian': 'AU', 'Australia': 'AU', 'New Zealander': 'NZ', 'New Zealand': 'NZ',
-  'Polish-French': 'PL', 'British-American': 'GB', 'Austro-Hungarian': 'AT',
-};
-
-function getIso2(person) {
-  const direct = (person.country_code || '').toUpperCase();
-  if (direct.length === 2 && /^[A-Z]{2}$/.test(direct)) return direct;
-  const nationality = person.nationality || person.country || '';
-  if (!nationality) return null;
-  if (COUNTRY_TO_ISO2[nationality]) return COUNTRY_TO_ISO2[nationality];
-  for (const p of nationality.split(/[-,/\s]+/)) {
-    if (COUNTRY_TO_ISO2[p?.trim()]) return COUNTRY_TO_ISO2[p.trim()];
-  }
-  return null;
-}
 
 // ── PALETTE ───────────────────────────────────────────────────────────────────
 const P = {
@@ -64,7 +24,13 @@ const P = {
 // ── SINGLE PORTRAIT TILE ──────────────────────────────────────────────────────
 function PortraitTile({ person, onClick, child, editionDate }) {
   const [hovered, setHovered] = useState(false);
-  const iso2 = getIso2(person);
+  // personToRecord emits snake_case; resolvePerson prefers the explicit code
+  // and falls back to the nationality text (R4.1).
+  const iso2 = resolvePerson({
+    countryCode: person.country_code,
+    nationality: person.nationality,
+    country: person.country,
+  });
   const initials = person.name ? person.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
   // Portraits come from remarkable_person (R2-hosted covers); people without
   // one get the parchment placeholder below.

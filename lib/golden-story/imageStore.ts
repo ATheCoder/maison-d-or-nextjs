@@ -24,7 +24,7 @@ import { putStoryImage, putStagingImage, promoteStaging, deleteStorageObject } f
 import {
   slotDescriptors, sceneFor, promptFor, readPath, type SlotDescriptor, type SlotPerson,
 } from './slots.ts';
-import { createJob, failJob, deleteJob, jobsForSlug } from './jobs.ts';
+import { createJob, failJob, deleteJob, jobsForSlug, personSubject } from './jobs.ts';
 
 const IMAGE_QUALITY = 'medium'; // the CLI default
 
@@ -189,7 +189,7 @@ export async function startSlotGeneration(slug: string, file: string):
   const prompt = promptFor(sceneFor(brief, desc.briefField), desc.placement, overrides[file]);
   if (!prompt) return { ok: false, error: 'Add a scene (or generate the book) before rendering this slot.' };
 
-  const created = await createJob(slug, 'slot', { slots: { [file]: { state: 'running' } } });
+  const created = await createJob(personSubject(slug), 'slot', { slots: { [file]: { state: 'running' } } });
   if (!created.ok) return { ok: false, error: created.error };
   try {
     await inngest.send({
@@ -287,7 +287,7 @@ export async function startBatch(slug: string, files?: string[]):
   if (!targets.length) return { ok: false, error: files?.length ? 'Nothing to retry.' : 'No missing slots can be generated — add scenes first.' };
 
   const initial: JobProgress = { slots: Object.fromEntries(targets.map((d) => [d.file, { state: 'queued' }])) };
-  const created = await createJob(slug, 'images', initial);
+  const created = await createJob(personSubject(slug), 'images', initial);
   if (!created.ok) return { ok: false, error: created.error };
   try {
     await inngest.send({

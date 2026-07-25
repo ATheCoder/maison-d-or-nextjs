@@ -292,11 +292,25 @@ export type JobResult = {
   [key: string]: unknown;
 };
 
+// What a job is *about* (R7.1). Jobs began life belonging to a person by slug,
+// but Daily Gold generation belongs to a calendar date or a recurring month-day
+// and nothing in the AI phases works until a job row can say so.
+export const generationJobSubject = pgEnum('generation_job_subject', ['person', 'edition', 'month_day']);
+
 export const generationJob = pgTable('generation_job', {
   id: serial('id').primaryKey(),
-  slug: text('slug')
-    .notNull()
-    .references(() => remarkablePerson.slug, { onDelete: 'cascade' }),
+
+  // The polymorphic subject. `subjectKey` is a slug, a 'YYYY-MM-DD' edition
+  // date, or an 'MM-DD' month-day, according to `subjectKind`.
+  subjectKind: generationJobSubject('subject_kind').notNull().default('person'),
+  subjectKey: text('subject_key').notNull(),
+
+  // Kept alongside `subjectKey` — nullable now — purely for the FK: a person's
+  // jobs still cascade away when the person is deleted, which a polymorphic key
+  // cannot express. For a person job this always equals `subjectKey`; for the
+  // other two kinds it is null.
+  slug: text('slug').references(() => remarkablePerson.slug, { onDelete: 'cascade' }),
+
   kind: generationJobKind('kind').notNull(),
   state: generationJobState('state').notNull().default('running'),
   progress: jsonb('progress').$type<JobProgress>().notNull().default({}),
@@ -306,6 +320,7 @@ export const generationJob = pgTable('generation_job', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('generation_job_slug_idx').on(t.slug),
+  index('generation_job_subject_idx').on(t.subjectKind, t.subjectKey),
 ]);
 
 export type GenerationJobRow = typeof generationJob.$inferSelect;

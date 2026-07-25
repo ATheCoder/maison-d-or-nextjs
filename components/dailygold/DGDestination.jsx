@@ -3,37 +3,8 @@ import { useState, useEffect } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { base44 } from '@/api/base44Client';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
+import { resolveLocation } from '@/lib/countries';
 import SaveHeartSeal from '@/components/dailygold/SaveHeartSeal';
-
-const COUNTRY_TO_ISO2 = {
-  'France': 'FR', 'Germany': 'DE', 'Italy': 'IT', 'Spain': 'ES', 'Portugal': 'PT',
-  'United Kingdom': 'GB', 'Netherlands': 'NL', 'Belgium': 'BE', 'Switzerland': 'CH',
-  'Austria': 'AT', 'Sweden': 'SE', 'Norway': 'NO', 'Denmark': 'DK', 'Finland': 'FI',
-  'Ireland': 'IE', 'Greece': 'GR', 'Poland': 'PL', 'Czech Republic': 'CZ', 'Czechia': 'CZ',
-  'Hungary': 'HU', 'Romania': 'RO', 'Bulgaria': 'BG', 'Croatia': 'HR', 'Serbia': 'RS',
-  'Ukraine': 'UA', 'Russia': 'RU', 'Japan': 'JP', 'China': 'CN', 'India': 'IN',
-  'South Korea': 'KR', 'Vietnam': 'VN', 'Thailand': 'TH', 'Indonesia': 'ID', 'Malaysia': 'MY',
-  'Singapore': 'SG', 'Philippines': 'PH', 'Australia': 'AU', 'New Zealand': 'NZ',
-  'United States': 'US', 'Canada': 'CA', 'Mexico': 'MX', 'Brazil': 'BR', 'Argentina': 'AR',
-  'Chile': 'CL', 'Colombia': 'CO', 'Peru': 'PE', 'Venezuela': 'VE', 'Ecuador': 'EC',
-  'South Africa': 'ZA', 'Egypt': 'EG', 'Morocco': 'MA', 'Nigeria': 'NG', 'Kenya': 'KE',
-  'Ethiopia': 'ET', 'Ghana': 'GH', 'Tanzania': 'TZ', 'Algeria': 'DZ', 'Tunisia': 'TN',
-  'Turkey': 'TR', 'Iran': 'IR', 'Iraq': 'IQ', 'Saudi Arabia': 'SA', 'UAE': 'AE',
-  'United Arab Emirates': 'AE', 'Israel': 'IL', 'Jordan': 'JO', 'Lebanon': 'LB',
-  'Pakistan': 'PK', 'Bangladesh': 'BD', 'Sri Lanka': 'LK', 'Nepal': 'NP',
-  'Cuba': 'CU', 'Peru': 'PE', 'Bolivia': 'BO', 'Paraguay': 'PY', 'Uruguay': 'UY',
-  'Iceland': 'IS', 'Luxembourg': 'LU', 'Malta': 'MT', 'Cyprus': 'CY',
-};
-
-function getDestinationIso2(name) {
-  if (!name) return null;
-  const base = name.split(',')[0].trim();
-  if (COUNTRY_TO_ISO2[base]) return COUNTRY_TO_ISO2[base];
-  for (const [k, v] of Object.entries(COUNTRY_TO_ISO2)) {
-    if (base.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(base.toLowerCase())) return v;
-  }
-  return null;
-}
 
 const C = {
   gold: '#D4AF37',
@@ -321,7 +292,7 @@ export default function DGDestination({ dest, imageUrl, onTrack, onDestinationCl
   const savedDestination = savedItems.find(s => s.item_id === dest.name);
   const isDestinationSaved = !!savedDestination;
 
-  const iso2 = getDestinationIso2(dest.name);
+  const iso2 = resolveLocation(dest.name);
 
   const handleDestinationView = () => {
     onDestinationClick?.();

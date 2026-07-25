@@ -2,36 +2,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
-
-// Location string → ISO2 (best-effort for On This Day locations)
-const LOC_TO_ISO2 = {
-  'France': 'FR', 'Paris': 'FR', 'Germany': 'DE', 'Berlin': 'DE',
-  'United Kingdom': 'GB', 'England': 'GB', 'London': 'GB', 'Britain': 'GB',
-  'United States': 'US', 'USA': 'US', 'America': 'US', 'Washington': 'US', 'New York': 'US',
-  'Russia': 'RU', 'Soviet Union': 'RU', 'Moscow': 'RU', 'Italy': 'IT', 'Rome': 'IT',
-  'Spain': 'ES', 'Madrid': 'ES', 'Japan': 'JP', 'Tokyo': 'JP', 'China': 'CN', 'Beijing': 'CN',
-  'India': 'IN', 'Australia': 'AU', 'Canada': 'CA', 'Brazil': 'BR', 'Mexico': 'MX',
-  'Portugal': 'PT', 'Lisbon': 'PT', 'Greece': 'GR', 'Athens': 'GR',
-  'Netherlands': 'NL', 'Amsterdam': 'NL', 'Poland': 'PL', 'Warsaw': 'PL',
-  'Egypt': 'EG', 'Cairo': 'EG', 'Turkey': 'TR', 'Istanbul': 'TR',
-  'South Africa': 'ZA', 'Kenya': 'KE', 'Nigeria': 'NG', 'Ethiopia': 'ET',
-  'Argentina': 'AR', 'Chile': 'CL', 'Colombia': 'CO', 'Peru': 'PE',
-  'Ireland': 'IE', 'Dublin': 'IE', 'Scotland': 'GB', 'Sweden': 'SE', 'Stockholm': 'SE',
-  'Norway': 'NO', 'Denmark': 'DK', 'Finland': 'FI', 'Switzerland': 'CH',
-  'Austria': 'AT', 'Vienna': 'AT', 'Hungary': 'HU', 'Romania': 'RO',
-  'Ukraine': 'UA', 'Kyiv': 'UA', 'Czech Republic': 'CZ', 'Czechoslovakia': 'CZ',
-  'Israel': 'IL', 'Jerusalem': 'IL', 'Saudi Arabia': 'SA', 'Iran': 'IR', 'Iraq': 'IQ',
-  'Pakistan': 'PK', 'Bangladesh': 'BD', 'Indonesia': 'ID', 'Malaysia': 'MY',
-  'South Korea': 'KR', 'North Korea': 'KP', 'Vietnam': 'VN', 'Thailand': 'TH',
-};
-
-function getLocationIso2(location) {
-  if (!location) return null;
-  for (const [k, v] of Object.entries(LOC_TO_ISO2)) {
-    if (location.includes(k)) return v;
-  }
-  return null;
-}
+import { resolveLocation } from '@/lib/countries';
 
 // Small vintage wax seal for year navigation inside On This Day
 function YearSeal({ direction, disabled, onPress, pressing }) {
@@ -171,7 +142,7 @@ export default function DGOnThisDay({ events = [], editionId, onTrack, onFlagEar
     for (const ev of yearEvents) {
       const key = `${ev.year}:${ev.position ?? 0}`;
       if (!ev.location || earnedKeys.current.has(key)) continue;
-      const iso2 = getLocationIso2(ev.location);
+      const iso2 = resolveLocation(ev.location);
       if (iso2) {
         earnedKeys.current.add(key);
         onFlagEarned?.(ev.location, iso2, 'on_this_day');
@@ -227,7 +198,7 @@ export default function DGOnThisDay({ events = [], editionId, onTrack, onFlagEar
           {/* Content — every published event the year holds, in position order */}
           {yearEvents.length > 0 ? (
             yearEvents.map((ev, i) => {
-              const iso2 = ev.location ? getLocationIso2(ev.location) : null;
+              const iso2 = ev.location ? resolveLocation(ev.location) : null;
               return (
                 <div
                   key={`${ev.year}:${ev.position ?? i}`}
