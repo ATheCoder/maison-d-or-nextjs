@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, serial, integer, boolean, text, date, timestamp, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, pgEnum, serial, integer, boolean, char, text, date, timestamp, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import type { Brief } from '@/lib/golden-story/brief';
 
 // ── Identity ─────────────────────────────────────────────────────────────────
@@ -190,6 +190,11 @@ export const remarkablePerson = pgTable('remarkable_person', {
   role: text('role'),
   field: text('field'),
   country: text('country'),
+  // ISO-3166-1 alpha-2 — the flag medallion's authority. DGBornToday prefers it
+  // (getIso2) and only falls back to matching `country` against a hardcoded name
+  // table, which silently drops the flag chip for anything not listed. Nullable:
+  // an editor fills it in; char(2) pins the length at the DB.
+  countryCode: char('country_code', { length: 2 }),
 
   // Full precision required — Born Today matches on its month-day, so a
   // person can't be surfaced without one. Read back as 'YYYY-MM-DD'.
@@ -420,9 +425,19 @@ export const dailyGoldEdition = pgTable('daily_gold_edition', {
   // reads the most recent), so we index it for lookups instead.
   editionDate: date('edition_date').notNull(),
 
+  // The masthead painting behind <DGHero>, which has been falling back to
+  // destinationImageUrl for want of this column.
+  heroImageUrl: text('hero_image_url'),
+
   destinationCountry: text('destination_country'),
   destinationDescription: text('destination_description'),
   destinationImageUrl: text('destination_image_url'),
+  // Rendered ahead of the destination name in the modal header ("Europe · Lisbon").
+  continent: text('continent'),
+  // The "A Child in <destination>" narrative, in blank-line separated paragraphs
+  // (the reader splits on '\n\n'). A scalar like everything else here — a title
+  // or image for the section would be additive columns, not a reshape.
+  childLifeStory: text('child_life_story'),
 
   tasteOfDay: text('taste_of_day'),
   soundOfDay: text('sound_of_day'),
@@ -430,6 +445,11 @@ export const dailyGoldEdition = pgTable('daily_gold_edition', {
   tinyPhrase: text('tiny_phrase'),
   tinyPhraseLanguage: text('tiny_phrase_language'),
   tinyPhraseTranslation: text('tiny_phrase_translation'),
+
+  // The <DGInspirationBar> quote. Left null the bar rotates its own curated set,
+  // so a day without one still reads finished.
+  dailyQuote: text('daily_quote'),
+  dailyQuoteAuthor: text('daily_quote_author'),
 
   generatedAt: timestamp('generated_at', { withTimezone: true }),
   status: dgStatus('status').notNull().default('generating'),

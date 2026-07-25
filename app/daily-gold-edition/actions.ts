@@ -26,15 +26,22 @@ import {
 export type EditionRecord = {
   id: string;
   edition_date: string;
+  hero_image_url: string | null;
   destination_country: string | null;
   destination_description: string | null;
   destination_image_url: string | null;
+  continent: string | null;
+  // The shape the destination modal reads (dest.child_life?.story); the column
+  // behind it is a plain text paragraph.
+  child_life: { story: string } | null;
   taste_of_day: string | null;
   sound_of_day: string | null;
   nature_detail: string | null;
   tiny_phrase: string | null;
   tiny_phrase_language: string | null;
   tiny_phrase_translation: string | null;
+  daily_quote: string | null;
+  daily_quote_author: string | null;
   generated_at: string | null;
   status: string;
 };
@@ -77,6 +84,9 @@ function personToRecord(row: RemarkablePersonRow) {
     role: row.role,
     field: row.field,
     country: row.country,
+    // char(2) never pads a two-letter value, but trimming keeps a legacy
+    // one-letter row from reaching the flag resolver as 'F '.
+    country_code: row.countryCode?.trim().toUpperCase() || null,
     birth_date: row.birthDate,
     death_date: row.deathDate,
     story_title: row.storyTitle,
@@ -99,15 +109,20 @@ function rowToRecord(row: DailyGoldEditionRow): EditionRecord {
   return {
     id: row.id,
     edition_date: row.editionDate,
+    hero_image_url: row.heroImageUrl,
     destination_country: row.destinationCountry,
     destination_description: row.destinationDescription,
     destination_image_url: row.destinationImageUrl,
+    continent: row.continent,
+    child_life: row.childLifeStory ? { story: row.childLifeStory } : null,
     taste_of_day: row.tasteOfDay,
     sound_of_day: row.soundOfDay,
     nature_detail: row.natureDetail,
     tiny_phrase: row.tinyPhrase,
     tiny_phrase_language: row.tinyPhraseLanguage,
     tiny_phrase_translation: row.tinyPhraseTranslation,
+    daily_quote: row.dailyQuote,
+    daily_quote_author: row.dailyQuoteAuthor,
     generated_at: row.generatedAt ? new Date(row.generatedAt).toISOString() : null,
     status: row.status,
   };

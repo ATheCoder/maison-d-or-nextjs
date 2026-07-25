@@ -70,14 +70,18 @@ function mapRecord(record) {
   // rather than rendering a shell of em-dashes.
   const hasDestination = !!(
     record.destination_country || record.destination_description || record.destination_image_url ||
-    record.taste_of_day || record.sound_of_day || record.nature_detail || record.tiny_phrase
+    record.taste_of_day || record.sound_of_day || record.nature_detail || record.tiny_phrase ||
+    record.continent || record.child_life
   );
   const edition = {
     id: record.id,
     date: record.edition_date,
     destination_name: record.destination_country,
+    daily_quote: record.daily_quote,
+    daily_quote_author: record.daily_quote_author,
     destination: hasDestination ? {
       name: record.destination_country,
+      continent: record.continent,
       atmosphere: record.destination_description,
       image_url: record.destination_image_url || null,
       taste_of_day: record.taste_of_day ? { name: record.taste_of_day } : null,

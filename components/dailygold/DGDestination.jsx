@@ -147,6 +147,10 @@ function GlobeVisual({ tapped, onSpinComplete, theme }) {
 function DetailCard({ card, data, onTrack, theme, child, editionDate }) {
   const content = data?.[card.key];
   const title = content?.name || content?.word || '—';
+  // tiny_phrase also carries a translation and the language it is in. Both are
+  // stored on the edition and neither had anywhere to render.
+  const subtitle = content?.translation || null;
+  const label = content?.language ? `${card.label} · ${content.language}` : card.label;
   const [savedItems, setSavedItems] = useState([]);
 
   useEffect(() => {
@@ -192,11 +196,16 @@ function DetailCard({ card, data, onTrack, theme, child, editionDate }) {
       </div>
       <span style={{ fontSize: '1.1rem' }}>{card.emoji}</span>
       <p style={{ fontFamily: theme.fontBody, fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: theme.accentGold, margin: '0.3rem 0 0.2rem' }}>
-        {card.label}
+        {label}
       </p>
       <p style={{ fontFamily: theme.fontHeadline, fontSize: '0.85rem', fontWeight: 600, color: theme.textHeadline, margin: 0, lineHeight: 1.3 }}>
         {title}
       </p>
+      {subtitle && (
+        <p style={{ fontFamily: theme.fontHeadline, fontStyle: 'italic', fontSize: '0.72rem', color: theme.textMuted, margin: '0.2rem 0 0', lineHeight: 1.35 }}>
+          {subtitle}
+        </p>
+      )}
     </div>
   );
 }
