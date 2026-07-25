@@ -75,8 +75,8 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
   // Never follow the push with router.refresh(): refresh() re-fetches the
   // *current* route, so firing it alongside an in-flight push leaves the
   // navigation pending forever and the picker frozen. It buys nothing either —
-  // /daily-gold-edition is dynamic (never client-cached), and the session
-  // cookie the action just set invalidates the client cache by itself.
+  // /daily-gold-edition is dynamic, and dynamic routes are never served from
+  // the client cache, so the push already re-renders against the new session.
   async function pickProfile(p: PickerProfile) {
     setError(null);
     if (p.hasPin) { setPinFor(p); return; }

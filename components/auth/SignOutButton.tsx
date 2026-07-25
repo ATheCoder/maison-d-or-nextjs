@@ -1,15 +1,17 @@
 'use client';
-import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 
 export default function SignOutButton() {
-  const router = useRouter();
   return (
     <button
+      // A full-page navigation, not router.push + router.refresh(): the pair
+      // races (refresh re-fetches the current route while the push is in
+      // flight and can hang it), but a plain push would leave the previous
+      // account's rendered pages in the client cache, reachable with Back.
+      // Leaving an identity is the one moment worth discarding all of it.
       onClick={async () => {
         await authClient.signOut();
-        router.push('/login');
-        router.refresh();
+        window.location.assign('/login');
       }}
       style={{
         padding: '0.5rem 1.1rem',

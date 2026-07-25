@@ -25,8 +25,10 @@ export default function GateForm({ next }: { next: string }) {
       setError(res.error ?? 'That PIN or password is incorrect.');
       return;
     }
+    // Push only — a router.refresh() here would re-fetch /gate while the push
+    // is in flight and hang the navigation. Parent surfaces are dynamic, so
+    // the push already re-renders with child mode cleared.
     router.push(next);
-    router.refresh();
   }
 
   return (

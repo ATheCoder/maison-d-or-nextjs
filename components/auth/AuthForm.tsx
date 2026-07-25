@@ -71,10 +71,12 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
 
     // Admins land on /admin, guardians on the profile picker. `next` wins
     // when present (e.g. an invite link).
+    // Push only — a router.refresh() here would re-fetch /login while the push
+    // is in flight and hang the navigation. Every landing route reads the
+    // session, so it is dynamic and never served from the client cache.
     const role = 'user' in result.data ? (result.data.user as { role?: string }).role : undefined;
     const next = searchParams.get('next');
     router.push(next || (role === 'admin' ? '/admin' : '/profiles'));
-    router.refresh();
   }
 
   return (
