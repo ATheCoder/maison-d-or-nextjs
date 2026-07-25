@@ -26,6 +26,8 @@ import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifi
 import { CSS as dndCSS } from '@dnd-kit/utilities';
 import { flagEmoji, resolveLocation } from '@/lib/countries';
 import { CONTINENTS } from '@/lib/daily-gold/edition';
+import { destinationSlot, heroSlot, newsSlot } from '@/lib/daily-gold/slots';
+import SlotOpener from './SlotOpener';
 import {
   createNewsItem, deleteNewsItem, getPreflight, prepareThisDate, reorderNews,
   saveEdition, saveNewsItem, setEditionStatus, setNewsPublished,
@@ -417,11 +419,14 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
                 {draft.hero_image_url ? 'Painted' : 'Empty'}
               </span>
             </div>
-            <ImageSlot
-              url={draft.hero_image_url}
-              treatment="hero"
+            <SlotOpener
+              slot={heroSlot()}
+              subject={{ kind: 'edition', key: day.date }}
+              imageUrl={e.hero_image_url}
+              context={`Daily Gold · ${fmtDate(day.date)}`}
+              previewTitle="Daily Gold"
               emptyText="no painting for this date"
-              onChange={set('hero_image_url')}
+              onChanged={refresh}
             />
             {/* R3.16 — name the URL the reader will actually use. */}
             {!draft.hero_image_url && (
@@ -473,12 +478,13 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
                 {draft.destination_image_url ? 'Painted' : 'Empty'}
               </span>
             </div>
-            <ImageSlot
-              url={draft.destination_image_url}
-              treatment="card"
+            <SlotOpener
+              slot={destinationSlot()}
+              subject={{ kind: 'edition', key: day.date }}
+              imageUrl={e.destination_image_url}
+              context={`Daily Gold · ${fmtDate(day.date)}`}
               emptyText="no destination painting"
-              onChange={set('destination_image_url')}
-              hint="Shown as a family sees it — the card fades to parchment over the bottom two-thirds."
+              onChanged={refresh}
             />
           </div>
 
@@ -664,56 +670,6 @@ function SensoryCard({ label, value, sub }: { label: string; value?: string; sub
   );
 }
 
-/**
- * A picture and one opener (R6.9). The modal itself is Phase 7; until then the
- * opener reveals a URL field, so a day can still be finished by hand.
- */
-function ImageSlot({ url, treatment, emptyText, onChange, hint }: {
-  url?: string; treatment: 'hero' | 'card'; emptyText: string;
-  onChange: (v: string) => void; hint?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const filled = Boolean(url?.trim());
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        {filled ? (
-          <div className={`treat treat-${treatment}`} style={{ width: 224, height: 112 }}>
-            <div className="art" style={{ position: 'absolute', inset: 0, backgroundImage: `url(${url})` }} />
-          </div>
-        ) : (
-          <div className="art art-empty" style={{
-            width: 224, height: 112, borderRadius: 8,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <span className="note" style={{ textAlign: 'center', maxWidth: 130 }}>{emptyText}</span>
-          </div>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, alignItems: 'flex-start' }}>
-          <button className="btn btn-sm" onClick={() => setOpen((o) => !o)}>
-            {filled ? 'Open painting' : 'Add a painting'}
-          </button>
-          {hint && filled && <span className="note" style={{ maxWidth: 230 }}>{hint}</span>}
-        </div>
-      </div>
-      {open && (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input className="field" style={{ flex: 1, fontSize: 12 }} placeholder="https://…"
-            value={url ?? ''} onChange={(e) => onChange(e.target.value)} />
-          {filled && <button className="btn btn-sm btn-red" onClick={() => { onChange(''); setOpen(false); }}>Remove</button>}
-        </div>
-      )}
-      {open && (
-        <div className="note">
-          Generating, uploading and previewing under the real treatment arrive with the shared
-          image modal — for now this is the image&rsquo;s address.
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Good news column ─────────────────────────────────────────────────────────
 
 function NewsColumn({ date, items, live, onChanged, onError }: {
@@ -786,6 +742,7 @@ function NewsColumn({ date, items, live, onChanged, onError }: {
               {ordered.map((item, index) => (
                 <NewsRow
                   key={item.id}
+                  date={date}
                   item={item}
                   index={index}
                   live={live}
@@ -817,8 +774,8 @@ function NewsColumn({ date, items, live, onChanged, onError }: {
   );
 }
 
-function NewsRow({ item, index, live, open, onToggle, onChanged, onError }: {
-  item: EditorNewsItem; index: number; live: boolean; open: boolean;
+function NewsRow({ date, item, index, live, open, onToggle, onChanged, onError }: {
+  date: string; item: EditorNewsItem; index: number; live: boolean; open: boolean;
   onToggle: () => void; onChanged: () => void; onError: (m: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
@@ -916,10 +873,18 @@ function NewsRow({ item, index, live, open, onToggle, onChanged, onError }: {
           <div className="note">
             This is the field that earns a flag seal — none of the 52 imported stories have one.
           </div>
-          <div style={{ display: 'flex', gap: 9, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span className="note" style={{ width: 58 }}>Painting</span>
-            <input className="field" style={{ flex: 1, minWidth: 180, fontSize: 12 }} placeholder="https://…"
-              value={local.image_url} onChange={(e) => set('image_url')(e.target.value)} />
+          <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <span className="note" style={{ width: 58, paddingTop: 8 }}>Painting</span>
+            <SlotOpener
+              slot={newsSlot(index)}
+              subject={{ kind: 'edition', key: date }}
+              imageUrl={item.image_url}
+              context={`Good news · ${lead ? 'the lead' : `story ${index + 1}`}`}
+              width={150}
+              height={84}
+              emptyText="no painting"
+              onChanged={onChanged}
+            />
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

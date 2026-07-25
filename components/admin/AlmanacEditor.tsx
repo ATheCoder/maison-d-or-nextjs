@@ -26,6 +26,8 @@ import {
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { CSS as dndCSS } from '@dnd-kit/utilities';
 import { flagEmoji, resolveLocation } from '@/lib/countries';
+import { historySlot, momentSlot } from '@/lib/daily-gold/slots';
+import SlotOpener from './SlotOpener';
 import {
   createEvent, createMoment, deleteEvent, deleteMoment, reorderMoments, reorderYear,
   saveEvent, saveMoment, setEventPublished, setMomentPublished,
@@ -563,21 +565,17 @@ function EventPane({ monthDay, event, siblings, onChanged, onError }: {
         </div>
 
         <div className="fgroup">
-          <div className="flbl">
-            <span className="kick">Painting</span>
-            <span className={`chip ${local.image_url ? 'chip-green' : 'chip-amber'}`}>
-              {local.image_url ? 'Painted' : 'Empty'}
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <div className={`art${local.image_url ? '' : ' art-empty'}`}
-              style={{
-                width: 118, height: 74,
-                backgroundImage: local.image_url ? `url(${local.image_url})` : undefined,
-              }} />
-            <input className="field" style={{ width: 210, fontSize: 12 }} placeholder="https://…"
-              value={local.image_url} onChange={(e) => set('image_url')(e.target.value)} />
-          </div>
+          <div className="flbl"><span className="kick">Painting</span></div>
+          <SlotOpener
+            slot={historySlot(event.year, event.position)}
+            subject={{ kind: 'month_day', key: monthDay }}
+            imageUrl={event.image_url}
+            context={`On This Day · ${fmtMonthDay(monthDay)} ${fmtYear(event.year)}`}
+            width={150}
+            height={84}
+            emptyText="no painting"
+            onChanged={onChanged}
+          />
         </div>
       </div>
 
@@ -685,6 +683,7 @@ function MomentLadder({ day, onChanged, onError }: {
               {ordered.map((m, i) => (
                 <MomentRung
                   key={m.id}
+                  monthDay={day.monthDay}
                   moment={m}
                   displayRank={ranks[i] ?? m.rank}
                   open={openId === m.id}
@@ -712,8 +711,8 @@ function MomentLadder({ day, onChanged, onError }: {
   );
 }
 
-function MomentRung({ moment, displayRank, open, onToggle, onChanged, onError }: {
-  moment: AlmanacMoment; displayRank: number; open: boolean;
+function MomentRung({ monthDay, moment, displayRank, open, onToggle, onChanged, onError }: {
+  monthDay: string; moment: AlmanacMoment; displayRank: number; open: boolean;
   onToggle: () => void; onChanged: () => void; onError: (m: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
@@ -809,21 +808,17 @@ function MomentRung({ moment, displayRank, open, onToggle, onChanged, onError }:
               </div>
 
               <div className="fgroup">
-                <div className="flbl">
-                  <span className="kick">Painting</span>
-                  <span className={`chip ${local.image_url ? 'chip-green' : 'chip-amber'}`}>
-                    {local.image_url ? 'Painted' : 'Empty'}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <div className={`art${local.image_url ? '' : ' art-empty'}`}
-                    style={{
-                      width: 96, height: 62,
-                      backgroundImage: local.image_url ? `url(${local.image_url})` : undefined,
-                    }} />
-                  <input className="field" style={{ flex: 1, minWidth: 200, fontSize: 12 }} placeholder="https://…"
-                    value={local.image_url} onChange={(e) => set('image_url')(e.target.value)} />
-                </div>
+                <div className="flbl"><span className="kick">Painting</span></div>
+                <SlotOpener
+                  slot={momentSlot(moment.rank)}
+                  subject={{ kind: 'month_day', key: monthDay }}
+                  imageUrl={moment.image_url}
+                  context={`Greatest Moments · rank ${displayRank}`}
+                  width={150}
+                  height={84}
+                  emptyText="no painting"
+                  onChanged={onChanged}
+                />
                 <div className="note">
                   Also shown as a 46-pixel thumbnail in the ladder a family reads, so it has to survive
                   being tiny.

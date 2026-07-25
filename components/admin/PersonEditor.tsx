@@ -37,7 +37,8 @@ import type { Chapter, GenerationJobRow, SlotOverride } from '@/src/db/schema';
 import { deriveSections, type Section, type SectionStatus } from './personSections';
 import { withKeys, stripKeys, type DraftPerson, type Keyed } from './draftTypes';
 import { buildSlotViews, type SlotView } from './imageSlots';
-import SlotCard from './SlotCard';
+import { toImageSlot } from '@/lib/golden-story/slots';
+import ImageModal from './ImageModal';
 import SlotChip from './SlotChip';
 import ImageStatusBoard from './ImageStatusBoard';
 import styles from './PersonEditor.module.css';
@@ -1407,17 +1408,38 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
         />
       )}
 
-      {/* ── Image slot card (screen ②) ── */}
-      {openSlotFile && slotByFile[openSlotFile] && (
-        <SlotCard
-          slug={slug}
-          slot={slotByFile[openSlotFile]}
-          characterSheet={characterSheet}
-          slotJob={slotJob}
-          onClose={() => setOpenSlotFile(null)}
-          onChanged={onSlotChanged}
-        />
-      )}
+      {/* ── The shared image modal (R6.12 — this replaced SlotCard) ── */}
+      {openSlotFile && slotByFile[openSlotFile] && (() => {
+        const view = slotByFile[openSlotFile];
+        // Only surface the Path-A job when it actually targets this slot.
+        const mine = slotJob && (
+          (slotJob.result as { file?: string } | null)?.file === view.file
+          || !!slotJob.progress?.slots?.[view.file]
+        ) ? slotJob : null;
+        return (
+          <ImageModal
+            slot={toImageSlot(view)}
+            subject={{ kind: 'person', key: slug }}
+            imageUrl={view.imageUrl}
+            scene={view.scene}
+            context={`Golden Story · ${draft.name}`}
+            canGenerate
+            job={mine ? {
+              id: mine.id,
+              state: mine.state,
+              stagedUrl: (mine.result as { stagingUrl?: string } | null)?.stagingUrl ?? null,
+              error: mine.error,
+            } : null}
+            extraChip={view.charSheetIncluded === true
+              ? <span className="chip chip-green">Character sheet included</span>
+              : view.charSheetIncluded === false
+                ? <span className="chip chip-amber">Consistency may drift</span>
+                : null}
+            onClose={() => setOpenSlotFile(null)}
+            onChanged={() => onSlotChanged('image')}
+          />
+        );
+      })()}
 
       {/* ── Publish confirm ── */}
       {publishConfirm && (

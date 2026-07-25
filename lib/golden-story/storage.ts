@@ -56,6 +56,17 @@ function publicUrl(key: string): string {
   return `${process.env.R2_DOMAIN!.replace(/\/$/, '')}/${key}`;
 }
 
+/**
+ * Convert a buffer to webp and PUT it at an explicit key, returning its URL.
+ *
+ * Exported because Daily Gold surfaces address their art by the key conventions
+ * in the spec's §8.4 (`hero-media/<date>.webp`, `moment-media/<MM-DD>/rank-n.webp`)
+ * rather than by a story slug, while sharing this sharp→webp@82 pipeline.
+ */
+export async function putImageAtKey(key: string, buffer: Buffer): Promise<string> {
+  return putWebp(key, buffer);
+}
+
 // Convert a buffer to webp and PUT it at an explicit key, returning its URL.
 async function putWebp(key: string, buffer: Buffer): Promise<string> {
   const webp = await sharp(buffer).webp({ quality: 82 }).toBuffer();
