@@ -260,7 +260,9 @@ function DestinationModal({ dest, imageUrl, onClose, theme }) {
 
           {dest.child_life?.story && (
             <div style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.95rem', color: theme.textBody, lineHeight: 1.9 }}>
-              <p style={{ margin: '0 0 1rem' }}>{dest.child_life.story}</p>
+              {dest.child_life.story.split('\n\n').map((para, i) => (
+                <p key={i} style={{ margin: '0 0 1rem' }}>{para}</p>
+              ))}
             </div>
           )}
         </div>
@@ -269,7 +271,7 @@ function DestinationModal({ dest, imageUrl, onClose, theme }) {
   );
 }
 
-export default function DGDestination({ dest, imageUrl, onTrack, onDestinationClick, onFlagEarned, child, editionDate }) {
+export default function DGDestination({ dest, imageUrl, onTrack, onFlagEarned, child, editionDate }) {
   const { theme } = useTheme();
   const [modalOpen, setModalOpen] = useState(false);
   const [flagTriggered, setFlagTriggered] = useState(false);
@@ -295,7 +297,6 @@ export default function DGDestination({ dest, imageUrl, onTrack, onDestinationCl
   const iso2 = resolveLocation(dest.name);
 
   const handleDestinationView = () => {
-    onDestinationClick?.();
     setModalOpen(true);
     // Trigger flag earn on first view
     if (!flagTriggered && iso2) {

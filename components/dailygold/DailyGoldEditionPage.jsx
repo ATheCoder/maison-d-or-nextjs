@@ -123,7 +123,6 @@ export default function DailyGoldEdition({ initialChild = null, initialEdition =
   const [user, setUser] = useState(null);
   const [timeSpent, setTimeSpent] = useState(0);
   const [topicsExplored, setTopicsExplored] = useState([]);
-  const [selectedDestination, setSelectedDestination] = useState(null);
   const [celebration, setCelebration] = useState(null);
   const [showCollection, setShowCollection] = useState(false);
   const pendingEarns = useRef(new Set());
@@ -397,81 +396,11 @@ export default function DailyGoldEdition({ initialChild = null, initialEdition =
             dest={edition.destination}
             imageUrl={rawPost?.image_url}
             onTrack={trackInteraction}
-            onDestinationClick={() => setSelectedDestination(edition.destination)}
             onFlagEarned={handleFlagEarn}
             child={child}
             editionDate={viewedDate}
           />
         </div>
-
-        {selectedDestination && (
-          <div
-            onClick={() => setSelectedDestination(null)}
-            style={{
-              position: 'fixed', inset: 0, zIndex: 1000,
-              background: 'rgba(10,20,40,0.92)',
-              backdropFilter: 'blur(8px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: '2rem',
-              overflowY: 'auto',
-            }}
-          >
-            <div
-              onClick={e => e.stopPropagation()}
-              style={{
-                maxWidth: 720, width: '100%',
-                background: C.navy,
-                borderRadius: 24,
-                border: `1px solid rgba(212,175,55,0.25)`,
-                overflow: 'hidden',
-                maxHeight: '90vh',
-                overflowY: 'auto',
-              }}
-            >
-              <div style={{ position: 'relative', height: 280, background: C.midnight }}>
-                {selectedDestination.image_url ? (
-                  <img src={selectedDestination.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{
-                    width: '100%', height: '100%',
-                    background: `linear-gradient(135deg, ${C.navy} 0%, ${C.midnight} 100%)`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.2)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-                  </div>
-                )}
-                <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent 30%, ${C.navy} 100%)` }} />
-                <button
-                  onClick={() => setSelectedDestination(null)}
-                  style={{
-                    position: 'absolute', top: 16, right: 16,
-                    width: 36, height: 36, borderRadius: '50%',
-                    background: 'rgba(0,0,0,0.6)', border: `1px solid ${C.gold}40`,
-                    color: C.gold, fontSize: '1rem', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >×</button>
-              </div>
-              <div style={{ padding: '2rem 2rem 2.5rem' }}>
-                <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.5rem, 3vw, 2.2rem)', fontWeight: 700, color: C.ivory, margin: '0 0 1.5rem', lineHeight: 1.2 }}>
-                  A Child in {selectedDestination.name?.split(',')[0]}
-                </h2>
-                {selectedDestination.atmosphere && (
-                  <p style={{ fontFamily: 'Playfair Display, serif', fontStyle: 'italic', fontSize: '1.05rem', color: `${C.sand}90`, lineHeight: 1.9, margin: '0 0 1rem' }}>
-                    {selectedDestination.atmosphere}
-                  </p>
-                )}
-                {selectedDestination.child_life?.story && (
-                  <div style={{ fontFamily: 'Lato, sans-serif', fontWeight: 300, fontSize: '0.95rem', color: `${C.ivory}80`, lineHeight: 1.9 }}>
-                    {selectedDestination.child_life.story.split('\n\n').map((para, i) => (
-                      <p key={i} style={{ margin: '0 0 1rem' }}>{para}</p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         <DGMoreToExplore />
         <DGValuesStrip />
