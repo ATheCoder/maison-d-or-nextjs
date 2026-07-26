@@ -14,7 +14,16 @@
 import { STYLE, COVER_BLEED, STRIP_BLEED, SINGLE_BLEED, OPAQUE, PAPER, type SlotPlacement, type SlotBlend } from './prompts.ts';
 import type { Brief } from './brief.ts';
 import type { SlotOverride } from '@/src/db/schema';
-import type { ImageSlot, SlotTreatment } from '@/lib/daily-gold/slots.ts';
+import type { ImageQuality, ImageSlot, SlotTreatment } from '@/lib/daily-gold/slots.ts';
+
+/**
+ * The book renders every slot at one quality — its art is printed-page sized
+ * and shown unobscured, so there is nothing here to trade away (unlike the
+ * Daily Gold list surfaces, which vary it per slot). Lives here rather than in
+ * imageStore.ts so the client-side modal and the server renderer read one
+ * value; imageStore.ts is `server-only` and cannot be imported by either.
+ */
+export const BOOK_IMAGE_QUALITY: ImageQuality = 'medium';
 
 // The person shape this reads — a structural subset of EditorPerson, declared
 // locally so the module stays free of the server actions' types.
@@ -191,6 +200,7 @@ export function toImageSlot(d: SlotDescriptor): ImageSlot {
     label: d.label,
     shortLabel: d.shortLabel,
     size: d.size,
+    quality: BOOK_IMAGE_QUALITY,
     style: STYLE,
     composition: TAIL[d.placement],
     treatment: treatmentFor(d.blend),

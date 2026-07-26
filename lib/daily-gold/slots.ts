@@ -13,6 +13,12 @@
 import { COMPOSITION, STYLE, type DailyGoldPlacement } from './prompts.ts';
 
 /**
+ * The model-side render quality, passed through to OpenRouter's `/images`.
+ * The endpoint validates this against exactly these four values.
+ */
+export type ImageQuality = 'auto' | 'low' | 'medium' | 'high';
+
+/**
  * How the reader treats a slot's image, so the modal can show what a family
  * actually sees rather than the raw file (R3.15). These are descriptions of
  * real CSS in the reader components, not aspirations.
@@ -39,6 +45,8 @@ export type ImageSlot = {
   shortLabel: string;
   /** Pixel size to request, e.g. '1536x1024'. */
   size: string;
+  /** Model-side render quality — a per-slot cost/fidelity choice, see below. */
+  quality: ImageQuality;
   /** The fixed read-only style preamble. */
   style: string;
   /** The fixed read-only composition block. */
@@ -71,11 +79,34 @@ const HERO_TREATMENT: SlotTreatment = {
 const gradient = (from: string, colour: string): SlotTreatment =>
   ({ kind: 'bottom-gradient', from, colour });
 
-/**
- * Landscape everywhere: every Daily Gold surface is a wide card, and one size
- * keeps a rejected render from being unusable in a neighbouring slot.
- */
+// ── Size and quality ─────────────────────────────────────────────────────────
+// Landscape 3:2 everywhere: every Daily Gold surface is a wide card, and one
+// aspect ratio keeps a rejected render from being unusable in a neighbouring
+// slot. The *resolution* differs by surface, because the display sizes do.
+//
+// Two hard API constraints, both established against the live endpoint on
+// 2026-07-26 (the same way the model id in openrouter.ts was): both dimensions
+// must be divisible by 16, and the request is rejected below a minimum pixel
+// budget — 1008×672 (677k px) is accepted, 960×640 (614k px) is not. Staying on
+// the 48n×32n ladder is what keeps a size both exactly 3:2 and divisible by 16.
+
+/** The masthead and the destination card — the two largest paintings. */
 const LANDSCAPE = '1536x1024';
+
+/**
+ * The three list surfaces. Their art is never shown large or unobscured: the
+ * biggest is the good-news modal hero at 720×300 CSS px, and every one of them
+ * renders under a gradient wash that fades the lower half into the page
+ * (`gradient(...)` below) — so detail beyond ~1000px is paid for and thrown
+ * away. This is the smallest exact-3:2 size the endpoint accepts, and still
+ * 1.4× that widest slot.
+ *
+ * The rejection message calls it the *current* minimum pixel budget, so this
+ * sits exactly on a floor that OpenAI can raise. If these three surfaces ever
+ * start failing to render with a 400 about pixel budget, the fix is one rung up
+ * the ladder: '1056x704'.
+ */
+const LANDSCAPE_SMALL = '1008x672';
 
 /** The masthead behind the edition title. */
 export function heroSlot(): ImageSlot {
@@ -84,6 +115,7 @@ export function heroSlot(): ImageSlot {
     label: 'Masthead painting',
     shortLabel: 'Masthead',
     size: LANDSCAPE,
+    quality: 'medium',
     style: STYLE,
     composition: COMPOSITION.hero,
     treatment: HERO_TREATMENT,
@@ -99,6 +131,7 @@ export function destinationSlot(): ImageSlot {
     label: 'Destination painting',
     shortLabel: 'Destination',
     size: LANDSCAPE,
+    quality: 'medium',
     style: STYLE,
     composition: COMPOSITION.destination,
     treatment: gradient('55%', 'rgba(247,242,232,1)'),
@@ -114,7 +147,8 @@ export function newsSlot(position: number): ImageSlot {
     key: `news:${position}`,
     label: lead ? 'Lead story painting' : `Story ${position + 1} painting`,
     shortLabel: lead ? 'Lead' : `Story ${position + 1}`,
-    size: LANDSCAPE,
+    size: LANDSCAPE_SMALL,
+    quality: 'low',
     style: STYLE,
     composition: COMPOSITION.news,
     treatment: gradient('30%', 'rgba(247,242,232,0.87)'),
@@ -129,7 +163,8 @@ export function historySlot(year: number, position: number): ImageSlot {
     key: `history:${year}:${position}`,
     label: `${year} · event ${position + 1} painting`,
     shortLabel: `${year}·${position + 1}`,
-    size: LANDSCAPE,
+    size: LANDSCAPE_SMALL,
+    quality: 'low',
     style: STYLE,
     composition: COMPOSITION.history,
     treatment: gradient('40%', 'rgba(255,248,238,0.95)'),
@@ -144,7 +179,8 @@ export function momentSlot(rank: number): ImageSlot {
     key: `moment:${rank}`,
     label: `Moment ${rank} painting`,
     shortLabel: `#${rank}`,
-    size: LANDSCAPE,
+    size: LANDSCAPE_SMALL,
+    quality: 'low',
     style: STYLE,
     composition: COMPOSITION.moment,
     treatment: gradient('40%', '#F7F2E8'),

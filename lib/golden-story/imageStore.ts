@@ -22,11 +22,10 @@ import type { Brief } from './brief.ts';
 import { renderImage } from './images.ts';
 import { putStoryImage, putStagingImage, promoteStaging, deleteStorageObject } from './storage.ts';
 import {
-  slotDescriptors, sceneFor, promptFor, readPath, type SlotDescriptor, type SlotPerson,
+  slotDescriptors, sceneFor, promptFor, readPath, BOOK_IMAGE_QUALITY,
+  type SlotDescriptor, type SlotPerson,
 } from './slots.ts';
 import { createJob, failJob, deleteJob, jobsForSlug, personSubject } from './jobs.ts';
-
-const IMAGE_QUALITY = 'medium'; // the CLI default
 
 // ── Loading ──────────────────────────────────────────────────────────────────
 
@@ -217,7 +216,7 @@ export async function renderSlotToStaging(slug: string, file: string, jobId: num
   const { brief, overrides } = await getSlotData(slug);
   const prompt = promptFor(sceneFor(brief, desc.briefField), desc.placement, overrides[file]);
   if (!prompt) throw new NonRetriableError('No prompt for this slot — add a scene first.');
-  const png = await renderImage(prompt, desc.size, IMAGE_QUALITY);
+  const png = await renderImage(prompt, desc.size, BOOK_IMAGE_QUALITY);
   const { url, key } = await putStagingImage(slug, file, jobId, png);
   return { file, personPath: desc.personPath, stagingUrl: url, stagingKey: key };
 }
@@ -316,7 +315,7 @@ export async function renderSlotToCanonical(slug: string, file: string, jobId: n
   const { brief, overrides } = await getSlotData(slug);
   const prompt = promptFor(sceneFor(brief, d.briefField), d.placement, overrides[file]);
   if (!prompt) throw new NonRetriableError('No prompt for this slot — add a scene first.');
-  const png = await renderImage(prompt, d.size, IMAGE_QUALITY);
+  const png = await renderImage(prompt, d.size, BOOK_IMAGE_QUALITY);
   const base = await putStoryImage(slug, file, png);
   await applyImageUrl(slug, d.personPath, `${base}?v=${jobId}`);
   await mergeOverride(slug, file, { source: 'generated', accepted: true });

@@ -5,8 +5,12 @@
  * public/stories/, the editor pipes through storage.putStoryImage → R2 webp).
  */
 import { OPENROUTER, IMAGE_MODEL, orHeaders } from './openrouter.ts';
+import type { ImageQuality } from '@/lib/daily-gold/slots.ts';
 
-export async function renderImage(prompt: string, size: string, quality: string): Promise<Buffer> {
+// `quality` is typed rather than a bare string because it is now a per-slot
+// choice: the endpoint validates it against a four-value enum and 400s on
+// anything else, which would otherwise only surface as a failed render.
+export async function renderImage(prompt: string, size: string, quality: ImageQuality): Promise<Buffer> {
   const res = await fetch(`${OPENROUTER}/images`, {
     method: 'POST',
     headers: orHeaders(),

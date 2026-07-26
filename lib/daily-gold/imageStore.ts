@@ -35,7 +35,10 @@ import { createJob, failJob, deleteJob, jobsForSubject } from '@/lib/golden-stor
 import { buildPrompt, type DailyGoldPlacement } from './prompts';
 import { parseSlotKey, slotForKey, storageKeyFor, stagingKeyFor } from './slots';
 
-const IMAGE_QUALITY = 'medium'; // the same default the book renderer uses
+// Size and quality are per-slot, not per-product: the three list surfaces show
+// their art small and under a gradient, so they render at 'low' and at a
+// smaller resolution than the masthead and destination. Both live on the slot
+// descriptor (lib/daily-gold/slots.ts) beside the other generation parameters.
 
 /** An edition (by date) or a month-day — never a person; their scenes are on the brief. */
 export type DgSubject = { kind: 'edition' | 'month_day'; key: string };
@@ -290,7 +293,7 @@ export async function renderDgSlotToStaging(subject: DgSubject, slotKey: string,
   const key = stagingKeyFor(slotKey, subject.key, jobId);
   if (!key) throw new NonRetriableError('That slot has no storage key.');
 
-  const png = await renderImage(prompt, slot.size, IMAGE_QUALITY);
+  const png = await renderImage(prompt, slot.size, slot.quality);
   const url = await putImageAtKey(key, png);
   return { slotKey, stagingUrl: url, stagingKey: key };
 }
@@ -354,7 +357,7 @@ export async function renderDgSlotToCanonical(subject: DgSubject, slotKey: strin
   const canonical = storageKeyFor(slotKey, subject.key);
   if (!canonical) throw new NonRetriableError('That slot has no storage key.');
 
-  const png = await renderImage(prompt, slot.size, IMAGE_QUALITY);
+  const png = await renderImage(prompt, slot.size, slot.quality);
   const base = await putImageAtKey(canonical, png);
   if (!(await writeDgImageUrl(subject, slotKey, `${base}?v=${jobId}`))) {
     throw new NonRetriableError('That slot’s row no longer exists.');

@@ -197,7 +197,7 @@ export default function ImageModal({
     const footer = slot.needsWhiteBackground
       ? '\nThe background must be pure flat white (#FFFFFF) — off-white or textured backgrounds will show as a box on the page.'
       : '';
-    const text = `${fullPrompt}\n\n---\nParameters (not prompt text):\nsize ${slot.size.replace('x', '×')}${footer}`;
+    const text = `${fullPrompt}\n\n---\nParameters (not prompt text):\nsize ${slot.size.replace('x', '×')}, quality ${slot.quality}${footer}`;
     void navigator.clipboard.writeText(text).then(() => {
       setCopied(true); setTimeout(() => setCopied(false), 1600);
     });
@@ -286,6 +286,7 @@ export default function ImageModal({
                 : imageUrl ? <span className="chip chip-green">Painted</span>
                   : <span className="chip chip-ink">Empty</span>}
               <span className="chip chip-ink">{slot.size.replace('x', ' × ')}</span>
+              <span className="chip chip-ink">{slot.quality} quality</span>
               {slot.needsWhiteBackground && <span className="chip chip-ink">Multiply</span>}
               {extraChip}
             </div>
