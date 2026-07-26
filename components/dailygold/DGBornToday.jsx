@@ -122,7 +122,7 @@ function PortraitTile({ person, onClick, child, editionDate }) {
       )}
 
       {/* Text overlay — bottom */}
-      <div style={{
+      <div className="dgbt-caption" style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         padding: '0 0.85rem 0.85rem',
         zIndex: 4,
@@ -135,7 +135,7 @@ function PortraitTile({ person, onClick, child, editionDate }) {
         }} />
 
         {/* Name */}
-        <h3 style={{
+        <h3 className="dgbt-name" style={{
           fontFamily: '"Playfair Display", Georgia, serif',
           fontSize: 'clamp(0.78rem, 1.1vw, 0.95rem)',
           fontWeight: 700,
@@ -150,7 +150,7 @@ function PortraitTile({ person, onClick, child, editionDate }) {
 
         {/* Role */}
         {(person.story_title || person.role || person.field) && (
-          <p style={{
+          <p className="dgbt-role" style={{
             fontFamily: '"Playfair Display", Georgia, serif',
             fontStyle: 'italic',
             fontSize: 'clamp(0.52rem, 0.75vw, 0.65rem)',
@@ -164,7 +164,7 @@ function PortraitTile({ person, onClick, child, editionDate }) {
         )}
 
         {/* Dates */}
-        <p style={{
+        <p className="dgbt-dates" style={{
           fontFamily: 'Lato, sans-serif',
           fontWeight: 300,
           fontSize: 'clamp(0.44rem, 0.62vw, 0.55rem)',
@@ -176,8 +176,8 @@ function PortraitTile({ person, onClick, child, editionDate }) {
           {person.death_date ? ` — ${formatYear(person.death_date)}` : ''}
         </p>
 
-        {/* Discover story CTA — appears on hover */}
-        <div style={{
+        {/* Discover story CTA — appears on hover (hidden on touch, see <style>) */}
+        <div className="dgbt-cta" style={{
           marginTop: '0.5rem',
           display: 'flex', alignItems: 'center', gap: 5,
           opacity: hovered ? 1 : 0,
@@ -226,12 +226,11 @@ export default function DGBornToday({ people = [], onTrack, onFlagEarned, child,
 
   if (!people.length) return null;
 
-  // Split into two rows of 5 (pad if fewer)
-  const row1 = people.slice(0, 5);
-  const row2 = people.slice(5, 10);
+  // Up to 10 portraits — the grid reflows from 5 columns down to 2 (see <style>).
+  const portraits = people.slice(0, 10);
 
   return (
-    <section style={{
+    <section className="dgbt-section" style={{
       padding: '5rem clamp(1.25rem, 4vw, 3.5rem) 5.5rem',
       background: 'transparent',
       position: 'relative',
@@ -241,6 +240,27 @@ export default function DGBornToday({ people = [], onTrack, onFlagEarned, child,
         @keyframes dgFadeUp {
           from { opacity: 0; transform: translateY(16px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 1024px) {
+          .dgbt-grid { grid-template-columns: repeat(4, 1fr) !important; }
+        }
+        @media (max-width: 768px) {
+          .dgbt-section { padding: 3.5rem 1.25rem 4rem !important; }
+          .dgbt-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 0.75rem !important; }
+          .dgbt-name  { font-size: 0.88rem !important; }
+          .dgbt-role  { font-size: 0.66rem !important; }
+          .dgbt-dates { font-size: 0.58rem !important; }
+        }
+        @media (max-width: 560px) {
+          .dgbt-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 0.85rem !important; }
+          .dgbt-caption { padding: 0 0.75rem 0.8rem !important; }
+          .dgbt-name  { font-size: 0.95rem !important; }
+          .dgbt-role  { font-size: 0.7rem !important; }
+          .dgbt-dates { font-size: 0.6rem !important; }
+        }
+        /* Touch devices never fire hover, so the CTA would sit invisible forever */
+        @media (hover: none) {
+          .dgbt-cta { display: none !important; }
         }
       `}</style>
 
@@ -276,14 +296,13 @@ export default function DGBornToday({ people = [], onTrack, onFlagEarned, child,
         </p>
       </div>
 
-      {/* ── Row 1 — 5 portraits ── */}
-      <div style={{
+      {/* ── Portrait grid — 5 across on desktop, reflowing down to 2 ── */}
+      <div className="dgbt-grid" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(5, 1fr)',
         gap: 'clamp(0.5rem, 1.2vw, 1rem)',
-        marginBottom: 'clamp(0.5rem, 1.2vw, 1rem)',
       }}>
-        {row1.map((person, i) => (
+        {portraits.map((person, i) => (
           <div key={person.slug || i} style={{ animation: `dgFadeUp 0.5s ease ${i * 60}ms both` }}>
             <PortraitTile
               person={person}
@@ -297,29 +316,6 @@ export default function DGBornToday({ people = [], onTrack, onFlagEarned, child,
           </div>
         ))}
       </div>
-
-      {/* ── Row 2 — next 5 portraits (only if data exists) ── */}
-      {row2.length > 0 && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(5, 1fr)',
-          gap: 'clamp(0.5rem, 1.2vw, 1rem)',
-        }}>
-          {row2.map((person, i) => (
-            <div key={person.slug || i + 5} style={{ animation: `dgFadeUp 0.5s ease ${(i + 5) * 60}ms both` }}>
-              <PortraitTile
-                person={person}
-                child={child}
-                editionDate={editionDate}
-                onClick={() => {
-                  onTrack?.('person', person.name);
-                  if (person.slug) router.push(`/stories/${person.slug}`);
-                }}
-              />
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Bottom gold rule */}
       <div style={{

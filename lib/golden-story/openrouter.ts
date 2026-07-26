@@ -10,21 +10,21 @@ export const OPENROUTER = 'https://openrouter.ai/api/v1';
 export const WRITER_MODEL = 'anthropic/claude-opus-4.8';
 
 /**
- * The image model.
+ * The image model, used against POST /images (see images.ts).
  *
- * Was `openai/gpt-image-2` until a live query of GET /api/v1/models on
- * 2026-07-25 returned no such id — the model had been renamed underneath the
- * repo, and since `renderImage` throws on a non-OK response, **every render in
- * the product was failing** (spec R7.15). The catalogue's OpenAI image models
- * are `openai/gpt-5.4-image-2`, `openai/gpt-5-image` and
- * `openai/gpt-5-image-mini`; this is the direct successor by name.
+ * Do not "fix" this by grepping GET /api/v1/models — that listing only covers
+ * chat-completion models and does not include `openai/gpt-image-2`, which is an
+ * Images-API-only model. A 2026-07-25 change read that absence as the id having
+ * been renamed and swapped in `openai/gpt-5.4-image-2`; that is a *chat* model
+ * (`text+image+file->text+image`) which emits images through
+ * /chat/completions, so it does not belong behind the images endpoint. Reverted
+ * 2026-07-26.
  *
- * The POST /images endpoint and its `{model, prompt, size, quality}` body were
- * verified against the live API at the same time and are unchanged — the
- * endpoint validated the body and only then asked for credentials, so the call
- * shape in images.ts is right. The model id was the whole defect.
+ * To check this id, query the model directly — it reports 100% uptime and
+ * `text+image->image`:
+ *   curl https://openrouter.ai/api/v1/models/openai/gpt-image-2/endpoints
  */
-export const IMAGE_MODEL = 'openai/gpt-5.4-image-2';
+export const IMAGE_MODEL = 'openai/gpt-image-2';
 
 export function orHeaders(): Record<string, string> {
   return {
