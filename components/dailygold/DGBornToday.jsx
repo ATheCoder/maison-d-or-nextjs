@@ -1,20 +1,118 @@
 'use client';
 /**
- * DGBornToday — Immersive 5×2 portrait gallery
- * Full-bleed portraits with edge-dissolve, text overlay, no hard-edged cards.
+ * DGBornToday — the day's shelf of Golden Story volumes.
+ *
+ * Each person born on this date is bound as a small leather book whose cover is
+ * their portrait: gilt-ruled boards, a shaded spine, page edges showing on the
+ * fore-edge, and a shelf shadow underneath. Opening one lands on the same book
+ * full-size (<GoldenStory>), so the shelf and the destination share a language.
+ *
+ * /stories/[name] is force-dynamic with no loading.tsx, which means the click
+ * waits on a server round-trip with nothing to show for it. `useLinkStatus`
+ * (next/link, Next 16) hands us exactly that pending window, and we spend it
+ * playing the book-opening curtain rather than leaving the tap feeling dead.
  */
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import Link, { useLinkStatus } from 'next/link';
 import { useTheme } from '@/components/theme/ThemeContext';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
 import { resolvePerson } from '@/lib/countries';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import { formatDate, formatYear } from '@/lib/dates';
 
-// ── SINGLE PORTRAIT TILE ──────────────────────────────────────────────────────
-function PortraitTile({ person, onClick, child, editionDate }) {
+// Gold dust that rises out of the opening book. Fixed positions rather than
+// Math.random() so the server and client markup agree.
+const DUST = [
+  { left: '8%', delay: '0.35s', dur: '2.4s', size: 3 },
+  { left: '21%', delay: '0.95s', dur: '3.1s', size: 2 },
+  { left: '34%', delay: '0.55s', dur: '2.7s', size: 4 },
+  { left: '47%', delay: '1.25s', dur: '3.4s', size: 2 },
+  { left: '58%', delay: '0.75s', dur: '2.9s', size: 3 },
+  { left: '71%', delay: '1.55s', dur: '3.2s', size: 2 },
+  { left: '84%', delay: '0.45s', dur: '2.6s', size: 3 },
+  { left: '94%', delay: '1.15s', dur: '3.6s', size: 2 },
+];
+
+// ── OPENING CURTAIN ───────────────────────────────────────────────────────────
+// Lives inside the <Link>, because useLinkStatus only reports for the link it
+// is nested in. Rendered through a portal so the full-screen curtain escapes
+// the tile's overflow and stacking context.
+function OpeningCurtain({ person, imgUrl }) {
   const { theme } = useTheme();
-  const [hovered, setHovered] = useState(false);
+  const { pending } = useLinkStatus();
+
+  // Hold the page still behind the curtain. The navigation unmounts this tree,
+  // so the cleanup that restores the scroll always runs.
+  useEffect(() => {
+    if (!pending) return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, [pending]);
+
+  // `pending` can only turn true after a click, so the portal is never reached
+  // on the server and the SSR/hydration passes both render nothing.
+  if (!pending || typeof document === 'undefined') return null;
+
+  const initials = person.name
+    ? person.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+    : '✦';
+
+  return createPortal(
+    <div className="dgo-scrim" role="status" aria-live="polite">
+      <div className="dgo-stage">
+        <div className="dgo-book">
+          {/* Pages — revealed as the cover swings away */}
+          <div className="dgo-pages" aria-hidden="true">
+            <div className="dgo-rules" />
+            <div className="dgo-gutter" />
+          </div>
+
+          {/* Two leaves turning on a loop: the book keeps reading itself for
+              as long as the story takes to arrive. */}
+          <div className="dgo-leaf dgo-leaf-1" aria-hidden="true" />
+          <div className="dgo-leaf dgo-leaf-2" aria-hidden="true" />
+
+          {/* The cover, hinged on its spine */}
+          <div className="dgo-cover" aria-hidden="true">
+            <div className="dgo-face dgo-face-front">
+              {imgUrl
+                ? <img src={imgUrl} alt="" className="dgo-cover-img" />
+                : <span className="dgo-cover-initials">{initials}</span>}
+              <div className="dgo-cover-wash" />
+              <div className="dgo-cover-frame" />
+              <div className="dgo-cover-spine" />
+            </div>
+            <div className="dgo-face dgo-face-back" />
+          </div>
+
+          <div className="dgo-dust" aria-hidden="true">
+            {DUST.map((d, i) => (
+              <i key={i} style={{
+                left: d.left,
+                width: d.size, height: d.size,
+                animationDelay: d.delay,
+                animationDuration: d.dur,
+              }} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="dgo-caption">
+        <p className="dgo-eyebrow">Opening the story of</p>
+        <p className="dgo-name" style={{ fontFamily: theme.fontHeadline }}>{person.name}</p>
+        <div className="dgo-bar"><i /></div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+// ── ONE VOLUME ON THE SHELF ───────────────────────────────────────────────────
+function BookVolume({ person, onTrack, child, editionDate, index = 0 }) {
+  const { theme } = useTheme();
   // personToRecord emits snake_case; resolvePerson prefers the explicit code
   // and falls back to the nationality text (R4.1).
   const iso2 = resolvePerson({
@@ -26,247 +124,531 @@ function PortraitTile({ person, onClick, child, editionDate }) {
   // Portraits come from remarkable_person (R2-hosted covers); people without
   // one get the parchment placeholder below.
   const imgUrl = person.image_url || null;
+  // Some rows carry the person's own name as their story_title; printing it
+  // under the name reads as a mistake, so fall through to the real role.
+  const role = [person.story_title, person.role, person.field]
+    .find(t => t && t.trim().toLowerCase() !== (person.name || '').trim().toLowerCase()) || null;
+
+  // Boards, gilt and caption — identical whether or not the volume opens.
+  const boards = (
+    <>
+      {imgUrl ? (
+        <img src={imgUrl} alt={person.name} className="dgbt-portrait" />
+      ) : (
+        <div className="dgbt-empty" aria-hidden="true">
+          <svg width="42" height="42" viewBox="0 0 48 48" fill="none">
+            <ellipse cx="24" cy="18" rx="10" ry="12" stroke={theme.accentGold} strokeWidth="1.2" />
+            <path d="M6 42 Q12 30 24 30 Q36 30 42 42" stroke={theme.accentGold} strokeWidth="1.2" fill="none" />
+          </svg>
+        </div>
+      )}
+
+      {/* Leather washes: the portrait sinks into the boards at every edge */}
+      <div className="dgbt-wash" aria-hidden="true" />
+      {/* Gilt rules stamped into the board */}
+      <div className="dgbt-gilt" aria-hidden="true" />
+      {/* Shaded fold where the cover meets the spine */}
+      <div className="dgbt-spine" aria-hidden="true" />
+      {/* Light travelling over the leather on hover */}
+      <div className="dgbt-gleam" aria-hidden="true" />
+
+      {/* Flag seal — stamped top-left, decorative only (role="img") */}
+      {iso2 && (
+        <div className="dgbt-flag">
+          <FlagSealMedallion
+            countryCode={iso2}
+            countryName={person.nationality || person.country || ''}
+            size="xs"
+            earned={true}
+            fallbackInitials={initials}
+          />
+        </div>
+      )}
+
+      {/* Foil-stamped caption */}
+      <div className="dgbt-caption">
+        <div className="dgbt-rule" aria-hidden="true" />
+        <h3 className="dgbt-name" style={{ fontFamily: theme.fontHeadline }}>{person.name}</h3>
+        {role && (
+          <p className="dgbt-role" style={{ fontFamily: theme.fontHeadline }}>{role}</p>
+        )}
+        <p className="dgbt-dates" style={{ fontFamily: theme.fontBody }}>
+          {formatDate(person.birth_date)}
+          {person.death_date ? ` to ${formatYear(person.death_date)}` : ''}
+        </p>
+        <div className="dgbt-cta" style={{ fontFamily: theme.fontBody }}>
+          <span>Open the Story</span>
+          <span aria-hidden="true">›</span>
+        </div>
+      </div>
+    </>
+  );
 
   return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        position: 'relative',
-        aspectRatio: '3 / 4',
-        overflow: 'hidden',
-        borderRadius: 20,
-        background: `linear-gradient(160deg, ${theme.bgSoft} 0%, ${theme.bgCard} 100%)`,
-        transition: 'transform 0.4s cubic-bezier(.22,1,.36,1)',
-        transform: hovered ? 'scale(1.03)' : 'scale(1)',
-      }}
-    >
-      {/* The whole tile is one button; the treasury heart stays a sibling so
-          we never nest interactive controls. */}
-      <button
-        onClick={onClick}
-        style={{
-          position: 'absolute', inset: 0,
-          width: '100%', height: '100%',
-          display: 'block',
-          padding: 0,
-          border: 'none',
-          background: 'transparent',
-          textAlign: 'inherit',
-          font: 'inherit',
-          color: 'inherit',
-          cursor: 'pointer',
-        }}
-      >
-        {/* Portrait image */}
-        {imgUrl && (
-          <img
-            src={imgUrl}
-            alt={person.name}
-            style={{
-              position: 'absolute', inset: 0,
-              width: '100%', height: '100%',
-              objectFit: 'cover', objectPosition: 'center top',
-              display: 'block',
-              borderRadius: 0,
-              transition: 'transform 0.6s cubic-bezier(.22,1,.36,1)',
-              transform: hovered ? 'scale(1.08)' : 'scale(1)',
-            }}
-          />
-        )}
+    <div className="dgbt-cell" style={{ animationDelay: `${index * 65}ms` }}>
+      <div className="dgbt-stage">
+        <div className="dgbt-vol">
+          {/* Fore-edge: the paper stack showing past the boards */}
+          <div className="dgbt-edges" aria-hidden="true" />
 
-        {/* No image placeholder */}
-        {!imgUrl && (
-          <div style={{
-            position: 'absolute', inset: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <svg aria-hidden="true" width="40" height="40" viewBox="0 0 48 48" fill="none">
-              <ellipse cx="24" cy="18" rx="10" ry="12" stroke={theme.accentGold} strokeWidth="1.2"/>
-              <path d="M6 42 Q12 30 24 30 Q36 30 42 42" stroke={theme.accentGold} strokeWidth="1.2" fill="none"/>
-            </svg>
-          </div>
-        )}
-
-        {/* ── EDGE DISSOLVE overlays — all four sides blend into the page ── */}
-        {/* Bottom — strongest scrim so name and dates stay legible on any artwork */}
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: '70%',
-          background: `linear-gradient(to bottom, transparent 0%, rgba(24,16,7,0.35) 30%, rgba(24,16,7,0.82) 68%, rgba(16,10,4,0.95) 100%)`,
-          pointerEvents: 'none',
-        }} />
-        {/* Right edge dissolve */}
-        <div style={{
-          position: 'absolute', top: 0, right: 0, bottom: 0, width: '35%',
-          background: `linear-gradient(to right, transparent 0%, ${theme.bgPrimary}14 60%, ${theme.bgPrimary}2E 100%)`,
-          pointerEvents: 'none',
-        }} />
-        {/* Left edge dissolve */}
-        <div style={{
-          position: 'absolute', top: 0, left: 0, bottom: 0, width: '25%',
-          background: `linear-gradient(to left, transparent 0%, ${theme.bgPrimary}0F 100%)`,
-          pointerEvents: 'none',
-        }} />
-        {/* Top edge dissolve */}
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: '20%',
-          background: `linear-gradient(to bottom, ${theme.bgPrimary}2E 0%, transparent 100%)`,
-          pointerEvents: 'none',
-        }} />
-
-        {/* Flag — top-left */}
-        {iso2 && (
-          <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 5 }}>
-            <FlagSealMedallion
-              countryCode={iso2}
-              countryName={person.nationality || person.country || ''}
-              size="xs"
-              earned={true}
-              fallbackInitials={initials}
-            />
-          </div>
-        )}
-
-        {/* Text overlay — bottom */}
-        <div className="dgbt-caption" style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
-          padding: '0 0.85rem 0.85rem',
-          zIndex: 4,
-        }}>
-          {/* Gold rule */}
-          <div aria-hidden="true" style={{
-            height: 1,
-            background: `linear-gradient(to right, transparent, ${theme.accentGold}88, transparent)`,
-            marginBottom: '0.45rem',
-          }} />
-
-          {/* Name */}
-          <h3 className="dgbt-name" style={{
-            fontFamily: theme.fontHeadline,
-            fontSize: 'clamp(0.78rem, 1.1vw, 0.95rem)',
-            fontWeight: 700,
-            color: 'rgba(253,245,228,0.97)',
-            margin: '0 0 0.15rem',
-            lineHeight: 1.15,
-            letterSpacing: '0.01em',
-            textShadow: '0 1px 4px rgba(0,0,0,0.5)',
-          }}>
-            {person.name}
-          </h3>
-
-          {/* Role */}
-          {(person.story_title || person.role || person.field) && (
-            <p className="dgbt-role" style={{
-              fontFamily: theme.fontHeadline,
-              fontStyle: 'italic',
-              fontSize: 'clamp(0.7rem, 0.85vw, 0.8rem)',
-              color: theme.accentGold,
-              margin: '0 0 0.35rem',
-              lineHeight: 1.3,
-              letterSpacing: '0.03em',
-              textShadow: '0 1px 3px rgba(0,0,0,0.45)',
-            }}>
-              {person.story_title || person.role || person.field}
-            </p>
+          {person.slug ? (
+            <Link
+              href={`/stories/${person.slug}`}
+              prefetch={false}
+              className="dgbt-cover"
+              onClick={() => onTrack?.('person', person.name)}
+              aria-label={`Open the story of ${person.name}`}
+            >
+              {boards}
+              <OpeningCurtain person={person} imgUrl={imgUrl} />
+            </Link>
+          ) : (
+            /* No slug means no story to open yet — the volume still stands on
+               the shelf, it just isn't a door. */
+            <div className="dgbt-cover dgbt-cover-closed">{boards}</div>
           )}
 
-          {/* Dates */}
-          <p className="dgbt-dates" style={{
-            fontFamily: theme.fontBody,
-            fontWeight: 300,
-            fontSize: 'clamp(0.7rem, 0.8vw, 0.78rem)',
-            color: 'rgba(236,222,192,0.92)',
-            margin: 0,
-            letterSpacing: '0.08em',
-            textShadow: '0 1px 3px rgba(0,0,0,0.45)',
-          }}>
-            {formatDate(person.birth_date)}
-            {person.death_date ? ` to ${formatYear(person.death_date)}` : ''}
-          </p>
-
-          {/* Discover story CTA — appears on hover (hidden on touch, see <style>) */}
-          <div className="dgbt-cta" style={{
-            marginTop: '0.5rem',
-            display: 'flex', alignItems: 'center', gap: 5,
-            opacity: hovered ? 1 : 0,
-            transform: hovered ? 'translateY(0)' : 'translateY(4px)',
-            transition: 'opacity 0.25s ease, transform 0.25s ease',
-          }}>
-            <span style={{
-              fontFamily: theme.fontBody,
-              fontSize: '0.7rem',
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-              color: theme.accentGold,
-            }}>
-              Discover the Story
-            </span>
-            <span aria-hidden="true" style={{ color: theme.accentGold, fontSize: '0.75rem', lineHeight: 1 }}>›</span>
+          {/* Treasury heart — sibling of the cover link, never nested inside it */}
+          <div className="dgbt-heart">
+            <TreasuryHeart
+              childId={child?.id}
+              section="hero_stamps"
+              itemId={person.name}
+              itemTitle={person.name}
+              itemSubtitle={role || ''}
+              itemImageUrl={imgUrl || ''}
+              countryCode={iso2 || ''}
+              countryName={person.nationality || person.country || ''}
+              themeTags={[(person.field || person.role || 'person').toLowerCase()].filter(Boolean)}
+              editionDate={editionDate}
+              size="sm"
+            />
           </div>
         </div>
-      </button>
-
-      {/* Treasury heart — sibling of the tile button, never nested inside it */}
-      <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 20 }}>
-        <TreasuryHeart
-          childId={child?.id}
-          section="hero_stamps"
-          itemId={person.name}
-          itemTitle={person.name}
-          itemSubtitle={person.story_title || person.role || person.field || ''}
-          itemImageUrl={imgUrl || ''}
-          countryCode={iso2 || ''}
-          countryName={person.nationality || person.country || ''}
-          themeTags={[(person.field || person.role || 'person').toLowerCase()].filter(Boolean)}
-          editionDate={editionDate}
-          size="sm"
-        />
       </div>
+
+      {/* The shelf the volume stands on */}
+      <div className="dgbt-ledge" aria-hidden="true" />
     </div>
   );
 }
 
 // ── MAIN EXPORT ───────────────────────────────────────────────────────────────
 export default function DGBornToday({ people = [], onTrack, onFlagEarned, child, editionDate }) {
-  const router = useRouter();
   const { theme } = useTheme();
 
   if (!people.length) return null;
 
-  // Up to 10 portraits — the grid reflows from 5 columns down to 2 (see <style>).
-  const portraits = people.slice(0, 10);
+  // Up to 10 volumes — the shelf reflows from 5 across down to 2 (see <style>).
+  const volumes = people.slice(0, 10);
 
   return (
-    <section className="dgbt-section" style={{
-      padding: '5rem clamp(1.25rem, 4vw, 3.5rem) 5.5rem',
-      background: 'transparent',
-      position: 'relative',
-    }}>
+    <section className="dgbt-section" style={{ background: 'transparent', position: 'relative' }}>
       <style>{`
-        @keyframes dgFadeUp {
-          from { opacity: 0; transform: translateY(16px); }
+        /* ── shelf ─────────────────────────────────────────────────────────── */
+        .dgbt-section { padding: 5rem clamp(1.25rem, 4vw, 3.5rem) 5.5rem; }
+
+        .dgbt-grid {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: clamp(0.9rem, 1.8vw, 1.6rem) clamp(0.75rem, 1.5vw, 1.35rem);
+        }
+
+        .dgbt-cell { animation: dgbtRise 0.6s cubic-bezier(.22,1,.36,1) backwards; }
+        @keyframes dgbtRise {
+          from { opacity: 0; transform: translateY(18px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        @media (max-width: 1024px) {
-          .dgbt-grid { grid-template-columns: repeat(4, 1fr) !important; }
+
+        /* ── one volume ────────────────────────────────────────────────────── */
+        .dgbt-stage { perspective: 1100px; }
+
+        .dgbt-vol {
+          position: relative;
+          aspect-ratio: 3 / 4;
+          transform-style: preserve-3d;
+          transform-origin: 6% 50%;
+          transition: transform 0.55s cubic-bezier(.22,1,.36,1);
+          will-change: transform;
         }
-        @media (max-width: 768px) {
-          .dgbt-section { padding: 3.5rem 1.25rem 4rem !important; }
-          .dgbt-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 0.75rem !important; }
-          .dgbt-name  { font-size: 0.88rem !important; }
-          .dgbt-role  { font-size: 0.72rem !important; }
-          .dgbt-dates { font-size: 0.7rem !important; }
+        .dgbt-stage:hover .dgbt-vol,
+        .dgbt-stage:focus-within .dgbt-vol {
+          transform: translateY(-10px) rotateY(-10deg) rotateX(1.5deg);
         }
-        @media (max-width: 560px) {
-          .dgbt-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 0.85rem !important; }
-          .dgbt-caption { padding: 0 0.75rem 0.8rem !important; }
-          .dgbt-name  { font-size: 0.95rem !important; }
-          .dgbt-role  { font-size: 0.74rem !important; }
-          .dgbt-dates { font-size: 0.7rem !important; }
+
+        /* Fore-edge — the paper stack, sitting just behind the boards */
+        .dgbt-edges {
+          position: absolute; top: 5px; bottom: 5px; right: -7px; width: 9px;
+          border-radius: 0 4px 4px 0;
+          background: repeating-linear-gradient(to right,
+            #F7F1E4 0 1px, #DFD2B4 1px 2px, #F2EADA 2px 3px);
+          box-shadow: inset -3px 0 5px rgba(80,52,18,0.28);
+          transform: translateZ(-8px);
+          pointer-events: none;
         }
+
+        .dgbt-cover {
+          position: absolute; inset: 0;
+          display: block; overflow: hidden;
+          border-radius: 3px 11px 11px 3px;
+          background: linear-gradient(150deg, #3A281C 0%, #241812 55%, #150E08 100%);
+          box-shadow:
+            0 14px 26px rgba(52,33,12,0.26),
+            0 2px 5px rgba(52,33,12,0.20),
+            inset 0 1px 0 rgba(255,238,205,0.07);
+          text-decoration: none; color: inherit;
+          transition: box-shadow 0.5s ease;
+        }
+        .dgbt-stage:hover .dgbt-cover,
+        .dgbt-stage:focus-within .dgbt-cover {
+          box-shadow:
+            0 30px 52px rgba(52,33,12,0.34),
+            0 4px 10px rgba(52,33,12,0.22),
+            inset 0 1px 0 rgba(255,238,205,0.10);
+        }
+        .dgbt-cover:focus-visible {
+          outline: 2px solid ${theme.accentGold};
+          outline-offset: 3px;
+        }
+        .dgbt-cover-closed { cursor: default; }
+
+        .dgbt-portrait {
+          position: absolute; inset: 0;
+          width: 100%; height: 100%;
+          object-fit: cover; object-position: center top;
+          display: block;
+          transition: transform 0.7s cubic-bezier(.22,1,.36,1);
+        }
+        .dgbt-stage:hover .dgbt-portrait,
+        .dgbt-stage:focus-within .dgbt-portrait { transform: scale(1.06); }
+
+        .dgbt-empty {
+          position: absolute; inset: 0;
+          display: flex; align-items: center; justify-content: center;
+        }
+
+        /* Portrait dissolving into the boards on every edge */
+        .dgbt-wash {
+          position: absolute; inset: 0; pointer-events: none;
+          background:
+            linear-gradient(to bottom, rgba(20,13,6,0.55) 0%, transparent 22%),
+            linear-gradient(to top, rgba(14,9,4,0.96) 0%, rgba(24,16,7,0.80) 24%, rgba(24,16,7,0.30) 48%, transparent 68%),
+            linear-gradient(to right, rgba(12,8,4,0.62) 0%, transparent 26%),
+            linear-gradient(to left, rgba(12,8,4,0.42) 0%, transparent 22%);
+        }
+
+        /* Gilt rules stamped into the board */
+        .dgbt-gilt {
+          position: absolute; inset: 7px; pointer-events: none;
+          border: 1px solid rgba(226,199,140,0.34);
+          border-radius: 2px 7px 7px 2px;
+          box-shadow: inset 0 0 0 3px rgba(226,199,140,0.07);
+        }
+
+        /* Shaded fold at the binding, with two gilt bands */
+        .dgbt-spine {
+          position: absolute; left: 0; top: 0; bottom: 0; width: 15%;
+          pointer-events: none;
+          background: linear-gradient(to right,
+            rgba(8,5,2,0.94) 0%, rgba(28,18,10,0.68) 45%, rgba(28,18,10,0) 100%);
+        }
+        .dgbt-spine::before, .dgbt-spine::after {
+          content: ''; position: absolute; top: 9px; bottom: 9px; width: 1px;
+          background: linear-gradient(to bottom, transparent, rgba(226,199,140,0.55) 16%, rgba(226,199,140,0.55) 84%, transparent);
+        }
+        .dgbt-spine::before { left: 26%; }
+        .dgbt-spine::after  { left: 40%; opacity: 0.4; }
+
+        /* Light travelling across the leather */
+        .dgbt-gleam {
+          position: absolute; inset: 0; pointer-events: none; opacity: 0;
+          background: linear-gradient(104deg,
+            transparent 36%, rgba(255,240,205,0.16) 46%, rgba(255,250,235,0.30) 50%,
+            rgba(255,240,205,0.14) 54%, transparent 64%);
+          transform: translateX(-75%);
+        }
+        .dgbt-stage:hover .dgbt-gleam,
+        .dgbt-stage:focus-within .dgbt-gleam {
+          opacity: 1;
+          animation: dgbtGleam 0.95s cubic-bezier(.3,.6,.3,1) forwards;
+        }
+        @keyframes dgbtGleam {
+          from { transform: translateX(-75%); }
+          to   { transform: translateX(75%); }
+        }
+
+        .dgbt-flag { position: absolute; top: 12px; left: calc(15% + 6px); z-index: 5; }
+        .dgbt-heart { position: absolute; top: 8px; right: 8px; z-index: 20; }
+
+        /* ── foil-stamped caption ──────────────────────────────────────────── */
+        .dgbt-caption {
+          position: absolute; bottom: 0; left: 0; right: 0;
+          padding: 0 0.85rem 0.85rem calc(15% + 0.35rem);
+          z-index: 4;
+        }
+        .dgbt-rule {
+          height: 1px; margin-bottom: 0.45rem;
+          background: linear-gradient(to right, transparent, rgba(226,199,140,0.62), transparent);
+        }
+        .dgbt-name {
+          font-size: clamp(0.78rem, 1.05vw, 0.95rem);
+          font-weight: 700;
+          color: rgba(253,246,231,0.97);
+          margin: 0 0 0.15rem;
+          line-height: 1.15; letter-spacing: 0.015em;
+          text-shadow: 0 1px 5px rgba(0,0,0,0.55);
+        }
+        .dgbt-role {
+          font-style: italic;
+          font-size: clamp(0.68rem, 0.82vw, 0.79rem);
+          color: #E2C78C;
+          margin: 0 0 0.35rem;
+          line-height: 1.3; letter-spacing: 0.03em;
+          text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+          display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .dgbt-dates {
+          font-weight: 300;
+          font-size: clamp(0.68rem, 0.78vw, 0.76rem);
+          color: rgba(236,222,192,0.9);
+          margin: 0; letter-spacing: 0.08em;
+          text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+        }
+        .dgbt-cta {
+          margin-top: 0.5rem;
+          display: flex; align-items: center; gap: 5px;
+          font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase;
+          color: #E2C78C;
+          opacity: 0; transform: translateY(5px);
+          transition: opacity 0.28s ease, transform 0.28s ease;
+        }
+        .dgbt-stage:hover .dgbt-cta,
+        .dgbt-stage:focus-within .dgbt-cta { opacity: 1; transform: translateY(0); }
+
+        /* ── the shelf under the volume ────────────────────────────────────── */
+        .dgbt-ledge { position: relative; height: 15px; }
+        .dgbt-ledge::before {
+          content: ''; position: absolute; left: 5%; right: 5%; top: 0; height: 11px;
+          border-radius: 50%;
+          background: radial-gradient(ellipse at 50% 0%, rgba(72,46,17,0.30), transparent 72%);
+          filter: blur(3px);
+          transition: left 0.55s ease, right 0.55s ease, opacity 0.55s ease;
+        }
+        .dgbt-cell:hover .dgbt-ledge::before { left: 11%; right: 11%; opacity: 0.62; }
+        .dgbt-ledge::after {
+          content: ''; position: absolute; left: 0; right: 0; top: 12px; height: 1px;
+          background: linear-gradient(to right, transparent, ${theme.accentGold}59, transparent);
+        }
+
         /* Touch devices never fire hover, so the CTA would sit invisible forever */
         @media (hover: none) {
           .dgbt-cta { display: none !important; }
+        }
+
+        @media (max-width: 1024px) {
+          .dgbt-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+        @media (max-width: 768px) {
+          .dgbt-section { padding: 3.5rem 1.25rem 4rem; }
+          .dgbt-grid { grid-template-columns: repeat(3, 1fr); }
+          .dgbt-name  { font-size: 0.86rem; }
+          .dgbt-role  { font-size: 0.72rem; }
+          .dgbt-dates { font-size: 0.69rem; }
+          .dgbt-caption { padding-bottom: 0.75rem; }
+        }
+        @media (max-width: 560px) {
+          .dgbt-grid { grid-template-columns: repeat(2, 1fr); }
+          .dgbt-name  { font-size: 0.95rem; }
+          .dgbt-role  { font-size: 0.76rem; }
+          .dgbt-dates { font-size: 0.71rem; }
+          .dgbt-edges { width: 7px; right: -5px; }
+        }
+
+        /* ── opening curtain ───────────────────────────────────────────────── */
+        .dgo-scrim {
+          position: fixed; inset: 0; z-index: 9998;
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          gap: clamp(1.1rem, 3vh, 2rem);
+          padding: 2rem;
+          background:
+            radial-gradient(ellipse 75% 60% at 50% 42%, rgba(62,42,22,0.94), rgba(11,7,3,0.975));
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          animation: dgoFade 0.26s ease both;
+        }
+        @keyframes dgoFade { from { opacity: 0; } to { opacity: 1; } }
+
+        .dgo-stage { perspective: 1500px; perspective-origin: 50% 45%; }
+
+        .dgo-book {
+          position: relative;
+          width: min(250px, 44vw); aspect-ratio: 3 / 4;
+          transform-style: preserve-3d;
+          animation: dgoLift 0.85s cubic-bezier(.22,1,.36,1) both;
+        }
+        @keyframes dgoLift {
+          from { opacity: 0; transform: rotateX(16deg) rotateY(8deg) scale(0.88); }
+          to   { opacity: 1; transform: rotateX(6deg)  rotateY(0deg) scale(1); }
+        }
+
+        /* Parchment beneath the cover */
+        .dgo-pages {
+          position: absolute; inset: 0;
+          border-radius: 3px 9px 9px 3px;
+          overflow: hidden;
+          background:
+            radial-gradient(ellipse 70% 60% at 30% 24%, rgba(255,252,242,0.9), transparent 62%),
+            linear-gradient(160deg, #F6F1E5 0%, #EADFC6 100%);
+          box-shadow: inset 0 0 44px rgba(96,64,26,0.22), 0 24px 50px rgba(0,0,0,0.5);
+        }
+        .dgo-rules {
+          position: absolute; inset: 16% 12% 18% 18%;
+          background: repeating-linear-gradient(to bottom,
+            rgba(150,116,62,0.28) 0 1px, transparent 1px 13px);
+          opacity: 0.55;
+        }
+        .dgo-gutter {
+          position: absolute; top: 0; bottom: 0; left: 0; width: 16%;
+          background: linear-gradient(to right, rgba(70,44,16,0.4), transparent);
+        }
+
+        /* Leaves turning on a loop while the story is fetched */
+        .dgo-leaf {
+          position: absolute; inset: 0;
+          transform-origin: left center;
+          transform-style: preserve-3d;
+          border-radius: 3px 9px 9px 3px;
+          background: linear-gradient(160deg, #FBF7EC 0%, #EDE2CA 100%);
+          box-shadow: 2px 0 12px rgba(60,38,12,0.3);
+          opacity: 0;
+          animation: dgoFlip 2.4s cubic-bezier(.5,0,.5,1) infinite;
+        }
+        .dgo-leaf-1 { animation-delay: 1.05s; }
+        .dgo-leaf-2 { animation-delay: 2.25s; }
+        @keyframes dgoFlip {
+          0%   { opacity: 0;    transform: rotateY(0deg); }
+          8%   { opacity: 1; }
+          72%  { opacity: 1; }
+          88%  { opacity: 0;    transform: rotateY(-165deg); }
+          100% { opacity: 0;    transform: rotateY(-165deg); }
+        }
+
+        /* The cover, hinged on its spine */
+        .dgo-cover {
+          position: absolute; inset: 0;
+          transform-origin: left center;
+          transform-style: preserve-3d;
+          animation: dgoOpen 1.05s cubic-bezier(.55,.06,.3,1) 0.3s forwards;
+        }
+        @keyframes dgoOpen {
+          from { transform: rotateY(0deg); }
+          to   { transform: rotateY(-158deg); }
+        }
+        .dgo-face {
+          position: absolute; inset: 0;
+          border-radius: 3px 9px 9px 3px;
+          overflow: hidden;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          background: linear-gradient(150deg, #3A281C 0%, #241812 55%, #150E08 100%);
+        }
+        .dgo-face-front { box-shadow: 0 22px 48px rgba(0,0,0,0.5); }
+        .dgo-face-back {
+          transform: rotateY(180deg);
+          box-shadow: inset 0 0 0 1px rgba(226,199,140,0.16);
+          background:
+            radial-gradient(ellipse 60% 50% at 40% 30%, rgba(90,64,38,0.55), transparent 60%),
+            linear-gradient(150deg, #2E2015 0%, #1B1208 100%);
+        }
+        .dgo-cover-img {
+          position: absolute; inset: 0;
+          width: 100%; height: 100%;
+          object-fit: cover; object-position: center top;
+        }
+        .dgo-cover-initials {
+          position: absolute; inset: 0;
+          display: flex; align-items: center; justify-content: center;
+          font-family: Georgia, 'Times New Roman', serif;
+          font-size: 3rem; letter-spacing: 0.08em;
+          color: rgba(226,199,140,0.55);
+        }
+        .dgo-cover-wash {
+          position: absolute; inset: 0;
+          background:
+            linear-gradient(to top, rgba(14,9,4,0.9) 0%, rgba(24,16,7,0.35) 40%, transparent 70%),
+            linear-gradient(to right, rgba(12,8,4,0.6) 0%, transparent 28%);
+        }
+        .dgo-cover-frame {
+          position: absolute; inset: 8px;
+          border: 1px solid rgba(226,199,140,0.4);
+          border-radius: 2px 6px 6px 2px;
+        }
+        .dgo-cover-spine {
+          position: absolute; left: 0; top: 0; bottom: 0; width: 15%;
+          background: linear-gradient(to right, rgba(8,5,2,0.95), rgba(28,18,10,0.6) 50%, transparent);
+        }
+
+        /* Gold dust rising out of the binding */
+        .dgo-dust { position: absolute; inset: 0; pointer-events: none; }
+        .dgo-dust i {
+          position: absolute; bottom: 8%;
+          border-radius: 50%;
+          background: radial-gradient(circle, #F3DCA8, rgba(226,199,140,0));
+          opacity: 0;
+          animation-name: dgoDust;
+          animation-timing-function: ease-out;
+          animation-iteration-count: infinite;
+        }
+        @keyframes dgoDust {
+          0%   { opacity: 0;   transform: translateY(0) scale(0.6); }
+          18%  { opacity: 0.9; }
+          100% { opacity: 0;   transform: translateY(-120px) scale(1.25); }
+        }
+
+        /* Caption */
+        .dgo-caption { text-align: center; display: grid; justify-items: center; gap: 0.6rem; }
+        .dgo-eyebrow {
+          margin: 0;
+          font-family: ${theme.fontBody};
+          font-size: 0.66rem; letter-spacing: 0.3em; text-transform: uppercase;
+          color: rgba(226,199,140,0.72);
+        }
+        .dgo-name {
+          margin: 0;
+          font-size: clamp(1.2rem, 3.2vw, 1.7rem);
+          font-weight: 700; letter-spacing: 0.02em;
+          color: #F4E4BE;
+          text-shadow: 0 2px 18px rgba(226,199,140,0.28);
+        }
+        .dgo-bar {
+          width: min(210px, 55vw); height: 2px; border-radius: 2px;
+          background: rgba(226,199,140,0.16); overflow: hidden;
+        }
+        .dgo-bar i {
+          display: block; width: 42%; height: 100%;
+          background: linear-gradient(to right, transparent, #E2C78C, transparent);
+          animation: dgoShuttle 1.3s ease-in-out infinite;
+        }
+        @keyframes dgoShuttle {
+          0%   { transform: translateX(-110%); }
+          100% { transform: translateX(250%); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .dgbt-cell { animation: none; }
+          .dgbt-vol, .dgbt-portrait, .dgbt-cover { transition: none; }
+          .dgbt-stage:hover .dgbt-vol,
+          .dgbt-stage:focus-within .dgbt-vol { transform: none; }
+          .dgbt-stage:hover .dgbt-portrait,
+          .dgbt-stage:focus-within .dgbt-portrait { transform: none; }
+          .dgbt-gleam { display: none; }
+          .dgo-book { animation: none; }
+          .dgo-cover { animation: dgoFadeCover 0.5s ease 0.2s forwards; }
+          @keyframes dgoFadeCover { to { opacity: 0; } }
+          .dgo-leaf, .dgo-dust { display: none; }
+          .dgo-bar i { animation-duration: 2s; }
         }
       `}</style>
 
@@ -297,29 +679,22 @@ export default function DGBornToday({ people = [], onTrack, onFlagEarned, child,
           color: theme.textMuted, margin: '0.4rem 0 0', letterSpacing: '0.03em',
         }}>
           {people.length > 1
-            ? `${people.length} remarkable people share today with you`
-            : 'A remarkable life that shares today with you'}
+            ? `${people.length} remarkable lives, bound and waiting on today's shelf`
+            : 'A remarkable life, bound and waiting on today’s shelf'}
         </p>
       </div>
 
-      {/* ── Portrait grid — 5 across on desktop, reflowing down to 2 ── */}
-      <div className="dgbt-grid" style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(5, 1fr)',
-        gap: 'clamp(0.5rem, 1.2vw, 1rem)',
-      }}>
-        {portraits.map((person, i) => (
-          <div key={person.slug || i} style={{ animation: `dgFadeUp 0.5s ease ${i * 60}ms backwards` }}>
-            <PortraitTile
-              person={person}
-              child={child}
-              editionDate={editionDate}
-              onClick={() => {
-                onTrack?.('person', person.name);
-                if (person.slug) router.push(`/stories/${person.slug}`);
-              }}
-            />
-          </div>
+      {/* ── The shelf — 5 volumes across on desktop, reflowing down to 2 ── */}
+      <div className="dgbt-grid">
+        {volumes.map((person, i) => (
+          <BookVolume
+            key={person.slug || i}
+            person={person}
+            child={child}
+            editionDate={editionDate}
+            onTrack={onTrack}
+            index={i}
+          />
         ))}
       </div>
 

@@ -130,11 +130,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ── GOLDEN STORY ──
-   On a short viewport (a phone held sideways) the storybook fills the screen
-   edge to edge — see SHORT_H in components/dailygold/GoldenStory.jsx, which
-   uses the same 560px threshold — so Back tucks into the corner instead of
-   sitting on the open page. The button is styled inline, hence !important. */
-@media (max-height: 560px) {
+   On a phone either way up the storybook fills the screen edge to edge, so
+   Back tucks into the corner instead of sitting on the open page. Both
+   thresholds mirror components/dailygold/GoldenStory.jsx: 560px is SHORT_H
+   (held sideways), 4/5 is PORTRAIT_RATIO (stood upright, one leaf per screen).
+   The button is styled inline, hence !important. */
+@media (max-height: 560px), (max-aspect-ratio: 4/5) {
   .mdo-story-back {
     top: 7px !important;
     left: 7px !important;

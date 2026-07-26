@@ -1241,6 +1241,333 @@
   margin-top: 18px;
 }
 
+/* ── Portrait — one leaf at a time ─────────────────────────────────────────
+   A phone stood upright is about 1:2. An open spread scaled into that is a
+   quarter of the screen with type nobody can read, so portrait lays the book
+   out on a SINGLE leaf instead (LEAF_W_MIN/LEAF_W_MAX in GoldenStory.jsx),
+   sized so 16.5px body copy lands near 14px on screen. The spread still holds
+   both its leaves — it is twice the canvas wide and clipped, and `--leaf`
+   slides the facing one in — so the flip controls turn one page at a time and
+   nothing above needs to know about it.
+
+   What follows unfolds the two-leaf assumptions onto one column: the binder
+   gutter and spine go, text held to half a full-bleed spread takes the whole
+   leaf, the wash runs down the page instead of across the fold, and the
+   side-by-side grids (timeline, treasures, lessons) stack. */
+.portrait .book-leather {
+  inset: -10px;
+  border-radius: 10px;
+}
+
+.portrait .book-leather::after {
+  inset: 6px;
+  border-radius: 6px;
+}
+
+/* One page has no fold down its middle. */
+.portrait .spine {
+  display: none;
+}
+
+.portrait .corner {
+  width: 92px;
+  height: 92px;
+}
+
+.portrait .spread {
+  width: 200%;
+}
+
+.portrait .spread>* {
+  flex: 0 0 50%;
+  max-width: 50%;
+}
+
+.portrait .spread.on {
+  transform: translateX(calc(var(--leaf, 0) * -50%));
+  transition: opacity .55s ease, transform .42s ease;
+}
+
+.portrait .page {
+  padding: 34px 34px 30px;
+}
+
+/* No binder to leave room for, so both leaves are padded alike. */
+.portrait .spread>.page:first-child:not(.page-cover) {
+  padding-right: 34px;
+}
+
+.portrait .spread>.page+.page {
+  padding-left: 34px;
+}
+
+.portrait .page-cover,
+.portrait .page-image,
+.portrait .spread>.page+.page.page-image {
+  padding: 0;
+}
+
+.portrait .plate-strip,
+.portrait .spread>.page+.page .plate-strip,
+.portrait .spread>.page:first-child:not(.page-cover) .plate-strip {
+  margin: auto -34px -30px;
+}
+
+.portrait .plate-strip .plate-img {
+  max-height: 340px;
+  object-fit: cover;
+  object-position: 50% 42%;
+}
+
+.portrait .pg-num,
+.portrait .spread>.page:first-child:not(.page-cover) .pg-num {
+  top: 20px;
+  left: 30px;
+}
+
+.portrait .pg-num-r {
+  left: auto;
+  right: 30px;
+}
+
+.portrait .page-image .pg-num-r {
+  top: 20px;
+  right: 20px;
+}
+
+/* A spread-wide page carries both its leaf numbers; on one leaf the second
+   would sit beside the first. */
+.portrait .page-span .pg-num-r {
+  display: none;
+}
+
+.portrait .pg-title {
+  font-size: 33px;
+  margin-top: 26px;
+}
+
+.portrait .ch-label {
+  margin: 22px 0 4px;
+}
+
+.portrait .ornament {
+  margin: 12px 0 16px;
+}
+
+.portrait .dropcap p:first-child::first-letter {
+  font-size: 52px;
+}
+
+.portrait .cover-head {
+  top: 40px;
+  left: 32px;
+  right: 32px;
+}
+
+.portrait .cover-title {
+  font-size: 42px;
+}
+
+.portrait .cover-cta {
+  bottom: 34px;
+  left: 32px;
+  font-size: 28px;
+}
+
+/* Full-bleed art: the narrative takes the whole leaf instead of a half-spread
+   column, so the legibility wash runs top-to-bottom — brightest under the
+   words, clearing into the art below them. */
+.portrait .page-chapter-full .chapter-overlay,
+.portrait .page-chapter-single .chapter-overlay,
+.portrait .ls-top-full .chapter-overlay {
+  width: 100%;
+  max-width: 100%;
+  padding: 40px 32px 34px;
+}
+
+.portrait .chapter-wash,
+.portrait .page-chapter-full>.chapter-wash,
+.portrait .ls-top-full>.chapter-wash {
+  background: linear-gradient(180deg, rgba(244, 236, 214, .95) 0%, rgba(244, 236, 214, .88) 40%, rgba(244, 236, 214, .34) 62%, rgba(244, 236, 214, 0) 80%);
+}
+
+/* The horizontal tail that fades the wash past the last word belongs to a
+   spread; the vertical wash above replaces it. */
+.portrait .page-chapter-full .chapter-wash+.chapter-overlay::before,
+.portrait .ls-top-full .chapter-wash+.chapter-overlay::before {
+  display: none;
+}
+
+.portrait .chapter-overlay .pg-body {
+  overflow-y: auto;
+}
+
+.portrait .page-span {
+  padding: 34px 30px;
+}
+
+.portrait .span-title {
+  font-size: 30px;
+  margin-top: 14px;
+}
+
+/* The life journey reads down the page: plate on the left of each milestone,
+   year and caption beside it. The dashed connector only makes sense threading
+   a single horizontal row of dots, so both it and the dots step aside. */
+.portrait .tl-track {
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-top: 14px;
+  align-content: start;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.portrait .tl-track::before,
+.portrait .tl-dot {
+  display: none;
+}
+
+.portrait .tl-item {
+  display: grid;
+  grid-template-columns: 118px 1fr;
+  grid-template-areas: "plate year" "plate cap";
+  column-gap: 16px;
+  align-content: center;
+  text-align: left;
+}
+
+.portrait .tl-plate {
+  grid-area: plate;
+  width: 118px;
+  max-width: none;
+}
+
+.portrait .tl-year {
+  grid-area: year;
+  align-self: end;
+  margin: 0 0 4px;
+}
+
+.portrait .tl-cap {
+  grid-area: cap;
+  align-self: start;
+  max-width: none;
+}
+
+.portrait .tl-quote {
+  font-size: 24px;
+  margin-top: 14px;
+}
+
+/* The attribution takes its own line rather than trailing off the quote's
+   last wrapped word. */
+.portrait .tl-quote span {
+  display: block;
+  margin-top: 6px;
+}
+
+.portrait .tr-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+  overflow-y: auto;
+}
+
+.portrait .tr-name {
+  font-size: 13px;
+}
+
+.portrait .page-lessons {
+  padding: 34px 30px 0;
+}
+
+/* Narrative above, illustration below — they can't sit shoulder to shoulder.
+   min-height:0 is what lets the narrative give way: stacked, its automatic
+   minimum is the whole text, which would push the illustration down over the
+   lessons band instead of scrolling. */
+.portrait .ls-top {
+  flex-direction: column;
+  gap: 16px;
+}
+
+.portrait .ls-left {
+  min-height: 0;
+}
+
+.portrait .ls-right {
+  flex: 0 0 210px;
+}
+
+.portrait .ls-right .plate {
+  inset: 0;
+}
+
+.portrait .ls-top-full {
+  margin: -34px -30px 0;
+}
+
+/* Two by two, and tighter — at full size the band is one row across a whole
+   spread; here it must leave the narrative above it room to breathe. */
+.portrait .ls-band {
+  margin: 0 -30px;
+  padding: 16px 24px 18px;
+}
+
+.portrait .ls-band-title {
+  font-size: 19px;
+  margin-bottom: 10px;
+}
+
+.portrait .ls-row {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px 14px;
+}
+
+.portrait .ls-ic {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  margin-bottom: 7px;
+}
+
+.portrait .ls-text {
+  max-width: none;
+}
+
+.portrait .page-closing {
+  padding: 40px 32px;
+}
+
+.portrait .close-take {
+  font-size: 38px;
+}
+
+/* Flip controls drop to the bottom corners, in reach of a thumb and off the
+   text column. */
+.portrait .nav {
+  top: auto;
+  bottom: 16px;
+  transform: none;
+  width: 46px;
+  height: 46px;
+  font-size: 23px;
+}
+
+.portrait .nav-prev {
+  left: 14px;
+}
+
+.portrait .nav-next {
+  right: 14px;
+}
+
+.portrait .book-progress {
+  bottom: 31px;
+}
+
 /* Flip chrome hugs the edges — on a phone the book itself now reaches them. */
 .compact .nav {
   width: 42px;

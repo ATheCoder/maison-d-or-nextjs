@@ -13,7 +13,7 @@
  *
  * Styles live in GoldenStory.module.css (scoped CSS Module).
  */
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import styles from './GoldenStory.module.css';
 import { formatDate, formatYear } from '@/lib/dates';
 
@@ -32,6 +32,21 @@ const BOOK_H = 866;
 // GoldenStory.module.css for the layout that goes with the shorter canvas.
 const BOOK_H_MIN = 600;
 const SHORT_H = 560;
+
+// A space taller than this ratio of its width (a phone stood upright is about
+// 1:2) can't show an open spread at any readable size, so the canvas becomes a
+// SINGLE leaf and the flip controls turn one page at a time — see `portrait` in
+// GoldenStory.module.css. The leaf is as wide as the space allows within these
+// bounds, which is what sets the type size: narrow enough on a phone that 16.5px
+// body copy lands around 14px on screen, wide enough on a tablet that it doesn't
+// balloon.
+const PORTRAIT_RATIO = 0.8;
+const LEAF_W_MIN = 440;
+const LEAF_W_MAX = 720;
+const LEAF_H_MIN = 640;
+const LEAF_H_MAX = 1500;
+
+const clamp = (min, v, max) => Math.min(max, Math.max(min, v));
 
 // Strip leading/trailing decoration (~, dashes, quotes) the source sometimes carries.
 function cleanQuote(str) {
@@ -178,10 +193,17 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
   const cur = controlled ? page : internalCur;
   const scaleRef = useRef(null);
   const stageRef = useRef(null);
-  // The canvas height the book is currently laid out at, and whether that is
-  // the shortened (mobile-landscape) canvas — see fit() below.
-  const [bookH, setBookH] = useState(BOOK_H);
-  const [compact, setCompact] = useState(false);
+  // The canvas the book is currently laid out on, and which of the three
+  // layouts it belongs to: 'spread' (the classic open book), 'compact' (a
+  // shorter, wider spread) or 'portrait' (a single leaf) — see fit() below.
+  const [canvas, setCanvas] = useState({ w: BOOK_W, h: BOOK_H, mode: 'spread' });
+  const portrait = canvas.mode === 'portrait';
+  // Which leaf of the current spread is showing. Only portrait reads it: the
+  // other layouts show both leaves at once.
+  const [leaf, setLeaf] = useState(0);
+  // Set when go() moves to another spread and picks the leaf to land on, so
+  // the reset-on-spread-change effect below leaves that choice alone.
+  const leafPinned = useRef(false);
 
   // ── Map the person onto the book's content model ──────────────────────────
   const name = story?.name || 'A Golden Life';
@@ -234,8 +256,14 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
 
   // ── Build the spreads (JSX), assigning page numbers left→right in order ────
   const spreads = [];
-  const add = (label, inner) => {
+  // How many leaves of each spread are worth turning to in portrait, where
+  // only one shows at a time: 2 for a true two-page spread, 1 for anything
+  // that fills the spread as a single piece (a full-bleed chapter, the
+  // timeline, the lessons page) or leaves its facing leaf blank.
+  const leaves = [];
+  const add = (label, inner, leafCount = 2) => {
     const idx = spreads.length;
+    leaves.push(leafCount);
     spreads.push(
       <div key={idx} className={cx(styles.spread, idx === cur && styles.on)} data-screen-label={label}>
         {inner}
@@ -318,7 +346,7 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
           {singleLeaf(ch, lNum, 'left')}
           {partner ? singleLeaf(partner, rNum, 'right') : <div className={styles.page} />}
         </>
-      ));
+      ), partner ? 2 : 1);
       ci += partner ? 2 : 1;
       continue;
     }
@@ -341,7 +369,7 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
             </div>
           </div>
         </div>
-      ));
+      ), 1);
       ci += 1;
       continue;
     }
@@ -393,7 +421,7 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
           <p className={styles['tl-quote']}>{`“${quote}”`} <span>{`— ${name}`}</span></p>
         )}
       </div>
-    ));
+    ), 1);
   }
 
   // Treasures left behind: gallery left, reflection right.
@@ -493,7 +521,7 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
           </div>
         )}
       </div>
-    ));
+    ), 1);
   }
 
   // Closing page.
@@ -508,27 +536,60 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
         <p className={styles['close-end']}>The End</p>
         <p className={styles['close-name']}>{`A Golden Story · ${name}`}</p>
       </div>
-    ));
+    ), 1);
   }
 
   const count = spreads.length;
-  const go = useCallback(
-    (dir) => {
-      const clamp = (s) => Math.max(0, Math.min(count - 1, s + dir));
-      if (controlled) onPageChange?.(clamp(cur));
-      else setInternalCur(clamp);
-    },
-    [count, controlled, onPageChange, cur]
-  );
+  const leavesAt = (i) => leaves[i] ?? 1;
+  // The leaf actually on show: a mode change (a phone turned upright and back)
+  // can leave `leaf` pointing past the spread it now lands on.
+  const activeLeaf = portrait ? Math.min(leaf, leavesAt(cur) - 1) : 0;
+
+  const goTo = (spread) => {
+    if (controlled) onPageChange?.(spread);
+    else setInternalCur(spread);
+  };
+
+  // One step of the flip controls. In portrait a step is a leaf, so a two-page
+  // spread takes two steps and stepping back off a spread lands on its
+  // predecessor's *last* leaf.
+  const go = (dir) => {
+    if (!portrait) return goTo(clamp(0, cur + dir, count - 1));
+    if (dir > 0) {
+      if (activeLeaf + 1 < leavesAt(cur)) return setLeaf(activeLeaf + 1);
+      if (cur + 1 < count) { leafPinned.current = true; setLeaf(0); goTo(cur + 1); }
+      return;
+    }
+    if (activeLeaf > 0) return setLeaf(activeLeaf - 1);
+    if (cur > 0) { leafPinned.current = true; setLeaf(leavesAt(cur - 1) - 1); goTo(cur - 1); }
+  };
+
+  // Keep the latest go() reachable from the key handler without re-binding the
+  // listener (and re-fitting the book) on every page turn.
+  const goRef = useRef(go);
+  useEffect(() => { goRef.current = go; });
+
+  // A spread change from anywhere else — the editor's rail, a controlled
+  // `page` prop — opens on the first leaf.
+  useEffect(() => {
+    if (leafPinned.current) { leafPinned.current = false; return; }
+    setLeaf(0);
+  }, [cur]);
+
+  // "n / total" counts leaves in portrait, since that is what a step turns.
+  const stepTotal = portrait ? leaves.reduce((n, l) => n + l, 0) : count;
+  const stepNow = portrait
+    ? leaves.slice(0, cur).reduce((n, l) => n + l, 0) + activeLeaf + 1
+    : cur + 1;
 
   // Fit the book: to the host container when embedded, otherwise to the
   // viewport (plus keyboard nav for the full-screen view only — a global key
   // handler would hijack arrow keys away from the editor's text fields).
   //
-  // On a short viewport (a phone in landscape, or a squat editor pane) the
-  // book's own canvas is shortened toward the space's aspect ratio first, so
-  // the spread fills the width instead of being letterboxed at 3:2; the fit
-  // then scales that wider canvas up. Gutters shrink to match.
+  // The canvas is reshaped to the space before it is scaled into it, so the
+  // book fills what it is given instead of being letterboxed at a fixed 3:2:
+  // a short space (a phone held sideways, a squat editor pane) gets a shorter,
+  // wider spread; a tall narrow one gets a single leaf. Gutters shrink to match.
   useEffect(() => {
     const fit = () => {
       const el = scaleRef.current;
@@ -536,16 +597,24 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
       const box = embedded ? stageRef.current : null;
       const availW = box ? box.clientWidth : window.innerWidth;
       const availH = box ? box.clientHeight : window.innerHeight;
-      const short = availH < SHORT_H;
-      const gut = short ? 16 : 40;
+      const tall = availW < availH * PORTRAIT_RATIO;
+      const short = !tall && availH < SHORT_H;
+      const gut = tall ? 24 : short ? 16 : 40;
       const w = Math.max(1, availW - gut);
       const h = Math.max(1, availH - gut);
-      const bh = short
-        ? Math.round(Math.min(BOOK_H, Math.max(BOOK_H_MIN, (BOOK_W * h) / w)))
-        : BOOK_H;
-      setBookH(bh);
-      setCompact(bh < BOOK_H);
-      el.style.transform = `scale(${Math.min(w / BOOK_W, h / bh)})`;
+      let bw = BOOK_W;
+      let bh = BOOK_H;
+      let mode = 'spread';
+      if (tall) {
+        mode = 'portrait';
+        bw = clamp(LEAF_W_MIN, w, LEAF_W_MAX);
+        bh = clamp(LEAF_H_MIN, Math.round((bw * h) / w), LEAF_H_MAX);
+      } else if (short) {
+        mode = 'compact';
+        bh = clamp(BOOK_H_MIN, Math.round((BOOK_W * h) / w), BOOK_H);
+      }
+      setCanvas((c) => (c.w === bw && c.h === bh && c.mode === mode ? c : { w: bw, h: bh, mode }));
+      el.style.transform = `scale(${Math.min(w / bw, h / bh)})`;
     };
     fit();
     let ro;
@@ -561,8 +630,8 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
       window.addEventListener('orientationchange', onTurn);
     }
     const onKey = (e) => {
-      if (e.key === 'ArrowRight' || e.key === ' ') { go(1); e.preventDefault(); }
-      else if (e.key === 'ArrowLeft') { go(-1); }
+      if (e.key === 'ArrowRight' || e.key === ' ') { goRef.current(1); e.preventDefault(); }
+      else if (e.key === 'ArrowLeft') { goRef.current(-1); }
     };
     if (!embedded) window.addEventListener('keydown', onKey);
     return () => {
@@ -572,13 +641,13 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
       window.removeEventListener('orientationchange', onTurn);
       if (!embedded) window.removeEventListener('keydown', onKey);
     };
-  }, [go, embedded]);
+  }, [embedded]);
 
   if (!story) return null;
 
   return (
     <div
-      className={cx(styles['book-stage'], compact && styles.compact)}
+      className={cx(styles['book-stage'], canvas.mode === 'compact' && styles.compact, portrait && styles.portrait)}
       ref={stageRef}
       style={embedded ? { position: 'relative', inset: 'auto', width: '100%', height: '100%' } : undefined}
     >
@@ -597,7 +666,8 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
       )}
 
       <div className={styles['book-scale']} ref={scaleRef}>
-        <div className={styles.book} style={bookH === BOOK_H ? undefined : { height: bookH }}>
+        {/* --leaf is which half of the spread portrait slides into view. */}
+        <div className={styles.book} style={{ width: canvas.w, height: canvas.h, '--leaf': activeLeaf }}>
           <div className={styles['book-leather']} />
           <div className={styles['book-body']}>
             {spreads}
@@ -626,7 +696,7 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
       {!embedded && (
         <>
           <button className={cx(styles.nav, styles['nav-next'])} onClick={() => go(1)} aria-label="Next page">{'›'}</button>
-          <div className={styles['book-progress']}>{`${cur + 1} / ${count}`}</div>
+          <div className={styles['book-progress']}>{`${stepNow} / ${stepTotal}`}</div>
         </>
       )}
     </div>
