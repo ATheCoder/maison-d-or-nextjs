@@ -1,88 +1,69 @@
 'use client';
 /**
- * Daily Gold Mobile Tab Bar
- * Fixed bottom navigation for mobile
+ * DGMobileTabBar (mobile, <768px)
+ *
+ * The second renderer of dgNavConfig: the same global destinations as the
+ * desktop rail (never a different route set), plus the "My World" shelf items
+ * as action tabs so the child's own space is always one tap away. Hidden at
+ * ≥768px by the shell stylesheet (`.dg-tabbar`), which also reserves bottom
+ * space for it via `--dg-tabbar-h` (including the iOS safe-area inset).
  */
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
+import { DG_DESTINATIONS, DG_SHELF, DGIcon } from '@/components/dailygold/dgNavConfig';
 
-const TabIcon = ({ name, size = 22, color = 'currentColor' }) => {
-  const icons = {
-    gold: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
-    explore: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
-    saved: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>,
-    family: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
-  };
-  return icons[name] || null;
-};
-
-const TABS = [
-  { label: 'For You', path: '/daily-gold-edition', iconName: 'gold' },
-  { label: 'Explore', path: '/discover', iconName: 'explore' },
-  { label: 'Saved', path: '/saved', iconName: 'saved' },
-  { label: 'Family', path: '/family', iconName: 'family' },
-];
-
-export default function DGMobileTabBar() {
+export default function DGMobileTabBar({ child = null, onShelfAction }) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme } = useTheme();
 
+  const tabs = [
+    ...DG_DESTINATIONS.map(d => ({ ...d, type: 'route' })),
+    // Shelf items only make sense with an active reader.
+    ...(child ? DG_SHELF.map(s => ({ ...s, type: 'action' })) : []),
+  ];
+
+  const isActive = (tab) =>
+    tab.type === 'route' &&
+    (pathname === tab.path || (tab.key === 'today' && (pathname || '').includes('daily-gold')));
+
   return (
-    <nav style={{
-      position: 'fixed',
-      left: 0,
-      right: 0,
-      bottom: 0,
-      height: 70,
-      background: theme.bgCard,
-      borderTop: `1px solid ${theme.accentGold}20`,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-around',
-      padding: '0 1rem',
-      zIndex: 1000,
-      boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
-    }}>
-      {TABS.map(tab => {
-        const isActive = pathname === tab.path;
+    <nav
+      className="dg-tabbar"
+      aria-label="Daily Gold navigation"
+      style={{
+        background: theme.bgCard,
+        borderTop: `1px solid ${theme.accentGold}20`,
+        boxShadow: '0 -4px 20px rgba(44,36,22,0.08)',
+      }}
+    >
+      {tabs.map(tab => {
+        const active = isActive(tab);
         return (
           <button
-            key={tab.label}
-            onClick={() => router.push(tab.path)}
+            key={tab.key}
+            onClick={() => tab.type === 'route' ? router.push(tab.path) : (onShelfAction && onShelfAction(tab.key))}
+            aria-current={active ? 'page' : undefined}
             style={{
-              flex: 1,
-              border: 'none',
-              background: 'transparent',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px',
-              padding: '0.5rem',
-              opacity: isActive ? 1 : 0.6,
-              transition: 'all 0.2s ease',
+              flex: 1, minHeight: 48, border: 'none', background: 'transparent', cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: 3, padding: '0.4rem 0.25rem', transition: 'all 0.2s ease',
             }}
           >
-            <TabIcon name={tab.iconName} size={22} color={isActive ? theme.accentGold : theme.textMuted} />
+            <DGIcon name={tab.icon} size={22} color={active ? theme.accentGold : theme.textMuted} />
             <span style={{
               fontFamily: theme.fontBody,
-              fontSize: '0.65rem',
-              color: isActive ? theme.accentGold : theme.textMuted,
-              fontWeight: isActive ? 600 : 400,
+              fontSize: '0.7rem',
+              color: active ? theme.accentGold : theme.textMuted,
+              fontWeight: active ? 700 : 400,
+              letterSpacing: '0.02em',
             }}>
               {tab.label}
             </span>
-            {isActive && (
-              <div style={{
-                width: 4,
-                height: 4,
-                borderRadius: '50%',
-                background: theme.accentGold,
-                marginTop: '2px',
-              }} />
-            )}
+            <span aria-hidden="true" style={{
+              width: 4, height: 4, borderRadius: '50%',
+              background: active ? theme.accentGold : 'transparent',
+            }} />
           </button>
         );
       })}

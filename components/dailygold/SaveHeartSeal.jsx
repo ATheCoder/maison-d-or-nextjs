@@ -1,10 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useTheme } from '@/components/theme/ThemeContext';
 
-const GOLD = '#C8A96B';
-
-export default function SaveHeartSeal({ 
+export default function SaveHeartSeal({
   childId, 
   itemType, 
   itemId, 
@@ -17,6 +16,7 @@ export default function SaveHeartSeal({
   editionDate,
   size = 'md'
 }) {
+  const { theme } = useTheme();
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -27,7 +27,9 @@ export default function SaveHeartSeal({
       .catch(() => {});
   }, [childId, itemId]);
 
-  const handleSave = async () => {
+  const handleSave = async (e) => {
+    // The heart sits on cards that open a modal on tap — keep the tap local.
+    e.stopPropagation();
     if (!childId || loading) return;
     setLoading(true);
     try {
@@ -65,10 +67,12 @@ export default function SaveHeartSeal({
       <button
         onClick={handleSave}
         disabled={loading}
+        aria-pressed={saved}
+        aria-label={saved ? 'Saved' : `Save ${itemTitle}`}
         title={saved ? 'Saved' : 'Save to your book'}
         style={{
-          width: 36,
-          height: 36,
+          width: 44,
+          height: 44,
           borderRadius: '50%',
           border: 'none',
           background: 'transparent',
@@ -84,11 +88,12 @@ export default function SaveHeartSeal({
         onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
       >
         <svg
+          aria-hidden="true"
           width={heartSize}
           height={heartSize}
           viewBox="0 0 24 24"
-          fill={saved ? GOLD : 'none'}
-          stroke={GOLD}
+          fill={saved ? theme.accentGold : 'none'}
+          stroke={theme.accentGold}
           strokeWidth="1.8"
           strokeLinecap="round"
           strokeLinejoin="round"

@@ -6,28 +6,29 @@ import { resolveLocation } from '@/lib/countries';
 
 // Small vintage wax seal for year navigation inside On This Day
 function YearSeal({ direction, disabled, onPress, pressing }) {
-  const cream = '#FAF7F2';
-  const linen = '#EDE0CC';
-  const gold = disabled ? 'rgba(201,169,110,0.3)' : 'rgba(201,169,110,0.92)';
-  const goldMid = disabled ? 'rgba(201,169,110,0.2)' : 'rgba(201,169,110,0.55)';
-  const goldFaint = disabled ? 'rgba(201,169,110,0.12)' : 'rgba(201,169,110,0.3)';
+  const { theme } = useTheme();
   const isBack = direction === 'back';
+  const gold = disabled ? `${theme.accentGold}4D` : `${theme.accentGold}EB`;
+  const goldMid = disabled ? `${theme.accentGold}33` : `${theme.accentGold}8C`;
+  const goldFaint = disabled ? `${theme.accentGold}1F` : `${theme.accentGold}4D`;
 
   return (
     <button
-      onClick={disabled ? undefined : onPress}
+      type="button"
+      onClick={onPress}
+      disabled={disabled}
+      aria-label={isBack ? 'Travel to an earlier year' : 'Travel to a later year'}
       style={{
-        width: 40, height: 40, borderRadius: '50%',
-        background: disabled
-          ? 'radial-gradient(circle at 35% 30%, #F0EAE0 0%, #E0D8CC 60%, #D4CBBC 100%)'
-          : `radial-gradient(circle at 35% 30%, ${cream} 0%, ${linen} 55%, #D8CCBA 100%)`,
-        border: `2px solid ${disabled ? 'rgba(201,169,110,0.2)' : 'rgba(201,169,110,0.65)'}`,
-        boxShadow: disabled ? 'none'
+        width: 44, height: 44, borderRadius: '50%', padding: 0,
+        background: `radial-gradient(circle at 35% 30%, ${theme.bgCard} 0%, ${theme.bgSoft} 55%, ${theme.bgPrimary} 100%)`,
+        border: `2px solid ${theme.accentGold}${disabled ? '33' : 'A6'}`,
+        boxShadow: disabled
+          ? 'none'
           : pressing
-            ? '0 1px 3px rgba(100,80,40,0.2), inset 0 2px 4px rgba(0,0,0,0.1)'
-            : '0 2px 8px rgba(100,80,40,0.18), inset 0 1px 0 rgba(255,255,255,0.7)',
+            ? `inset 0 2px 4px ${theme.accentGold}26`
+            : `${theme.shadowSoft}, inset 0 1px 0 ${theme.accentGold}26`,
         cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.35 : 1,
+        opacity: disabled ? 0.45 : 1,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         transform: pressing ? 'scale(0.87)' : 'scale(1)',
         transition: 'transform 0.1s ease, box-shadow 0.1s ease',
@@ -35,9 +36,9 @@ function YearSeal({ direction, disabled, onPress, pressing }) {
       }}
     >
       {/* Inner emboss ring */}
-      <div style={{ position: 'absolute', inset: 3, borderRadius: '50%', border: `1px solid rgba(201,169,110,${disabled ? '0.1' : '0.35'})`, pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', inset: 3, borderRadius: '50%', border: `1px solid ${theme.accentGold}${disabled ? '1A' : '59'}`, pointerEvents: 'none' }} />
       {/* Arrow SVG */}
-      <svg viewBox="0 0 40 40" width="26" height="26" style={{ display: 'block' }}>
+      <svg viewBox="0 0 40 40" width="26" height="26" aria-hidden="true" style={{ display: 'block' }}>
         <circle cx="20" cy="20" r="17" fill="none" stroke={goldMid} strokeWidth="0.9" />
         <circle cx="20" cy="20" r="13" fill="none" stroke={goldFaint} strokeWidth="0.5" />
         {isBack ? (
@@ -183,7 +184,7 @@ export default function DGOnThisDay({ events = [], onTrack, onFlagEarned }) {
       <div style={{ padding: '0' }}>
         {/* Header — fixed height, matches sibling columns exactly */}
         <div style={{ marginBottom: '0.85rem' }}>
-          <p style={{ fontFamily: theme.fontBody, fontSize: '0.55rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: theme.accentSage, margin: '0 0 0.35rem' }}>
+          <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: theme.accentSage, margin: '0 0 0.35rem' }}>
             Travel through time
           </p>
           <h2 style={{ fontFamily: theme.fontHeadline, fontSize: '1.4rem', fontWeight: 600, color: theme.textHeadline, margin: 0, lineHeight: 1.15 }}>
@@ -193,17 +194,18 @@ export default function DGOnThisDay({ events = [], onTrack, onFlagEarned }) {
 
         {/* Card — year nav INSIDE, below the year heading */}
         <div style={{
-          background: 'rgba(255,248,238,0.7)',
-          borderRadius: 14,
+          background: theme.bgCard,
+          borderRadius: theme.radiusSmall,
           overflow: 'hidden',
-          boxShadow: '0 2px 16px rgba(180,140,80,0.10)',
+          border: `1px solid ${theme.accentGold}25`,
+          boxShadow: theme.shadowSoft,
         }}>
           {/* Year display + arrows — all inside the card */}
-          <div style={{ padding: '1rem 1.25rem 0.75rem', borderBottom: `1px solid rgba(201,169,110,0.12)` }}>
+          <div style={{ padding: '1rem 1.25rem 0.75rem', borderBottom: `1px solid ${theme.accentGold}1F` }}>
             <p style={{ fontFamily: theme.fontHeadline, fontSize: '1.6rem', fontWeight: 600, color: theme.textHeadline, margin: '0 0 0.1rem', lineHeight: 1, textAlign: 'center' }}>
               {currentYear}
             </p>
-            <p style={{ fontFamily: theme.fontBody, fontSize: '0.6rem', color: `${theme.accentGold}70`, margin: '0 0 0.75rem', textAlign: 'center' }}>
+            <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', color: theme.textMuted, margin: '0 0 0.75rem', textAlign: 'center' }}>
               {currentYear === MAX_YEAR ? 'Most recent year' : `${MAX_YEAR - currentYear} years ago`}
             </p>
             {/* Arrows below the year */}
@@ -230,11 +232,12 @@ export default function DGOnThisDay({ events = [], onTrack, onFlagEarned }) {
               return (
                 <div
                   key={`${ev.year}:${ev.position ?? i}`}
-                  style={i > 0 ? { borderTop: '1px solid rgba(201,169,110,0.12)' } : undefined}
+                  style={i > 0 ? { borderTop: `1px solid ${theme.accentGold}1F` } : undefined}
                 >
                   {ev.image_url && (
-                    <div style={{ height: 140, position: 'relative', background: `url('${ev.image_url}') center/cover` }}>
-                      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(255,248,238,0.95) 100%)' }} />
+                    <div style={{ position: 'relative' }}>
+                      <img src={ev.image_url} alt="" style={{ display: 'block', width: '100%', aspectRatio: '16/10', objectFit: 'cover' }} />
+                      <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent 40%, ${theme.bgCard} 100%)` }} />
                     </div>
                   )}
 
@@ -242,7 +245,7 @@ export default function DGOnThisDay({ events = [], onTrack, onFlagEarned }) {
                     {ev.location && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.6rem' }}>
                         {iso2 && <FlagSealMedallion countryCode={iso2} countryName={ev.location} size="xs" earned />}
-                        <p style={{ fontFamily: theme.fontBody, fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: theme.accentSage, margin: 0 }}>
+                        <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: theme.accentSage, margin: 0 }}>
                           {ev.location}
                         </p>
                       </div>
@@ -268,13 +271,16 @@ export default function DGOnThisDay({ events = [], onTrack, onFlagEarned }) {
               </p>
               {nearestAuthoredYear != null && (
                 <button
+                  type="button"
                   onClick={() => jumpToYear(nearestAuthoredYear)}
                   style={{
                     marginTop: '0.9rem',
                     padding: '0.5rem 1.1rem',
+                    minHeight: 44,
                     borderRadius: 999,
                     border: `1px solid ${theme.accentGold}55`,
-                    background: 'rgba(255,248,238,0.9)',
+                    background: theme.bgCard,
+                    boxShadow: theme.shadowSoft,
                     fontFamily: theme.fontBody,
                     fontSize: '0.72rem',
                     letterSpacing: '0.08em',
@@ -282,7 +288,7 @@ export default function DGOnThisDay({ events = [], onTrack, onFlagEarned }) {
                     cursor: 'pointer',
                   }}
                 >
-                  Travel to {nearestAuthoredYear} →
+                  Travel to {nearestAuthoredYear} <span aria-hidden="true">→</span>
                 </button>
               )}
             </div>

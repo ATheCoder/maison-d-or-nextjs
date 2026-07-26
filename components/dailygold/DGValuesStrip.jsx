@@ -2,7 +2,9 @@
 /**
  * Daily Gold Values Strip
  * Bottom values bar: Wonder · Wisdom · Kindness · Courage · Connection
+ * Purely decorative litany, hidden from assistive tech.
  */
+import { Fragment } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
 
 const VALUES = ['Wonder', 'Wisdom', 'Kindness', 'Courage', 'Connection'];
@@ -16,15 +18,21 @@ export default function DGValuesStrip() {
       background: `linear-gradient(to bottom, ${theme.bgPrimary}, ${theme.bgSoft})`,
       textAlign: 'center',
     }}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '2rem',
-        flexWrap: 'wrap',
-      }}>
+      {/* One flat flex-wrap row: values and dividers are sibling flex items so
+          wrapping distributes space evenly instead of dragging each divider
+          along with its value. */}
+      <div
+        aria-hidden="true"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '1rem 2rem',
+          flexWrap: 'wrap',
+        }}
+      >
         {VALUES.map((value, i) => (
-          <div key={value} style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+          <Fragment key={value}>
             <span style={{
               fontFamily: theme.fontHeadline,
               fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)',
@@ -36,13 +44,13 @@ export default function DGValuesStrip() {
               {value}
             </span>
             {i < VALUES.length - 1 && (
-              <div style={{
+              <span style={{
                 width: 40,
                 height: 1,
                 background: `linear-gradient(to right, transparent, ${theme.accentGold}40, transparent)`,
               }} />
             )}
-          </div>
+          </Fragment>
         ))}
       </div>
     </div>

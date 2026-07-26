@@ -4,11 +4,15 @@
  * Renders a country flag as a vintage gold-rimmed circular seal medallion.
  * size: 'xs'=24px | 'sm'=36px | 'md'=56px | 'lg'=80px
  * earned: true = full color | false = greyed silhouette
+ * With onClick it renders a real <button> (padded to a ≥44px hit area);
+ * otherwise a role="img" element labelled with the country and earned state.
  */
+import { useTheme } from '@/components/theme/ThemeContext';
 
 const SIZES = { xs: 24, sm: 36, md: 56, lg: 80 };
 
 export default function FlagSealMedallion({ countryCode, countryName, size = 'sm', earned = true, onClick, showLabel = false, fallbackInitials }) {
+  const { theme } = useTheme();
   const px = SIZES[size] || SIZES.sm;
   const code = (countryCode || '').toUpperCase();
 
@@ -28,17 +32,10 @@ export default function FlagSealMedallion({ countryCode, countryName, size = 'sm
   const fontSize = Math.round(px * 0.5);
   const fallbackFontSize = Math.round(px * 0.32);
 
-  return (
-    <div
-      onClick={onClick}
-      title={countryName}
-      style={{
-        display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
-        gap: Math.round(px * 0.08),
-        cursor: onClick ? 'pointer' : 'default',
-        userSelect: 'none',
-      }}
-    >
+  const ariaLabel = `${countryName || fallbackText}, ${earned ? 'collected' : 'not collected yet'}`;
+
+  const medallion = (
+    <>
       <div style={{
         width: px, height: px, borderRadius: '50%',
         position: 'relative', overflow: 'hidden', flexShrink: 0,
@@ -83,7 +80,7 @@ export default function FlagSealMedallion({ countryCode, countryName, size = 'sm
             position: 'absolute', inset: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: fallbackFontSize,
-            fontFamily: 'Cormorant Garamond, Georgia, serif',
+            fontFamily: theme.fontHeadline,
             fontWeight: 600,
             color: 'rgba(140,100,40,0.85)',
             lineHeight: 1,
@@ -97,9 +94,9 @@ export default function FlagSealMedallion({ countryCode, countryName, size = 'sm
 
       {showLabel && countryName && (
         <span style={{
-          fontFamily: 'Cormorant Garamond, Georgia, serif',
-          fontSize: Math.max(8, Math.round(px * 0.19)),
-          color: earned ? '#5C4A2A' : '#9A9490',
+          fontFamily: theme.fontHeadline,
+          fontSize: Math.max(10, Math.round(px * 0.19)),
+          color: earned ? theme.textBody : theme.textMuted,
           textAlign: 'center',
           lineHeight: 1.2,
           maxWidth: px * 1.5,
@@ -110,6 +107,44 @@ export default function FlagSealMedallion({ countryCode, countryName, size = 'sm
           {countryName}
         </span>
       )}
+    </>
+  );
+
+  const layout = {
+    display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
+    gap: Math.round(px * 0.08),
+    userSelect: 'none',
+  };
+
+  if (onClick) {
+    // Pad the hit area out to ≥44px even for the smallest medallions; the
+    // negative margin keeps the visual footprint unchanged.
+    const hitPad = Math.max(0, Math.ceil((44 - px) / 2));
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={ariaLabel}
+        title={countryName}
+        style={{
+          ...layout,
+          background: 'transparent',
+          border: 'none',
+          padding: hitPad,
+          margin: -hitPad,
+          cursor: 'pointer',
+          font: 'inherit',
+          color: 'inherit',
+        }}
+      >
+        <span aria-hidden="true" style={{ display: 'contents' }}>{medallion}</span>
+      </button>
+    );
+  }
+
+  return (
+    <div role="img" aria-label={ariaLabel} title={countryName} style={layout}>
+      {medallion}
     </div>
   );
 }

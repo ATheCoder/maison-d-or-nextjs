@@ -38,7 +38,9 @@
 }
 
 /* width/height must match BOOK_W/BOOK_H in GoldenStory.jsx (the fit-to-viewport
-   scale is computed from those constants). */
+   scale is computed from those constants). On short viewports the component
+   overrides the height inline with a shorter canvas and adds .compact to the
+   stage — see the compact block at the end of this file. */
 .book {
   position: relative;
   width: 1300px;
@@ -551,7 +553,11 @@
   line-height: 1.08;
 }
 
+/* --tl-plate is the milestone plate's edge length; the dashed connector below
+   hangs off it (plate + half a dot), so shrinking the plates on a compact
+   spread keeps the line threaded through the dots. */
 .tl-track {
+  --tl-plate: 218px;
   position: relative;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -566,7 +572,7 @@
   position: absolute;
   left: 7%;
   right: 7%;
-  top: 232px;
+  top: calc(var(--tl-plate) + 14px);
   height: 2px;
   background: repeating-linear-gradient(90deg, var(--gold) 0 7px, transparent 7px 15px);
   opacity: .55;
@@ -590,6 +596,7 @@
    childhood/chapter plates rather than a small thumbnail. */
 .tl-plate {
   width: 100%;
+  max-width: var(--tl-plate);
   aspect-ratio: 1 / 1;
   border-radius: 8px;
 }
@@ -988,4 +995,268 @@
   font-size: 13px;
   letter-spacing: .22em;
   z-index: 50;
+}
+
+/* ── Compact spread — phones held sideways, and other short viewports ───────
+   A phone in landscape is about 2.2:1, so the 3:2 book fits by height and ends
+   up letterboxed and small. The component shortens the canvas toward the
+   screen's own ratio (down to BOOK_H_MIN, see GoldenStory.jsx) and sets
+   .compact on the stage; the book then fills the screen and everything on it
+   scales up with it.
+
+   These rules pay for the ~270px of canvas height that buys, and they take it
+   out of the chrome — margins, plate sizes, band padding — not out of the body
+   copy, which is the whole point of the trade. Anything that could still run
+   long on the shorter leaf scrolls instead of spilling past the page edge. */
+.compact .book-leather {
+  inset: -10px;
+  border-radius: 10px;
+}
+
+.compact .book-leather::after {
+  inset: 6px;
+  border-radius: 6px;
+}
+
+.compact .corner {
+  width: 112px;
+  height: 112px;
+}
+
+/* Page frame: tighter margins, and the fold gutter narrows with them. */
+.compact .page {
+  padding: 30px 44px;
+}
+
+.compact .spread>.page:first-child:not(.page-cover) {
+  padding-right: 66px;
+}
+
+.compact .spread>.page+.page {
+  padding-left: 66px;
+}
+
+/* Full-bleed leaves keep their zero padding — the tighter .compact .page
+   padding above outspecifies the base rules that set it. */
+.compact .page-cover,
+.compact .page-image,
+.compact .spread>.page+.page.page-image {
+  padding: 0;
+}
+
+.compact .spread>.page:first-child:not(.page-cover) .pg-num {
+  left: 42px;
+}
+
+.compact .page-image .pg-num-r {
+  top: 24px;
+  right: 24px;
+}
+
+.compact .pg-num {
+  top: 20px;
+  left: 42px;
+}
+
+.compact .pg-num-r {
+  left: auto;
+  right: 42px;
+}
+
+.compact .pg-title {
+  font-size: 32px;
+  margin-top: 22px;
+}
+
+.compact .ch-label {
+  margin: 18px 0 4px;
+}
+
+.compact .ornament {
+  margin: 10px 0 14px;
+}
+
+.compact .dropcap p:first-child::first-letter {
+  font-size: 50px;
+}
+
+/* The bottom band follows the page's new padding, and is capped so a tall
+   illustration can't crowd the narrative off a short leaf (it crops instead). */
+.compact .plate-strip {
+  margin: auto -44px -30px;
+}
+
+.compact .spread>.page+.page .plate-strip {
+  margin-left: -66px;
+}
+
+.compact .spread>.page:first-child:not(.page-cover) .plate-strip {
+  margin-right: -66px;
+}
+
+.compact .plate-strip .plate-img {
+  max-height: 210px;
+  object-fit: cover;
+  object-position: 50% 42%;
+}
+
+.compact .cover-head {
+  top: 34px;
+  left: 40px;
+  right: 40px;
+}
+
+.compact .cover-title {
+  font-size: 42px;
+}
+
+.compact .cover-sub {
+  margin-top: 10px;
+}
+
+.compact .cover-cta {
+  bottom: 28px;
+  left: 40px;
+  font-size: 27px;
+}
+
+/* Full-bleed chapters: less padding around the overlaid text, and the text
+   scrolls within the overlay rather than running off the leaf. */
+.compact .page-chapter-full .chapter-overlay {
+  padding: 42px 28px 34px 48px;
+}
+
+.compact .page-chapter-single .chapter-overlay {
+  padding: 34px 18px 26px 42px;
+}
+
+.compact .chapter-overlay .pg-title {
+  margin-top: 12px;
+}
+
+.compact .chapter-overlay .pg-body {
+  overflow-y: auto;
+}
+
+.compact .page-span {
+  padding: 30px 48px;
+}
+
+.compact .span-title {
+  font-size: 33px;
+  margin-top: 8px;
+}
+
+/* Timeline: smaller plates (the connector follows --tl-plate) and a tighter
+   quote, so the whole journey still lands on one short spread. */
+.compact .tl-track {
+  --tl-plate: 168px;
+  margin-top: 16px;
+  gap: 14px;
+}
+
+.compact .tl-year {
+  font-size: 20px;
+}
+
+.compact .tl-dot {
+  margin: 12px 0 9px;
+}
+
+.compact .tl-quote {
+  font-size: 24px;
+  margin-top: 16px;
+}
+
+/* Treasures: landscape thumbnails keep the usual six visible at once on the
+   shorter leaf, and the gallery is the scrolling region so a longer list still
+   can't push the closing stamp off the page. */
+.compact .tr-intro {
+  margin-bottom: 12px;
+}
+
+.compact .tr-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+  overflow-y: auto;
+  gap: 12px;
+}
+
+.compact .tr-plate {
+  aspect-ratio: 4 / 3;
+}
+
+.compact .tr-stamp {
+  margin-top: 12px;
+  padding: 9px 14px;
+}
+
+.compact .page-lessons {
+  padding: 30px 44px 0;
+}
+
+.compact .ls-top {
+  gap: 28px;
+}
+
+.compact .ls-top-full {
+  margin: -30px -44px 0;
+}
+
+.compact .ls-top-full .chapter-overlay {
+  padding: 44px 24px 24px 48px;
+}
+
+.compact .ls-band {
+  margin: 0 -44px;
+  padding: 14px 44px 16px;
+}
+
+.compact .ls-band-title {
+  font-size: 19px;
+  margin-bottom: 10px;
+}
+
+.compact .ls-ic {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  margin-bottom: 6px;
+}
+
+.compact .ls-label {
+  margin-bottom: 2px;
+}
+
+.compact .page-closing {
+  padding: 36px;
+}
+
+.compact .close-take {
+  font-size: 38px;
+}
+
+.compact .close-end {
+  margin-top: 18px;
+}
+
+/* Flip chrome hugs the edges — on a phone the book itself now reaches them. */
+.compact .nav {
+  width: 42px;
+  height: 42px;
+  font-size: 21px;
+}
+
+.compact .nav-prev {
+  left: 8px;
+}
+
+.compact .nav-next {
+  right: 8px;
+}
+
+.compact .book-progress {
+  bottom: 7px;
+  font-size: 11px;
 }

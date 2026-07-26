@@ -3,21 +3,18 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
 
-const C = {
-  gold: '#C8A96B',
-  goldLight: '#D4BF8A',
-  goldDark: '#A8884A',
-  mocha: '#3A2D24',
-  sage: '#7F8F7C',
-};
+// Only for the luminous title gradient — no light/dark gold tokens exist.
+const GOLD_LIGHT = '#D4BF8A';
+const GOLD_DARK = '#A8884A';
 
 function FloatingParticle({ style }) {
+  const { theme } = useTheme();
   return (
-    <div style={{
+    <div aria-hidden="true" style={{
       position: 'absolute',
       width: 4, height: 4,
       borderRadius: '50%',
-      background: C.gold,
+      background: theme.accentGold,
       opacity: 0.3,
       animation: 'dgFloat 12s ease-in-out infinite',
       filter: 'blur(1px)',
@@ -54,87 +51,118 @@ function ThemeSwitcherSmall() {
   }
 
   return (
-    <div ref={ref} style={{ position: 'fixed', bottom: '1rem', right: '1rem', zIndex: 1000 }}>
-      {/* Popover with five color circles in vertical column */}
+    <div ref={ref} style={{
+      position: 'fixed',
+      bottom: 'calc(1rem + var(--dg-tabbar-h, 0px))',
+      right: '1rem',
+      zIndex: 1000,
+    }}>
+      {/* Popover with five color swatches in a vertical column */}
       {expanded && (
         <div style={{
           position: 'absolute',
-          bottom: '36px',
+          bottom: '52px',
           right: 0,
           display: 'flex',
           flexDirection: 'column',
-          gap: '0.4rem',
-          padding: '0.45rem',
+          padding: '0.25rem',
           background: theme.bgCard,
-          borderRadius: 8,
+          borderRadius: theme.radiusSmall,
           border: `1px solid ${theme.accentGold}20`,
-          boxShadow: '0 3px 14px rgba(44,36,22,0.12)',
+          boxShadow: theme.shadow,
         }}>
-          {Object.entries(allThemes).map(([key]) => (
+          {Object.entries(allThemes).map(([key, t]) => (
             <button
               key={key}
               onClick={() => { switchTheme(key); setExpanded(false); }}
+              aria-label={`Switch to ${t?.name || key} theme`}
+              aria-pressed={currentTheme === key}
               style={{
-                width: 20,
-                height: 20,
-                borderRadius: '50%',
+                width: 44,
+                height: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
                 border: 'none',
-                background: themeColors[key] || '#ccc',
+                background: 'transparent',
                 cursor: 'pointer',
-                opacity: currentTheme === key ? 1 : 0.85,
                 transition: 'transform 0.15s ease',
               }}
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-            />
+            >
+              <span aria-hidden="true" style={{
+                width: 20,
+                height: 20,
+                borderRadius: '50%',
+                background: themeColors[key] || '#ccc',
+                opacity: currentTheme === key ? 1 : 0.85,
+                boxShadow: currentTheme === key ? `0 0 0 2px ${theme.accentGold}66` : 'none',
+              }} />
+            </button>
           ))}
         </div>
       )}
-      {/* Single circular button 28px x 28px */}
+      {/* Toggle button — 44px tap target with a 28px swatch inside */}
       <button
         onClick={() => setExpanded(!expanded)}
+        aria-label={expanded ? 'Close theme picker' : 'Open theme picker'}
+        aria-expanded={expanded}
         style={{
-          width: 28,
-          height: 28,
-          borderRadius: '50%',
-          background: themeColors[currentTheme] || '#E8D5B0',
-          border: '1.5px solid rgba(201,169,107,0.3)',
+          width: 44,
+          height: 44,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 0,
+          border: 'none',
+          background: 'transparent',
           cursor: 'pointer',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
           transition: 'transform 0.2s ease',
         }}
         onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
         onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-      />
+      >
+        <span aria-hidden="true" style={{
+          width: 28,
+          height: 28,
+          borderRadius: '50%',
+          background: themeColors[currentTheme] || '#E8D5B0',
+          border: `1.5px solid ${theme.accentGold}4D`,
+          boxShadow: theme.shadowSoft,
+          display: 'block',
+        }} />
+      </button>
     </div>
   );
 }
 
+// Particle scatter, seeded by index so server and client render identically
+// (no hydration mismatch) and render stays pure — no client-only state needed.
+const seeded = (n) => {
+  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+};
+// Values are rounded to 2 decimals so the server-serialized CSS string and
+// the client's computed value are byte-identical (full-precision floats get
+// truncated differently during SSR, tripping hydration warnings).
+const r2 = (n) => Math.round(n * 100) / 100;
+const PARTICLES = Array.from({ length: 15 }, (_, i) => ({
+  left: `${r2(seeded(i) * 100)}%`,
+  top: `${r2(seeded(i + 20) * 100)}%`,
+  animationDelay: `${r2(seeded(i + 40) * 12)}s`,
+  animationDuration: `${r2(10 + seeded(i + 60) * 8)}s`,
+  width: `${r2(2 + seeded(i + 80) * 4)}px`,
+  height: `${r2(2 + seeded(i + 80) * 4)}px`,
+  opacity: r2(0.15 + seeded(i + 100) * 0.3),
+}));
+
 export default function DGHero({ dateStr, heroImageUrl }) {
   const { theme } = useTheme();
-  const [imgUrl, setImgUrl] = useState(heroImageUrl || null);
-
-  // Sync when parent resolves the prop asynchronously
-  useEffect(() => {
-    if (heroImageUrl) setImgUrl(heroImageUrl);
-  }, [heroImageUrl]);
-
-  // Randomized particles must be generated client-side only; computing them
-  // during render produces different values on the server and client, which
-  // triggers a hydration mismatch. Start empty (matching SSR) and fill in
-  // after mount.
-  const [particles, setParticles] = useState([]);
-  useEffect(() => {
-    setParticles(Array.from({ length: 15 }, () => ({
-      left: `${Math.random() * 100}%`,
-      top: `${Math.random() * 100}%`,
-      animationDelay: `${Math.random() * 12}s`,
-      animationDuration: `${10 + Math.random() * 8}s`,
-      width: `${2 + Math.random() * 4}px`,
-      height: `${2 + Math.random() * 4}px`,
-      opacity: 0.15 + Math.random() * 0.3,
-    })));
-  }, []);
+  // Derived directly: the page never borrows another day's imagery to fill a
+  // gap, so when the viewed day has no hero the hero simply has no art.
+  const imgUrl = heroImageUrl || null;
 
   return (
     <div style={{
@@ -146,11 +174,10 @@ export default function DGHero({ dateStr, heroImageUrl }) {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '2rem 2rem 2.5rem',
+      padding: 'clamp(1.25rem, 4vw, 2rem) clamp(1rem, 4vw, 2rem) clamp(1.5rem, 5vw, 2.5rem)',
       textAlign: 'center',
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Lato:wght@300;400;700&display=swap');
         @keyframes dgFloat {
           0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.3; }
           50% { transform: translateY(-30px) rotate(180deg); opacity: 0.6; }
@@ -193,30 +220,31 @@ export default function DGHero({ dateStr, heroImageUrl }) {
             }}
           />
         )}
-        {/* Warm cream gradient wash — keeps title readable over the painting */}
+        {/* Warm wash toward the page background — keeps title readable over the painting */}
         <div style={{
           position: 'absolute', inset: 0,
           background: imgUrl
-            ? `linear-gradient(180deg, rgba(243,233,216,0.8) 0%, rgba(243,233,216,0.6) 50%, rgba(243,233,216,0.85) 100%)`
-            : `linear-gradient(160deg, rgba(243,233,216,0.6) 0%, rgba(240,228,208,0.5) 40%, rgba(243,233,216,0.6) 100%)`,
+            ? `linear-gradient(180deg, ${theme.bgPrimary}CC 0%, ${theme.bgPrimary}99 50%, ${theme.bgPrimary}D9 100%)`
+            : `linear-gradient(160deg, ${theme.bgPrimary}99 0%, ${theme.bgSoft}80 40%, ${theme.bgPrimary}99 100%)`,
         }} />
       </div>
 
       {/* Soft breathing glow orb */}
-      <div style={{
+      <div aria-hidden="true" style={{
         position: 'absolute',
         top: '25%', left: '50%',
         transform: 'translateX(-50%)',
-        width: 500, height: 350,
+        width: 'clamp(260px, 60vw, 500px)',
+        height: 'clamp(180px, 42vw, 350px)',
         borderRadius: '50%',
-        background: `radial-gradient(ellipse, rgba(212,175,55,0.12) 0%, transparent 70%)`,
+        background: `radial-gradient(ellipse, ${theme.accentGold}1F 0%, transparent 70%)`,
         animation: 'dgGlow 8s ease-in-out infinite',
         pointerEvents: 'none',
         filter: 'blur(20px)',
       }} />
 
       {/* Floating golden particles (dust in sunlight) */}
-      {particles.map((p, i) => <FloatingParticle key={i} style={p} />)}
+      {PARTICLES.map((p, i) => <FloatingParticle key={i} style={p} />)}
 
       {/* Content */}
       <div style={{ position: 'relative', zIndex: 2, maxWidth: 720 }}>
@@ -229,17 +257,17 @@ export default function DGHero({ dateStr, heroImageUrl }) {
           backdropFilter: 'blur(8px)',
           border: `1px solid ${theme.accentGold}40`,
           borderRadius: 40,
-          animation: 'dgReveal 1s ease-out 0.2s both',
+          animation: 'dgReveal 1s ease-out 0.2s backwards',
           boxShadow: theme.shadowSoft,
         }}>
-           <div style={{ width: 7, height: 7, borderRadius: '50%', background: C.gold }} />
+           <div aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: theme.accentGold }} />
            <span style={{
              fontFamily: theme.fontBody,
              fontSize: '0.85rem',
              fontWeight: 400,
              letterSpacing: '0.18em',
              textTransform: 'uppercase',
-             color: C.mocha,
+             color: theme.textBody,
            }}>
             {dateStr}
            </span>
@@ -253,12 +281,12 @@ export default function DGHero({ dateStr, heroImageUrl }) {
           margin: '0 0 0.75rem',
           lineHeight: 1.05,
           letterSpacing: '-0.02em',
-          animation: 'dgReveal 1.1s ease-out 0.4s both',
-          background: `linear-gradient(135deg, ${C.goldLight} 0%, ${C.gold} 50%, ${C.goldDark} 100%)`,
+          animation: 'dgReveal 1.1s ease-out 0.4s backwards',
+          background: `linear-gradient(135deg, ${GOLD_LIGHT} 0%, ${theme.accentGold} 50%, ${GOLD_DARK} 100%)`,
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
-          textShadow: '0 2px 20px rgba(212,175,55,0.3)',
+          textShadow: `0 2px 20px ${theme.accentGold}4D`,
         }}>
           Daily Gold
         </h1>
@@ -272,7 +300,7 @@ export default function DGHero({ dateStr, heroImageUrl }) {
           margin: '0 auto 1.25rem',
           maxWidth: 480,
           lineHeight: 1.6,
-          animation: 'dgReveal 1.2s ease-out 0.6s both',
+          animation: 'dgReveal 1.2s ease-out 0.6s backwards',
         }}>
           A daily collection of wonder, wisdom and beautiful things happening in our world.
         </p>
@@ -285,30 +313,30 @@ export default function DGHero({ dateStr, heroImageUrl }) {
           color: theme.textMuted,
           margin: 0,
           lineHeight: 1.7,
-          animation: 'dgReveal 1.3s ease-out 0.8s both',
+          animation: 'dgReveal 1.3s ease-out 0.8s backwards',
         }}>
-          "Every day holds a little gold. Let's go discover it together."
+          &ldquo;Every day holds a little gold. Let&rsquo;s go discover it together.&rdquo;
         </p>
 
         {/* Scroll indicator - compact */}
         <div style={{
           marginTop: '1.5rem',
           display: 'flex', alignItems: 'center', gap: '0.5rem',
-          animation: 'dgReveal 1.4s ease-out 1.2s both',
+          animation: 'dgReveal 1.4s ease-out 1.2s backwards',
           justifyContent: 'center',
         }}>
-          <div style={{ height: 1, width: 32, background: `${theme.accentGold}40` }} />
-          <span style={{ fontFamily: theme.fontBody, fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: theme.accentGold }}>
+          <div aria-hidden="true" style={{ height: 1, width: 32, background: `${theme.accentGold}40` }} />
+          <span style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: theme.accentGold }}>
             Begin exploring
           </span>
-          <div style={{ height: 1, width: 32, background: `${theme.accentGold}40` }} />
+          <div aria-hidden="true" style={{ height: 1, width: 32, background: `${theme.accentGold}40` }} />
         </div>
       </div>
 
       {/* Bottom fade */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0, height: 120,
-        background: `linear-gradient(to bottom, transparent, rgba(243,233,216,0.5))`,
+        background: `linear-gradient(to bottom, transparent, ${theme.bgPrimary}80)`,
         pointerEvents: 'none',
       }} />
 

@@ -1,6 +1,5 @@
 'use client';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { base44 } from '@/api/base44Client';
 import DGHero from '@/components/dailygold/DGHero';
 import DGBornToday from '@/components/dailygold/DGBornToday';
@@ -11,19 +10,27 @@ import DGMoreToExplore from '@/components/dailygold/DGMoreToExplore';
 import DGForParents from '@/components/dailygold/DGForParents';
 import DGNavigationRail from '@/components/dailygold/DGNavigationRail';
 import DGMobileTabBar from '@/components/dailygold/DGMobileTabBar';
+import DGIdentityHeader from '@/components/dailygold/DGIdentityHeader';
 import DGValuesStrip from '@/components/dailygold/DGValuesStrip';
 import DGGreatestMoments from '@/components/dailygold/DGGreatestMoments';
 import DGWaxSealNavigator from '@/components/dailygold/DGWaxSealNavigator';
 import DGInspirationBar from '@/components/dailygold/DGInspirationBar';
 import FlagSealCelebration from '@/components/dailygold/FlagSealCelebration';
 import FlagCollectionView from '@/components/dailygold/FlagCollectionView';
-import ChildGreetingStrip from '@/components/dailygold/ChildGreetingStrip';
-import { ThemeProvider } from '@/components/theme/ThemeContext';
+import { ThemeProvider, useTheme } from '@/components/theme/ThemeContext';
 import { getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate, getGreatestMomentsForDate } from '@/app/daily-gold-edition/actions';
 
 /**
  * PAGE — /daily-gold-edition
  * Daily Gold — Cinematic World Journey
+ *
+ * Layout contract (navigation-redesign-spec §4/§7):
+ * - ≥1024px: labelled navigation rail on the left, content offset by the
+ *   shared `--dg-rail-w` variable (the rail reads the same variable, so the
+ *   two can never drift apart — replaces the old hard-coded marginLeft: 80).
+ * - 768–1023px: the rail collapses to icons (labels hidden), narrower var.
+ * - <768px: rail hidden; sticky identity header on top, tab bar at the
+ *   bottom, content padded by `--dg-tabbar-h` (includes the safe-area inset).
  */
 
 class DGErrorBoundary extends React.Component {
@@ -32,7 +39,7 @@ class DGErrorBoundary extends React.Component {
   static getDerivedStateFromError(error) { return { error }; }
   render() {
     if (this.state.error) return (
-      <div style={{ padding: 40, background: '#F5F0E7', minHeight: '100vh' }}>
+      <div role="alert" style={{ padding: 40, background: '#F5F0E7', minHeight: '100vh' }}>
         <h2 style={{ color: '#C46D46' }}>Daily Gold Error</h2>
         <pre style={{ fontSize: 12, color: '#4A3B2A', whiteSpace: 'pre-wrap' }}>
           {this.state.error?.toString()}
@@ -42,14 +49,6 @@ class DGErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
-
-const C = {
-  midnight: '#0F1B2E',
-  navy: '#162544',
-  gold: '#C8A96B',
-  sand: '#EADCC2',
-  ivory: '#F5F0E7',
-};
 
 // Today has no edition row. An explicit absent state — never another day's
 // content, and never sample content dressed up as today's.
@@ -104,10 +103,124 @@ function mapRecord(record) {
 }
 
 /**
- * @param {{ initialChild?: any, initialEdition?: any, initialDates?: string[], initialPeople?: any[], initialGoodNews?: any[], initialOnThisDay?: any[], initialGreatestMoments?: any[] }} props
+ * The shared shell stylesheet. One place owns the responsive layout system:
+ * the rail-width / tab-bar-height variables, the three breakpoint tiers, the
+ * section band grid, focus visibility, and reduced-motion handling.
  */
-export default function DailyGoldEdition({ initialChild = null, initialEdition = null, initialDates = [], initialPeople = [], initialGoodNews = [], initialOnThisDay = [], initialGreatestMoments = [] }) {
-  const router = useRouter();
+const SHELL_CSS = `
+  .dg-root {
+    --dg-rail-w: 224px;
+    --dg-tabbar-h: 0px;
+    min-height: 100vh;
+    overflow-x: clip;
+  }
+  .dg-shell {
+    padding-left: var(--dg-rail-w);
+    padding-bottom: var(--dg-tabbar-h);
+    min-height: 100vh;
+  }
+
+  /* Navigation rail (desktop) */
+  .dg-rail {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: var(--dg-rail-w);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 0.75rem;
+    border-right: 1px solid color-mix(in srgb, var(--dg-gold) 15%, transparent);
+    /* visible so the reader-switcher dropdown can extend past the rail edge */
+    overflow: visible;
+    z-index: 1000;
+  }
+  .dg-rail-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.55rem 0.9rem;
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.2s ease;
+  }
+  .dg-rail-item:hover { background: color-mix(in srgb, var(--dg-gold) 10%, transparent); }
+  .dg-rail-active { background: color-mix(in srgb, var(--dg-gold) 14%, transparent); }
+
+  /* Mobile-only chrome, hidden on desktop */
+  .dg-idheader, .dg-tabbar { display: none; }
+
+  /* The three-section band: steps 3 → 2 → 1 columns on its own */
+  .dg-band {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: clamp(1rem, 2vw, 1.5rem);
+    padding: clamp(1rem, 3vw, 1.5rem) clamp(1rem, 3vw, 2rem);
+    align-items: start;
+    border-top: 1px solid color-mix(in srgb, var(--dg-gold) 10%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--dg-gold) 10%, transparent);
+  }
+
+  /* Compact rail: icons only */
+  @media (max-width: 1023px) {
+    .dg-root { --dg-rail-w: 84px; }
+    .dg-rail { padding: 1.5rem 0.5rem; }
+    .dg-rail-item { justify-content: center; padding: 0.55rem; }
+    .dg-rail-label { display: none !important; }
+  }
+
+  /* Mobile: no rail; identity header + tab bar */
+  @media (max-width: 767px) {
+    .dg-root { --dg-rail-w: 0px; --dg-tabbar-h: calc(64px + env(safe-area-inset-bottom, 0px)); }
+    .dg-rail { display: none; }
+    .dg-idheader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      position: sticky;
+      top: 0;
+      z-index: 900;
+      padding: 0.35rem 1rem;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .dg-tabbar {
+      display: flex;
+      align-items: stretch;
+      justify-content: space-around;
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      padding: 0.25rem 0.5rem calc(0.25rem + env(safe-area-inset-bottom, 0px));
+      z-index: 1000;
+    }
+  }
+
+  /* Keyboard focus is visible everywhere on the page */
+  .dg-root :focus-visible {
+    outline: 2px solid var(--dg-gold);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  @keyframes dgFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Calm by default for those who ask for it */
+  @media (prefers-reduced-motion: reduce) {
+    .dg-root *, .dg-root *::before, .dg-root *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+`;
+
+function DailyGoldShell({ initialChild, initialEdition, initialDates, initialPeople, initialGoodNews, initialOnThisDay, initialGreatestMoments }) {
+  const { theme } = useTheme();
   const todayStr = new Date().toISOString().slice(0, 10);
   const dateLabel = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -120,19 +233,14 @@ export default function DailyGoldEdition({ initialChild = null, initialEdition =
   const [onThisDay, setOnThisDay] = useState(initialOnThisDay);
   const [greatestMoments, setGreatestMoments] = useState(initialGreatestMoments);
   const [rawPost, setRawPost] = useState(initial.rawPost);
-  const [user, setUser] = useState(null);
   const [timeSpent, setTimeSpent] = useState(0);
   const [topicsExplored, setTopicsExplored] = useState([]);
   const [celebration, setCelebration] = useState(null);
   const [showCollection, setShowCollection] = useState(false);
   const pendingEarns = useRef(new Set());
-  const startTime = useRef(Date.now());
+  const startTime = useRef(null);
 
   const [viewedDate, setViewedDate] = useState(initialEdition?.edition_date || todayStr);
-
-  // SSR provides the edition up-front, so there is no client-side loading gate.
-  const loading = false;
-  const generating = false;
 
   // The reader is resolved on the server from the session's active child
   // profile, so there is nothing to fetch and no client-side cache to keep in
@@ -142,6 +250,7 @@ export default function DailyGoldEdition({ initialChild = null, initialEdition =
 
   useEffect(() => {
     // Track time spent
+    startTime.current = Date.now();
     const interval = setInterval(() => {
       setTimeSpent(Math.round((Date.now() - startTime.current) / 60000));
     }, 30000);
@@ -215,149 +324,56 @@ export default function DailyGoldEdition({ initialChild = null, initialEdition =
           content_type: contentType,
           content_id: contentId,
           timestamp: new Date().toISOString(),
-          parent_email: user?.email || null,
         }).catch(() => {});
       }
     } catch (_) {}
-  }, [user, child]);
+  }, [child]);
+
+  // One handler for the "My World" shelf, shared by every nav renderer.
+  const handleShelfAction = useCallback((key) => {
+    if (key === 'flags') setShowCollection(true);
+  }, []);
 
   return (
-    <DGErrorBoundary>
-    <ThemeProvider childId={child?.id}>
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#F5F0E7',
-      backgroundImage: 'radial-gradient(ellipse at 15% 25%, rgba(139,115,80,0.06) 0%, transparent 55%), radial-gradient(ellipse at 85% 75%, rgba(100,75,45,0.04) 0%, transparent 45%), radial-gradient(ellipse at 50% 50%, rgba(160,130,90,0.03) 0%, transparent 60%)',
-      fontFamily: 'Lato, sans-serif',
-      overflowX: 'hidden',
-    }}>
-      <>
-        <style>{`
-          * { box-sizing: border-box; }
-          ::-webkit-scrollbar { display: none; }
-          @keyframes dgStarSpin { to { transform: rotate(360deg); } }
-          @keyframes dgDotPulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.4; transform:scale(0.85); } }
-          @keyframes dgFadeIn { from { opacity: 0; } to { opacity: 1; } }
-          @keyframes mdo-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(0.96); } }
-        `}</style>
+    <div
+      className="dg-root"
+      style={{
+        '--dg-gold': theme.accentGold,
+        backgroundColor: theme.bgPrimary,
+        backgroundImage: 'radial-gradient(ellipse at 15% 25%, rgba(139,115,80,0.06) 0%, transparent 55%), radial-gradient(ellipse at 85% 75%, rgba(100,75,45,0.04) 0%, transparent 45%)',
+        fontFamily: theme.fontBody,
+        color: theme.textBody,
+      }}
+    >
+      <style>{SHELL_CSS}</style>
 
-        {/* Full-screen loading screen — covers everything including nav rail */}
-        {loading && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 9999,
-          background: '#F5F0E7',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '2rem',
-        }}>
-          {/* Maison d'Oré gold sun ornament */}
-          <div style={{ animation: 'dgStarSpin 8s linear infinite' }}>
-            <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-              <circle cx="32" cy="32" r="8" stroke="#C9A96E" strokeWidth="1.5"/>
-              <circle cx="32" cy="32" r="4" fill="#C9A96E"/>
-              {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => {
-                const rad = (angle * Math.PI) / 180;
-                const x1 = 32 + 12 * Math.cos(rad);
-                const y1 = 32 + 12 * Math.sin(rad);
-                const x2 = 32 + 16 * Math.cos(rad);
-                const y2 = 32 + 16 * Math.sin(rad);
-                return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#C9A96E" strokeWidth="1.5" strokeLinecap="round"/>;
-              })}
-            </svg>
-          </div>
-          {/* Text */}
-          <div style={{ textAlign: 'center' }}>
-            <p style={{
-              fontFamily: 'Playfair Display, serif',
-              fontStyle: 'italic',
-              fontSize: '1.1rem',
-              fontWeight: 400,
-              color: '#5C4A2A',
-              margin: '0 0 0.5rem',
-            }}>
-              Preparing today's edition
-            </p>
-          </div>
-          {/* Three pulsing gold dots */}
-          <div style={{ display: 'flex', gap: 10 }}>
-            {[0, 0.2, 0.4].map((d, i) => (
-              <div key={i} style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: '#C9A96E',
-                animation: `dgDotPulse 1.6s ${d}s ease-in-out infinite`,
-              }} />
-            ))}
-          </div>
-        </div>
+      {celebration && (
+        <FlagSealCelebration
+          countryCode={celebration.countryCode}
+          countryName={celebration.countryName}
+          type={celebration.type}
+          onDone={() => setCelebration(null)}
+        />
       )}
 
-      {/* Main content — fades in smoothly when ready */}
-      {!loading && (
-        <div style={{
-          animation: 'dgFadeIn 0.4s ease-out',
-        }}>
-          {celebration && (
-            <FlagSealCelebration
-              countryCode={celebration.countryCode}
-              countryName={celebration.countryName}
-              type={celebration.type}
-              onDone={() => setCelebration(null)}
-            />
-          )}
+      {showCollection && (
+        <FlagCollectionView
+          childId={child?.id}
+          onClose={() => setShowCollection(false)}
+        />
+      )}
 
-          {showCollection && (
-            <FlagCollectionView
-              childId={child?.id}
-              onClose={() => setShowCollection(false)}
-            />
-          )}
+      <DGNavigationRail child={child} onShelfAction={handleShelfAction} />
+      <DGMobileTabBar child={child} onShelfAction={handleShelfAction} />
 
-          <DGNavigationRail />
-          <DGMobileTabBar />
+      <main
+        className="dg-shell"
+        key={child?.id || 'no-child'}
+        style={{ animation: 'dgFadeIn 0.4s ease-out' }}
+      >
+        <DGIdentityHeader child={child} onShelfAction={handleShelfAction} />
 
-          {generating && (
-            <div style={{
-              position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
-              zIndex: 500,
-              background: `rgba(22,37,68,0.95)`,
-              backdropFilter: 'blur(12px)',
-              border: `1px solid rgba(212,175,55,0.3)`,
-              borderRadius: 30,
-              padding: '0.75rem 1.5rem',
-              display: 'flex', alignItems: 'center', gap: '0.75rem',
-            }}>
-              {[0, 0.2, 0.4].map((d, i) => (
-                <div key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: C.gold, animation: `mdo-pulse 1.2s ${d}s ease-in-out infinite` }} />
-              ))}
-              <span style={{ fontFamily: 'Lato, sans-serif', fontSize: '0.72rem', color: C.sand }}>
-                Aurora is preparing today's edition…
-              </span>
-            </div>
-          )}
-
-          <div
-            key={child?.id || 'no-child'}
-            style={{
-              marginLeft: 80,
-              minHeight: '100vh',
-              background: 'transparent',
-            }}
-          >
-            <DGHero dateStr={dateLabel} heroImageUrl={edition.images?.hero || rawPost?.image_url} />
-
-        {child?.id && (
-          <ChildGreetingStrip
-            child={child}
-            onShowFlags={() => setShowCollection(true)}
-            navigate={(path) => router.push(path)}
-          />
-        )}
+        <DGHero dateStr={dateLabel} heroImageUrl={edition.images?.hero || rawPost?.image_url} />
 
         <DGWaxSealNavigator
           currentDate={viewedDate}
@@ -367,27 +383,11 @@ export default function DailyGoldEdition({ initialChild = null, initialEdition =
 
         <DGBornToday people={people} onTrack={trackInteraction} onFlagEarned={handleFlagEarn} child={child} editionDate={viewedDate} />
 
-        <div className="dg-three-col" style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '1.25rem',
-          padding: '1.5rem clamp(1rem, 3vw, 2rem)',
-          boxSizing: 'border-box',
-          background: 'transparent',
-          borderTop: '1px solid rgba(201,169,110,0.10)',
-          borderBottom: '1px solid rgba(201,169,110,0.10)',
-          alignItems: 'start',
-        }}>
+        <div className="dg-band">
           <DGGoodNews items={goodNews} onTrack={trackInteraction} child={child} editionDate={viewedDate} />
           <DGOnThisDay events={onThisDay} onTrack={trackInteraction} onFlagEarned={handleFlagEarn} child={child} />
           <DGGreatestMoments moments={greatestMoments} editionDate={viewedDate} />
         </div>
-
-        <style>{`
-          @media (max-width: 768px) {
-            .dg-three-col { grid-template-columns: 1fr !important; padding: 1rem !important; gap: 1.25rem !important; }
-          }
-        `}</style>
 
         <DGInspirationBar edition={edition} />
 
@@ -406,35 +406,52 @@ export default function DailyGoldEdition({ initialChild = null, initialEdition =
         <DGValuesStrip />
 
         <DGForParents
-          child={child}
           edition={edition}
           timeSpent={timeSpent}
           topicsExplored={topicsExplored}
         />
 
-        <div style={{
+        <footer style={{
           padding: 'clamp(3rem, 6vw, 5rem) clamp(1.5rem, 5vw, 4rem)',
-          background: 'transparent',
           textAlign: 'center',
-          marginBottom: 70,
         }}>
-          <p style={{ fontFamily: 'Playfair Display, serif', fontStyle: 'italic', fontSize: 'clamp(1.1rem, 2.5vw, 1.6rem)', fontWeight: 300, color: '#8B7355', margin: '0 auto 1rem', maxWidth: 600, lineHeight: 1.8 }}>
-            "The more we learn about the world, the more we learn about ourselves."
+          <p style={{
+            fontFamily: theme.fontHeadline, fontStyle: 'italic',
+            fontSize: 'clamp(1.1rem, 2.5vw, 1.6rem)', fontWeight: 300,
+            color: theme.textMuted, margin: '0 auto 1rem', maxWidth: 600, lineHeight: 1.8,
+          }}>
+            &ldquo;The more we learn about the world, the more we learn about ourselves.&rdquo;
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center', marginTop: '1.5rem' }}>
-            <div style={{ height: 1, width: 60, background: `rgba(201,169,110,0.3)` }} />
-            <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '0.85rem', color: 'rgba(139,115,85,0.6)', letterSpacing: '0.1em' }}>
-              Daily Gold · {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+            <div aria-hidden="true" style={{ height: 1, width: 60, background: `${theme.accentGold}4D` }} />
+            <span style={{ fontFamily: theme.fontHeadline, fontSize: '0.85rem', color: theme.textMuted, letterSpacing: '0.1em' }}>
+              Daily Gold · {dateLabel}
             </span>
-            <div style={{ height: 1, width: 60, background: `rgba(201,169,110,0.3)` }} />
+            <div aria-hidden="true" style={{ height: 1, width: 60, background: `${theme.accentGold}4D` }} />
           </div>
-        </div>
-      </div>
-      </div>
-      )}
-      </>
+        </footer>
+      </main>
     </div>
-    </ThemeProvider>
+  );
+}
+
+/**
+ * @param {{ initialChild?: any, initialEdition?: any, initialDates?: string[], initialPeople?: any[], initialGoodNews?: any[], initialOnThisDay?: any[], initialGreatestMoments?: any[] }} props
+ */
+export default function DailyGoldEdition({ initialChild = null, initialEdition = null, initialDates = [], initialPeople = [], initialGoodNews = [], initialOnThisDay = [], initialGreatestMoments = [] }) {
+  return (
+    <DGErrorBoundary>
+      <ThemeProvider childId={initialChild?.id}>
+        <DailyGoldShell
+          initialChild={initialChild}
+          initialEdition={initialEdition}
+          initialDates={initialDates}
+          initialPeople={initialPeople}
+          initialGoodNews={initialGoodNews}
+          initialOnThisDay={initialOnThisDay}
+          initialGreatestMoments={initialGreatestMoments}
+        />
+      </ThemeProvider>
     </DGErrorBoundary>
   );
 }

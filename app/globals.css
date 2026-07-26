@@ -129,6 +129,20 @@ h1, h2, h3, h4, h5, h6 {
   transform-origin: center center;
 }
 
+/* ── GOLDEN STORY ──
+   On a short viewport (a phone held sideways) the storybook fills the screen
+   edge to edge — see SHORT_H in components/dailygold/GoldenStory.jsx, which
+   uses the same 560px threshold — so Back tucks into the corner instead of
+   sitting on the open page. The button is styled inline, hence !important. */
+@media (max-height: 560px) {
+  .mdo-story-back {
+    top: 7px !important;
+    left: 7px !important;
+    padding: 0.34rem 0.72rem !important;
+    font-size: 0.58rem !important;
+  }
+}
+
 @keyframes shimmer {
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }

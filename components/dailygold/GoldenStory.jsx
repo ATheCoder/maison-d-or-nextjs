@@ -24,6 +24,14 @@ const SHAPES = [styles['sh-circle'], styles['sh-diamond'], styles['sh-tri'], sty
 const STAR = '✦'; // ✦
 const BOOK_W = 1300;
 const BOOK_H = 866;
+// Shortest spread we still lay out for. A phone held sideways is much wider
+// than 3:2 (≈2.2:1), so a fixed 866-tall book fits by height and leaves the
+// whole thing tiny between two wide gutters. Below SHORT_H of available
+// height the canvas is allowed to grow wider (down to BOOK_H_MIN tall) until
+// it matches the viewport — same book, ~50% bigger type. See `compact` in
+// GoldenStory.module.css for the layout that goes with the shorter canvas.
+const BOOK_H_MIN = 600;
+const SHORT_H = 560;
 
 // Strip leading/trailing decoration (~, dashes, quotes) the source sometimes carries.
 function cleanQuote(str) {
@@ -170,6 +178,10 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
   const cur = controlled ? page : internalCur;
   const scaleRef = useRef(null);
   const stageRef = useRef(null);
+  // The canvas height the book is currently laid out at, and whether that is
+  // the shortened (mobile-landscape) canvas — see fit() below.
+  const [bookH, setBookH] = useState(BOOK_H);
+  const [compact, setCompact] = useState(false);
 
   // ── Map the person onto the book's content model ──────────────────────────
   const name = story?.name || 'A Golden Life';
@@ -509,9 +521,14 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
     [count, controlled, onPageChange, cur]
   );
 
-  // Fit the fixed-size book: to the host container when embedded, otherwise to
-  // the viewport (plus keyboard nav for the full-screen view only — a global
-  // key handler would hijack arrow keys away from the editor's text fields).
+  // Fit the book: to the host container when embedded, otherwise to the
+  // viewport (plus keyboard nav for the full-screen view only — a global key
+  // handler would hijack arrow keys away from the editor's text fields).
+  //
+  // On a short viewport (a phone in landscape, or a squat editor pane) the
+  // book's own canvas is shortened toward the space's aspect ratio first, so
+  // the spread fills the width instead of being letterboxed at 3:2; the fit
+  // then scales that wider canvas up. Gutters shrink to match.
   useEffect(() => {
     const fit = () => {
       const el = scaleRef.current;
@@ -519,16 +536,29 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
       const box = embedded ? stageRef.current : null;
       const availW = box ? box.clientWidth : window.innerWidth;
       const availH = box ? box.clientHeight : window.innerHeight;
-      const s = Math.min((availW - 40) / BOOK_W, (availH - 40) / BOOK_H);
-      el.style.transform = `scale(${s})`;
+      const short = availH < SHORT_H;
+      const gut = short ? 16 : 40;
+      const w = Math.max(1, availW - gut);
+      const h = Math.max(1, availH - gut);
+      const bh = short
+        ? Math.round(Math.min(BOOK_H, Math.max(BOOK_H_MIN, (BOOK_W * h) / w)))
+        : BOOK_H;
+      setBookH(bh);
+      setCompact(bh < BOOK_H);
+      el.style.transform = `scale(${Math.min(w / BOOK_W, h / bh)})`;
     };
     fit();
     let ro;
+    let turnTimer;
+    // Mobile browsers report the new viewport size a beat after the turn, so
+    // re-fit once it has settled as well as immediately.
+    const onTurn = () => { fit(); turnTimer = setTimeout(fit, 300); };
     if (embedded && stageRef.current && typeof ResizeObserver !== 'undefined') {
       ro = new ResizeObserver(fit);
       ro.observe(stageRef.current);
     } else {
       window.addEventListener('resize', fit);
+      window.addEventListener('orientationchange', onTurn);
     }
     const onKey = (e) => {
       if (e.key === 'ArrowRight' || e.key === ' ') { go(1); e.preventDefault(); }
@@ -537,7 +567,9 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
     if (!embedded) window.addEventListener('keydown', onKey);
     return () => {
       ro?.disconnect();
+      clearTimeout(turnTimer);
       window.removeEventListener('resize', fit);
+      window.removeEventListener('orientationchange', onTurn);
       if (!embedded) window.removeEventListener('keydown', onKey);
     };
   }, [go, embedded]);
@@ -546,7 +578,7 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
 
   return (
     <div
-      className={styles['book-stage']}
+      className={cx(styles['book-stage'], compact && styles.compact)}
       ref={stageRef}
       style={embedded ? { position: 'relative', inset: 'auto', width: '100%', height: '100%' } : undefined}
     >
@@ -565,7 +597,7 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
       )}
 
       <div className={styles['book-scale']} ref={scaleRef}>
-        <div className={styles.book}>
+        <div className={styles.book} style={bookH === BOOK_H ? undefined : { height: bookH }}>
           <div className={styles['book-leather']} />
           <div className={styles['book-body']}>
             {spreads}

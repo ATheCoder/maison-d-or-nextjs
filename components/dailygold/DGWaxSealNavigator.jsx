@@ -1,7 +1,7 @@
 'use client';
 /**
  * DGWaxSealNavigator — Vintage wax seal press day navigator
- * Two embossed cream-and-gold medallions flanking the date in Cormorant Garamond.
+ * Two embossed cream-and-gold medallions flanking the date (theme headline serif).
  * Press animation: stamp-down + page-turn rotateY flip to new date.
  */
 import { useState, useEffect, useCallback } from 'react';
@@ -19,7 +19,7 @@ function SealFace({ direction, disabled }) {
   const isBack = direction === 'back';
 
   return (
-    <svg viewBox="0 0 44 44" width="30" height="30" style={{ display: 'block' }}>
+    <svg viewBox="0 0 44 44" width="30" height="30" aria-hidden="true" style={{ display: 'block' }}>
       {/* Outer embossed ring */}
       <circle cx="22" cy="22" r="20" fill="none" stroke={goldMid} strokeWidth="1" />
       {/* Inner fine ring */}
@@ -55,14 +55,15 @@ function SealFace({ direction, disabled }) {
   );
 }
 
-function WaxSeal({ direction, disabled, onPress, pressing }) {
-  const gold = '#C9A96E';
+function WaxSeal({ direction, disabled, onPress, pressing, ariaLabel }) {
   const cream = '#FAF7F2';
   const linen = '#EDE0CC';
 
   return (
     <button
-      onClick={disabled ? undefined : onPress}
+      onClick={onPress}
+      disabled={disabled}
+      aria-label={ariaLabel}
       style={{
         width: 64,
         height: 64,
@@ -89,7 +90,7 @@ function WaxSeal({ direction, disabled, onPress, pressing }) {
       }}
     >
       {/* Inner emboss ring */}
-      <div style={{
+      <div aria-hidden="true" style={{
         position: 'absolute',
         inset: 4,
         borderRadius: '50%',
@@ -112,6 +113,7 @@ function indexForDate(dates, date) {
 }
 
 export default function DGWaxSealNavigator({ currentDate, onEditionChange, initialDates = [] }) {
+  const { theme } = useTheme();
   const [allDates, setAllDates] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [pressing, setPressing] = useState(null); // 'back' | 'forward' | null
@@ -191,9 +193,6 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
   const canGoBack = currentIndex > 0;
   const canGoForward = currentIndex < allDates.length - 1;
 
-  const gold = '#C9A96E';
-  const mocha = '#3A2D24';
-
   return (
     <div style={{
       display: 'flex',
@@ -201,8 +200,8 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
       justifyContent: 'center',
       gap: '1.25rem',
       padding: '1.25rem 1.5rem',
-      background: 'linear-gradient(180deg, rgba(245,239,230,0.9) 0%, rgba(237,224,204,0.6) 100%)',
-      borderBottom: '1px solid rgba(201,169,110,0.15)',
+      background: theme.bgSoft,
+      borderBottom: `1px solid ${theme.accentGold}26`,
     }}>
       {/* Back seal */}
       <WaxSeal
@@ -210,6 +209,7 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
         disabled={!canGoBack || loading}
         pressing={pressing === 'back'}
         onPress={() => navigate(-1)}
+        ariaLabel="Previous day"
       />
 
       {/* Date display with page-turn flip */}
@@ -225,11 +225,11 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
           transformStyle: 'preserve-3d',
         }}>
           <p style={{
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
+            fontFamily: theme.fontHeadline,
             fontStyle: 'italic',
             fontWeight: 400,
             fontSize: 'clamp(0.9rem, 2vw, 1.1rem)',
-            color: mocha,
+            color: theme.textBody,
             margin: 0,
             letterSpacing: '0.03em',
             lineHeight: 1.3,
@@ -238,9 +238,9 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
           </p>
           {loading && (
             <p style={{
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
-              fontSize: '0.65rem',
-              color: gold,
+              fontFamily: theme.fontBody,
+              fontSize: '0.7rem',
+              color: theme.accentGold,
               margin: '0.25rem 0 0',
               letterSpacing: '0.15em',
               textTransform: 'uppercase',
@@ -251,9 +251,9 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
         </div>
 
         {/* Thin gold rule beneath date */}
-        <div style={{
+        <div aria-hidden="true" style={{
           height: 1,
-          background: `linear-gradient(to right, transparent, ${gold}50, transparent)`,
+          background: `linear-gradient(to right, transparent, ${theme.accentGold}50, transparent)`,
           marginTop: '0.5rem',
         }} />
 
@@ -262,9 +262,9 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
             isn't in the list at all (today, before anything is authored). */}
         {allDates.length > 1 && currentIndex < allDates.length && (
           <p style={{
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
-            fontSize: '0.6rem',
-            color: `${gold}70`,
+            fontFamily: theme.fontBody,
+            fontSize: '0.7rem',
+            color: theme.textMuted,
             margin: '0.35rem 0 0',
             letterSpacing: '0.18em',
             textTransform: 'uppercase',
@@ -280,11 +280,8 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
         disabled={!canGoForward || loading}
         pressing={pressing === 'forward'}
         onPress={() => navigate(1)}
+        ariaLabel="Next day"
       />
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400;0,400&display=swap');
-      `}</style>
     </div>
   );
 }

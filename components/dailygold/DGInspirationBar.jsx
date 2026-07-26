@@ -5,7 +5,6 @@
  * NOTE: Currently using a static rotating set of uplifting quotes.
  * Wire to a `daily_quote` field on DailyGoldEdition when ready.
  */
-import { useMemo } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
 
 const QUOTES = [
@@ -21,21 +20,25 @@ const QUOTES = [
   { text: "The earth has music for those who listen.", author: "George Santayana" },
 ];
 
+// Rotate the fallback quote by day-of-year. Computed once at module load
+// (render must stay pure); the quote only changes across a midnight reload,
+// which is exactly its cadence anyway.
+const DAY_OF_YEAR = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+const FALLBACK_QUOTE = QUOTES[DAY_OF_YEAR % QUOTES.length];
+
 export default function DGInspirationBar({ edition }) {
   const { theme } = useTheme();
 
-  // Pick a quote: if edition has one use it, otherwise rotate by day-of-year
-  const quote = useMemo(() => {
-    if (edition?.daily_quote) return { text: edition.daily_quote, author: edition.daily_quote_author || '' };
-    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-    return QUOTES[dayOfYear % QUOTES.length];
-  }, [edition]);
+  // Pick a quote: the edition's own if authored, otherwise the daily rotation.
+  const quote = edition?.daily_quote
+    ? { text: edition.daily_quote, author: edition.daily_quote_author || '' }
+    : FALLBACK_QUOTE;
 
   return (
     <div style={{
-      background: 'linear-gradient(135deg, rgba(201,169,110,0.18) 0%, rgba(232,220,195,0.25) 50%, rgba(201,169,110,0.12) 100%)',
-      borderTop: '1px solid rgba(201,169,110,0.25)',
-      borderBottom: '1px solid rgba(201,169,110,0.25)',
+      background: `linear-gradient(135deg, ${theme.accentGold}26 0%, ${theme.accentGold}14 50%, ${theme.accentGold}1F 100%)`,
+      borderTop: `1px solid ${theme.accentGold}40`,
+      borderBottom: `1px solid ${theme.accentGold}40`,
       padding: '2rem clamp(1.5rem, 6vw, 5rem)',
       display: 'flex',
       flexDirection: 'column',
@@ -45,25 +48,25 @@ export default function DGInspirationBar({ edition }) {
     }}>
       {/* Heading cluster */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
-        <div style={{ width: 40, height: 1, background: 'rgba(201,169,110,0.5)' }} />
+        <div aria-hidden="true" style={{ width: 40, height: 1, background: `${theme.accentGold}80` }} />
         <p style={{
           fontFamily: theme.fontBody,
-          fontSize: '0.55rem',
-          letterSpacing: '0.28em',
+          fontSize: '0.72rem',
+          letterSpacing: '0.24em',
           textTransform: 'uppercase',
-          color: 'rgba(201,169,110,0.85)',
+          color: theme.accentGold,
           margin: 0,
           fontWeight: 500,
         }}>
           Daily Dose of Inspiration
         </p>
-        <div style={{ width: 40, height: 1, background: 'rgba(201,169,110,0.5)' }} />
+        <div aria-hidden="true" style={{ width: 40, height: 1, background: `${theme.accentGold}80` }} />
       </div>
 
       <p style={{
         fontFamily: theme.fontBody,
-        fontSize: '0.72rem',
-        color: 'rgba(100,80,50,0.6)',
+        fontSize: '0.78rem',
+        color: theme.textMuted,
         margin: '0 0 0.5rem',
         letterSpacing: '0.05em',
       }}>
@@ -83,20 +86,21 @@ export default function DGInspirationBar({ edition }) {
         padding: 0,
         border: 'none',
       }}>
-        ❝ {quote.text} ❞
+        <span aria-hidden="true">❝ </span>{quote.text}<span aria-hidden="true"> ❞</span>
       </blockquote>
 
       {/* Attribution */}
       {quote.author && (
         <p style={{
           fontFamily: theme.fontBody,
-          fontSize: '0.7rem',
-          color: 'rgba(201,169,110,0.8)',
+          fontSize: '0.72rem',
+          color: theme.accentGold,
           margin: 0,
           letterSpacing: '0.1em',
+          textTransform: 'uppercase',
           fontWeight: 500,
         }}>
-          — {quote.author}
+          {quote.author}
         </p>
       )}
     </div>

@@ -1,135 +1,155 @@
 'use client';
 /**
- * Daily Gold Navigation Rail (Desktop)
- * Fixed left sidebar navigation
+ * DGNavigationRail (desktop, ≥768px)
+ *
+ * One of the two renderers of dgNavConfig (the other is DGMobileTabBar).
+ * Top to bottom: monogram, identity block ("Hi, {name}" + reader switcher),
+ * global destinations, then the child's own "My World" shelf.
+ *
+ * Layout contract: the rail's width is the shared `--dg-rail-w` CSS variable
+ * set by DailyGoldEditionPage's shell stylesheet, which also pads the page
+ * content by the same variable — the two can never drift apart. At 768–1023px
+ * the shell collapses the rail to icons (labels hidden via `.dg-rail-label`);
+ * below 768px the rail is hidden entirely.
  */
+import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
-import { useState } from 'react';
+import { DG_DESTINATIONS, DG_SHELF, DGIcon } from '@/components/dailygold/dgNavConfig';
+import ChildSwitcherOverlay from '@/components/dailygold/ChildSwitcherOverlay';
+import { AVATARS } from '@/lib/avatars';
 
-const NavIcon = ({ name, size = 20, color = 'currentColor' }) => {
-  const icons = {
-    home: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
-    academy: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>,
-    gold: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
-    journeys: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>,
-    library: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>,
-    family: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
-    profile: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
-  };
-  return icons[name] || null;
-};
-
-const NAV_ITEMS = [
-  { label: 'Home', path: '/home', iconName: 'home' },
-  { label: 'Academy', path: '/academy', iconName: 'academy' },
-  { label: 'Daily Gold', path: '/daily-gold-edition', iconName: 'gold', active: true },
-  { label: 'Journeys', path: '/journey/learning-architecture', iconName: 'journeys' },
-  { label: 'Library', path: '/library', iconName: 'library' },
-  { label: 'Family', path: '/family', iconName: 'family' },
-  { label: 'Profile', path: '/profile', iconName: 'profile' },
-];
-
-export default function DGNavigationRail() {
+export default function DGNavigationRail({ child = null, onShelfAction }) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme } = useTheme();
-  const [user, setUser] = useState(null);
+  const [showSwitcher, setShowSwitcher] = useState(false);
+
+  const avatar = child ? (AVATARS[child.avatar] || AVATARS.sun) : null;
+
+  const isActive = (item) =>
+    pathname === item.path || (item.key === 'today' && (pathname || '').includes('daily-gold'));
 
   return (
-    <nav style={{
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: 80,
-      background: 'transparent',
-      borderRight: `1px solid rgba(201,169,110,0.12)`,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      padding: '2rem 0',
-      zIndex: 1000,
-    }}>
-      {/* Logo / Monogram at top */}
-      <div style={{
-        width: 48,
-        height: 48,
-        borderRadius: '50%',
+    <nav className="dg-rail" aria-label="Daily Gold navigation">
+      {/* Monogram */}
+      <div aria-hidden="true" style={{
+        width: 44, height: 44, borderRadius: '50%', alignSelf: 'center',
         background: `linear-gradient(135deg, ${theme.accentGold}30 0%, ${theme.accentGold}10 100%)`,
         border: `1px solid ${theme.accentGold}40`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: '3rem',
-        fontSize: '1.2rem',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: theme.fontHeadline, fontSize: '1.15rem', color: theme.textHeadline,
+        flexShrink: 0,
       }}>
         M
       </div>
 
-      {/* Navigation items */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1.5rem',
-        flex: 1,
-      }}>
-        {NAV_ITEMS.map(item => {
-          const isActive = pathname === item.path || (item.active && (pathname || '').includes('daily-gold'));
+      {/* Identity block — persistent chrome, not scroll-away content */}
+      {child && (
+        <div style={{ position: 'relative', marginTop: '1.5rem' }}>
+          <button
+            className="dg-rail-item dg-rail-id"
+            onClick={() => setShowSwitcher(v => !v)}
+            aria-haspopup="menu"
+            aria-expanded={showSwitcher}
+            aria-label={`Reading as ${child.name}. Switch reader`}
+          >
+            <span aria-hidden="true" style={{
+              width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+              background: avatar.bg, border: `1.5px solid ${theme.accentGold}80`,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '1rem',
+            }}>
+              {avatar.emoji}
+            </span>
+            <span className="dg-rail-label" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 }}>
+              <span style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', color: theme.textMuted, letterSpacing: '0.08em' }}>
+                Hi,
+              </span>
+              <span style={{
+                fontFamily: theme.fontHeadline, fontStyle: 'italic', fontWeight: 600,
+                fontSize: '0.95rem', color: theme.textHeadline,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110,
+              }}>
+                {child.name}
+              </span>
+            </span>
+            <svg className="dg-rail-label" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ marginLeft: 'auto', flexShrink: 0 }}>
+              <path d="M2 3.5l3 3 3-3" stroke={theme.textMuted} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          {showSwitcher && (
+            <ChildSwitcherOverlay
+              currentChildId={child.id}
+              onSwitched={() => { setShowSwitcher(false); router.refresh(); }}
+              onClose={() => setShowSwitcher(false)}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Global destinations */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: '1.5rem' }}>
+        {DG_DESTINATIONS.map(item => {
+          const active = isActive(item);
           return (
             <button
-              key={item.label}
+              key={item.key}
+              className={`dg-rail-item${active ? ' dg-rail-active' : ''}`}
               onClick={() => router.push(item.path)}
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 16,
-                border: 'none',
-                background: isActive ? `${theme.accentGold}15` : 'transparent',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '4px',
-                transition: 'all 0.2s ease',
-              }}
+              aria-current={active ? 'page' : undefined}
+              aria-label={item.label}
               title={item.label}
             >
-              <NavIcon name={item.iconName} size={20} color={isActive ? theme.accentGold : theme.textMuted} />
-              {isActive && (
-                <div style={{
-                  width: 4,
-                  height: 4,
-                  borderRadius: '50%',
-                  background: theme.accentGold,
-                }} />
-              )}
+              <span style={{ display: 'inline-flex', flexShrink: 0 }}>
+                <DGIcon name={item.icon} size={20} color={active ? theme.accentGold : theme.textMuted} />
+              </span>
+              <span className="dg-rail-label" style={{
+                fontFamily: theme.fontBody, fontSize: '0.8rem', letterSpacing: '0.06em',
+                color: active ? theme.textHeadline : theme.textMuted,
+                fontWeight: active ? 700 : 400,
+              }}>
+                {item.label}
+              </span>
+              {active && <span aria-hidden="true" style={{ marginLeft: 'auto', width: 4, height: 4, borderRadius: '50%', background: theme.accentGold, flexShrink: 0 }} />}
             </button>
           );
         })}
       </div>
 
-      {/* User avatar at bottom */}
-      <button
-        onClick={() => router.push('/profile')}
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: '50%',
-          background: user?.avatar_url ? `url('${user.avatar_url}') center/cover` : theme.accentGold,
-          border: `2px solid ${theme.accentGold}40`,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '1.2rem',
-          color: theme.textHeadline,
-        }}
-        title={user?.full_name || 'Profile'}
-      >
-        {!user?.avatar_url && <NavIcon name="profile" size={20} color="#fff" />}
-      </button>
+      {/* My World — the child's own shelf, a peer of global nav */}
+      {child && (
+        <>
+          <div aria-hidden="true" style={{ height: 1, background: `${theme.accentGold}26`, margin: '1.25rem 0.5rem' }} />
+          <p className="dg-rail-label" style={{
+            fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.2em',
+            textTransform: 'uppercase', color: theme.accentGold, margin: '0 0 0.5rem 0.9rem',
+          }}>
+            My World
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {DG_SHELF.map(item => (
+              <button
+                key={item.key}
+                className="dg-rail-item"
+                onClick={() => onShelfAction && onShelfAction(item.key)}
+                aria-label={item.label}
+                title={item.label}
+              >
+                <span style={{ display: 'inline-flex', flexShrink: 0 }}>
+                  <DGIcon name={item.icon} size={20} color={theme.accentGold} />
+                </span>
+                <span className="dg-rail-label" style={{
+                  fontFamily: theme.fontBody, fontSize: '0.8rem', letterSpacing: '0.06em',
+                  color: theme.textBody,
+                }}>
+                  {item.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </nav>
   );
 }

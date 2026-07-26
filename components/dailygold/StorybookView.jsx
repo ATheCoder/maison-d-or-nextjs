@@ -17,6 +17,7 @@ export default function StorybookView({ story }) {
       <button
         onClick={() => router.back()}
         aria-label="Back to Daily Gold"
+        className="mdo-story-back"
         style={{
           position: 'fixed', top: 20, left: 20, zIndex: 50,
           display: 'inline-flex', alignItems: 'center', gap: 8,
