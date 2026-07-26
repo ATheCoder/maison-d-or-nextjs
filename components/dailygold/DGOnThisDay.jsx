@@ -58,9 +58,8 @@ function YearSeal({ direction, disabled, onPress, pressing }) {
   );
 }
 
-export default function DGOnThisDay({ events = [], editionId, onTrack, onFlagEarned }) {
+export default function DGOnThisDay({ events = [], onTrack, onFlagEarned }) {
   const { theme } = useTheme();
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [pressingYear, setPressingYear] = useState(null); // 'back' | 'forward' | null
 
   // Published events from the on_this_day_event table, grouped year → list in
@@ -78,38 +77,67 @@ export default function DGOnThisDay({ events = [], editionId, onTrack, onFlagEar
     return m;
   }, [events]);
 
-  // Reset the year whenever the edition changes (a new calendar day selected).
-  // Adjusted during render rather than in an effect: an effect would render the
-  // new day's events under the old day's year first, then immediately re-render.
-  const [lastEditionId, setLastEditionId] = useState(editionId);
-  if (editionId !== lastEditionId) {
-    setLastEditionId(editionId);
-    setCurrentYear(new Date().getFullYear());
-  }
+  const MAX_YEAR = new Date().getFullYear();
+
+  // The most recent year this day holds something for. The corpus is authored
+  // day by day and year by year, so the current year is usually empty; opening
+  // there would show the child an empty card for a day that has content. A
+  // future-dated row is ignored — "most recent" means most recent that has
+  // already happened.
+  const latestAuthoredYear = useMemo(() => {
+    const years = Object.keys(byYear).map(Number).filter((y) => y <= MAX_YEAR);
+    return years.length ? Math.max(...years) : null;
+  }, [byYear, MAX_YEAR]);
 
   // On This Day is the last twenty years; the deep past belongs to Greatest
   // Moments, which is reached by rank rather than by stepping. Flooring the
   // navigator here is what stops a child walking back to year 1 through
-  // hundreds of empty years.
-  const MAX_YEAR = new Date().getFullYear();
-  const MIN_YEAR = MAX_YEAR - 20;
+  // hundreds of empty years. The floor drops to meet an older authored year so
+  // that the year the section opens on is never below its own floor — it moves
+  // for content that exists, never to open up empty centuries.
+  const MIN_YEAR = Math.min(MAX_YEAR - 20, latestAuthoredYear ?? MAX_YEAR);
+
+  // Where the section opens: the most recent authored year, or the current year
+  // when the day has nothing at all (the empty state below then says so).
+  const landingYear = latestAuthoredYear ?? MAX_YEAR;
+  const [currentYear, setCurrentYear] = useState(landingYear);
+
+  // A new calendar day arrives as a new `events` array — re-land on that day's
+  // most recent authored year. Keyed on `events` rather than the edition id
+  // because the id changes first and the events land a fetch later, so the old
+  // day's year would stick. Adjusted during render rather than in an effect: an
+  // effect would render the new day's events under the old day's year first,
+  // then immediately re-render.
+  const [lastEvents, setLastEvents] = useState(events);
+  if (events !== lastEvents) {
+    setLastEvents(events);
+    setCurrentYear(landingYear);
+  }
+
+  // A step is only offered when it lands on something: an arrow is live when the
+  // neighbouring year holds an event, dead when it is empty. The corpus is
+  // sparse, so most neighbours are empty — this is what stops a press handing
+  // the child the "nothing here yet" card. The band still bounds both ends.
+  const hasEventsIn = useCallback((year) => (byYear[year]?.length ?? 0) > 0, [byYear]);
+  const canGoBack = currentYear - 1 >= MIN_YEAR && hasEventsIn(currentYear - 1);
+  const canGoForward = currentYear + 1 <= MAX_YEAR && hasEventsIn(currentYear + 1);
 
   // Handle year navigation
   const goBackOneYear = useCallback(() => {
-    if (currentYear > MIN_YEAR) {
+    if (canGoBack) {
       const newYear = currentYear - 1;
       setCurrentYear(newYear);
       onTrack?.('history', String(newYear));
     }
-  }, [currentYear, onTrack, MIN_YEAR]);
+  }, [currentYear, onTrack, canGoBack]);
 
   const goForwardOneYear = useCallback(() => {
-    if (currentYear < MAX_YEAR) {
+    if (canGoForward) {
       const newYear = currentYear + 1;
       setCurrentYear(newYear);
       onTrack?.('history', String(newYear));
     }
-  }, [currentYear, onTrack, MAX_YEAR]);
+  }, [currentYear, onTrack, canGoForward]);
 
   // Which years inside the band actually hold something, nearest first from
   // wherever the child is standing. An unauthored year is an ordinary outcome,
@@ -182,13 +210,13 @@ export default function DGOnThisDay({ events = [], editionId, onTrack, onFlagEar
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
               <YearSeal
                 direction="back"
-                disabled={currentYear <= MIN_YEAR}
+                disabled={!canGoBack}
                 pressing={pressingYear === 'back'}
                 onPress={() => { setPressingYear('back'); setTimeout(() => setPressingYear(null), 110); goBackOneYear(); }}
               />
               <YearSeal
                 direction="forward"
-                disabled={currentYear >= MAX_YEAR}
+                disabled={!canGoForward}
                 pressing={pressingYear === 'forward'}
                 onPress={() => { setPressingYear('forward'); setTimeout(() => setPressingYear(null), 110); goForwardOneYear(); }}
               />
