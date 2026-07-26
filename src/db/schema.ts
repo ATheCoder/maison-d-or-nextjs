@@ -271,7 +271,11 @@ export type NewStoryBrief = typeof storyBrief.$inferInsert;
 // mirrors screens ③ (staged brief writing) and ④ (per-slot image states);
 // `result` holds e.g. a rewrite proposal awaiting Accept.
 
-export const generationJobKind = pgEnum('generation_job_kind', ['brief', 'images', 'slot', 'rewrite']);
+// 'ask' is Phase 8's whole-unit Daily Gold generation — draft this day, this
+// month-day's history, its top ten. The other four keep their meanings: a
+// person's book ('brief'), a batch of slots ('images'), one slot ('slot'), one
+// field ('rewrite'), all of which Daily Gold subjects now reuse as they are.
+export const generationJobKind = pgEnum('generation_job_kind', ['brief', 'images', 'slot', 'rewrite', 'ask']);
 export const generationJobState = pgEnum('generation_job_state', ['running', 'done', 'failed']);
 
 // Staged progress for a brief job; per-slot progress for image jobs. A rewrite
@@ -281,6 +285,13 @@ export type JobProgress = {
   stages?: { key: string; label: string; state: 'pending' | 'active' | 'done' | 'failed' }[];
   slots?: Record<string, { state: string; error?: string }>;
   fieldPath?: string;
+  /**
+   * A whole-unit Daily Gold ask (Phase 8, §8.5). `mode` is the words-only /
+   * words-and-paintings choice made on the ask itself and never remembered as a
+   * preference; `units` is what the ask was stated in — five moments, ten
+   * stories — because units are the only quantity on screen (R6.5).
+   */
+  ask?: { kind: string; mode: 'words' | 'words+paintings'; units: number; label: string };
 };
 
 // A rewrite job's proposal: the field it targets, the text at the time of the
@@ -345,12 +356,25 @@ export const goodNewsItem = pgTable('good_news_item', {
   // Mostly null in current data; feeds the flag chip if present.
   location: text('location'),
   imageUrl: text('image_url'),
+  // The editable half of this item's painting prompt (R6.2). Kept on the row
+  // rather than beside the image key, because the key is
+  // `news-media/<date>/<position>.webp` and a position moves: a reorder, a
+  // deletion or an accepted candidate would strand a position-keyed scene on
+  // the wrong story. Style and composition are house style and stay in
+  // lib/daily-gold/prompts.ts, so a stored copy can never drift from the
+  // surface it describes.
+  imageScene: text('image_scene'),
 
   // The publish gate. Readers filter on this, so an unpublished row is both a
   // draft and — per D11 — a retrieval candidate awaiting review. It still holds
   // a `position`, because (date, position) is unique; accepting a candidate
   // repositions it into the next free display slot rather than keeping the
   // arrival order it was inserted with.
+  //
+  // Positions 0–9 are the column a family reads. Retrieval parks its candidates
+  // at 10 and upward (lib/daily-gold/candidates.ts), so proposing twelve
+  // stories can never push an authored one out of the ten, and accepting is
+  // always a move *into* the display band.
   published: boolean('published').notNull().default(false),
 
   // Provenance (D10). A retrieved item records where its claim came from so
@@ -404,6 +428,9 @@ export const onThisDayEvent = pgTable('on_this_day_event', {
   story: text('story'),
   location: text('location'),
   imageUrl: text('image_url'),
+  // This event's painting scene (R6.2), on the row for the same reason good
+  // news keeps its own: `position` moves, and a scene must follow its event.
+  imageScene: text('image_scene'),
 
   // The publish gate for this table (D4) — the reader has always required it,
   // so it needs no `published` twin. Setting it is an explicit act.
@@ -450,10 +477,15 @@ export const greatestMoment = pgTable('greatest_moment', {
   headline: text('headline'),
   story: text('story'),
   imageUrl: text('image_url'),
+  // This moment's painting scene (R6.2) — on the row, because a rung's rank
+  // changes every time the ladder is dragged.
+  imageScene: text('image_scene'),
 
   // The publish gate, and with it the candidate mechanism (D11) — an
   // unpublished moment holds a rank, so accepting one re-ranks it into the
-  // next free rung rather than keeping where it landed.
+  // next free rung rather than keeping where it landed. Ranks 1–10 are the
+  // ladder; retrieval parks candidates at 11 and upward, the same way good
+  // news parks past position 9.
   published: boolean('published').notNull().default(false),
 
   // Provenance (D10). Year drift is this content type's standard failure, so
@@ -492,6 +524,13 @@ export const dailyGoldEdition = pgTable('daily_gold_edition', {
   // The masthead painting behind <DGHero>, which has been falling back to
   // destinationImageUrl for want of this column.
   heroImageUrl: text('hero_image_url'),
+  // The two edition-level painting scenes (R6.2) — the editable half of each
+  // prompt, so a text-only ask leaves both slots empty *with something to paint
+  // from*, which is what makes text-only a real choice rather than a
+  // half-measure. The fixed style and composition blocks stay in
+  // lib/daily-gold/prompts.ts.
+  heroScene: text('hero_scene'),
+  destinationScene: text('destination_scene'),
 
   destinationCountry: text('destination_country'),
   destinationDescription: text('destination_description'),

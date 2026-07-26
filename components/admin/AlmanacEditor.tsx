@@ -11,8 +11,10 @@
  * content too, but a person — and the order they appear in — is edited in the
  * library, and giving that decision two homes is how the two drift apart.
  *
- * No AI in this phase. Retrieval and the ask arrive in Phase 8; image slots are
- * picture-plus-opener until the shared modal lands in Phase 7.
+ * Phase 8 adds retrieval on the same terms as everywhere else: an ask proposes
+ * unpublished rows with citations, the admin reads each claim beside its
+ * source, and only Keep publishes it. A proposed moment parks above the ladder
+ * rather than in it, so "6 of 10" never counts something nobody has read.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -28,11 +30,17 @@ import { CSS as dndCSS } from '@dnd-kit/utilities';
 import { flagEmoji, resolveLocation } from '@/lib/countries';
 import { historySlot, momentSlot } from '@/lib/daily-gold/slots';
 import SlotOpener from './SlotOpener';
+import AskPanel, { type AskJob } from './AskPanel';
+import CandidateCard from './CandidateCard';
+import { RewriteButton, RewriteReview, jobForField, useJobPolling, type RewriteJob } from './DgRewrite';
 import {
   createEvent, createMoment, deleteEvent, deleteMoment, reorderMoments, reorderYear,
   saveEvent, saveMoment, setEventPublished, setMomentPublished,
   type AlmanacDay, type AlmanacEvent, type AlmanacMoment,
 } from '@/app/admin/daily-gold/almanacActions';
+import {
+  acceptCandidate, getDgJobs, rejectAllCandidates, rejectCandidate,
+} from '@/app/admin/daily-gold/aiActions';
 
 const CSS = `
 .alm {
@@ -172,8 +180,49 @@ export default function AlmanacEditor({ day }: { day: AlmanacDay }) {
   const covered = bandYears.filter((y) => y.events.length > 0).length;
   const publishedEvents = allEvents.filter((e) => e.published).length;
   const outOfBand = day.years.filter((y) => !y.inBand && y.events.length > 0);
+  const eventCandidates = allEvents.filter((e) => e.candidate);
 
   const refresh = () => router.refresh();
+
+  // ── Jobs ──────────────────────────────────────────────────────────────────
+  const subject = useMemo(() => ({ kind: 'month_day' as const, key: day.monthDay }), [day.monthDay]);
+  // Which tab's ask panel is open. Per tab, not one flag for both: the two tabs
+  // ask for different things, and a panel opened on one has no business
+  // appearing on the other.
+  const [askOpenFor, setAskOpenFor] = useState<Tab | null>(null);
+  const [jobs, setJobs] = useState<{ ask: AskJob | null; rewrites: RewriteJob[] }>({ ask: null, rewrites: [] });
+
+  const loadJobs = useCallback(() => {
+    void getDgJobs(subject).then((j) => setJobs({ ask: j.ask, rewrites: j.rewrites }));
+  }, [subject]);
+  useEffect(() => { loadJobs(); }, [loadJobs]);
+
+  const anyRunning = jobs.ask?.state === 'running' || jobs.rewrites.some((r) => r.state === 'running');
+  useJobPolling(anyRunning, () => { loadJobs(); router.refresh(); });
+
+  // A finished ask has written rows the page was rendered without; pull them in
+  // once. The panel stays until dismissed, so leaving and returning finds the
+  // same result waiting.
+  const askDone = jobs.ask?.state === 'done' ? jobs.ask.id : null;
+  useEffect(() => { if (askDone) router.refresh(); }, [askDone, router]);
+
+  /**
+   * Which tab an existing ask belongs to.
+   *
+   * A finished ask sits on its own tab until it is dismissed, and it must not
+   * haunt the other one: gating both tabs on "is there any ask job" left an
+   * undismissed Greatest Moments result silently disabling *Ask for events* —
+   * a dead button with no explanation, which is exactly how this looked.
+   */
+  const askTab: Tab | null = jobs.ask ? (jobs.ask.progress?.ask?.kind === 'moments' ? 'moments' : 'history') : null;
+  const tabAsk = askTab === tab ? jobs.ask : null;
+  /** The other tab's ask is mid-flight — one runs per month-day at a time. */
+  const otherAskRunning = Boolean(jobs.ask) && askTab !== tab && jobs.ask?.state === 'running';
+
+  // Open either because the admin asked for it, or because a job belongs to
+  // this tab — that second clause is what makes leaving and returning find the
+  // result waiting where it was asked for, with no state to keep in sync.
+  const showAsk = !otherAskRunning && (askOpenFor === tab || Boolean(tabAsk));
 
   return (
     <div className="alm">
@@ -195,9 +244,21 @@ export default function AlmanacEditor({ day }: { day: AlmanacDay }) {
             {fmtDate(day.occurrenceDate)} →
           </Link>
         </div>
-        <div className="seg">
-          <button className={tab === 'history' ? 'on' : undefined} onClick={() => setTab('history')}>On this day</button>
-          <button className={tab === 'moments' ? 'on' : undefined} onClick={() => setTab('moments')}>Greatest moments</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            className="btn btn-sm"
+            onClick={() => setAskOpenFor(tab)}
+            disabled={Boolean(tabAsk) || otherAskRunning}
+            title={otherAskRunning
+              ? `The ${askTab === 'moments' ? 'Greatest Moments' : 'On This Day'} ask is still running — one at a time per month-day.`
+              : undefined}
+          >
+            {tab === 'history' ? '✦ Ask for events' : '✦ Ask for moments'}
+          </button>
+          <div className="seg">
+            <button className={tab === 'history' ? 'on' : undefined} onClick={() => setTab('history')}>On this day</button>
+            <button className={tab === 'moments' ? 'on' : undefined} onClick={() => setTab('moments')}>Greatest moments</button>
+          </div>
         </div>
       </div>
 
@@ -304,27 +365,111 @@ export default function AlmanacEditor({ day }: { day: AlmanacDay }) {
           </div>
 
           <div className="pane">
+            {showAsk && (
+              <AskPanel
+                kind="history"
+                subjectKey={day.monthDay}
+                title={`Events for ${fmtMonthDay(day.monthDay)}`}
+                blurb={
+                  `One ask across ${day.bandFrom}–${day.bandTo}, returning candidate events spread over several `
+                  + 'years, each with its citation. What is already here is sent as exclusions, so asking twice '
+                  + 'proposes different things rather than the same five again.'
+                }
+                unitNoun={['event', 'events']}
+                defaultUnits={6}
+                job={tabAsk}
+                onChanged={() => { loadJobs(); refresh(); }}
+                onError={setError}
+                onClose={() => { setAskOpenFor(null); loadJobs(); }}
+              />
+            )}
+
+            {eventCandidates.length > 0 && (
+              <CandidateStrip
+                kind="event"
+                count={eventCandidates.length}
+                monthDay={day.monthDay}
+                blurb="Proposed events, not yet shown to families. Select one on the left to read it in full — or judge it here."
+                onChanged={refresh}
+                onError={setError}
+              />
+            )}
+
             {selected ? (
               <EventPane
                 key={selected.id}
                 monthDay={day.monthDay}
                 event={selected}
                 siblings={day.years.find((y) => y.year === selected.year)?.events ?? []}
+                scene={day.scenes[`history:${selected.year}:${selected.position}`] ?? ''}
+                rewrites={jobs.rewrites}
+                onJobsChanged={loadJobs}
                 onChanged={refresh}
                 onError={setError}
               />
             ) : (
               <div className="note" style={{ fontSize: 13, maxWidth: 520 }}>
                 Nothing is authored for {fmtMonthDay(day.monthDay)} yet. Hover a year on the left and use
-                <b> + </b> to write its first event — or leave the day empty, which is a finished state,
-                not an unfinished one.
+                <b> + </b> to write its first event, or ask for some — or leave the day empty, which is a
+                finished state, not an unfinished one.
               </div>
             )}
           </div>
         </div>
       ) : (
         <div className="pane" style={{ padding: '20px 24px 60px' }}>
-          <MomentLadder day={day} onChanged={refresh} onError={setError} />
+          {showAsk && (
+            <AskPanel
+              kind="moments"
+              subjectKey={day.monthDay}
+              title={`Moments for ${fmtMonthDay(day.monthDay)}`}
+              blurb={
+                'All of history, BC included. Results are appended as proposals — never a replacement — and '
+                + 'the ask is capped at the free rungs, because a moment there is nowhere to accept is a moment '
+                + 'you paid for and cannot use.'
+              }
+              unitNoun={['moment', 'moments']}
+              defaultUnits={5}
+              job={tabAsk}
+              onChanged={() => { loadJobs(); refresh(); }}
+              onError={setError}
+              onClose={() => { setAskOpenFor(null); loadJobs(); }}
+            />
+          )}
+
+          {day.momentCandidates.length > 0 && (
+            <div className="panel" style={{ padding: 13, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span className="kick">{day.momentCandidates.length} proposed · not on the ladder</span>
+                <span className="note" style={{ flex: 1 }}>
+                  Check the year against the source — year drift is what goes wrong here. Keeping one gives it
+                  the next free rung.
+                </span>
+                <RejectAll kind="moment" monthDay={day.monthDay} onChanged={refresh} onError={setError} />
+              </div>
+              <div style={{ display: 'grid', gap: 9 }}>
+                {day.momentCandidates.map((m) => (
+                  <CandidateCard
+                    key={m.id}
+                    kind="moment"
+                    item={{
+                      id: m.id,
+                      headline: m.headline,
+                      body: m.story,
+                      year: m.year,
+                      source_url: m.source_url,
+                      source_title: m.source_title,
+                    }}
+                    onChanged={refresh}
+                    onError={setError}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <MomentLadder day={day} rewrites={jobs.rewrites} onJobsChanged={loadJobs}
+            onChanged={refresh} onError={setError} />
         </div>
       )}
     </div>
@@ -467,6 +612,7 @@ function EventRailRow({ event, index, selected, onSelect, disabled }: {
         }}
       >
         {event.headline || <i>Untitled event</i>}
+        {event.candidate && <b style={{ color: '#96681f' }}> · proposed</b>}
         {event.dateMismatch && <b style={{ color: '#96402b' }}> · date looks wrong</b>}
       </button>
       {!event.published && <span className="dot d-empty" style={{ marginTop: 4 }} />}
@@ -476,8 +622,9 @@ function EventRailRow({ event, index, selected, onSelect, disabled }: {
 
 // ── On This Day: the event pane ──────────────────────────────────────────────
 
-function EventPane({ monthDay, event, siblings, onChanged, onError }: {
+function EventPane({ monthDay, event, siblings, scene, rewrites, onJobsChanged, onChanged, onError }: {
   monthDay: string; event: AlmanacEvent; siblings: AlmanacEvent[];
+  scene: string; rewrites: RewriteJob[]; onJobsChanged: () => void;
   onChanged: () => void; onError: (m: string) => void;
 }) {
   const [pending, start] = useTransition();
@@ -524,19 +671,75 @@ function EventPane({ monthDay, event, siblings, onChanged, onError }: {
         </div>
       )}
 
+      {/* Provenance, and — while it is still a proposal — the two verbs that
+          resolve it (D10, R4.9). Kept visible after accepting, so a later visit
+          can tell what was verified from what was merely typed. */}
+      {event.source_url && (
+        <div className="panel" style={{ padding: '10px 13px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span className={`chip ${event.candidate ? 'chip-amber' : 'chip-green'}`}>
+            {event.candidate ? 'Proposed · unreviewed' : 'Sourced'}
+          </span>
+          <a href={event.source_url} target="_blank" rel="noreferrer noopener" style={{ fontSize: 11.5 }}>
+            {event.source_title || 'the source'} ↗
+          </a>
+          <span className="note" style={{ flex: 1, minWidth: 160 }}>
+            Check the year and the day against it before this goes out.
+          </span>
+          {event.candidate && (
+            <CandidateVerbs kind="event" id={event.id} onChanged={onChanged} onError={onError} />
+          )}
+        </div>
+      )}
+      {event.candidate && !event.source_url && (
+        <div className="banner b-red">
+          <span className="dot d-red" />
+          <span>
+            <b>Proposed with no usable source.</b> The search could not be traced back to a page, so nothing
+            here is checkable. Verify it yourself, or reject it.
+          </span>
+          <CandidateVerbs kind="event" id={event.id} onChanged={onChanged} onError={onError} />
+        </div>
+      )}
+
       <div className="fgroup">
-        <div className="flbl"><span className="kick">Headline</span></div>
+        <div className="flbl">
+          <span className="kick">Headline</span>
+          <RewriteButton
+            subject={{ kind: 'month_day', key: monthDay }}
+            fieldPath={`event.${event.id}.headline`}
+            current={local.headline}
+            context={`On This Day, ${fmtMonthDay(monthDay)} ${fmtYear(event.year)}`}
+            job={jobForField(rewrites, `event.${event.id}.headline`)}
+            onStarted={onJobsChanged}
+            onError={onError}
+          />
+        </div>
         <input className="field serif" style={{ fontSize: 18, fontWeight: 600 }} placeholder="What happened"
           value={local.headline} onChange={(e) => set('headline')(e.target.value)} />
+        <FieldReview jobs={rewrites} fieldPath={`event.${event.id}.headline`}
+          onAccept={set('headline')} onResolved={onJobsChanged} />
       </div>
 
       <div className="fgroup">
         <div className="flbl">
           <span className="kick">The story a child reads</span>
-          <span className="note">{wordCount(local.story)} words</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="note">{wordCount(local.story)} words</span>
+            <RewriteButton
+              subject={{ kind: 'month_day', key: monthDay }}
+              fieldPath={`event.${event.id}.story`}
+              current={local.story}
+              context={`On This Day, ${fmtMonthDay(monthDay)} ${fmtYear(event.year)}: ${local.headline}`}
+              job={jobForField(rewrites, `event.${event.id}.story`)}
+              onStarted={onJobsChanged}
+              onError={onError}
+            />
+          </span>
         </div>
         <textarea className="field" rows={5} placeholder="For a child of seven…"
           value={local.story} onChange={(e) => set('story')(e.target.value)} />
+        <FieldReview jobs={rewrites} fieldPath={`event.${event.id}.story`}
+          onAccept={set('story')} onResolved={onJobsChanged} />
       </div>
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -570,10 +773,11 @@ function EventPane({ monthDay, event, siblings, onChanged, onError }: {
             slot={historySlot(event.year, event.position)}
             subject={{ kind: 'month_day', key: monthDay }}
             imageUrl={event.image_url}
+            scene={scene}
             context={`On This Day · ${fmtMonthDay(monthDay)} ${fmtYear(event.year)}`}
             width={150}
             height={84}
-            emptyText="no painting"
+            emptyText={scene ? 'prompt written' : 'no painting'}
             onChanged={onChanged}
           />
         </div>
@@ -613,8 +817,9 @@ function EventPane({ monthDay, event, siblings, onChanged, onError }: {
 
 // ── Greatest Moments ─────────────────────────────────────────────────────────
 
-function MomentLadder({ day, onChanged, onError }: {
-  day: AlmanacDay; onChanged: () => void; onError: (m: string) => void;
+function MomentLadder({ day, rewrites, onJobsChanged, onChanged, onError }: {
+  day: AlmanacDay; rewrites: RewriteJob[]; onJobsChanged: () => void;
+  onChanged: () => void; onError: (m: string) => void;
 }) {
   const [pending, start] = useTransition();
   const [openId, setOpenId] = useState<number | null>(null);
@@ -686,6 +891,9 @@ function MomentLadder({ day, onChanged, onError }: {
                   monthDay={day.monthDay}
                   moment={m}
                   displayRank={ranks[i] ?? m.rank}
+                  scene={day.scenes[`moment:${m.rank}`] ?? ''}
+                  rewrites={rewrites}
+                  onJobsChanged={onJobsChanged}
                   open={openId === m.id}
                   onToggle={() => setOpenId((o) => (o === m.id ? null : m.id))}
                   onChanged={onChanged}
@@ -711,8 +919,11 @@ function MomentLadder({ day, onChanged, onError }: {
   );
 }
 
-function MomentRung({ monthDay, moment, displayRank, open, onToggle, onChanged, onError }: {
+function MomentRung({
+  monthDay, moment, displayRank, scene, rewrites, onJobsChanged, open, onToggle, onChanged, onError,
+}: {
   monthDay: string; moment: AlmanacMoment; displayRank: number; open: boolean;
+  scene: string; rewrites: RewriteJob[]; onJobsChanged: () => void;
   onToggle: () => void; onChanged: () => void; onError: (m: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
@@ -792,19 +1003,55 @@ function MomentRung({ monthDay, moment, displayRank, open, onToggle, onChanged, 
                   <span className="note">BC is negative: −411</span>
                 </div>
                 <div className="fgroup" style={{ flex: 1, minWidth: 240 }}>
-                  <div className="flbl"><span className="kick">Headline</span></div>
+                  <div className="flbl">
+                    <span className="kick">Headline</span>
+                    <RewriteButton
+                      subject={{ kind: 'month_day', key: monthDay }}
+                      fieldPath={`moment.${moment.id}.headline`}
+                      current={local.headline}
+                      context={`Greatest Moments, ${fmtMonthDay(monthDay)} ${fmtYear(moment.year)}`}
+                      job={jobForField(rewrites, `moment.${moment.id}.headline`)}
+                      onStarted={onJobsChanged}
+                      onError={onError}
+                    />
+                  </div>
                   <input className="field serif" style={{ fontSize: 15, fontWeight: 600 }}
                     value={local.headline} onChange={(e) => set('headline')(e.target.value)} />
                 </div>
               </div>
+              <FieldReview jobs={rewrites} fieldPath={`moment.${moment.id}.headline`}
+                onAccept={set('headline')} onResolved={onJobsChanged} />
+
+              {moment.source_url && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
+                  <span className="chip chip-green">Sourced</span>
+                  <a href={moment.source_url} target="_blank" rel="noreferrer noopener" style={{ fontSize: 11.5 }}>
+                    {moment.source_title || 'the source'} ↗
+                  </a>
+                  <span className="note">Check the year against it — that is what drifts.</span>
+                </div>
+              )}
 
               <div className="fgroup">
                 <div className="flbl">
                   <span className="kick">The story a child reads</span>
-                  <span className="note">{wordCount(local.story)} words</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="note">{wordCount(local.story)} words</span>
+                    <RewriteButton
+                      subject={{ kind: 'month_day', key: monthDay }}
+                      fieldPath={`moment.${moment.id}.story`}
+                      current={local.story}
+                      context={`Greatest Moments, ${fmtMonthDay(monthDay)} ${fmtYear(moment.year)}: ${local.headline}`}
+                      job={jobForField(rewrites, `moment.${moment.id}.story`)}
+                      onStarted={onJobsChanged}
+                      onError={onError}
+                    />
+                  </span>
                 </div>
                 <textarea className="field" rows={4} value={local.story}
                   onChange={(e) => set('story')(e.target.value)} />
+                <FieldReview jobs={rewrites} fieldPath={`moment.${moment.id}.story`}
+                  onAccept={set('story')} onResolved={onJobsChanged} />
               </div>
 
               <div className="fgroup">
@@ -813,10 +1060,11 @@ function MomentRung({ monthDay, moment, displayRank, open, onToggle, onChanged, 
                   slot={momentSlot(moment.rank)}
                   subject={{ kind: 'month_day', key: monthDay }}
                   imageUrl={moment.image_url}
+                  scene={scene}
                   context={`Greatest Moments · rank ${displayRank}`}
                   width={150}
                   height={84}
-                  emptyText="no painting"
+                  emptyText={scene ? 'prompt written' : 'no painting'}
                   onChanged={onChanged}
                 />
                 <div className="note">
@@ -852,5 +1100,78 @@ function MomentRung({ monthDay, moment, displayRank, open, onToggle, onChanged, 
         )}
       </div>
     </div>
+  );
+}
+
+// ── Review pieces ────────────────────────────────────────────────────────────
+
+/** The CURRENT / AI-PROPOSES panel for one field, when a proposal is waiting. */
+function FieldReview({ jobs, fieldPath, onAccept, onResolved }: {
+  jobs: RewriteJob[]; fieldPath: string; onAccept: (v: string) => void; onResolved: () => void;
+}) {
+  const job = jobForField(jobs, fieldPath);
+  if (!job || job.state === 'running') return null;
+  return <RewriteReview job={job} onAccept={onAccept} onResolved={onResolved} />;
+}
+
+/**
+ * Keep or reject, beside the source they are a judgement about.
+ *
+ * An event is not repositioned when it is kept — On This Day has no ceiling and
+ * `position` only orders one year's list — so accepting here is publishing plus
+ * the review stamp. The stamp is what stops it reading as unreviewed for ever.
+ */
+function CandidateVerbs({ kind, id, onChanged, onError }: {
+  kind: 'event' | 'moment'; id: number; onChanged: () => void; onError: (m: string) => void;
+}) {
+  const [pending, start] = useTransition();
+  return (
+    <span style={{ display: 'flex', gap: 7 }}>
+      <button className="btn btn-sm btn-gold" disabled={pending}
+        onClick={() => start(async () => {
+          const r = await acceptCandidate(kind, id);
+          if (!r.ok) onError(r.error ?? 'Could not keep it.'); else onChanged();
+        })}>
+        Keep it
+      </button>
+      <button className="btn btn-sm btn-red" disabled={pending}
+        onClick={() => start(async () => {
+          const r = await rejectCandidate(kind, id);
+          if (!r.ok) onError(r.error ?? 'Could not reject it.'); else onChanged();
+        })}>
+        Reject
+      </button>
+    </span>
+  );
+}
+
+/** A count of what is waiting, with one verb for clearing the lot. */
+function CandidateStrip({ kind, count, monthDay, blurb, onChanged, onError }: {
+  kind: 'event' | 'moment'; count: number; monthDay: string; blurb: string;
+  onChanged: () => void; onError: (m: string) => void;
+}) {
+  return (
+    <div className="banner b-amber" style={{ display: 'flex', alignItems: 'center', gap: 11, flexWrap: 'wrap' }}>
+      <span className="dot d-warn" />
+      <span style={{ flex: 1, minWidth: 220 }}>
+        <b>{count} proposed {count === 1 ? 'event' : 'events'} awaiting review.</b> {blurb}
+      </span>
+      <RejectAll kind={kind} monthDay={monthDay} onChanged={onChanged} onError={onError} />
+    </div>
+  );
+}
+
+function RejectAll({ kind, monthDay, onChanged, onError }: {
+  kind: 'event' | 'moment'; monthDay: string; onChanged: () => void; onError: (m: string) => void;
+}) {
+  const [pending, start] = useTransition();
+  return (
+    <button className="btn btn-sm btn-ghost" disabled={pending}
+      onClick={() => start(async () => {
+        const r = await rejectAllCandidates(kind, monthDay);
+        if (!r.ok) onError(r.error ?? 'Could not clear these.'); else onChanged();
+      })}>
+      Reject all
+    </button>
   );
 }

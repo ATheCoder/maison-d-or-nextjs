@@ -19,17 +19,25 @@
  * parks every row on a negative rank before assigning finals. Both run in one
  * transaction.
  */
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/src/db';
 import { greatestMoment, onThisDayEvent, remarkablePerson } from '@/src/db/schema';
 import { requireAdmin } from '@/lib/dal';
 import { resolveLocation } from '@/lib/countries';
+import { MOMENT_RANKS, firstFreeSlot, isCandidate } from '@/lib/daily-gold/candidates';
+import { getScenes } from '@/lib/daily-gold/imageStore';
 
 const MONTH_DAY_RE = /^\d{2}-\d{2}$/;
 
-/** The reader renders ten ranks; an eleventh would never appear. */
-const MAX_RANKS = 10;
+/**
+ * The reader renders ten ranks; an eleventh would never appear.
+ *
+ * Since Phase 8 this bounds the *ladder* rather than the table: retrieval parks
+ * its proposed moments at rank 11 and upward, so a month-day can hold fifteen
+ * rows and still have free rungs (lib/daily-gold/candidates.ts).
+ */
+const MAX_RANKS = MOMENT_RANKS;
 
 /**
  * The rolling band On This Day generation is scoped to (R4.3).
@@ -57,10 +65,14 @@ export type AlmanacEvent = {
   location: string | null;
   iso2: string | null;
   image_url: string | null;
+  image_scene: string | null;
   published: boolean;
   source_url: string | null;
   source_title: string | null;
+  retrieved_at: string | null;
   reviewed_at: string | null;
+  /** A retrieved proposal nobody has reviewed yet (D11) — review, then accept. */
+  candidate: boolean;
   /** True when the story text names a date that is not this month-day. */
   dateMismatch: boolean;
 };
@@ -78,10 +90,13 @@ export type AlmanacMoment = {
   headline: string | null;
   story: string | null;
   image_url: string | null;
+  image_scene: string | null;
   published: boolean;
   source_url: string | null;
   source_title: string | null;
+  retrieved_at: string | null;
   reviewed_at: string | null;
+  candidate: boolean;
 };
 
 export type BornTodayPerson = {
@@ -97,8 +112,13 @@ export type AlmanacDay = {
   bandTo: number;
   /** Every year in the band, plus any out-of-band year that holds rows. */
   years: AlmanacYear[];
+  /** The ladder: ranks 1–10, hand-written and accepted alike. */
   moments: AlmanacMoment[];
+  /** Proposed moments awaiting review, parked past rank 10 (D11). */
+  momentCandidates: AlmanacMoment[];
   people: BornTodayPerson[];
+  /** Each image slot's stored scene, so the modal opens with its prompt ready. */
+  scenes: Record<string, string>;
   /** This month-day's most recent occurrence as a real date (R4.16). */
   occurrenceDate: string;
 };
@@ -144,7 +164,7 @@ export async function getAlmanacDay(monthDay: string): Promise<AlmanacDay | null
 
   const { from, to } = band();
 
-  const [events, moments, people] = await Promise.all([
+  const [events, moments, people, scenes] = await Promise.all([
     db
       .select()
       .from(onThisDayEvent)
@@ -166,23 +186,47 @@ export async function getAlmanacDay(monthDay: string): Promise<AlmanacDay | null
       .from(remarkablePerson)
       .where(sql`to_char(${remarkablePerson.birthDate}, 'MM-DD') = ${monthDay}`)
       .orderBy(sql`${remarkablePerson.bornTodayPriority} desc`, asc(remarkablePerson.name)),
+    getScenes({ kind: 'month_day', key: monthDay }),
   ]);
 
-  const toEvent = (e: typeof events[number]): AlmanacEvent => ({
-    id: e.id,
-    year: e.year,
-    position: e.position,
-    headline: e.headline,
-    story: e.story,
-    location: e.location,
-    iso2: e.location ? resolveLocation(e.location) : null,
-    image_url: e.imageUrl,
-    published: e.maisonRewriteDone,
-    source_url: e.sourceUrl,
-    source_title: e.sourceTitle,
-    reviewed_at: isoOf(e.reviewedAt),
-    dateMismatch: storyDateMismatch(e.story, monthDay),
-  });
+  const toEvent = (e: typeof events[number]): AlmanacEvent => {
+    const provenance = { retrieved_at: isoOf(e.retrievedAt), reviewed_at: isoOf(e.reviewedAt) };
+    return {
+      id: e.id,
+      year: e.year,
+      position: e.position,
+      headline: e.headline,
+      story: e.story,
+      location: e.location,
+      iso2: e.location ? resolveLocation(e.location) : null,
+      image_url: e.imageUrl,
+      image_scene: e.imageScene,
+      published: e.maisonRewriteDone,
+      source_url: e.sourceUrl,
+      source_title: e.sourceTitle,
+      ...provenance,
+      candidate: isCandidate(provenance),
+      dateMismatch: storyDateMismatch(e.story, monthDay),
+    };
+  };
+
+  const toMoment = (m: typeof moments[number]): AlmanacMoment => {
+    const provenance = { retrieved_at: isoOf(m.retrievedAt), reviewed_at: isoOf(m.reviewedAt) };
+    return {
+      id: m.id,
+      rank: m.rank,
+      year: m.year,
+      headline: m.headline,
+      story: m.story,
+      image_url: m.imageUrl,
+      image_scene: m.imageScene,
+      published: m.published,
+      source_url: m.sourceUrl,
+      source_title: m.sourceTitle,
+      ...provenance,
+      candidate: isCandidate(provenance),
+    };
+  };
 
   // Every band year appears, empty or not — an empty year is finished work, not
   // a gap (R4.7). Out-of-band years appear only if they hold something, so a
@@ -210,18 +254,11 @@ export async function getAlmanacDay(monthDay: string): Promise<AlmanacDay | null
     bandFrom: from,
     bandTo: to,
     years,
-    moments: moments.map((m) => ({
-      id: m.id,
-      rank: m.rank,
-      year: m.year,
-      headline: m.headline,
-      story: m.story,
-      image_url: m.imageUrl,
-      published: m.published,
-      source_url: m.sourceUrl,
-      source_title: m.sourceTitle,
-      reviewed_at: isoOf(m.reviewedAt),
-    })),
+    // The ladder is the ten rungs a family reads; a parked proposal is a
+    // proposal, and mixing the two would make "6 of 10" mean nothing.
+    moments: moments.map(toMoment).filter((m) => !m.candidate),
+    momentCandidates: moments.map(toMoment).filter((m) => m.candidate),
+    scenes,
     people: people.map((p) => ({
       slug: p.slug,
       name: p.name,
@@ -338,7 +375,10 @@ export async function setEventPublished(id: number, published: boolean): Promise
 
   const rows = await db
     .update(onThisDayEvent)
-    .set({ maisonRewriteDone: published, updatedAt: new Date() })
+    // Publishing *is* the act of review, so it stamps `reviewedAt` too. Without
+    // that, a retrieved event published from this toggle rather than from the
+    // Accept button would go on reading as an unreviewed proposal for ever.
+    .set({ maisonRewriteDone: published, ...(published ? { reviewedAt: new Date() } : {}), updatedAt: new Date() })
     .where(eq(onThisDayEvent.id, id))
     .returning({ monthDay: onThisDayEvent.monthDay });
   if (!rows[0]) return { ok: false, error: 'That event no longer exists.' };
@@ -426,11 +466,9 @@ export async function createMoment(monthDay: string):
     .select({ rank: greatestMoment.rank })
     .from(greatestMoment)
     .where(eq(greatestMoment.monthDay, monthDay));
-  const used = new Set(taken.map((t) => t.rank));
 
-  let rank = 0;
-  for (let r = 1; r <= MAX_RANKS; r += 1) if (!used.has(r)) { rank = r; break; }
-  if (!rank) return { ok: false, error: `All ten ranks are filled — the reader renders no more.` };
+  const rank = firstFreeSlot(taken.map((t) => t.rank), 1, MAX_RANKS);
+  if (rank === null) return { ok: false, error: `All ten ranks are filled — the reader renders no more.` };
 
   const [row] = await db
     .insert(greatestMoment)
@@ -491,7 +529,8 @@ export async function setMomentPublished(id: number, published: boolean): Promis
 
   const rows = await db
     .update(greatestMoment)
-    .set({ published, updatedAt: new Date() })
+    // Publishing is the act of review — see setEventPublished.
+    .set({ published, ...(published ? { reviewedAt: new Date() } : {}), updatedAt: new Date() })
     .where(eq(greatestMoment.id, id))
     .returning({ monthDay: greatestMoment.monthDay });
   if (!rows[0]) return { ok: false, error: 'That moment no longer exists.' };
@@ -521,6 +560,9 @@ export async function deleteMoment(id: number): Promise<{ ok: boolean; error?: s
  * occupied are redistributed in the requested order, so a ladder sitting on
  * 1, 2, 5 keeps those three rungs rather than being silently compacted.
  * Transactional, because `(month_day, rank)` is unique.
+ *
+ * Scoped to the ten: proposals parked above them keep their parking ranks and
+ * cannot be dragged into the ladder without being accepted (D11).
  */
 export async function reorderMoments(monthDay: string, ids: number[]): Promise<{ ok: boolean; error?: string }> {
   await requireAdmin();
@@ -532,7 +574,7 @@ export async function reorderMoments(monthDay: string, ids: number[]): Promise<{
   const current = await db
     .select({ id: greatestMoment.id, rank: greatestMoment.rank })
     .from(greatestMoment)
-    .where(eq(greatestMoment.monthDay, monthDay));
+    .where(and(eq(greatestMoment.monthDay, monthDay), lte(greatestMoment.rank, MAX_RANKS)));
 
   const known = new Set(current.map((c) => c.id));
   if (ids.length !== known.size || ids.some((i) => !known.has(i))) {

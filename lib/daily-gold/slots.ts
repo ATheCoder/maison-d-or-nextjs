@@ -179,6 +179,39 @@ export function parseSlotKey(key: string):
   return null;
 }
 
+/**
+ * The descriptor for a slot key — the inverse of the five builders above.
+ *
+ * Server code (rendering, the asks) works from a stored key rather than from a
+ * screen, so it needs the same descriptor the modal is handed. Returns null for
+ * an unparseable key, which is also the validation server actions rely on.
+ */
+export function slotForKey(key: string): ImageSlot | null {
+  const parsed = parseSlotKey(key);
+  if (!parsed) return null;
+  switch (parsed.kind) {
+    case 'hero': return heroSlot();
+    case 'destination': return destinationSlot();
+    case 'news': return newsSlot(parsed.position);
+    case 'history': return historySlot(parsed.year, parsed.position);
+    case 'moment': return momentSlot(parsed.rank);
+  }
+}
+
+/**
+ * The staging key a Path-A render writes to before it is accepted.
+ *
+ * A separate prefix from the canonical keys, and the job id in the name, for
+ * the same two reasons the book's staging keys carry it: every ✦ Regenerate is
+ * a fresh object with no CDN cache to fight, and an abandoned preview is
+ * identifiable enough to sweep up. Colons in a slot key become dashes — they
+ * are legal in an S3 key but a nuisance in every tool that touches one.
+ */
+export function stagingKeyFor(slotKey: string, subjectKey: string, jobId: number): string | null {
+  if (!parseSlotKey(slotKey)) return null;
+  return `daily-gold-staging/${subjectKey}/${slotKey.replace(/:/g, '-')}.${jobId}.webp`;
+}
+
 /** The R2 key a slot's art is stored under (spec §8.4). */
 export function storageKeyFor(slotKey: string, subjectKey: string): string | null {
   const parsed = parseSlotKey(slotKey);

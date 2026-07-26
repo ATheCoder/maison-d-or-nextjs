@@ -39,3 +39,48 @@ export type RewriteRequested = {
   fieldPath: string;
   current: string;
 };
+
+// ── Daily Gold (Phase 8) ─────────────────────────────────────────────────────
+// Separate events rather than a subject field on the four above: the bodies
+// share nothing — different tables, different prompts, different failure modes
+// — and one function branching on subject kind would be two functions wearing
+// a trench coat.
+
+/** An edition by date, or a recurring month-day. Never a person. */
+export type DgSubjectRef = { kind: 'edition' | 'month_day'; key: string };
+
+// startDgSlotGeneration → renderDailyGoldSlot (Path A, to a staging key).
+export type DgSlotRequested = {
+  subject: DgSubjectRef;
+  jobId: number;
+  slotKey: string;
+};
+
+// startDgBatch → renderDailyGoldImages (straight to canonical, per-slot progress).
+export type DgImagesBatchRequested = {
+  subject: DgSubjectRef;
+  jobId: number;
+  slotKeys: string[];
+};
+
+// A whole-unit ask (§8.2). `mode` decides whether the job goes on to paint the
+// slots whose scenes it just wrote — the words-only / words-and-paintings
+// choice, carried on the ask itself and never stored as a preference (§8.5).
+export type DgAskRequested = {
+  subject: DgSubjectRef;
+  jobId: number;
+  kind: 'day' | 'news' | 'history' | 'moments';
+  mode: 'words' | 'words+paintings';
+  count: number;
+};
+
+// startDgRewrite → rewriteDailyGoldField. `context` is what the surrounding row
+// makes true (the destination, the year), since a Daily Gold field has no brief
+// to be anchored by.
+export type DgRewriteRequested = {
+  subject: DgSubjectRef;
+  jobId: number;
+  fieldPath: string;
+  current: string;
+  context: string;
+};

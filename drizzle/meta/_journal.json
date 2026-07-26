@@ -155,6 +155,13 @@
       "when": 1784989745758,
       "tag": "0021_generation_job_subject",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1785067330276,
+      "tag": "0022_daily_gold_ai",
+      "breakpoints": true
     }
   ]
 }

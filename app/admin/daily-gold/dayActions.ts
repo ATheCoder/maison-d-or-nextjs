@@ -11,7 +11,7 @@
  * is exactly the leak R7.2 closes. An individual item can still be held back
  * afterwards with `setNewsPublished`.
  */
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/src/db';
 import {
@@ -25,11 +25,19 @@ import {
 import { requireAdmin } from '@/lib/dal';
 import { resolveLocation } from '@/lib/countries';
 import { isContinent } from '@/lib/daily-gold/edition';
+import { NEWS_DISPLAY_SLOTS, firstFreeSlot, isCandidate } from '@/lib/daily-gold/candidates';
+import { getScenes } from '@/lib/daily-gold/imageStore';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** The ten the reader renders; anything past this never appears (R3.7). */
-const MAX_NEWS = 10;
+/**
+ * The ten the reader renders; anything past this never appears (R3.7).
+ *
+ * Since Phase 8 this bounds the *column* rather than the table: retrieval parks
+ * its candidates at position 10 and upward (lib/daily-gold/candidates.ts), so a
+ * date can hold twenty rows and still have free places in the ten.
+ */
+const MAX_NEWS = NEWS_DISPLAY_SLOTS;
 
 // ── Reading ──────────────────────────────────────────────────────────────────
 
@@ -62,11 +70,25 @@ export type EditorNewsItem = {
   location: string | null;
   iso2: string | null;
   image_url: string | null;
+  image_scene: string | null;
   published: boolean;
   source_url: string | null;
   source_title: string | null;
   source_published_at: string | null;
+  retrieved_at: string | null;
   reviewed_at: string | null;
+  /**
+   * A retrieved proposal nobody has reviewed yet (D11). It sits outside the
+   * ten, so it is not part of the column until it is accepted — the editor
+   * lists these separately, claim beside source (R3.19).
+   */
+  candidate: boolean;
+  /**
+   * The source's publication date is more than a week from the edition date —
+   * a 2019 feel-good piece presented as today's news, which R3.20 calls this
+   * content type's most likely failure.
+   */
+  stale: boolean;
 };
 
 /** The month-day rail: recurring content a family sees on this date (R4.15). */
@@ -83,7 +105,12 @@ export type DayForEditor = {
   edition: EditorEdition | null;
   /** More than one row means the reader silently picks; the desk resolves it. */
   editionCount: number;
+  /** The column, in position order — hand-written and accepted items only. */
   news: EditorNewsItem[];
+  /** Retrieved proposals awaiting review, parked outside the ten (D11). */
+  candidates: EditorNewsItem[];
+  /** Each image slot's stored scene, so the modal opens with its prompt ready. */
+  scenes: Record<string, string>;
   recurring: RecurringCounts;
   prevDate: string;
   nextDate: string;
@@ -103,7 +130,7 @@ export async function getDayForEditor(date: string): Promise<DayForEditor | null
   if (!DATE_RE.test(date ?? '')) return null;
   const monthDay = date.slice(5);
 
-  const [editions, news, history, moments, people] = await Promise.all([
+  const [editions, news, history, moments, people, scenes] = await Promise.all([
     db
       .select()
       .from(dailyGoldEdition)
@@ -127,9 +154,42 @@ export async function getDayForEditor(date: string): Promise<DayForEditor | null
         eq(remarkablePerson.published, true),
         sql`to_char(${remarkablePerson.birthDate}, 'MM-DD') = ${monthDay}`,
       )),
+    getScenes({ kind: 'edition', key: date }),
   ]);
 
   const row = editions[0];
+
+  // A week either side of the edition — the same window retrieval searches in,
+  // so a candidate flagged stale here is one the search should not have kept.
+  const WEEK = 7 * 24 * 60 * 60 * 1000;
+  const editionTime = Date.parse(`${date}T00:00:00Z`);
+
+  const toItem = (n: typeof news[number]): EditorNewsItem => {
+    const item = {
+      id: n.id,
+      position: n.position,
+      headline: n.headline,
+      description: n.description,
+      location: n.location,
+      iso2: n.location ? resolveLocation(n.location) : null,
+      image_url: n.imageUrl,
+      image_scene: n.imageScene,
+      published: n.published,
+      source_url: n.sourceUrl,
+      source_title: n.sourceTitle,
+      source_published_at: iso(n.sourcePublishedAt),
+      retrieved_at: iso(n.retrievedAt),
+      reviewed_at: iso(n.reviewedAt),
+    };
+    return {
+      ...item,
+      candidate: isCandidate(item),
+      stale: Boolean(n.sourcePublishedAt)
+        && Math.abs(new Date(n.sourcePublishedAt!).getTime() - editionTime) > WEEK,
+    };
+  };
+
+  const allNews = news.map(toItem);
 
   return {
     date,
@@ -154,20 +214,9 @@ export async function getDayForEditor(date: string): Promise<DayForEditor | null
       generated_at: iso(row.generatedAt),
       updated_at: iso(row.updatedAt),
     } : null,
-    news: news.map((n) => ({
-      id: n.id,
-      position: n.position,
-      headline: n.headline,
-      description: n.description,
-      location: n.location,
-      iso2: n.location ? resolveLocation(n.location) : null,
-      image_url: n.imageUrl,
-      published: n.published,
-      source_url: n.sourceUrl,
-      source_title: n.sourceTitle,
-      source_published_at: iso(n.sourcePublishedAt),
-      reviewed_at: iso(n.reviewedAt),
-    })),
+    news: allNews.filter((n) => !n.candidate),
+    candidates: allNews.filter((n) => n.candidate),
+    scenes,
     recurring: {
       monthDay,
       historyYears: history[0]?.years ?? 0,
@@ -256,6 +305,12 @@ export async function saveEdition(date: string, patch: EditionPatch):
  * Publish or unpublish the day. Publishing takes the good-news column with it,
  * so "published" means one thing on this screen; unpublishing withdraws it
  * again. One transaction — a half-published day is the state this avoids.
+ *
+ * **Unreviewed candidates are exempt.** Publishing the day must not publish a
+ * retrieved claim nobody has read beside its source — that is the whole of D10.
+ * The test is `retrieved_at IS NOT NULL AND reviewed_at IS NULL`, so an
+ * *accepted* candidate (reviewed, stamped) publishes and withdraws with
+ * everything else, however many times the day is toggled.
  */
 export async function setEditionStatus(date: string, status: 'draft' | 'ready'):
   Promise<{ ok: boolean; error?: string }> {
@@ -274,7 +329,10 @@ export async function setEditionStatus(date: string, status: 'draft' | 'ready'):
     await tx
       .update(goodNewsItem)
       .set({ published: status === 'ready', updatedAt: new Date() })
-      .where(eq(goodNewsItem.date, date));
+      .where(and(
+        eq(goodNewsItem.date, date),
+        sql`(${goodNewsItem.retrievedAt} is null or ${goodNewsItem.reviewedAt} is not null)`,
+      ));
     return true;
   });
 
@@ -287,8 +345,12 @@ export async function setEditionStatus(date: string, status: 'draft' | 'ready'):
 // ── Good news ────────────────────────────────────────────────────────────────
 
 /**
- * Append an empty item at the next free position. Created unpublished: the
- * column becomes visible when the day is published, not when a row appears.
+ * Append an empty item at the next free place in the column. Created
+ * unpublished: the column becomes visible when the day is published, not when a
+ * row appears.
+ *
+ * The ceiling counts the *display band*, not the table (D11) — a date holding
+ * eight proposals still has ten places to write into by hand.
  */
 export async function createNewsItem(date: string):
   Promise<{ ok: true; id: number } | { ok: false; error: string }> {
@@ -296,19 +358,19 @@ export async function createNewsItem(date: string):
   if (!DATE_RE.test(date ?? '')) return { ok: false, error: 'That is not a valid date.' };
 
   const existing = await db
-    .select({ n: sql<number>`count(*)::int` })
+    .select({ position: goodNewsItem.position })
     .from(goodNewsItem)
     .where(eq(goodNewsItem.date, date));
-  const count = existing[0]?.n ?? 0;
-  if (count >= MAX_NEWS) {
-    return { ok: false, error: `The reader renders ten stories — position ${MAX_NEWS} would never appear.` };
+  const position = firstFreeSlot(existing.map((e) => e.position), 0, MAX_NEWS);
+  if (position === null) {
+    return { ok: false, error: `The reader renders ten stories — an eleventh would never appear.` };
   }
 
   const [row] = await db
     .insert(goodNewsItem)
     .values({
       date,
-      position: count,
+      position,
       headline: 'Untitled story',
       published: false,
     })
@@ -350,7 +412,10 @@ export async function setNewsPublished(id: number, published: boolean): Promise<
   if (!Number.isInteger(id) || typeof published !== 'boolean') return { ok: false, error: 'Bad request.' };
   const done = await db
     .update(goodNewsItem)
-    .set({ published, updatedAt: new Date() })
+    // Showing a story to families is the act of review, so it stamps
+    // `reviewedAt` — otherwise a retrieved item published from this button
+    // rather than from Accept would go on reading as an unreviewed proposal.
+    .set({ published, ...(published ? { reviewedAt: new Date() } : {}), updatedAt: new Date() })
     .where(eq(goodNewsItem.id, id))
     .returning({ id: goodNewsItem.id });
   if (!done.length) return { ok: false, error: 'That story no longer exists.' };
@@ -374,12 +439,18 @@ export async function deleteNewsItem(id: number): Promise<{ ok: boolean; error?:
 
   await db.transaction(async (tx) => {
     await tx.delete(goodNewsItem).where(eq(goodNewsItem.id, id));
-    // Everything after it shuffles down one. Safe as a single statement: the
-    // deleted row's position is now free, so no pair ever collides.
+    // Everything after it, *within the column*, shuffles down one. Safe as a
+    // single statement: the deleted row's position is now free, so no pair ever
+    // collides. Bounded at the display band because shifting a parked candidate
+    // from 10 down to 9 would silently promote it into the ten (D11).
     await tx
       .update(goodNewsItem)
       .set({ position: sql`${goodNewsItem.position} - 1` })
-      .where(and(eq(goodNewsItem.date, date), sql`${goodNewsItem.position} > ${position}`));
+      .where(and(
+        eq(goodNewsItem.date, date),
+        sql`${goodNewsItem.position} > ${position}`,
+        sql`${goodNewsItem.position} < ${MAX_NEWS}`,
+      ));
   });
 
   revalidatePath('/admin/daily-gold');
@@ -395,6 +466,9 @@ export async function deleteNewsItem(id: number): Promise<{ ok: boolean; error?:
  * negative position first — a range the index shares with nothing — and then
  * brought back to its final value. One transaction, so no reader and no
  * concurrent write ever observes the negative half.
+ *
+ * Scoped to the column: unreviewed candidates keep their parking positions and
+ * are neither reordered nor renumbered into the ten (D11).
  */
 export async function reorderNews(date: string, ids: number[]): Promise<{ ok: boolean; error?: string }> {
   await requireAdmin();
@@ -405,12 +479,12 @@ export async function reorderNews(date: string, ids: number[]): Promise<{ ok: bo
   if (new Set(ids).size !== ids.length) return { ok: false, error: 'Duplicate items in the ordering.' };
 
   const current = await db
-    .select({ id: goodNewsItem.id })
+    .select({ id: goodNewsItem.id, position: goodNewsItem.position })
     .from(goodNewsItem)
-    .where(eq(goodNewsItem.date, date));
+    .where(and(eq(goodNewsItem.date, date), sql`${goodNewsItem.position} < ${MAX_NEWS}`));
   const known = new Set(current.map((c) => c.id));
 
-  // The ordering must name exactly this date's items — no more, no fewer, or
+  // The ordering must name exactly this date's column — no more, no fewer, or
   // the result would not be contiguous.
   if (ids.length !== known.size || ids.some((i) => !known.has(i))) {
     return { ok: false, error: 'The ordering does not match this date’s stories. Reload and try again.' };
@@ -420,7 +494,7 @@ export async function reorderNews(date: string, ids: number[]): Promise<{ ok: bo
     await tx
       .update(goodNewsItem)
       .set({ position: sql`-${goodNewsItem.position} - 1` })
-      .where(eq(goodNewsItem.date, date));
+      .where(inArray(goodNewsItem.id, ids));
 
     for (const [index, id] of ids.entries()) {
       await tx

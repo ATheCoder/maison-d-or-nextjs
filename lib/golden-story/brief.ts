@@ -5,7 +5,10 @@
  * editor's two smaller writing flows (suggest a person, rewrite one field),
  * consumed in Phase 5.
  */
-import { OPENROUTER, WRITER_MODEL, orHeaders } from './openrouter.ts';
+import {
+  OPENROUTER, WRITER_MODEL, orHeaders, webPlugin, parseCitations,
+  type Citation, type WebPluginOptions,
+} from './openrouter.ts';
 import { CHAPTERS, TIMELINE, TREASURES, LESSONS } from './prompts.ts';
 
 // The brief is what Claude writes — the writer's structured output, one
@@ -159,20 +162,37 @@ export type ChatPrompt = {
   schema?: JsonSchema;
 };
 
+/** How a single prompt run may differ from the default. */
+export type RunOptions = {
+  /** Room for the answer — ten moments with stories need more than one rewrite. */
+  maxTokens?: number;
+  /**
+   * Turn retrieval on for this call (R7.8). Present means the request carries
+   * the web plugin and the reply may come back with `url_citation`
+   * annotations — the whole basis of D10's verify-rather-than-trust review.
+   */
+  web?: WebPluginOptions;
+};
+
 /**
- * Run one short prompt (a rewrite or a suggestion) as a non-streamed chat
- * completion, returning the assistant's text. These generations are small —
+ * Run one short prompt as a non-streamed chat completion, returning the
+ * assistant's text **and any sources it cited**. These generations are small —
  * well under undici's 5-minute headers timeout — so no SSE is needed here (the
  * whole-book writeBrief streams because it is long). When the prompt carries a
  * schema the model returns JSON matching it; otherwise it returns plain text.
+ *
+ * A grounded call that returns no citations is a real outcome the admin must be
+ * shown (*unverifiable*, R3.19), not an error — so an empty citation list never
+ * throws here.
  */
-export async function runPrompt(prompt: ChatPrompt): Promise<string> {
+export async function runPromptDetailed(prompt: ChatPrompt, options: RunOptions = {}):
+  Promise<{ text: string; citations: Citation[] }> {
   const res = await fetch(`${OPENROUTER}/chat/completions`, {
     method: 'POST',
     headers: orHeaders(),
     body: JSON.stringify({
       model: WRITER_MODEL,
-      max_tokens: 4000,
+      max_tokens: options.maxTokens ?? 4000,
       messages: [
         { role: 'system', content: prompt.system },
         { role: 'user', content: prompt.user },
@@ -180,12 +200,19 @@ export async function runPrompt(prompt: ChatPrompt): Promise<string> {
       ...(prompt.schema
         ? { response_format: { type: 'json_schema', json_schema: { name: 'out', strict: true, schema: prompt.schema } } }
         : {}),
+      ...(options.web ? { plugins: [webPlugin(options.web)] } : {}),
     }),
   });
   if (!res.ok) throw new Error(`openrouter ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const data = await res.json();
   const text: string = data?.choices?.[0]?.message?.content ?? '';
   if (!text) throw new Error('no text in model response');
+  return { text, citations: parseCitations(data) };
+}
+
+/** The text-only form, for callers with nothing to verify (rewrites, suggestions). */
+export async function runPrompt(prompt: ChatPrompt, options: RunOptions = {}): Promise<string> {
+  const { text } = await runPromptDetailed(prompt, options);
   return text;
 }
 

@@ -95,6 +95,20 @@ export async function promoteStaging(slug: string, file: string, stagingK: strin
   return `${publicUrl(key)}?v=${version}`;
 }
 
+/**
+ * Promote a staging object to an explicit canonical key — the key-addressed
+ * twin of `promoteStaging`, for the Daily Gold surfaces whose art is keyed by
+ * date or month-day rather than by a story slug (spec §8.4).
+ */
+export async function promoteToKey(stagingK: string, canonicalK: string, version: number): Promise<string> {
+  const { s3, bucket } = getS3();
+  await s3.send(new CopyObjectCommand({
+    Bucket: bucket, Key: canonicalK, CopySource: `${bucket}/${stagingK}`,
+    ContentType: 'image/webp', MetadataDirective: 'REPLACE',
+  }));
+  return `${publicUrl(canonicalK)}?v=${version}`;
+}
+
 /** Best-effort delete (sweeping an abandoned or promoted staging object). */
 export async function deleteStorageObject(key: string): Promise<void> {
   const { s3, bucket } = getS3();

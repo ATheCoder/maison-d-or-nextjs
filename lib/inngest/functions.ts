@@ -11,10 +11,15 @@ import {
   inngest,
   type ImagesBatchRequested, type ImageSlotRequested,
   type BriefRequested, type RewriteRequested,
+  type DgSlotRequested, type DgImagesBatchRequested,
+  type DgAskRequested, type DgRewriteRequested,
 } from './client';
 import { renderSlotToCanonical, renderSlotToStaging } from '@/lib/golden-story/imageStore';
 import { runBriefJob, runRewriteJob } from '@/lib/golden-story/textStore';
 import { setSlotProgress, finishJob, failJob } from '@/lib/golden-story/jobs';
+import { renderDgSlotToCanonical, renderDgSlotToStaging } from '@/lib/daily-gold/imageStore';
+import { runAsk } from '@/lib/daily-gold/askStore';
+import { runDgRewriteJob } from '@/lib/daily-gold/textStore';
 
 export const renderImagesBatch = inngest.createFunction(
   {
@@ -138,3 +143,157 @@ export const rewriteField = inngest.createFunction(
     return { done: true };
   },
 );
+
+// ── Daily Gold (Phase 8) ─────────────────────────────────────────────────────
+
+/**
+ * The single-slot Daily Gold renderer (Path A). One retryable step renders to a
+ * staging key; its result lands on the job row the modal polls, where
+ * acceptSlotFor / revertSlotFor pick it up. The book's twin, over four tables.
+ */
+export const renderDailyGoldSlot = inngest.createFunction(
+  {
+    id: 'render-daily-gold-slot',
+    triggers: [{ event: 'dailygold/image.slot.requested' }],
+    retries: 1,
+    concurrency: 3,
+    onFailure: async ({ event }) => {
+      const { jobId } = (event.data.event.data ?? {}) as Partial<DgSlotRequested>;
+      if (jobId) await failJob(jobId, 'The render run failed unexpectedly.');
+    },
+  },
+  async ({ event, step }) => {
+    const { subject, jobId, slotKey } = event.data as DgSlotRequested;
+    const result = await step.run(`render ${slotKey}`, () => renderDgSlotToStaging(subject, slotKey, jobId));
+    await step.run('finish job', () => finishJob(jobId, result));
+    return { done: true };
+  },
+);
+
+/**
+ * The Daily Gold batch renderer — "paint everything this day is missing".
+ * Each slot is one retryable step writing straight to its canonical key, so a
+ * crash resumes at the next slot and one failure never discards the slots that
+ * already landed (§8.4).
+ */
+export const renderDailyGoldImages = inngest.createFunction(
+  {
+    id: 'render-daily-gold-images',
+    triggers: [{ event: 'dailygold/images.batch.requested' }],
+    retries: 1,
+    concurrency: 3,
+    onFailure: async ({ event }) => {
+      const { jobId } = (event.data.event.data ?? {}) as Partial<DgImagesBatchRequested>;
+      if (jobId) await failJob(jobId, 'The render run failed unexpectedly.');
+    },
+  },
+  async ({ event, step }) => {
+    const { subject, jobId, slotKeys } = event.data as DgImagesBatchRequested;
+    await paintSlots(step, subject, jobId, slotKeys);
+    await step.run('finish job', () => finishJob(jobId, { done: true }));
+    return { done: true };
+  },
+);
+
+/**
+ * A whole-unit ask (§8.2, §8.5): write the words, then — only if the ask said
+ * so — paint the slots whose scenes it just wrote.
+ *
+ * The two halves are deliberately asymmetric about failure. If the writing step
+ * fails there is nothing to review, so the job fails. If a *painting* fails the
+ * words are already saved and reviewable, so the slot is marked failed and the
+ * job still finishes: an empty slot with its prompt written is a finished state
+ * (R6.2), which is exactly what a text-only run produces anyway.
+ */
+export const runDailyGoldAsk = inngest.createFunction(
+  {
+    id: 'run-daily-gold-ask',
+    triggers: [{ event: 'dailygold/ask.requested' }],
+    retries: 1,
+    concurrency: 2,
+    onFailure: async ({ event }) => {
+      const { jobId } = (event.data.event.data ?? {}) as Partial<DgAskRequested>;
+      if (jobId) await failJob(jobId, 'The ask failed unexpectedly.');
+    },
+  },
+  async ({ event, step }) => {
+    const { subject, jobId, kind, mode, count } = event.data as DgAskRequested;
+
+    let outcome: Awaited<ReturnType<typeof runAsk>>;
+    try {
+      // The step's return value is what the Inngest run view shows, and it
+      // carries `debug`: the prompt sent, the model's raw reply, the sources
+      // the search actually read, and the reason each discarded item went.
+      // That is the only place those exist — the job row deliberately stores
+      // just the summary the admin reads — and when an ask appears to do
+      // nothing, this view is where the answer is.
+      outcome = await step.run('write words', () => runAsk({ kind, key: subject.key, mode, count }, jobId));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await step.run('mark failed', () => failJob(jobId, message));
+      return { done: true };
+    }
+
+    if (mode === 'words+paintings' && outcome.slotKeys.length) {
+      await paintSlots(step, subject, jobId, outcome.slotKeys);
+    }
+
+    await step.run('finish job', () => finishJob(jobId, outcome.result));
+
+    // Repeated as the run's own output, so the dashboard's run list shows the
+    // model calls without having to open the step.
+    return { done: true, summary: outcome.result, calls: outcome.debug };
+  },
+);
+
+/** The per-field rewriter for Daily Gold — the person editor's idiom, one field at a time. */
+export const rewriteDailyGoldField = inngest.createFunction(
+  {
+    id: 'rewrite-daily-gold-field',
+    triggers: [{ event: 'dailygold/rewrite.requested' }],
+    retries: 1,
+    concurrency: 3,
+    onFailure: async ({ event }) => {
+      const { jobId } = (event.data.event.data ?? {}) as Partial<DgRewriteRequested>;
+      if (jobId) await failJob(jobId, 'The rewrite failed unexpectedly.');
+    },
+  },
+  async ({ event, step }) => {
+    const { jobId, fieldPath, current, context } = event.data as DgRewriteRequested;
+    try {
+      const result = await step.run('draft rewrite', () => runDgRewriteJob(fieldPath, current, context));
+      await step.run('finish job', () => finishJob(jobId, result));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await step.run('mark failed', () => failJob(jobId, message));
+    }
+    return { done: true };
+  },
+);
+
+/**
+ * Render a set of Daily Gold slots in parallel, recording each one's outcome on
+ * the job's per-slot progress. Shared by the batch renderer and the paintings
+ * half of an ask, so both fail the same way: per slot, never per run.
+ */
+async function paintSlots(
+  // Only the one method is needed, and only for void work — narrowing it here
+  // keeps the helper independent of Inngest's generic step signature.
+  step: { run: (id: string, fn: () => Promise<void>) => Promise<unknown> },
+  subject: DgSlotRequested['subject'],
+  jobId: number,
+  slotKeys: string[],
+): Promise<void> {
+  await Promise.all(slotKeys.map(async (slotKey) => {
+    try {
+      await step.run(`paint ${slotKey}`, async () => {
+        await setSlotProgress(jobId, slotKey, 'running');
+        await renderDgSlotToCanonical(subject, slotKey, jobId);
+        await setSlotProgress(jobId, slotKey, 'done');
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message.slice(0, 300) : 'render failed';
+      await step.run(`mark ${slotKey} failed`, () => setSlotProgress(jobId, slotKey, 'failed', message));
+    }
+  }));
+}

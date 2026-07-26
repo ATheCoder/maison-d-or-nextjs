@@ -9,9 +9,10 @@
  * says which image a family will actually get. Those affordances are the
  * feature — see §5.3 — not decoration around the inputs.
  *
- * No AI in this phase. The "Draft this day" and good-news retrieval verbs
- * arrive in Phase 8; image slots are picture-plus-opener with the modal itself
- * arriving in Phase 7.
+ * Phase 8 adds the AI without changing that shape: a ✦ beside a field drafts an
+ * alternative *beside* the current text, the ask writes into a draft nobody can
+ * see, and retrieved good news arrives as proposals in their own column with a
+ * link to the source — never as text that has quietly appeared in the form.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -28,11 +29,15 @@ import { flagEmoji, resolveLocation } from '@/lib/countries';
 import { CONTINENTS } from '@/lib/daily-gold/edition';
 import { destinationSlot, heroSlot, newsSlot } from '@/lib/daily-gold/slots';
 import SlotOpener from './SlotOpener';
+import AskPanel, { type AskJob } from './AskPanel';
+import CandidateCard from './CandidateCard';
+import { RewriteButton, RewriteReview, jobForField, useJobPolling, type RewriteJob } from './DgRewrite';
 import {
   createNewsItem, deleteNewsItem, getPreflight, prepareThisDate, reorderNews,
   saveEdition, saveNewsItem, setEditionStatus, setNewsPublished,
   type DayForEditor, type EditorNewsItem, type Preflight,
 } from '@/app/admin/daily-gold/dayActions';
+import { getDgJobs, paintMissing, rejectAllCandidates } from '@/app/admin/daily-gold/aiActions';
 
 const CSS = `
 .dge {
@@ -197,8 +202,10 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
   const [showPreflight, setShowPreflight] = useState(false);
   const [preflight, setPreflight] = useState<Preflight | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ask, setAsk] = useState<'day' | 'news' | null>(null);
 
   const e = day.edition;
+  const subject = useMemo(() => ({ kind: 'edition' as const, key: day.date }), [day.date]);
 
   // ── Draft + autosave ──────────────────────────────────────────────────────
   // The draft is what the inputs read, so typing stays responsive; a debounced
@@ -248,6 +255,45 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
   }, [flush]);
 
   const refresh = () => router.refresh();
+
+  // ── Jobs ──────────────────────────────────────────────────────────────────
+  // Polled only while something is in flight, and the ask panel stays visible
+  // once a job finishes so its result can be read before it is dismissed.
+  const [jobs, setJobs] = useState<{ ask: AskJob | null; rewrites: RewriteJob[]; images: AskJob | null }>(
+    { ask: null, rewrites: [], images: null },
+  );
+  const loadJobs = useCallback(() => {
+    void getDgJobs(subject).then((j) => setJobs({ ask: j.ask, rewrites: j.rewrites, images: j.images }));
+  }, [subject]);
+  useEffect(() => { loadJobs(); }, [loadJobs]);
+
+  const anyRunning = jobs.ask?.state === 'running'
+    || jobs.images?.state === 'running'
+    || jobs.rewrites.some((r) => r.state === 'running');
+  useJobPolling(anyRunning, () => { loadJobs(); router.refresh(); });
+
+  // A finished ask has written rows the page was rendered without; pull them in
+  // once. The panel itself stays until it is dismissed, so its result can be
+  // read — leaving and returning finds the same thing waiting.
+  const askDone = jobs.ask?.state === 'done' ? jobs.ask.id : null;
+  useEffect(() => { if (askDone) router.refresh(); }, [askDone, router]);
+  if (jobs.ask && !ask) setAsk(jobs.ask.progress?.ask?.kind === 'news' ? 'news' : 'day');
+
+  // What the row makes true, so a rewrite of "taste of the day" knows where it is.
+  const context = [
+    `Daily Gold for ${day.date}`,
+    draft.destination_country ? `destination ${draft.destination_country}` : '',
+  ].filter(Boolean).join('; ');
+
+  const rewriteProps = (fieldPath: string, current: string) => ({
+    subject,
+    fieldPath,
+    current,
+    context,
+    job: jobForField(jobs.rewrites, fieldPath),
+    onStarted: loadJobs,
+    onError: setError,
+  });
 
   // ── Derived affordances ───────────────────────────────────────────────────
   const destIso2 = draft.destination_country ? resolveLocation(draft.destination_country) : null;
@@ -330,6 +376,12 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
               {dirty ? 'Saving…' : savedAt ? `Saved · ${fmtTime(savedAt)}` : 'Nothing written yet'}
             </span>
           </div>
+          {/* §8.2 — whole-day drafting is triggered from in here, one day at a
+              time, and never from the desk: the desk creates and navigates, the
+              editor writes. */}
+          <button className="btn" onClick={() => setAsk('day')} disabled={pending || Boolean(jobs.ask)}>
+            ✦ Draft this day
+          </button>
           <div className="seg">
             <button className={!live ? 'on draft' : undefined} onClick={() => publish('draft')} disabled={pending || !live}>Draft</button>
             <button className={live ? 'on' : undefined} onClick={openPreflight} disabled={pending || live}>Live</button>
@@ -411,6 +463,25 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
 
         {/* ── Pane ─────────────────────────────────────────────── */}
         <div className="pane">
+          {ask === 'day' && (
+            <AskPanel
+              kind="day"
+              subjectKey={day.date}
+              title={`Draft ${fmtDate(day.date)}`}
+              blurb={
+                'Chooses a destination and writes the atmosphere, the child’s day and the four cards straight '
+                + 'into this draft. The quote and the good news are retrieved instead — the quote is only written '
+                + 'if its source can be confirmed, and the stories arrive as proposals for you to check.'
+              }
+              unitNoun={['story', 'stories']}
+              defaultUnits={6}
+              job={jobs.ask ?? null}
+              onChanged={() => { loadJobs(); refresh(); }}
+              onError={setError}
+              onClose={() => { setAsk(null); loadJobs(); }}
+            />
+          )}
+
           {/* Masthead */}
           <div className="fgroup" id="sec-hero">
             <div className="flbl">
@@ -421,12 +492,13 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
             </div>
             <SlotOpener
               slot={heroSlot()}
-              subject={{ kind: 'edition', key: day.date }}
+              subject={subject}
               imageUrl={e.hero_image_url}
+              scene={day.scenes.hero ?? ''}
               context={`Daily Gold · ${fmtDate(day.date)}`}
               previewTitle="Daily Gold"
-              emptyText="no painting for this date"
-              onChanged={refresh}
+              emptyText={day.scenes.hero ? 'prompt written · not painted' : 'no painting for this date'}
+              onChanged={() => { refresh(); loadJobs(); }}
             />
             {/* R3.16 — name the URL the reader will actually use. */}
             {!draft.hero_image_url && (
@@ -480,20 +552,28 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
             </div>
             <SlotOpener
               slot={destinationSlot()}
-              subject={{ kind: 'edition', key: day.date }}
+              subject={subject}
               imageUrl={e.destination_image_url}
+              scene={day.scenes.destination ?? ''}
               context={`Daily Gold · ${fmtDate(day.date)}`}
-              emptyText="no destination painting"
-              onChanged={refresh}
+              emptyText={day.scenes.destination ? 'prompt written · not painted' : 'no destination painting'}
+              onChanged={() => { refresh(); loadJobs(); }}
             />
+            <PaintMissing subject={subject} onChanged={() => { refresh(); loadJobs(); }} onError={setError}
+              job={jobs.images ?? null} />
           </div>
 
           {/* Atmosphere + the two-sentence cut (R3.12) */}
           <div className="fgroup">
-            <div className="flbl"><span className="kick">Atmosphere</span></div>
+            <div className="flbl">
+              <span className="kick">Atmosphere</span>
+              <RewriteButton {...rewriteProps('destination_description', draft.destination_description ?? '')} />
+            </div>
             <textarea className="field" rows={5} placeholder="What the place feels like…"
               value={draft.destination_description ?? ''}
               onChange={(ev) => set('destination_description')(ev.target.value)} />
+            <FieldReview jobs={jobs.rewrites} fieldPath="destination_description"
+              onAccept={set('destination_description')} onResolved={loadJobs} />
             {draft.destination_description?.trim() && (
               <>
                 <div className="cut">
@@ -514,10 +594,15 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
           <div className="fgroup" id="sec-child">
             <div className="flbl">
               <span className="kick">A child in {destCity || '…'}</span>
-              <span className="chip chip-ink">{paragraphs} paragraph{paragraphs === 1 ? '' : 's'}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="chip chip-ink">{paragraphs} paragraph{paragraphs === 1 ? '' : 's'}</span>
+                <RewriteButton {...rewriteProps('child_life_story', draft.child_life_story ?? '')} />
+              </span>
             </div>
             <textarea className="field" rows={6} placeholder="One child's ordinary day…"
               value={draft.child_life_story ?? ''} onChange={(ev) => set('child_life_story')(ev.target.value)} />
+            <FieldReview jobs={jobs.rewrites} fieldPath="child_life_story"
+              onAccept={set('child_life_story')} onResolved={loadJobs} />
             <div className="note">
               Blank lines make paragraphs. This appears only inside the destination, under the
               title “A Child in {destCity || '…'}”.
@@ -538,9 +623,15 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
             </div>
             <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 9, flex: 1, minWidth: 300, maxWidth: 440 }}>
-                <MiniField label="Taste" value={draft.taste_of_day} onChange={set('taste_of_day')} placeholder="Pastéis de Nata" />
-                <MiniField label="Sound" value={draft.sound_of_day} onChange={set('sound_of_day')} placeholder="Portuguese guitar" />
-                <MiniField label="Nature" value={draft.nature_detail} onChange={set('nature_detail')} placeholder="The Tagus estuary" />
+                <MiniField label="Taste" value={draft.taste_of_day} onChange={set('taste_of_day')} placeholder="Pastéis de Nata"
+                  action={<RewriteButton {...rewriteProps('taste_of_day', draft.taste_of_day ?? '')} />} />
+                <FieldReview jobs={jobs.rewrites} fieldPath="taste_of_day" onAccept={set('taste_of_day')} onResolved={loadJobs} />
+                <MiniField label="Sound" value={draft.sound_of_day} onChange={set('sound_of_day')} placeholder="Portuguese guitar"
+                  action={<RewriteButton {...rewriteProps('sound_of_day', draft.sound_of_day ?? '')} />} />
+                <FieldReview jobs={jobs.rewrites} fieldPath="sound_of_day" onAccept={set('sound_of_day')} onResolved={loadJobs} />
+                <MiniField label="Nature" value={draft.nature_detail} onChange={set('nature_detail')} placeholder="The Tagus estuary"
+                  action={<RewriteButton {...rewriteProps('nature_detail', draft.nature_detail ?? '')} />} />
+                <FieldReview jobs={jobs.rewrites} fieldPath="nature_detail" onAccept={set('nature_detail')} onResolved={loadJobs} />
                 <hr className="hair" />
                 <MiniField label="Tiny phrase" value={draft.tiny_phrase} onChange={set('tiny_phrase')} placeholder="Obrigado" />
                 <div style={{ display: 'flex', gap: 9, alignItems: 'center' }}>
@@ -602,7 +693,15 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
           <NewsColumn
             date={day.date}
             items={day.news}
+            candidates={day.candidates}
+            scenes={day.scenes}
             live={live}
+            askOpen={ask === 'news'}
+            askJob={jobs.ask ?? null}
+            rewrites={jobs.rewrites}
+            onOpenAsk={() => setAsk('news')}
+            onCloseAsk={() => { setAsk(null); loadJobs(); }}
+            onJobsChanged={loadJobs}
             onChanged={refresh}
             onError={setError}
           />
@@ -646,14 +745,60 @@ function RailRow({ id, label, state, tail, tailColour, active, onGo }: {
   );
 }
 
-function MiniField({ label, value, onChange, placeholder }: {
+function MiniField({ label, value, onChange, placeholder, action }: {
   label: string; value?: string; onChange: (v: string) => void; placeholder?: string;
+  /** The field's ✦ rewrite, when it has one. */
+  action?: React.ReactNode;
 }) {
   return (
     <div style={{ display: 'flex', gap: 9, alignItems: 'center' }}>
       <span className="note" style={{ width: 74, flex: '0 0 74px' }}>{label}</span>
       <input className="field" style={{ flex: 1, fontSize: 12.5 }} placeholder={placeholder}
         value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+      {action}
+    </div>
+  );
+}
+
+/** The CURRENT / AI-PROPOSES panel for one field, when a proposal is waiting. */
+function FieldReview({ jobs, fieldPath, onAccept, onResolved }: {
+  jobs: RewriteJob[]; fieldPath: string; onAccept: (v: string) => void; onResolved: () => void;
+}) {
+  const job = jobForField(jobs, fieldPath);
+  if (!job || job.state === 'running') return null;
+  return <RewriteReview job={job} onAccept={onAccept} onResolved={onResolved} />;
+}
+
+/**
+ * "Paint what is missing" — the follow-up a words-only ask is designed to leave
+ * open (R6.2). Every slot with a written scene and no picture, in one batch,
+ * failing per slot.
+ */
+function PaintMissing({ subject, job, onChanged, onError }: {
+  subject: { kind: 'edition' | 'month_day'; key: string };
+  job: AskJob | null;
+  onChanged: () => void;
+  onError: (m: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const running = job?.state === 'running';
+  const slots = Object.entries(job?.progress?.slots ?? {});
+  const done = slots.filter(([, s]) => s.state === 'done').length;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <button className="btn btn-sm" disabled={busy || running}
+        onClick={() => {
+          setBusy(true);
+          void paintMissing(subject)
+            .then((r) => { if (!r.ok) onError(r.error ?? 'Nothing to paint.'); else onChanged(); })
+            .finally(() => setBusy(false));
+        }}>
+        {running ? `✦ painting ${done} of ${slots.length}…` : '✦ Paint every empty slot with a prompt'}
+      </button>
+      <span className="note">
+        Slots whose prompt is written but which have no picture yet. One failing never discards the others.
+      </span>
     </div>
   );
 }
@@ -672,9 +817,23 @@ function SensoryCard({ label, value, sub }: { label: string; value?: string; sub
 
 // ── Good news column ─────────────────────────────────────────────────────────
 
-function NewsColumn({ date, items, live, onChanged, onError }: {
-  date: string; items: EditorNewsItem[]; live: boolean;
-  onChanged: () => void; onError: (m: string) => void;
+function NewsColumn({
+  date, items, candidates, scenes, live, askOpen, askJob, rewrites,
+  onOpenAsk, onCloseAsk, onJobsChanged, onChanged, onError,
+}: {
+  date: string;
+  items: EditorNewsItem[];
+  candidates: EditorNewsItem[];
+  scenes: Record<string, string>;
+  live: boolean;
+  askOpen: boolean;
+  askJob: AskJob | null;
+  rewrites: RewriteJob[];
+  onOpenAsk: () => void;
+  onCloseAsk: () => void;
+  onJobsChanged: () => void;
+  onChanged: () => void;
+  onError: (m: string) => void;
 }) {
   const [pending, start] = useTransition();
   const [order, setOrder] = useState(items.map((i) => i.id));
@@ -722,13 +881,72 @@ function NewsColumn({ date, items, live, onChanged, onError }: {
         <span className="note">Position 0 is the lead · ten render, the rest never do</span>
       </div>
 
+      {askOpen && (
+        <AskPanel
+          kind="news"
+          subjectKey={date}
+          title="Find good news for this date"
+          blurb={
+            'Searches a curated list of outlets, within a week of this date, for things that genuinely got '
+            + 'better. Each result arrives as a proposal with its source — nothing is published until you keep it. '
+            + 'Finding nothing is a real answer.'
+          }
+          unitNoun={['story', 'stories']}
+          defaultUnits={6}
+          job={askJob}
+          onChanged={() => { onJobsChanged(); onChanged(); }}
+          onError={onError}
+          onClose={onCloseAsk}
+        />
+      )}
+
+      {candidates.length > 0 && (
+        <div className="panel" style={{ padding: 13, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span className="kick">{candidates.length} proposed · not in the column</span>
+            <span className="note" style={{ flex: 1 }}>
+              Read the claim against its source. Keeping one gives it the next free place in the ten;
+              rejecting deletes it.
+            </span>
+            <button className="btn btn-sm btn-ghost" disabled={pending}
+              onClick={() => start(async () => {
+                const r = await rejectAllCandidates('news', date);
+                if (!r.ok) onError(r.error ?? 'Could not clear these.'); else onChanged();
+              })}>
+              Reject all
+            </button>
+          </div>
+          <div style={{ display: 'grid', gap: 9 }}>
+            {candidates.map((c) => (
+              <CandidateCard
+                key={c.id}
+                kind="news"
+                item={{
+                  id: c.id,
+                  headline: c.headline,
+                  body: c.description,
+                  location: c.location,
+                  source_url: c.source_url,
+                  source_title: c.source_title,
+                  source_published_at: c.source_published_at,
+                  stale: c.stale,
+                }}
+                onChanged={onChanged}
+                onError={onError}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {items.length === 0 ? (
         <div className="panel" style={{ padding: '18px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
           <div className="art art-empty nrowart" />
           <div className="note" style={{ flex: 1 }}>
-            No good news for this date. An absent column is a designed state — a family simply sees
-            the other sections. Retrieval arrives with Phase 8; until then, add one by hand.
+            No good news in the column for this date. An absent column is a designed state — a family
+            simply sees the other sections.
           </div>
+          <button className="btn btn-sm" onClick={onOpenAsk} disabled={pending}>✦ Find some</button>
           <button className="btn btn-sm" onClick={add} disabled={pending}>Add by hand</button>
         </div>
       ) : (
@@ -746,6 +964,9 @@ function NewsColumn({ date, items, live, onChanged, onError }: {
                   item={item}
                   index={index}
                   live={live}
+                  scene={scenes[`news:${item.position}`] ?? ''}
+                  rewrites={rewrites}
+                  onJobsChanged={onJobsChanged}
                   open={openId === item.id}
                   onToggle={() => setOpenId((o) => (o === item.id ? null : item.id))}
                   onChanged={onChanged}
@@ -758,9 +979,10 @@ function NewsColumn({ date, items, live, onChanged, onError }: {
       )}
 
       {items.length > 0 && items.length < 10 && (
-        <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <button className="btn btn-sm" onClick={add} disabled={pending}>Add another story</button>
-          <span className="note" style={{ marginLeft: 10 }}>
+          {!askOpen && <button className="btn btn-sm" onClick={onOpenAsk} disabled={pending}>✦ Find more</button>}
+          <span className="note">
             {10 - items.length} of the ten the reader renders still free.
           </span>
         </div>
@@ -774,8 +996,11 @@ function NewsColumn({ date, items, live, onChanged, onError }: {
   );
 }
 
-function NewsRow({ date, item, index, live, open, onToggle, onChanged, onError }: {
+function NewsRow({
+  date, item, index, live, scene, rewrites, onJobsChanged, open, onToggle, onChanged, onError,
+}: {
   date: string; item: EditorNewsItem; index: number; live: boolean; open: boolean;
+  scene: string; rewrites: RewriteJob[]; onJobsChanged: () => void;
   onToggle: () => void; onChanged: () => void; onError: (m: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
@@ -855,12 +1080,55 @@ function NewsRow({ date, item, index, live, open, onToggle, onChanged, onError }
 
       {open && (
         <div className="panel" style={{ padding: 14, marginTop: 6, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Provenance stays visible after accepting: a later visit has to be
+              able to tell what was verified from what was merely typed (D10). */}
+          {item.source_url && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span className="chip chip-green">Sourced</span>
+              <a href={item.source_url} target="_blank" rel="noreferrer noopener" style={{ fontSize: 11.5 }}>
+                {item.source_title || 'the source'} ↗
+              </a>
+              {item.source_published_at && (
+                <span className="note">published {item.source_published_at.slice(0, 10)}</span>
+              )}
+              {item.stale && <span className="chip chip-amber">not from this week</span>}
+            </div>
+          )}
+
+          <div className="flbl">
+            <span className="kick">Headline</span>
+            <RewriteButton
+              subject={{ kind: 'edition', key: date }}
+              fieldPath={`news.${item.id}.headline`}
+              current={local.headline}
+              context={`Good news for ${date}`}
+              job={jobForField(rewrites, `news.${item.id}.headline`)}
+              onStarted={onJobsChanged}
+              onError={onError}
+            />
+          </div>
           <input className="field" placeholder="Headline" value={local.headline}
             onChange={(e) => set('headline')(e.target.value)} />
+          <FieldReview jobs={rewrites} fieldPath={`news.${item.id}.headline`} onAccept={set('headline')} onResolved={onJobsChanged} />
+
+          <div className="flbl">
+            <span className="kick">The story</span>
+            <RewriteButton
+              subject={{ kind: 'edition', key: date }}
+              fieldPath={`news.${item.id}.description`}
+              current={local.description}
+              context={`Good news for ${date}: ${local.headline}`}
+              job={jobForField(rewrites, `news.${item.id}.description`)}
+              onStarted={onJobsChanged}
+              onError={onError}
+            />
+          </div>
           <textarea className="field" rows={3} placeholder="What happened, for a child of seven…"
             value={local.description} onChange={(e) => set('description')(e.target.value)} />
+          <FieldReview jobs={rewrites} fieldPath={`news.${item.id}.description`} onAccept={set('description')} onResolved={onJobsChanged} />
           <div className="note">
             The list shows only the first sentence; the whole text appears when a child opens the story.
+            {item.source_url && ' A rewrite keeps the facts as they stand — it is for tone, not for new claims.'}
           </div>
           <div style={{ display: 'flex', gap: 9, alignItems: 'center', flexWrap: 'wrap' }}>
             <span className="note" style={{ width: 58 }}>Where</span>
@@ -876,13 +1144,14 @@ function NewsRow({ date, item, index, live, open, onToggle, onChanged, onError }
           <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start', flexWrap: 'wrap' }}>
             <span className="note" style={{ width: 58, paddingTop: 8 }}>Painting</span>
             <SlotOpener
-              slot={newsSlot(index)}
+              slot={newsSlot(item.position)}
               subject={{ kind: 'edition', key: date }}
               imageUrl={item.image_url}
+              scene={scene}
               context={`Good news · ${lead ? 'the lead' : `story ${index + 1}`}`}
               width={150}
               height={84}
-              emptyText="no painting"
+              emptyText={scene ? 'prompt written' : 'no painting'}
               onChanged={onChanged}
             />
           </div>

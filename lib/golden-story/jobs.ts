@@ -78,6 +78,15 @@ const SUBJECT_NOUN: Record<SubjectKind, string> = {
   month_day: 'this month-day',
 };
 
+/** What each kind is called when the concurrency guard has to explain itself. */
+const KIND_NOUN: Record<JobKind, string> = {
+  brief: 'A book is already being written',
+  images: 'A batch of paintings is already rendering',
+  slot: 'A painting is already rendering',
+  rewrite: 'A rewrite is already running',
+  ask: 'An ask is already running',
+};
+
 /**
  * Insert a running job row the editor polls. The work itself runs on Inngest
  * (lib/inngest/functions.ts): the caller sends the triggering event, and the
@@ -91,7 +100,7 @@ const SUBJECT_NOUN: Record<SubjectKind, string> = {
 export async function createJob(subject: JobSubject, kind: JobKind, initialProgress: JobProgress):
   Promise<{ ok: true; job: GenerationJobRow } | { ok: false; error: string }> {
   if (await runningJob(subject, kind)) {
-    return { ok: false, error: `A ${kind} job is already running for ${SUBJECT_NOUN[subject.kind]}.` };
+    return { ok: false, error: `${KIND_NOUN[kind]} for ${SUBJECT_NOUN[subject.kind]}.` };
   }
   const [row] = await db
     .insert(generationJob)
