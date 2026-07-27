@@ -1,0 +1,33 @@
+/*
+  design-sync-only tsconfig. Mirrors the app's own paths, but swaps the Next.js
+  runtime and server-action modules for browser-safe stubs so components/* can be
+  bundled into a standalone IIFE. The app's tsconfig.json is untouched.
+
+  Do NOT add a "//" documentation key here: the converter's tsconfig reader
+  strips // line comments before JSON.parse, which mangles that key into
+  invalid JSON. The paths plugin then silently returns null and every @/ import
+  resolves to the real module — dragging drizzle/pg/server-only into the bundle.
+  Block comments like this one are stripped safely.
+*/
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "jsx": "react-jsx",
+    "baseUrl": "..",
+    "paths": {
+      "next/link": ["./.design-sync/stubs/next-link.tsx"],
+      "next/navigation": ["./.design-sync/stubs/next-navigation.ts"],
+      "@/api/base44Client": ["./.design-sync/stubs/base44Client.ts"],
+      "@/app/daily-gold-edition/actions": ["./.design-sync/stubs/daily-gold-edition-actions.ts"],
+      "@/app/profiles/actions": ["./.design-sync/stubs/profiles-actions.ts"],
+      "@/*": ["./*"]
+    }
+  }
+}
