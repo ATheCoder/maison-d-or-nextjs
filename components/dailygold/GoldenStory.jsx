@@ -187,7 +187,7 @@ export function spreadIndexFor(story, sectionId) {
  * `onPageChange` make the current spread controllable; omit them and the book
  * keeps its own internal page state, exactly as before.
  */
-export default function GoldenStory({ story, page, onPageChange, embedded = false }) {
+export default function GoldenStory({ story, page, onPageChange, embedded = false, onFinished = null }) {
   const controlled = typeof page === 'number';
   const [internalCur, setInternalCur] = useState(0);
   const cur = controlled ? page : internalCur;
@@ -568,6 +568,22 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
   // listener (and re-fitting the book) on every page turn.
   const goRef = useRef(go);
   useEffect(() => { goRef.current = go; });
+
+  // Fires once when the reader reaches the book's final page — the last
+  // spread, and in portrait its last leaf. A one-spread book never fires:
+  // "finished" must mean the reader turned pages, not merely opened the
+  // cover. StorybookView hangs the flag earn off this.
+  const finishedRef = useRef(false);
+  const onFinishedRef = useRef(onFinished);
+  useEffect(() => { onFinishedRef.current = onFinished; });
+  useEffect(() => {
+    if (finishedRef.current || count <= 1) return;
+    const onLastPage = cur === count - 1 && (!portrait || activeLeaf >= leavesAt(count - 1) - 1);
+    if (onLastPage) {
+      finishedRef.current = true;
+      onFinishedRef.current?.();
+    }
+  });
 
   // A spread change from anywhere else — the editor's rail, a controlled
   // `page` prop — opens on the first leaf.

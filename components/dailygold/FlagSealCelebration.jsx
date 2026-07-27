@@ -77,10 +77,17 @@ export default function FlagSealCelebration({ countryCode, countryName, type = '
     }}>
       <span role="status" style={VISUALLY_HIDDEN}>{announcement}</span>
 
-      {/* Radial glow backdrop */}
+      {/* Backdrop: the page blurs and darkens behind the seal so the gold
+          text never fights the parchment (or a headline that happens to sit
+          underneath), with the gold glow layered above the vignette. */}
       <div aria-hidden="true" style={{
         position: 'absolute', inset: 0,
-        background: `radial-gradient(ellipse at center, ${theme.accentGold}33 0%, transparent 60%)`,
+        background: [
+          `radial-gradient(ellipse at center, ${theme.accentGold}33 0%, transparent 60%)`,
+          'radial-gradient(ellipse at center, rgba(24,18,8,0.74) 0%, rgba(24,18,8,0.52) 45%, rgba(24,18,8,0.18) 75%)',
+        ].join(', '),
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
         opacity: visible ? 1 : 0,
         transition: 'opacity 0.5s ease',
       }} />
@@ -110,15 +117,16 @@ export default function FlagSealCelebration({ countryCode, countryName, type = '
           <p style={{
             fontFamily: theme.fontHeadline,
             fontSize: 'clamp(1.2rem, 4vw, 1.7rem)',
-            fontWeight: 700, color: theme.accentGold, margin: '0 0 6px',
-            textShadow: `0 0 24px ${theme.accentGold}99`,
+            fontWeight: 700, color: '#E9C666', margin: '0 0 6px',
+            textShadow: `0 2px 4px rgba(15,10,4,0.75), 0 0 24px ${theme.accentGold}99`,
           }}>
             You earned {countryName}!
           </p>
           <p style={{
             fontFamily: theme.fontBody, fontSize: '0.72rem',
-            color: theme.textMuted, margin: 0,
+            color: 'rgba(245,237,216,0.9)', margin: 0,
             letterSpacing: '0.14em', textTransform: 'uppercase',
+            textShadow: '0 1px 3px rgba(15,10,4,0.6)',
           }}>
             ✦ Flag Seal Collected ✦
           </p>
