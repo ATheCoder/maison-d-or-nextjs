@@ -48,13 +48,17 @@ export function useFlagEarn({ editionDate }: { editionDate?: string } = {}) {
 
     earnFlagSeal({ countryCode: code, countryName: countryName || '', source, editionDate })
       .then((res) => {
-        if (!alive.current || res.status === 'noop') return;
+        // Only a genuinely new country celebrates. Repeat earns still count
+        // server-side, but replaying an animation for a country the child
+        // already holds — on every page load, via the auto-earning surfaces —
+        // is noise, not a reward.
+        if (!alive.current || res.status !== 'new_seal') return;
         seq.current += 1;
         setQueue((q) => [...q, {
           id: seq.current,
           countryCode: res.countryCode,
           countryName: res.countryName,
-          type: res.status === 'new_seal' ? 'new' : 'repeat',
+          type: 'new',
         }]);
       })
       .catch(() => {
