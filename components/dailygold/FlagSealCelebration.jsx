@@ -70,11 +70,17 @@ export default function FlagSealCelebration({ countryCode, countryName, type = '
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 9999,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      pointerEvents: 'none',
-    }}>
+    // The full celebration swallows pointer input: a click anywhere skips the
+    // animation rather than falling through to whatever sits underneath — an
+    // impatient tap during the 3s overlay must not close the modal behind it.
+    <div
+      onClick={() => onDoneRef.current?.()}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        pointerEvents: 'auto', cursor: 'pointer',
+      }}
+    >
       <span role="status" style={VISUALLY_HIDDEN}>{announcement}</span>
 
       {/* Backdrop: the page blurs and darkens behind the seal so the gold
