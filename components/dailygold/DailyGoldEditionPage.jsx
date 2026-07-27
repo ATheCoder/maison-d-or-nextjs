@@ -141,6 +141,7 @@ const SHELL_CSS = `
     z-index: 1000;
   }
   .dg-rail-item {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -177,6 +178,15 @@ const SHELL_CSS = `
     .dg-rail { padding: 1.5rem 0.5rem; }
     .dg-rail-item { justify-content: center; padding: 0.55rem; }
     .dg-rail-label { display: none !important; }
+    /* in flow the dot would consume gap + width and knock the icon off centre,
+       so pin it to the right edge instead — same signal, no layout cost */
+    .dg-rail-dot {
+      position: absolute;
+      right: 7px;
+      top: 50%;
+      transform: translateY(-50%);
+      margin-left: 0 !important;
+    }
   }
 
   /* Mobile: no rail; identity header + tab bar */

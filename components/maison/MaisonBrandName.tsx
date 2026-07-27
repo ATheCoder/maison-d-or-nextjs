@@ -23,7 +23,7 @@ export default function MaisonBrandName() {
       <span style={{ color: '#8B7B6F' }}>Maison d&apos;</span>
       <span
         style={{
-          background: 'linear-gradient(90deg, var(--gold), #FFD700, var(--gold))',
+          backgroundImage: 'linear-gradient(90deg, var(--gold), #FFD700, var(--gold))',
           backgroundSize: '200% 100%',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',

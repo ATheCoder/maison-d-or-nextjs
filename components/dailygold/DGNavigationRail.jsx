@@ -111,7 +111,7 @@ export default function DGNavigationRail({ child = null, onShelfAction }) {
               }}>
                 {item.label}
               </span>
-              {active && <span aria-hidden="true" style={{ marginLeft: 'auto', width: 4, height: 4, borderRadius: '50%', background: theme.accentGold, flexShrink: 0 }} />}
+              {active && <span className="dg-rail-dot" aria-hidden="true" style={{ marginLeft: 'auto', width: 4, height: 4, borderRadius: '50%', background: theme.accentGold, flexShrink: 0 }} />}
             </button>
           );
         })}

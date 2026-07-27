@@ -178,14 +178,29 @@ export default function DGWaxSealNavigator({ currentDate, onDateChange, availabl
 
   return (
     <div style={{
+      position: 'relative',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       gap: '1.25rem',
-      padding: '1.25rem 1.5rem',
-      background: theme.bgSoft,
-      borderBottom: `1px solid ${theme.accentGold}26`,
+      padding: '1.75rem 1.5rem 1.5rem',
+      // The hero above and the section below both sit on the page's own
+      // `bgPrimary`, so a flat `bgSoft` block reads as a pasted-on band with a
+      // hard seam at each edge. Fading the tint in from — and back out to —
+      // fully transparent `bgSoft` (the same hue at zero alpha, so no grey
+      // halo) lets the strip lift off the page instead of cutting into it.
+      // Every stop is theme-token derived, so it holds for all five themes.
+      background: `linear-gradient(180deg, ${theme.bgSoft}00 0%, ${theme.bgSoft}59 20%, ${theme.bgSoft}E6 48%, ${theme.bgSoft}E6 72%, ${theme.bgSoft}00 100%)`,
     }}>
+      {/* Divider rule — a gradient hairline that fades at both ends, rather
+          than a full-width border that would re-introduce a hard edge. */}
+      <div aria-hidden="true" style={{
+        position: 'absolute',
+        left: 0, right: 0, bottom: 0,
+        height: 1,
+        background: `linear-gradient(to right, transparent, ${theme.accentGold}33 25%, ${theme.accentGold}33 75%, transparent)`,
+        pointerEvents: 'none',
+      }} />
       {/* Back seal */}
       <WaxSeal
         direction="back"

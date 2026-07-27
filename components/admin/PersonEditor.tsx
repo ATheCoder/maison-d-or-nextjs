@@ -394,7 +394,7 @@ function SpanDiagram({ value }: { value: string }) {
     return (
       <div className={styles.lhSpread} style={{ background: 'linear-gradient(140deg, #d8c48a, #b79a5c)' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(20,12,6,.32)' }} />
-        <div style={{ position: 'absolute', left: 8, top: 10, right: 8, bottom: 8, opacity: 0.8, background: 'repeating-linear-gradient(180deg, #fff 0 1.5px, transparent 1.5px 6px)', backgroundSize: '60% 100%', backgroundRepeat: 'no-repeat' }} />
+        <div style={{ position: 'absolute', left: 8, top: 10, right: 8, bottom: 8, opacity: 0.8, backgroundImage: 'repeating-linear-gradient(180deg, #fff 0 1.5px, transparent 1.5px 6px)', backgroundSize: '60% 100%', backgroundRepeat: 'no-repeat' }} />
       </div>
     );
   }

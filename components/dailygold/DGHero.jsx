@@ -197,10 +197,18 @@ export default function DGHero({ dateStr, heroImageUrl }) {
       `}</style>
 
       {/* Daily oil-painting background with gentle Ken Burns zoom */}
+      {/* The whole backdrop — art plus wash — is masked away over the last
+          slice of the hero. Without it the wash simply stops at the hero's
+          bottom edge at ~60–85% opacity, and since it mutes the page's own
+          radial texture that step reads as a hard line where the navigator
+          below begins. Fading it to nothing hands off to the page background
+          the navigator also starts from. */}
       <div style={{
         position: 'absolute', inset: 0,
         overflow: 'hidden',
         borderRadius: 0,
+        maskImage: 'linear-gradient(to bottom, black 78%, transparent 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, black 78%, transparent 100%)',
       }}>
         {imgUrl && (
           <img
@@ -282,7 +290,7 @@ export default function DGHero({ dateStr, heroImageUrl }) {
           lineHeight: 1.05,
           letterSpacing: '-0.02em',
           animation: 'dgReveal 1.1s ease-out 0.4s backwards',
-          background: `linear-gradient(135deg, ${GOLD_LIGHT} 0%, ${theme.accentGold} 50%, ${GOLD_DARK} 100%)`,
+          backgroundImage: `linear-gradient(135deg, ${GOLD_LIGHT} 0%, ${theme.accentGold} 50%, ${GOLD_DARK} 100%)`,
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
@@ -333,10 +341,12 @@ export default function DGHero({ dateStr, heroImageUrl }) {
         </div>
       </div>
 
-      {/* Bottom fade */}
+      {/* Bottom fade — peaks just above the edge and returns to nothing, so it
+          settles the hero's lower half without leaving an opacity step for the
+          navigator to butt up against. */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0, height: 120,
-        background: `linear-gradient(to bottom, transparent, ${theme.bgPrimary}80)`,
+        background: `linear-gradient(to bottom, transparent 0%, ${theme.bgPrimary}80 65%, ${theme.bgPrimary}00 100%)`,
         pointerEvents: 'none',
       }} />
 
