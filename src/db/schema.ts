@@ -565,3 +565,52 @@ export const dailyGoldEdition = pgTable('daily_gold_edition', {
 
 export type DailyGoldEditionRow = typeof dailyGoldEdition.$inferSelect;
 export type NewDailyGoldEdition = typeof dailyGoldEdition.$inferInsert;
+
+// ── Flag Seals ───────────────────────────────────────────────────────────────
+// One (child, country) row: existing ⇒ collected (docs/flag-seal-spec.md §3).
+// Ownership is deliberately not modelled here — child_profile.familyId carries
+// it, and the earn path never receives a child id from the client (spec §5.3).
+//
+// `sources` and `edition_dates` are native Postgres arrays, unlike the jsonb
+// collections elsewhere in this schema: those hold object documents, these are
+// scalar sets that the earn upsert must union into inside a single atomic
+// ON CONFLICT SET clause (spec R5.1) — `= ANY()`, `||` and slicing do that
+// where jsonb would need correlated subqueries. The enum array also makes an
+// invalid source a DB error rather than a silently stored string.
+
+export const flagSealSource = pgEnum('flag_seal_source', [
+  'born_today', 'on_this_day', 'destination', 'good_news',
+]);
+
+export const flagSeal = pgTable('flag_seal', {
+  id: text('id').primaryKey(),
+  childId: text('child_id').notNull()
+    .references(() => childProfile.id, { onDelete: 'cascade' }),
+
+  // ISO-3166-1 alpha-2, always uppercase, validated against lib/countries.ts
+  // before it reaches here; char(2) rejects anything longer at the DB.
+  countryCode: char('country_code', { length: 2 }).notNull(),
+  // Display label captured at first earn — never authoritative. The collection
+  // view renders the canonical name from COUNTRIES keyed by code (spec R3.3).
+  countryName: text('country_name').notNull(),
+
+  firstEarnedDate: date('first_earned_date').notNull(), // immutable after creation
+  lastEarnedDate: date('last_earned_date').notNull(),
+  // Distinct days, not trigger events: incremented only when the edition date
+  // is not already in editionDates, so UI copy reads "Seen on N days".
+  timesEarned: integer('times_earned').notNull().default(1),
+
+  sources: flagSealSource('sources').array().notNull().default([]),
+  // 'YYYY-MM-DD' strings, capped at the most recent 60 in the upsert.
+  editionDates: text('edition_dates').array().notNull().default([]),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  // The earn upsert's conflict target — concurrent earns collapse onto one row.
+  uniqueIndex('flag_seal_child_country_idx').on(t.childId, t.countryCode),
+  index('flag_seal_child_first_earned_idx').on(t.childId, t.firstEarnedDate.desc()),
+]);
+
+export type FlagSealRow = typeof flagSeal.$inferSelect;
+export type NewFlagSeal = typeof flagSeal.$inferInsert;

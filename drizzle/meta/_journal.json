@@ -162,6 +162,13 @@
       "when": 1785067330276,
       "tag": "0022_daily_gold_ai",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1785151665765,
+      "tag": "0023_brief_madame_web",
+      "breakpoints": true
     }
   ]
 }
