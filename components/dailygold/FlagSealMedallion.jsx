@@ -6,30 +6,32 @@
  * earned: true = full color | false = greyed silhouette
  * With onClick it renders a real <button> (padded to a ≥44px hit area);
  * otherwise a role="img" element labelled with the country and earned state.
+ *
+ * Flags are the SVGs in public/flags (synced from flag-icons by
+ * `npm run sync:flags`) — emoji flags render as empty boxes on Windows
+ * Chrome, and that failure is invisible to the invalid-code fallback.
+ * A missing/failed image falls back to the initials treatment.
  */
+import React, { useState } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
 
 const SIZES = { xs: 24, sm: 36, md: 56, lg: 80 };
 
-export default function FlagSealMedallion({ countryCode, countryName, size = 'sm', earned = true, onClick, showLabel = false, fallbackInitials }) {
+function FlagSealMedallion({ countryCode, countryName, size = 'sm', earned = true, onClick, showLabel = false, fallbackInitials }) {
   const { theme } = useTheme();
+  const [imgFailed, setImgFailed] = useState(false);
   const px = SIZES[size] || SIZES.sm;
   const code = (countryCode || '').toUpperCase();
 
   // Validate: must be exactly 2 uppercase ASCII letters A-Z
   const isValidCode = code.length === 2 && /^[A-Z]{2}$/.test(code);
-
-  // Convert ISO2 country code to flag emoji
-  const flagEmoji = isValidCode
-    ? String.fromCodePoint(...code.split('').map(c => 0x1F1E6 + c.charCodeAt(0) - 65))
-    : null;
+  const showFlag = isValidCode && !imgFailed;
 
   // Fallback text: initials from countryName or fallbackInitials prop, else '?'
   const fallbackText = fallbackInitials
     || (countryName ? countryName.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?');
 
   const borderW = Math.max(2, Math.round(px * 0.06));
-  const fontSize = Math.round(px * 0.5);
   const fallbackFontSize = Math.round(px * 0.32);
 
   const ariaLabel = `${countryName || fallbackText}, ${earned ? 'collected' : 'not collected yet'}`;
@@ -66,15 +68,26 @@ export default function FlagSealMedallion({ countryCode, countryName, size = 'sm
             pointerEvents: 'none', zIndex: 3,
           }} />
         )}
-        {/* Flag emoji or warm gold fallback */}
-        {flagEmoji ? (
-          <span style={{
-            position: 'absolute', inset: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize, lineHeight: 1, zIndex: 1,
-          }}>
-            {flagEmoji}
-          </span>
+        {/* SVG flag or warm gold initials fallback */}
+        {showFlag ? (
+          <img
+            src={`/flags/${code.toLowerCase()}.svg`}
+            alt=""
+            width={px}
+            height={px}
+            loading="lazy"
+            decoding="async"
+            onError={() => setImgFailed(true)}
+            style={{
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%',
+              // 4:3 source in a circular frame: cover crops the sides, and the
+              // slight upscale hides the hairline seam at the clipped edge.
+              objectFit: 'cover',
+              transform: 'scale(1.02)',
+              zIndex: 1,
+            }}
+          />
         ) : (
           <span style={{
             position: 'absolute', inset: 0,
@@ -148,3 +161,7 @@ export default function FlagSealMedallion({ countryCode, countryName, size = 'sm
     </div>
   );
 }
+
+// The passport grid mounts 193 of these at once; memo keeps a detail-panel
+// open/close from re-rendering the whole wall.
+export default React.memo(FlagSealMedallion);

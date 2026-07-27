@@ -1,6 +1,6 @@
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
 
-// A collected-country seal. `countryCode` is ISO2 (rendered as a flag emoji),
+// A collected-country seal. `countryCode` is ISO2 (rendered as an SVG flag from /flags/),
 // `earned` is the collected/uncollected state, and `size` is the scale axis.
 
 const ROW: React.CSSProperties = {
