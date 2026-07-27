@@ -162,6 +162,6 @@ function FlagSealMedallion({ countryCode, countryName, size = 'sm', earned = tru
   );
 }
 
-// The passport grid mounts 193 of these at once; memo keeps a detail-panel
+// The passport grid mounts one of these per country, all at once; memo keeps a detail-panel
 // open/close from re-rendering the whole wall.
 export default React.memo(FlagSealMedallion);
