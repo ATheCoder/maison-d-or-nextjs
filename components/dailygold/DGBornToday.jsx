@@ -234,7 +234,7 @@ function BookVolume({ person, onTrack, child, editionDate, index = 0 }) {
 }
 
 // ── MAIN EXPORT ───────────────────────────────────────────────────────────────
-export default function DGBornToday({ people = [], onTrack, onFlagEarned, child, editionDate }) {
+export default function DGBornToday({ people = [], onTrack, child, editionDate }) {
   const { theme } = useTheme();
 
   if (!people.length) return null;

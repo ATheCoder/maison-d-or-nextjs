@@ -14,7 +14,7 @@ const DETAIL_CARDS = [
   { key: 'tiny_phrase', label: 'Tiny Phrase', emoji: '✍️' },
 ];
 
-function DetailCard({ card, data, onTrack, theme, child, editionDate }) {
+function DetailCard({ card, data, onTrack, theme, child, editionDate, iso2, countryName }) {
   const content = data?.[card.key];
   const title = content?.name || content?.word || '—';
   // tiny_phrase also carries a translation and the language it is in. Both are
@@ -58,8 +58,8 @@ function DetailCard({ card, data, onTrack, theme, child, editionDate }) {
           itemTitle={title}
           itemSubtitle={card.label}
           itemImageUrl=""
-          countryCode=""
-          countryName=""
+          countryCode={iso2 || ''}
+          countryName={countryName || ''}
           themeTags={[card.label.toLowerCase()]}
           editionDate={editionDate}
           size="sm"
@@ -227,7 +227,7 @@ export default function DGDestination({ dest, imageUrl, onTrack, onFlagEarned, c
         {/* Detail cards — fluid grid, collapses gracefully */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '0.5rem' }}>
           {DETAIL_CARDS.map(card => (
-            <DetailCard key={card.key} card={card} data={dest} theme={theme} onTrack={onTrack} child={child} editionDate={editionDate} />
+            <DetailCard key={card.key} card={card} data={dest} theme={theme} onTrack={onTrack} child={child} editionDate={editionDate} iso2={iso2} countryName={dest.name?.split(',')[0] || ''} />
           ))}
         </div>
       </div>

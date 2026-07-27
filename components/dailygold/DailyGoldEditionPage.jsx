@@ -1,7 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { base44 } from '@/api/base44Client';
 import DGHero from '@/components/dailygold/DGHero';
 import DGBornToday from '@/components/dailygold/DGBornToday';
 import DGGoodNews from '@/components/dailygold/DGGoodNews';
@@ -18,6 +17,7 @@ import DGWaxSealNavigator from '@/components/dailygold/DGWaxSealNavigator';
 import DGInspirationBar from '@/components/dailygold/DGInspirationBar';
 import FlagSealCelebration from '@/components/dailygold/FlagSealCelebration';
 import FlagCollectionView from '@/components/dailygold/FlagCollectionView';
+import { useFlagEarn } from '@/components/dailygold/useFlagEarn';
 import { ThemeProvider, useTheme } from '@/components/theme/ThemeContext';
 
 /**
@@ -252,10 +252,14 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
 
   const [timeSpent, setTimeSpent] = useState(0);
   const [topicsExplored, setTopicsExplored] = useState([]);
-  const [celebration, setCelebration] = useState(null);
   const [showCollection, setShowCollection] = useState(false);
-  const pendingEarns = useRef(new Set());
   const startTime = useRef(null);
+
+  // Earns resolve the child from the session inside the server action — the
+  // client never names one. The hook dedupes by country for this page session
+  // and queues celebrations so rapid earns play in order instead of
+  // overwriting each other.
+  const { earn, celebration, dismissCelebration } = useFlagEarn({ editionDate: viewedDate });
 
   useEffect(() => {
     // Track time spent
@@ -276,47 +280,14 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
     router.push(next === today ? '/daily-gold-edition' : `/daily-gold-edition?date=${next}`, { scroll: false });
   }, [router, viewedDate, today]);
 
-  const handleFlagEarn = useCallback(async (countryName, countryCode, source) => {
-    if (!child?.id || !countryCode) return;
-    const key = `${child.id}-${countryCode}`;
-    if (pendingEarns.current.has(key)) return;
-    pendingEarns.current.add(key);
-
-    try {
-      const res = await base44.functions.invoke('earnFlagSeal', {
-        child_id: child.id,
-        country_name: countryName,
-        country_code: countryCode,
-        source,
-        edition_date: viewedDate,
-      });
-      if (res?.data?.status === 'new_seal') {
-        setCelebration({ countryName, countryCode, type: 'new' });
-      } else if (res?.data?.status === 'already_earned') {
-        setCelebration({ countryName, countryCode, type: 'repeat' });
-      }
-    } catch (_) {
-      pendingEarns.current.delete(key);
-    }
-  }, [child, viewedDate]);
-
-  const trackInteraction = useCallback(async (contentType, contentId) => {
-    try {
-      const topicMap = { person: 'People', news: 'Good News', history: 'History', geography: 'Geography' };
-      const topic = topicMap[contentType] || contentType;
-      setTopicsExplored(prev => prev.includes(topic) ? prev : [...prev, topic]);
-
-      if (child) {
-        await base44.entities.AnalyticsEvent.create({
-          child_id: child?.id || null,
-          event_type: 'daily_gold_interaction',
-          content_type: contentType,
-          content_id: contentId,
-          timestamp: new Date().toISOString(),
-        }).catch(() => {});
-      }
-    } catch (_) {}
-  }, [child]);
+  // Purely local: feeds the DGForParents summary. The old Base44
+  // AnalyticsEvent write posted child_profile ids into an entity where they
+  // never existed — the same dead write ThemeContext already disabled.
+  const trackInteraction = useCallback((contentType) => {
+    const topicMap = { person: 'People', news: 'Good News', history: 'History', geography: 'Geography' };
+    const topic = topicMap[contentType] || contentType;
+    setTopicsExplored(prev => prev.includes(topic) ? prev : [...prev, topic]);
+  }, []);
 
   // One handler for the "My World" shelf, shared by every nav renderer.
   const handleShelfAction = useCallback((key) => {
@@ -338,10 +309,11 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
 
       {celebration && (
         <FlagSealCelebration
+          key={celebration.id}
           countryCode={celebration.countryCode}
           countryName={celebration.countryName}
           type={celebration.type}
-          onDone={() => setCelebration(null)}
+          onDone={dismissCelebration}
         />
       )}
 
@@ -357,7 +329,6 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
 
       <main
         className="dg-shell"
-        key={child?.id || 'no-child'}
         style={{ animation: 'dgFadeIn 0.4s ease-out' }}
       >
         <DGIdentityHeader child={child} onShelfAction={handleShelfAction} />
@@ -370,11 +341,11 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
           onDateChange={handleDateChange}
         />
 
-        <DGBornToday people={people} onTrack={trackInteraction} onFlagEarned={handleFlagEarn} child={child} editionDate={viewedDate} />
+        <DGBornToday people={people} onTrack={trackInteraction} child={child} editionDate={viewedDate} />
 
         <div className="dg-band">
-          <DGGoodNews items={goodNews} onTrack={trackInteraction} child={child} editionDate={viewedDate} />
-          <DGOnThisDay events={onThisDay} onTrack={trackInteraction} onFlagEarned={handleFlagEarn} child={child} />
+          <DGGoodNews items={goodNews} onTrack={trackInteraction} onFlagEarned={earn} child={child} editionDate={viewedDate} />
+          <DGOnThisDay events={onThisDay} onTrack={trackInteraction} onFlagEarned={earn} child={child} />
           <DGGreatestMoments moments={greatestMoments} editionDate={viewedDate} />
         </div>
 
@@ -385,7 +356,7 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
             dest={edition.destination}
             imageUrl={rawPost?.image_url}
             onTrack={trackInteraction}
-            onFlagEarned={handleFlagEarn}
+            onFlagEarned={earn}
             child={child}
             editionDate={viewedDate}
           />
@@ -444,7 +415,11 @@ export default function DailyGoldEdition({ date, today, child = null, edition = 
   return (
     <DGErrorBoundary>
       <ThemeProvider childId={child?.id}>
+        {/* Keyed on the reader so a profile switch remounts the whole shell —
+            including useFlagEarn's dedupe guard, which is client state the
+            server-resolved child can't reach any other way (spec R7.24). */}
         <DailyGoldShell
+          key={child?.id || 'no-child'}
           date={date || todayStr}
           today={todayStr}
           child={child}
