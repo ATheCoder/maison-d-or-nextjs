@@ -14,8 +14,9 @@
  * would stall.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { earnFlagSeal, type FlagSource } from '@/app/passport/actions';
+import { earnFlagSeal } from '@/app/passport/actions';
 import { isValidIso2 } from '@/lib/countries';
+import type { FlagSource } from '@/lib/flag-seal-input';
 
 export type CelebrationItem = {
   id: number;

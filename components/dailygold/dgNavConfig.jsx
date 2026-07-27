@@ -21,8 +21,7 @@ export const DG_DESTINATIONS = [
 ];
 
 export const DG_SHELF = [
-  // action items are handled by the renderer (overlay, not a route)
-  { key: 'flags', label: 'My Flags', action: 'flags', icon: 'flag' },
+  { key: 'flags', label: 'My Flags', path: '/passport', icon: 'flag' },
 ];
 
 /** House icon set — 24-box, strokeWidth 1.7, round caps (matches the rest of the app). */

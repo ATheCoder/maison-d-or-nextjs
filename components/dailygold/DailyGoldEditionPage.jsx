@@ -16,7 +16,6 @@ import DGGreatestMoments from '@/components/dailygold/DGGreatestMoments';
 import DGWaxSealNavigator from '@/components/dailygold/DGWaxSealNavigator';
 import DGInspirationBar from '@/components/dailygold/DGInspirationBar';
 import FlagSealCelebration from '@/components/dailygold/FlagSealCelebration';
-import FlagCollectionView from '@/components/dailygold/FlagCollectionView';
 import { useFlagEarn } from '@/components/dailygold/useFlagEarn';
 import { ThemeProvider, useTheme } from '@/components/theme/ThemeContext';
 
@@ -252,7 +251,6 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
 
   const [timeSpent, setTimeSpent] = useState(0);
   const [topicsExplored, setTopicsExplored] = useState([]);
-  const [showCollection, setShowCollection] = useState(false);
   const startTime = useRef(null);
 
   // Earns resolve the child from the session inside the server action — the
@@ -289,11 +287,6 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
     setTopicsExplored(prev => prev.includes(topic) ? prev : [...prev, topic]);
   }, []);
 
-  // One handler for the "My World" shelf, shared by every nav renderer.
-  const handleShelfAction = useCallback((key) => {
-    if (key === 'flags') setShowCollection(true);
-  }, []);
-
   return (
     <div
       className="dg-root"
@@ -317,21 +310,14 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
         />
       )}
 
-      {showCollection && (
-        <FlagCollectionView
-          childId={child?.id}
-          onClose={() => setShowCollection(false)}
-        />
-      )}
-
-      <DGNavigationRail child={child} onShelfAction={handleShelfAction} />
-      <DGMobileTabBar child={child} onShelfAction={handleShelfAction} />
+      <DGNavigationRail child={child} />
+      <DGMobileTabBar child={child} />
 
       <main
         className="dg-shell"
         style={{ animation: 'dgFadeIn 0.4s ease-out' }}
       >
-        <DGIdentityHeader child={child} onShelfAction={handleShelfAction} />
+        <DGIdentityHeader child={child} />
 
         <DGHero dateStr={dateLabel} heroImageUrl={edition.images?.hero || rawPost?.image_url} />
 

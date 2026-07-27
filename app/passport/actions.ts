@@ -17,8 +17,6 @@ import { getActiveChild } from '@/lib/dal';
 import { COUNTRIES } from '@/lib/countries';
 import { normaliseEarnInput, type FlagSource } from '@/lib/flag-seal-input';
 
-export type { FlagSource };
-
 export type EarnResult =
   | {
       status: 'new_seal' | 'already_earned';

@@ -19,7 +19,7 @@ import { DG_DESTINATIONS, DG_SHELF, DGIcon } from '@/components/dailygold/dgNavC
 import ChildSwitcherOverlay from '@/components/dailygold/ChildSwitcherOverlay';
 import { AVATARS } from '@/lib/avatars';
 
-export default function DGNavigationRail({ child = null, onShelfAction }) {
+export default function DGNavigationRail({ child = null }) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme } = useTheme();
@@ -132,7 +132,7 @@ export default function DGNavigationRail({ child = null, onShelfAction }) {
               <button
                 key={item.key}
                 className="dg-rail-item"
-                onClick={() => onShelfAction && onShelfAction(item.key)}
+                onClick={() => router.push(item.path)}
                 aria-label={item.label}
                 title={item.label}
               >

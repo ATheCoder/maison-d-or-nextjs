@@ -12,20 +12,19 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { DG_DESTINATIONS, DG_SHELF, DGIcon } from '@/components/dailygold/dgNavConfig';
 
-export default function DGMobileTabBar({ child = null, onShelfAction }) {
+export default function DGMobileTabBar({ child = null }) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme } = useTheme();
 
   const tabs = [
-    ...DG_DESTINATIONS.map(d => ({ ...d, type: 'route' })),
+    ...DG_DESTINATIONS,
     // Shelf items only make sense with an active reader.
-    ...(child ? DG_SHELF.map(s => ({ ...s, type: 'action' })) : []),
+    ...(child ? DG_SHELF : []),
   ];
 
   const isActive = (tab) =>
-    tab.type === 'route' &&
-    (pathname === tab.path || (tab.key === 'today' && (pathname || '').includes('daily-gold')));
+    pathname === tab.path || (tab.key === 'today' && (pathname || '').includes('daily-gold'));
 
   return (
     <nav
@@ -42,7 +41,7 @@ export default function DGMobileTabBar({ child = null, onShelfAction }) {
         return (
           <button
             key={tab.key}
-            onClick={() => tab.type === 'route' ? router.push(tab.path) : (onShelfAction && onShelfAction(tab.key))}
+            onClick={() => router.push(tab.path)}
             aria-current={active ? 'page' : undefined}
             style={{
               flex: 1, minHeight: 48, border: 'none', background: 'transparent', cursor: 'pointer',

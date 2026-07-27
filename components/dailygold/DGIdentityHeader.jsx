@@ -16,7 +16,7 @@ import { DG_SHELF, DGIcon } from '@/components/dailygold/dgNavConfig';
 import ChildSwitcherOverlay from '@/components/dailygold/ChildSwitcherOverlay';
 import { AVATARS } from '@/lib/avatars';
 
-export default function DGIdentityHeader({ child, onShelfAction }) {
+export default function DGIdentityHeader({ child }) {
   const router = useRouter();
   const { theme } = useTheme();
   const [showSwitcher, setShowSwitcher] = useState(false);
@@ -78,7 +78,7 @@ export default function DGIdentityHeader({ child, onShelfAction }) {
         {DG_SHELF.map(item => (
           <button
             key={item.key}
-            onClick={() => onShelfAction && onShelfAction(item.key)}
+            onClick={() => router.push(item.path)}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               minHeight: 44, padding: '0.35rem 0.85rem', flexShrink: 0,
