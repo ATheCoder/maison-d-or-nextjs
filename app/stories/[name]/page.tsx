@@ -1,5 +1,6 @@
 import { getPersonBySlug } from '@/app/daily-gold-edition/actions';
 import StorybookView from '@/components/dailygold/StorybookView';
+import { getActiveChild } from '@/lib/dal';
 
 /**
  * A Golden Story for one remarkable person, read from the remarkable_person
@@ -17,7 +18,10 @@ export default async function StoryPage({
   params: Promise<{ name: string }>;
 }) {
   const { name } = await params;
-  const story = await getPersonBySlug(name);
+  // No redirect: a signed-out or parent-mode visitor still reads the story.
+  // Only a boolean crosses to the client — the earn action re-resolves the
+  // child from the session itself (spec R6.9).
+  const [story, child] = await Promise.all([getPersonBySlug(name), getActiveChild()]);
 
-  return <StorybookView story={story} />;
+  return <StorybookView story={story} canEarn={!!child} />;
 }

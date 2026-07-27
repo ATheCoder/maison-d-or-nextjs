@@ -1,8 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
 import SaveHeartSeal from '@/components/dailygold/SaveHeartSeal';
 import DGModal from '@/components/dailygold/DGModal';
+import { resolveLocation } from '@/lib/countries';
 
 function NewsModal({ item, onClose }) {
   const { theme } = useTheme();
@@ -56,9 +57,23 @@ function NewsModal({ item, onClose }) {
   );
 }
 
-export default function DGGoodNews({ items = [], onTrack, child, editionDate }) {
+export default function DGGoodNews({ items = [], onTrack, onFlagEarned, child, editionDate }) {
   const { theme } = useTheme();
   const [selectedNews, setSelectedNews] = useState(null);
+  const earnedHere = useRef(new Set());
+
+  // Earning is a side effect of opening the story, never of the card sitting
+  // in the list (spec R6.5/R6.7). `location` is mostly null in current data,
+  // so the earn silently does nothing until the backfill lands — expected.
+  const openNews = useCallback((item) => {
+    setSelectedNews(item);
+    onTrack?.('news', item.headline);
+    const iso2 = resolveLocation(item.location);
+    if (iso2 && !earnedHere.current.has(iso2)) {
+      earnedHere.current.add(iso2);
+      onFlagEarned?.(item.location, iso2, 'good_news');
+    }
+  }, [onTrack, onFlagEarned]);
 
   if (!items.length) return null;
 
@@ -83,7 +98,7 @@ export default function DGGoodNews({ items = [], onTrack, child, editionDate }) 
           <div style={{ position: 'relative', marginBottom: '1rem' }}>
             <button
               type="button"
-              onClick={() => { setSelectedNews(primary); onTrack?.('news', primary.headline); }}
+              onClick={() => openNews(primary)}
               style={{
                 display: 'block', width: '100%', textAlign: 'left',
                 font: 'inherit', padding: 0, cursor: 'pointer',
@@ -119,7 +134,7 @@ export default function DGGoodNews({ items = [], onTrack, child, editionDate }) 
                 itemTitle={primary.headline}
                 itemSubtitle={primary.location || 'Good news'}
                 itemImageUrl={primaryImg}
-                countryCode=""
+                countryCode={resolveLocation(primary.location) || ''}
                 countryName={primary.location || ''}
                 themeTags={['hope']}
                 editionDate={editionDate}
@@ -134,7 +149,7 @@ export default function DGGoodNews({ items = [], onTrack, child, editionDate }) 
           <button
             key={i}
             type="button"
-            onClick={() => { setSelectedNews(item); onTrack?.('news', item.headline); }}
+            onClick={() => openNews(item)}
             style={{
               display: 'flex', alignItems: 'center', gap: '0.75rem',
               width: '100%', textAlign: 'left', font: 'inherit',

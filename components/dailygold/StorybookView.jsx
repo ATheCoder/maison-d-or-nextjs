@@ -3,16 +3,49 @@
  * StorybookView — client chrome for a single Golden Story.
  * The person is fetched on the server (SSR, via Drizzle) and passed in;
  * this component only owns the interactive bits (back navigation, the
- * not-found fallback) and renders the GoldenStory itself.
+ * not-found fallback, the born_today flag earn) and renders the GoldenStory
+ * itself.
+ *
+ * This is the single `born_today` earn site (spec R6.6a/R6.9): opening a
+ * person's story earns their country, whether reached from the edition or by
+ * deep link. `canEarn` is the server's "there is an active child" boolean —
+ * signed-out and parent-mode visitors still read the story, they just earn
+ * nothing. GoldenStory itself stays earn-free. Same-navigation revisits are
+ * deduped by the server action's idempotence, not by client state.
  */
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import GoldenStory from '@/components/dailygold/GoldenStory';
+import FlagSealCelebration from '@/components/dailygold/FlagSealCelebration';
+import { useFlagEarn } from '@/components/dailygold/useFlagEarn';
+import { resolvePerson } from '@/lib/countries';
 
-export default function StorybookView({ story }) {
+export default function StorybookView({ story, canEarn = false }) {
   const router = useRouter();
+  const { earn, celebration, dismissCelebration } = useFlagEarn();
+
+  useEffect(() => {
+    if (!canEarn || !story) return;
+    const iso2 = resolvePerson({
+      countryCode: story.country_code,
+      nationality: story.nationality,
+      country: story.country,
+    });
+    if (iso2) earn(story.country || story.nationality || '', iso2, 'born_today');
+  }, [canEarn, story, earn]);
 
   return (
     <div style={{ minHeight: '100vh', background: '#F5F0E7' }}>
+      {celebration && (
+        <FlagSealCelebration
+          key={celebration.id}
+          countryCode={celebration.countryCode}
+          countryName={celebration.countryName}
+          type={celebration.type}
+          onDone={dismissCelebration}
+        />
+      )}
+
       {/* Back to the edition */}
       <button
         onClick={() => router.back()}
