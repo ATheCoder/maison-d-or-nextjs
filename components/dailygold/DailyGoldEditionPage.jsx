@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { base44 } from '@/api/base44Client';
 import DGHero from '@/components/dailygold/DGHero';
 import DGBornToday from '@/components/dailygold/DGBornToday';
@@ -18,11 +19,17 @@ import DGInspirationBar from '@/components/dailygold/DGInspirationBar';
 import FlagSealCelebration from '@/components/dailygold/FlagSealCelebration';
 import FlagCollectionView from '@/components/dailygold/FlagCollectionView';
 import { ThemeProvider, useTheme } from '@/components/theme/ThemeContext';
-import { getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate, getGreatestMomentsForDate } from '@/app/daily-gold-edition/actions';
 
 /**
  * PAGE — /daily-gold-edition
  * Daily Gold — Cinematic World Journey
+ *
+ * The viewed day lives in the URL, not in component state: today is the bare
+ * route and every earlier day is `?date=YYYY-MM-DD`, so any day a reader turns
+ * to can be linked, bookmarked, reloaded and shared. Turning a page is a
+ * navigation — the server fetches that day's sections and re-renders this
+ * component with them, which is why nothing below holds edition content in
+ * state.
  *
  * Layout contract (navigation-redesign-spec §4/§7):
  * - ≥1024px: labelled navigation rail on the left, content offset by the
@@ -219,34 +226,26 @@ const SHELL_CSS = `
   }
 `;
 
-function DailyGoldShell({ initialChild, initialEdition, initialDates, initialPeople, initialGoodNews, initialOnThisDay, initialGreatestMoments }) {
+function DailyGoldShell({ date, today, child, edition: editionRecord, dates, people, goodNews, onThisDay, greatestMoments }) {
   const { theme } = useTheme();
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const dateLabel = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const router = useRouter();
+
+  // Every section is the server's answer for `date`, so the masthead, the
+  // footer and the content can never disagree about which day this is.
+  const viewedDate = date;
+  const dateLabel = new Date(`${viewedDate}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   // The edition is fetched on the server (SSR, via Drizzle) and passed in.
-  const initial = initialEdition ? mapRecord(initialEdition) : { edition: EMPTY_EDITION, rawPost: null };
+  const { edition, rawPost } = editionRecord
+    ? mapRecord(editionRecord)
+    : { edition: EMPTY_EDITION, rawPost: null };
 
-  const [edition, setEdition] = useState(initial.edition);
-  const [people, setPeople] = useState(initialPeople);
-  const [goodNews, setGoodNews] = useState(initialGoodNews);
-  const [onThisDay, setOnThisDay] = useState(initialOnThisDay);
-  const [greatestMoments, setGreatestMoments] = useState(initialGreatestMoments);
-  const [rawPost, setRawPost] = useState(initial.rawPost);
   const [timeSpent, setTimeSpent] = useState(0);
   const [topicsExplored, setTopicsExplored] = useState([]);
   const [celebration, setCelebration] = useState(null);
   const [showCollection, setShowCollection] = useState(false);
   const pendingEarns = useRef(new Set());
   const startTime = useRef(null);
-
-  const [viewedDate, setViewedDate] = useState(initialEdition?.edition_date || todayStr);
-
-  // The reader is resolved on the server from the session's active child
-  // profile, so there is nothing to fetch and no client-side cache to keep in
-  // sync: switching profiles refreshes the route and this prop changes.
-  // Outside child mode it stays null and every child surface below is absent.
-  const child = initialChild;
 
   useEffect(() => {
     // Track time spent
@@ -257,35 +256,15 @@ function DailyGoldShell({ initialChild, initialEdition, initialDates, initialPeo
     return () => clearInterval(interval);
   }, []);
 
-  // The navigator can land on a day that has no edition row of its own — one
-  // listed only for its Golden Stories — so `date` is the authority and
-  // `record` is whatever exists for it, possibly nothing.
-  const handleEditionChange = (record, date) => {
-    const viewed = date || record?.edition_date;
-    if (!viewed) return;
-    const { edition: mapped, rawPost: rp } = record
-      ? mapRecord(record)
-      : { edition: EMPTY_EDITION, rawPost: null };
-    setEdition(mapped);
-    setRawPost(rp);
-    setViewedDate(viewed);
-    // Born Today is keyed by the viewed date's month-day, not the edition row.
-    getPeopleForDate(viewed)
-      .then(setPeople)
-      .catch(() => setPeople([]));
-    // Good News lives in its own table, keyed by the exact date.
-    getGoodNewsForDate(viewed)
-      .then(setGoodNews)
-      .catch(() => setGoodNews([]));
-    // On This Day lives in its own table, keyed by the month-day.
-    getOnThisDayForDate(viewed)
-      .then(setOnThisDay)
-      .catch(() => setOnThisDay([]));
-    // Greatest Moments too — its own table, keyed by the month-day.
-    getGreatestMomentsForDate(viewed)
-      .then(setGreatestMoments)
-      .catch(() => setGreatestMoments([]));
-  };
+  // Turning to another day is a navigation, not a state change: the address
+  // bar leads and the server answers with that day's sections. Today keeps the
+  // bare URL so the paper of the moment has one plain, permanent address; every
+  // earlier day carries its date, which is the link a reader can share.
+  // `scroll: false` keeps the reader at the navigator they just pressed.
+  const handleDateChange = useCallback((next) => {
+    if (!next || next === viewedDate) return;
+    router.push(next === today ? '/daily-gold-edition' : `/daily-gold-edition?date=${next}`, { scroll: false });
+  }, [router, viewedDate, today]);
 
   const handleFlagEarn = useCallback(async (countryName, countryCode, source) => {
     if (!child?.id || !countryCode) return;
@@ -377,8 +356,8 @@ function DailyGoldShell({ initialChild, initialEdition, initialDates, initialPeo
 
         <DGWaxSealNavigator
           currentDate={viewedDate}
-          initialDates={initialDates}
-          onEditionChange={handleEditionChange}
+          availableDates={dates}
+          onDateChange={handleDateChange}
         />
 
         <DGBornToday people={people} onTrack={trackInteraction} onFlagEarned={handleFlagEarn} child={child} editionDate={viewedDate} />
@@ -436,20 +415,35 @@ function DailyGoldShell({ initialChild, initialEdition, initialDates, initialPeo
 }
 
 /**
- * @param {{ initialChild?: any, initialEdition?: any, initialDates?: string[], initialPeople?: any[], initialGoodNews?: any[], initialOnThisDay?: any[], initialGreatestMoments?: any[] }} props
+ * `date` is the day the URL asks for and `today` the day it is; every other
+ * prop is the server's content for `date`, already filtered to what a reader
+ * may see.
+ *
+ * The reader (`child`) is resolved on the server from the session's active
+ * child profile, so there is nothing to fetch and no client-side cache to keep
+ * in sync: switching profiles refreshes the route and this prop changes.
+ * Outside child mode it stays null and every child surface simply stays absent.
+ *
+ * @param {{ date?: string, today?: string, child?: any, edition?: any, dates?: string[], people?: any[], goodNews?: any[], onThisDay?: any[], greatestMoments?: any[] }} props
  */
-export default function DailyGoldEdition({ initialChild = null, initialEdition = null, initialDates = [], initialPeople = [], initialGoodNews = [], initialOnThisDay = [], initialGreatestMoments = [] }) {
+export default function DailyGoldEdition({ date, today, child = null, edition = null, dates = [], people = [], goodNews = [], onThisDay = [], greatestMoments = [] }) {
+  // Defaulted here rather than in the signature so a caller that knows neither
+  // date — the design-sync preview — still renders a coherent single day.
+  const todayStr = today || new Date().toISOString().slice(0, 10);
+
   return (
     <DGErrorBoundary>
-      <ThemeProvider childId={initialChild?.id}>
+      <ThemeProvider childId={child?.id}>
         <DailyGoldShell
-          initialChild={initialChild}
-          initialEdition={initialEdition}
-          initialDates={initialDates}
-          initialPeople={initialPeople}
-          initialGoodNews={initialGoodNews}
-          initialOnThisDay={initialOnThisDay}
-          initialGreatestMoments={initialGreatestMoments}
+          date={date || todayStr}
+          today={todayStr}
+          child={child}
+          edition={edition}
+          dates={dates}
+          people={people}
+          goodNews={goodNews}
+          onThisDay={onThisDay}
+          greatestMoments={greatestMoments}
         />
       </ThemeProvider>
     </DGErrorBoundary>

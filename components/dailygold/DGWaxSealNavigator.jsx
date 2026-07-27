@@ -4,8 +4,7 @@
  * Two embossed cream-and-gold medallions flanking the date (theme headline serif).
  * Press animation: stamp-down + page-turn rotateY flip to new date.
  */
-import { useState, useEffect, useCallback } from 'react';
-import { getEditionByDate, getAvailableDates } from '@/app/daily-gold-edition/actions';
+import { useState, useCallback, useOptimistic, useTransition } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
 
 // SVG seal face — vintage engraved arrow as the clear primary mark,
@@ -112,39 +111,29 @@ function indexForDate(dates, date) {
   return idx !== -1 ? idx : dates.length;
 }
 
-export default function DGWaxSealNavigator({ currentDate, onEditionChange, initialDates = [] }) {
+/**
+ * @param {{ currentDate: string, availableDates?: string[], onDateChange: (date: string) => void }} props
+ * `onDateChange` navigates — the viewed day lives in the URL — so `currentDate`
+ * arrives back as a prop once the new day has rendered.
+ */
+export default function DGWaxSealNavigator({ currentDate, onDateChange, availableDates = [] }) {
   const { theme } = useTheme();
-  const [allDates, setAllDates] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(-1);
   const [pressing, setPressing] = useState(null); // 'back' | 'forward' | null
   const [flipping, setFlipping] = useState(false);
   const [flipDir, setFlipDir] = useState(0); // -1 = going back, +1 = going forward
-  const [displayDate, setDisplayDate] = useState(currentDate);
-  const [loading, setLoading] = useState(false);
+  const [pending, startTransition] = useTransition();
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // The date on the seal turns mid-flip, ahead of the day it names: the press
+  // should feel answered at once, even though the content behind it is still a
+  // navigation away. Optimistic rather than plain state, so the guess lasts
+  // exactly as long as the navigation does — when it lands, is superseded, or
+  // is abandoned, React puts `currentDate` back and the seal can never end up
+  // naming a day the URL isn't showing. It follows the browser's own back and
+  // forward buttons for free, since those change `currentDate` too.
+  const [displayDate, setDisplayDate] = useOptimistic(currentDate);
 
-  // Load all available edition dates on mount (from the local DB via a server
-  // action, or reuse the list already fetched on the server).
-  useEffect(() => {
-    const init = (dates) => {
-      setAllDates(dates);
-      setCurrentIndex(indexForDate(dates, currentDate));
-    };
-    if (initialDates && initialDates.length) {
-      init(initialDates);
-    } else {
-      getAvailableDates().then(init).catch(() => {});
-    }
-  }, []);
-
-  // Sync index when currentDate changes externally
-  useEffect(() => {
-    if (allDates.length > 0) {
-      setCurrentIndex(indexForDate(allDates, currentDate));
-    }
-    setDisplayDate(currentDate);
-  }, [currentDate, allDates]);
+  const allDates = availableDates;
+  const currentIndex = indexForDate(allDates, displayDate);
 
   const formatDisplayDate = (dateStr) => {
     if (!dateStr) return '';
@@ -153,7 +142,7 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
   };
 
   const navigate = useCallback(async (direction) => {
-    if (loading || allDates.length === 0) return;
+    if (pending || allDates.length === 0) return;
     const newIndex = currentIndex + direction;
     if (newIndex < 0 || newIndex >= allDates.length) return;
 
@@ -169,26 +158,20 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
     setFlipping(true);
     await new Promise(r => setTimeout(r, 200));
 
-    // Swap date mid-flip
-    setDisplayDate(targetDate);
-    setCurrentIndex(newIndex);
+    // Mid-flip: the date on the seal turns and the page turns with it. A listed
+    // day need not have an edition row of its own — it may be listed for its
+    // Golden Stories alone — so the date is the authority and the page renders
+    // whatever exists for it, possibly nothing. Both happen inside the one
+    // transition: `pending` then holds the loading line, and the optimistic
+    // date, until the new day's content has actually arrived.
+    startTransition(() => {
+      setDisplayDate(targetDate);
+      onDateChange(targetDate);
+    });
 
     await new Promise(r => setTimeout(r, 200));
     setFlipping(false);
-
-    // Load the edition for this date. A listed day need not have an edition row
-    // of its own — it may be listed for its Golden Stories alone — so the page
-    // is always notified, with the date as the authority and the record as
-    // whatever happens to exist for it. Staying silent here would leave the
-    // previous day's content under the new date.
-    setLoading(true);
-    try {
-      onEditionChange(await getEditionByDate(targetDate), targetDate);
-    } catch (_) {
-      onEditionChange(null, targetDate);
-    }
-    setLoading(false);
-  }, [currentIndex, allDates, loading, onEditionChange]);
+  }, [currentIndex, allDates, pending, onDateChange, setDisplayDate]);
 
   const canGoBack = currentIndex > 0;
   const canGoForward = currentIndex < allDates.length - 1;
@@ -206,7 +189,7 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
       {/* Back seal */}
       <WaxSeal
         direction="back"
-        disabled={!canGoBack || loading}
+        disabled={!canGoBack || pending}
         pressing={pressing === 'back'}
         onPress={() => navigate(-1)}
         ariaLabel="Previous day"
@@ -236,7 +219,7 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
           }}>
             {formatDisplayDate(displayDate)}
           </p>
-          {loading && (
+          {pending && (
             <p style={{
               fontFamily: theme.fontBody,
               fontSize: '0.7rem',
@@ -277,7 +260,7 @@ export default function DGWaxSealNavigator({ currentDate, onEditionChange, initi
       {/* Forward seal */}
       <WaxSeal
         direction="forward"
-        disabled={!canGoForward || loading}
+        disabled={!canGoForward || pending}
         pressing={pressing === 'forward'}
         onPress={() => navigate(1)}
         ariaLabel="Next day"
