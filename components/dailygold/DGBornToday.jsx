@@ -312,7 +312,17 @@ export default function DGBornToday({ people = [], onTrack, savedSet = null, edi
           to   { transform: translateX(75%); }
         }
 
-        .dgbt-flag { position: absolute; top: 12px; left: calc(15% + 6px); z-index: 5; }
+        /* The two seals on the boards are a pair, and are placed as one: the
+           flag measured 12px off the spine fold (where the front board starts,
+           the same way the heart is measured off the fore-edge) rather than 6px,
+           which left it straddling the shading and belonging to neither. Its
+           13px top lands a 24px medallion on the same centre line as the 26px
+           heart. The shadow is what seats it on the leather — without it the
+           medallion's own pale ring reads as a sticker over the portrait. */
+        .dgbt-flag {
+          position: absolute; top: 13px; left: 12px; z-index: 5;
+          filter: drop-shadow(0 2px 6px rgba(18,11,4,0.55));
+        }
         /* The heart's 44px tap target is much bigger than the 26px disc inside
            it, so this offset is 9px short of where the disc lands: 12px off the
            boards, level with the flag seal across the cover. */
