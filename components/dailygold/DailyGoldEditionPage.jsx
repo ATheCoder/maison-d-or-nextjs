@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import DGHero from '@/components/dailygold/DGHero';
 import DGBornToday from '@/components/dailygold/DGBornToday';
@@ -10,6 +10,7 @@ import DGMoreToExplore from '@/components/dailygold/DGMoreToExplore';
 import DGForParents from '@/components/dailygold/DGForParents';
 import DGNavigationRail from '@/components/dailygold/DGNavigationRail';
 import DGMobileTabBar from '@/components/dailygold/DGMobileTabBar';
+import { NAV_SHELL_CSS } from '@/components/dailygold/DGPageShell';
 import DGIdentityHeader from '@/components/dailygold/DGIdentityHeader';
 import DGValuesStrip from '@/components/dailygold/DGValuesStrip';
 import DGGreatestMoments from '@/components/dailygold/DGGreatestMoments';
@@ -109,56 +110,12 @@ function mapRecord(record) {
 }
 
 /**
- * The shared shell stylesheet. One place owns the responsive layout system:
- * the rail-width / tab-bar-height variables, the three breakpoint tiers, the
- * section band grid, focus visibility, and reduced-motion handling.
+ * The shell stylesheet: the shared navigation layout system (NAV_SHELL_CSS,
+ * owned by DGPageShell so /passport and /treasury can never drift from the
+ * reader) plus this page's own section-band grid.
  */
 const SHELL_CSS = `
-  .dg-root {
-    --dg-rail-w: 224px;
-    --dg-tabbar-h: 0px;
-    min-height: 100vh;
-    overflow-x: clip;
-  }
-  .dg-shell {
-    padding-left: var(--dg-rail-w);
-    padding-bottom: var(--dg-tabbar-h);
-    min-height: 100vh;
-  }
-
-  /* Navigation rail (desktop) */
-  .dg-rail {
-    position: fixed;
-    left: 0; top: 0; bottom: 0;
-    width: var(--dg-rail-w);
-    display: flex;
-    flex-direction: column;
-    padding: 1.5rem 0.75rem;
-    border-right: 1px solid color-mix(in srgb, var(--dg-gold) 15%, transparent);
-    /* visible so the reader-switcher dropdown can extend past the rail edge */
-    overflow: visible;
-    z-index: 1000;
-  }
-  .dg-rail-item {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    min-height: 44px;
-    padding: 0.55rem 0.9rem;
-    border: none;
-    border-radius: 12px;
-    background: transparent;
-    cursor: pointer;
-    text-align: left;
-    transition: background 0.2s ease;
-  }
-  .dg-rail-item:hover { background: color-mix(in srgb, var(--dg-gold) 10%, transparent); }
-  .dg-rail-active { background: color-mix(in srgb, var(--dg-gold) 14%, transparent); }
-
-  /* Mobile-only chrome, hidden on desktop */
-  .dg-idheader, .dg-tabbar { display: none; }
+  ${NAV_SHELL_CSS}
 
   /* The three-section band: steps 3 → 2 → 1 columns on its own */
   .dg-band {
@@ -170,74 +127,17 @@ const SHELL_CSS = `
     border-top: 1px solid color-mix(in srgb, var(--dg-gold) 10%, transparent);
     border-bottom: 1px solid color-mix(in srgb, var(--dg-gold) 10%, transparent);
   }
-
-  /* Compact rail: icons only */
-  @media (max-width: 1023px) {
-    .dg-root { --dg-rail-w: 84px; }
-    .dg-rail { padding: 1.5rem 0.5rem; }
-    .dg-rail-item { justify-content: center; padding: 0.55rem; }
-    .dg-rail-label { display: none !important; }
-    /* in flow the dot would consume gap + width and knock the icon off centre,
-       so pin it to the right edge instead — same signal, no layout cost */
-    .dg-rail-dot {
-      position: absolute;
-      right: 7px;
-      top: 50%;
-      transform: translateY(-50%);
-      margin-left: 0 !important;
-    }
-  }
-
-  /* Mobile: no rail; identity header + tab bar */
-  @media (max-width: 767px) {
-    .dg-root { --dg-rail-w: 0px; --dg-tabbar-h: calc(64px + env(safe-area-inset-bottom, 0px)); }
-    .dg-rail { display: none; }
-    .dg-idheader {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
-      position: sticky;
-      top: 0;
-      z-index: 900;
-      padding: 0.35rem 1rem;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
-    .dg-tabbar {
-      display: flex;
-      align-items: stretch;
-      justify-content: space-around;
-      position: fixed;
-      left: 0; right: 0; bottom: 0;
-      padding: 0.25rem 0.5rem calc(0.25rem + env(safe-area-inset-bottom, 0px));
-      z-index: 1000;
-    }
-  }
-
-  /* Keyboard focus is visible everywhere on the page */
-  .dg-root :focus-visible {
-    outline: 2px solid var(--dg-gold);
-    outline-offset: 2px;
-    border-radius: 4px;
-  }
-
-  @keyframes dgFadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-  /* Calm by default for those who ask for it */
-  @media (prefers-reduced-motion: reduce) {
-    .dg-root *, .dg-root *::before, .dg-root *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-      scroll-behavior: auto !important;
-    }
-  }
 `;
 
-function DailyGoldShell({ date, today, child, edition: editionRecord, dates, people, goodNews, onThisDay, greatestMoments }) {
+function DailyGoldShell({ date, today, child, edition: editionRecord, dates, people, goodNews, onThisDay, greatestMoments, savedKeys }) {
   const { theme } = useTheme();
   const router = useRouter();
+
+  // The whole page's saved state, answered once by the server. Sections look up
+  // `type:id` in it instead of each heart asking after itself. `null` — not an
+  // empty set — outside child mode, and a section with no set renders no hearts
+  // at all: an absent heart is honest where a heart that can't save is not.
+  const savedSet = useMemo(() => (savedKeys ? new Set(savedKeys) : null), [savedKeys]);
 
   // Every section is the server's answer for `date`, so the masthead, the
   // footer and the content can never disagree about which day this is.
@@ -327,12 +227,12 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
           onDateChange={handleDateChange}
         />
 
-        <DGBornToday people={people} onTrack={trackInteraction} child={child} editionDate={viewedDate} />
+        <DGBornToday people={people} onTrack={trackInteraction} savedSet={savedSet} editionDate={viewedDate} />
 
         <div className="dg-band">
-          <DGGoodNews items={goodNews} onTrack={trackInteraction} onFlagEarned={earn} child={child} editionDate={viewedDate} />
-          <DGOnThisDay events={onThisDay} onTrack={trackInteraction} onFlagEarned={earn} child={child} />
-          <DGGreatestMoments moments={greatestMoments} editionDate={viewedDate} />
+          <DGGoodNews items={goodNews} onTrack={trackInteraction} onFlagEarned={earn} savedSet={savedSet} editionDate={viewedDate} />
+          <DGOnThisDay events={onThisDay} onTrack={trackInteraction} onFlagEarned={earn} savedSet={savedSet} editionDate={viewedDate} />
+          <DGGreatestMoments moments={greatestMoments} savedSet={savedSet} editionDate={viewedDate} />
         </div>
 
         <DGInspirationBar edition={edition} />
@@ -343,7 +243,7 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
             imageUrl={rawPost?.image_url}
             onTrack={trackInteraction}
             onFlagEarned={earn}
-            child={child}
+            savedSet={savedSet}
             editionDate={viewedDate}
           />
         </div>
@@ -391,9 +291,12 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
  * in sync: switching profiles refreshes the route and this prop changes.
  * Outside child mode it stays null and every child surface simply stays absent.
  *
- * @param {{ date?: string, today?: string, child?: any, edition?: any, dates?: string[], people?: any[], goodNews?: any[], onThisDay?: any[], greatestMoments?: any[] }} props
+ * `savedKeys` is the same answer for the hearts: the `type:id` keys this reader
+ * has already saved, or null when there is no reader.
+ *
+ * @param {{ date?: string, today?: string, child?: any, edition?: any, dates?: string[], people?: any[], goodNews?: any[], onThisDay?: any[], greatestMoments?: any[], savedKeys?: string[] | null }} props
  */
-export default function DailyGoldEdition({ date, today, child = null, edition = null, dates = [], people = [], goodNews = [], onThisDay = [], greatestMoments = [] }) {
+export default function DailyGoldEdition({ date, today, child = null, edition = null, dates = [], people = [], goodNews = [], onThisDay = [], greatestMoments = [], savedKeys = null }) {
   // Defaulted here rather than in the signature so a caller that knows neither
   // date — the design-sync preview — still renders a coherent single day.
   const todayStr = today || new Date().toISOString().slice(0, 10);
@@ -415,6 +318,7 @@ export default function DailyGoldEdition({ date, today, child = null, edition = 
           goodNews={goodNews}
           onThisDay={onThisDay}
           greatestMoments={greatestMoments}
+          savedKeys={savedKeys}
         />
       </ThemeProvider>
     </DGErrorBoundary>

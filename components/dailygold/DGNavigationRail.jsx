@@ -128,25 +128,31 @@ export default function DGNavigationRail({ child = null }) {
             My World
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {DG_SHELF.map(item => (
-              <button
-                key={item.key}
-                className="dg-rail-item"
-                onClick={() => router.push(item.path)}
-                aria-label={item.label}
-                title={item.label}
-              >
-                <span style={{ display: 'inline-flex', flexShrink: 0 }}>
-                  <DGIcon name={item.icon} size={20} color={theme.accentGold} />
-                </span>
-                <span className="dg-rail-label" style={{
-                  fontFamily: theme.fontBody, fontSize: '0.8rem', letterSpacing: '0.06em',
-                  color: theme.textBody,
-                }}>
-                  {item.label}
-                </span>
-              </button>
-            ))}
+            {DG_SHELF.map(item => {
+              const active = isActive(item);
+              return (
+                <button
+                  key={item.key}
+                  className={`dg-rail-item${active ? ' dg-rail-active' : ''}`}
+                  onClick={() => router.push(item.path)}
+                  aria-current={active ? 'page' : undefined}
+                  aria-label={item.label}
+                  title={item.label}
+                >
+                  <span style={{ display: 'inline-flex', flexShrink: 0 }}>
+                    <DGIcon name={item.icon} size={20} color={theme.accentGold} />
+                  </span>
+                  <span className="dg-rail-label" style={{
+                    fontFamily: theme.fontBody, fontSize: '0.8rem', letterSpacing: '0.06em',
+                    color: active ? theme.textHeadline : theme.textBody,
+                    fontWeight: active ? 700 : 400,
+                  }}>
+                    {item.label}
+                  </span>
+                  {active && <span className="dg-rail-dot" aria-hidden="true" style={{ marginLeft: 'auto', width: 4, height: 4, borderRadius: '50%', background: theme.accentGold, flexShrink: 0 }} />}
+                </button>
+              );
+            })}
           </div>
         </>
       )}

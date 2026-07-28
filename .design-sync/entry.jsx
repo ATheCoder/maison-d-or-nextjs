@@ -25,6 +25,7 @@ export { default as MMonogram } from '@/components/maison/MMonogram';
 
 // ── Treasury ──
 export { default as TreasuryHeart } from '@/components/treasury/TreasuryHeart';
+export { default as TreasuryView } from '@/components/treasury/TreasuryView';
 
 // ── Daily Gold edition ──
 export { default as ChildSwitcherOverlay } from '@/components/dailygold/ChildSwitcherOverlay';
@@ -48,7 +49,6 @@ export { default as FlagCollectionView } from '@/components/dailygold/FlagCollec
 export { default as FlagSealCelebration } from '@/components/dailygold/FlagSealCelebration';
 export { default as FlagSealMedallion } from '@/components/dailygold/FlagSealMedallion';
 export { default as GoldenStory } from '@/components/dailygold/GoldenStory';
-export { default as SaveHeartSeal } from '@/components/dailygold/SaveHeartSeal';
 export { default as StorybookView } from '@/components/dailygold/StorybookView';
 
 // ── Shared config the DG components read (nav shelf, icon set) ──

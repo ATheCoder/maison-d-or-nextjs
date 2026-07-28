@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
 import DGModal from '@/components/dailygold/DGModal';
+import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 
 function MomentModal({ item, onClose }) {
   const { theme } = useTheme();
@@ -76,7 +77,7 @@ function MomentModal({ item, onClose }) {
   );
 }
 
-export default function DGGreatestMoments({ moments = [], editionDate }) {
+export default function DGGreatestMoments({ moments = [], savedSet = null, editionDate }) {
   const { theme } = useTheme();
   const [selected, setSelected] = useState(null);
 
@@ -124,75 +125,94 @@ export default function DGGreatestMoments({ moments = [], editionDate }) {
       {/* Ranked list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
         {moments.slice(0, 10).map((m, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => setSelected(m)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '0.75rem',
-              width: '100%', textAlign: 'left', font: 'inherit',
-              padding: '0.7rem 0.9rem', minHeight: 44,
-              borderRadius: theme.radiusSmall,
-              cursor: 'pointer',
-              border: `1px solid ${theme.accentGold}25`,
-              background: theme.bgCard,
-              boxShadow: theme.shadowSoft,
-              transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = theme.shadow; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = theme.shadowSoft; }}
-          >
-            {/* Rank circle */}
-            <div style={{
-              width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-              background: i === 0 ? theme.accentGold : `${theme.accentGold}2E`,
-              border: `1.5px solid ${theme.accentGold}${i === 0 ? 'E6' : '66'}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <span style={{
-                fontFamily: theme.fontBody, fontSize: '0.7rem', fontWeight: 700,
-                color: i === 0 ? theme.bgCard : theme.accentGold,
+          /* The row is a button, so its heart has to be a sibling floating over
+             the right edge — with the row padded so the chevron steps aside
+             rather than sitting under the tap target. */
+          <div key={m.id ?? i} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setSelected(m)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.75rem',
+                width: '100%', textAlign: 'left', font: 'inherit',
+                padding: '0.7rem 0.9rem', minHeight: 44,
+                paddingRight: savedSet ? '3.1rem' : '0.9rem',
+                borderRadius: theme.radiusSmall,
+                cursor: 'pointer',
+                border: `1px solid ${theme.accentGold}25`,
+                background: theme.bgCard,
+                boxShadow: theme.shadowSoft,
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = theme.shadow; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = theme.shadowSoft; }}
+            >
+              {/* Rank circle */}
+              <div style={{
+                width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                background: i === 0 ? theme.accentGold : `${theme.accentGold}2E`,
+                border: `1.5px solid ${theme.accentGold}${i === 0 ? 'E6' : '66'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                {m.rank || i + 1}
-              </span>
-            </div>
+                <span style={{
+                  fontFamily: theme.fontBody, fontSize: '0.7rem', fontWeight: 700,
+                  color: i === 0 ? theme.bgCard : theme.accentGold,
+                }}>
+                  {m.rank || i + 1}
+                </span>
+              </div>
 
-            {/* Thumbnail */}
-            <div style={{
-              width: 46, height: 46, borderRadius: 8, flexShrink: 0, overflow: 'hidden',
-              background: m.image_url ? undefined : `${theme.accentGold}1F`,
-            }}>
-              {m.image_url
-                ? <img src={m.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <div aria-hidden="true" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: '1.1rem', opacity: 0.35 }}>✦</span>
-                  </div>
-              }
-            </div>
-
-            {/* Text */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{
-                fontFamily: theme.fontBody, fontSize: '0.7rem', color: theme.accentGold,
-                margin: '0 0 2px', letterSpacing: '0.08em', fontWeight: 500,
+              {/* Thumbnail */}
+              <div style={{
+                width: 46, height: 46, borderRadius: 8, flexShrink: 0, overflow: 'hidden',
+                background: m.image_url ? undefined : `${theme.accentGold}1F`,
               }}>
-                {m.year}
-              </p>
-              <p style={{
-                fontFamily: theme.fontHeadline,
-                fontSize: '0.8rem', fontWeight: 600,
-                color: theme.textHeadline,
-                margin: 0, lineHeight: 1.3,
-                overflow: 'hidden', display: '-webkit-box',
-                WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-              }}>
-                {m.headline}
-              </p>
-            </div>
+                {m.image_url
+                  ? <img src={m.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <div aria-hidden="true" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '1.1rem', opacity: 0.35 }}>✦</span>
+                    </div>
+                }
+              </div>
 
-            {/* Chevron */}
-            <span aria-hidden="true" style={{ color: `${theme.accentGold}80`, fontSize: '0.8rem', flexShrink: 0 }}>›</span>
-          </button>
+              {/* Text */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{
+                  fontFamily: theme.fontBody, fontSize: '0.7rem', color: theme.accentGold,
+                  margin: '0 0 2px', letterSpacing: '0.08em', fontWeight: 500,
+                }}>
+                  {m.year}
+                </p>
+                <p style={{
+                  fontFamily: theme.fontHeadline,
+                  fontSize: '0.8rem', fontWeight: 600,
+                  color: theme.textHeadline,
+                  margin: 0, lineHeight: 1.3,
+                  overflow: 'hidden', display: '-webkit-box',
+                  WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                }}>
+                  {m.headline}
+                </p>
+              </div>
+
+              {/* Chevron */}
+              <span aria-hidden="true" style={{ color: `${theme.accentGold}80`, fontSize: '0.8rem', flexShrink: 0 }}>›</span>
+            </button>
+            {savedSet && (
+              <div style={{ position: 'absolute', top: '50%', right: 2, transform: 'translateY(-50%)', zIndex: 10 }}>
+                <TreasuryHeart
+                  itemType="greatest_moment"
+                  itemId={String(m.id)}
+                  itemTitle={m.headline}
+                  itemSubtitle={String(m.year)}
+                  itemImageUrl={m.image_url}
+                  editionDate={editionDate}
+                  initialSaved={savedSet.has(`greatest_moment:${m.id}`)}
+                  size="sm"
+                />
+              </div>
+            )}
+          </div>
         ))}
       </div>
 

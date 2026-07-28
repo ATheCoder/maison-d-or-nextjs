@@ -614,3 +614,50 @@ export const flagSeal = pgTable('flag_seal', {
 
 export type FlagSealRow = typeof flagSeal.$inferSelect;
 export type NewFlagSeal = typeof flagSeal.$inferInsert;
+
+// ── Saved Items ──────────────────────────────────────────────────────────────
+// One (child, type, item) row: existing ⇒ hearted. Replaces the Base44
+// SavedItem entity (docs/auth-plan.md §3), and like flag_seal the child never
+// arrives from the client — ownership hangs off child_profile.familyId, which
+// is also what a later parent view joins through.
+//
+// The enum lists only the types a heart actually writes; legacy 'history' and
+// 'recipe' had no surface left.
+
+export const savedItemType = pgEnum('saved_item_type', [
+  'person', 'destination', 'news', 'on_this_day', 'greatest_moment',
+  'taste', 'sound', 'nature', 'phrase',
+]);
+
+export const savedItem = pgTable('saved_item', {
+  id: text('id').primaryKey(),
+  childId: text('child_id').notNull()
+    .references(() => childProfile.id, { onDelete: 'cascade' }),
+
+  itemType: savedItemType('item_type').notNull(),
+  // A slug, a String(serial id), or a display key, per item_type — the
+  // content tables have no shared id space to reference.
+  itemId: text('item_id').notNull(),
+
+  // Denormalized display snapshot — the treasury renders without joining the
+  // content tables, and a card survives a later edit or unpublish of its
+  // source row.
+  itemTitle: text('item_title').notNull(),
+  itemSubtitle: text('item_subtitle'),
+  itemImageUrl: text('item_image_url'),
+  countryCode: char('country_code', { length: 2 }),
+  countryName: text('country_name'),
+  // Deep-link key back to the paper this was hearted on. Nullable: a person is
+  // linked by slug and needs no date.
+  editionDate: date('edition_date'),
+
+  savedAt: timestamp('saved_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  // The toggle's conflict target. Includes item_type — legacy Base44 keyed on
+  // (child_id, item_id) alone, so same-string items of different types
+  // collided.
+  uniqueIndex('saved_item_child_type_item_idx').on(t.childId, t.itemType, t.itemId),
+  index('saved_item_child_saved_at_idx').on(t.childId, t.savedAt.desc()),
+]);
+
+export type SavedItemRow = typeof savedItem.$inferSelect;

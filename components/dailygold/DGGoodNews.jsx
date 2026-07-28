@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useRef, useState } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
-import SaveHeartSeal from '@/components/dailygold/SaveHeartSeal';
+import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import DGModal from '@/components/dailygold/DGModal';
 import { resolveLocation } from '@/lib/countries';
 
@@ -57,7 +57,7 @@ function NewsModal({ item, onClose }) {
   );
 }
 
-export default function DGGoodNews({ items = [], onTrack, onFlagEarned, child, editionDate }) {
+export default function DGGoodNews({ items = [], onTrack, onFlagEarned, savedSet = null, editionDate }) {
   const { theme } = useTheme();
   const [selectedNews, setSelectedNews] = useState(null);
   const earnedHere = useRef(new Set());
@@ -92,7 +92,7 @@ export default function DGGoodNews({ items = [], onTrack, onFlagEarned, child, e
           Good News of the Day
         </h2>
 
-        {/* Primary story - compact card. The save seal is its own button, so it
+        {/* Primary story - compact card. The heart is its own button, so it
             sits beside the card button rather than inside it. */}
         {primary && (
           <div style={{ position: 'relative', marginBottom: '1rem' }}>
@@ -126,64 +126,85 @@ export default function DGGoodNews({ items = [], onTrack, onFlagEarned, child, e
                 </p>
               </div>
             </button>
-            <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
-              <SaveHeartSeal
-                childId={child?.id}
-                itemType="news"
-                itemId={primary.headline}
-                itemTitle={primary.headline}
-                itemSubtitle={primary.location || 'Good news'}
-                itemImageUrl={primaryImg}
-                countryCode={resolveLocation(primary.location) || ''}
-                countryName={primary.location || ''}
-                themeTags={['hope']}
-                editionDate={editionDate}
-                size="sm"
-              />
-            </div>
+            {savedSet && (
+              <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
+                <TreasuryHeart
+                  itemType="news"
+                  itemId={String(primary.id)}
+                  itemTitle={primary.headline}
+                  itemSubtitle={primary.location || 'Good news'}
+                  itemImageUrl={primaryImg}
+                  countryCode={resolveLocation(primary.location)}
+                  countryName={primary.location}
+                  editionDate={editionDate}
+                  initialSaved={savedSet.has(`news:${primary.id}`)}
+                  size="sm"
+                />
+              </div>
+            )}
           </div>
         )}
 
-        {/* Secondary stories — compact rows with thumbnail (stories 2-10) */}
+        {/* Secondary stories — compact rows with thumbnail (stories 2-10).
+            The row is a button, so its heart can only be a sibling: the
+            wrapper carries the row's spacing and the heart floats over the
+            right edge, with the text padded clear of the 44px tap target. */}
         {rest.slice(0, 9).map((item, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => openNews(item)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '0.75rem',
-              width: '100%', textAlign: 'left', font: 'inherit',
-              padding: '0.65rem 0.85rem', minHeight: 44,
-              borderRadius: theme.radiusSmall,
-              cursor: 'pointer',
-              marginBottom: '0.4rem',
-              border: `1px solid ${theme.accentGold}25`,
-              background: theme.bgCard,
-              boxShadow: theme.shadowSoft,
-            }}
-          >
-            {/* Thumbnail */}
-            <div style={{
-              width: 52, height: 52, borderRadius: 8, flexShrink: 0, overflow: 'hidden',
-              background: item.image_url ? undefined : `${theme.accentGold}2E`,
-            }}>
-              {item.image_url
-                ? <img src={item.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <div aria-hidden="true" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem' }}>✨</div>
-              }
-            </div>
-            {/* Text */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontFamily: theme.fontBody, fontSize: '0.8rem', fontWeight: 500, color: theme.textHeadline, margin: '0 0 0.2rem', lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                {item.headline}
-              </p>
-              {item.description && (
-                <p style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.72rem', color: theme.textBody, margin: 0, lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
-                  {item.description.split('.')[0].trim() + '.'}
+          <div key={item.id ?? i} style={{ position: 'relative', marginBottom: '0.4rem' }}>
+            <button
+              type="button"
+              onClick={() => openNews(item)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.75rem',
+                width: '100%', textAlign: 'left', font: 'inherit',
+                padding: '0.65rem 0.85rem', minHeight: 44,
+                paddingRight: savedSet ? '3.1rem' : '0.85rem',
+                borderRadius: theme.radiusSmall,
+                cursor: 'pointer',
+                border: `1px solid ${theme.accentGold}25`,
+                background: theme.bgCard,
+                boxShadow: theme.shadowSoft,
+              }}
+            >
+              {/* Thumbnail */}
+              <div style={{
+                width: 52, height: 52, borderRadius: 8, flexShrink: 0, overflow: 'hidden',
+                background: item.image_url ? undefined : `${theme.accentGold}2E`,
+              }}>
+                {item.image_url
+                  ? <img src={item.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <div aria-hidden="true" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem' }}>✨</div>
+                }
+              </div>
+              {/* Text */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontFamily: theme.fontBody, fontSize: '0.8rem', fontWeight: 500, color: theme.textHeadline, margin: '0 0 0.2rem', lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                  {item.headline}
                 </p>
-              )}
-            </div>
-          </button>
+                {item.description && (
+                  <p style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.72rem', color: theme.textBody, margin: 0, lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
+                    {item.description.split('.')[0].trim() + '.'}
+                  </p>
+                )}
+              </div>
+            </button>
+            {savedSet && (
+              <div style={{ position: 'absolute', top: '50%', right: 2, transform: 'translateY(-50%)', zIndex: 10 }}>
+                <TreasuryHeart
+                  itemType="news"
+                  itemId={String(item.id)}
+                  itemTitle={item.headline}
+                  itemSubtitle={item.location || 'Good news'}
+                  itemImageUrl={item.image_url}
+                  countryCode={resolveLocation(item.location)}
+                  countryName={item.location}
+                  editionDate={editionDate}
+                  initialSaved={savedSet.has(`news:${item.id}`)}
+                  size="sm"
+                />
+              </div>
+            )}
+          </div>
         ))}
       </div>
 

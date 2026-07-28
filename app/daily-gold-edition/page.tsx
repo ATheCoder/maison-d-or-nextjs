@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import DailyGoldEditionPage from '@/components/dailygold/DailyGoldEditionPage';
 import { getActiveChildProfile } from '@/app/profiles/actions';
+import { getSavedKeys } from '@/app/treasury/actions';
 import { getEditionByDate, getAvailableDates, getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate, getGreatestMomentsForDate } from './actions';
 
 // Editions live in the database and change over time, so render per-request.
@@ -73,6 +74,10 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
   // resolved here, never asserted by the client. Outside child mode it is
   // null and every child-specific surface simply stays absent; the edition
   // itself is the same for everyone, so the page still renders.
+  //
+  // The child's saved keys are fetched here too, in one query, so no heart on
+  // the page fetches its own fill state. `null` outside child mode, which is
+  // how the sections tell "saved nothing" from "no one to save for".
   const [
     edition,
     dates,
@@ -81,6 +86,7 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     onThisDay,
     greatestMoments,
     child,
+    savedKeys,
   ] = await Promise.all([
     getEditionByDate(date),
     getAvailableDates(),
@@ -89,6 +95,7 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     getOnThisDayForDate(date),
     getGreatestMomentsForDate(date),
     getActiveChildProfile(),
+    getSavedKeys(),
   ]);
 
   return (
@@ -102,6 +109,7 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
       goodNews={goodNews}
       onThisDay={onThisDay}
       greatestMoments={greatestMoments}
+      savedKeys={savedKeys}
     />
   );
 }

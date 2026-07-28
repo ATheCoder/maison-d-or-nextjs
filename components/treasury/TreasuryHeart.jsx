@@ -1,54 +1,77 @@
 'use client';
 /**
- * TreasuryHeart — Gold heart button for saving items to the Treasury
- * Drop-in replacement / companion to SaveHeartSeal
+ * TreasuryHeart — the one gold heart in the reader.
+ *
+ * Every save goes through the `toggleSavedItem` server action, which resolves
+ * the child from the session: nothing here names a child, which is what closes
+ * the legacy IDOR by construction (docs/auth-plan.md §3).
+ *
+ * The heart never fetches its own state. `initialSaved` is server-fed — the
+ * page hands its sections one set of saved keys — so a paper full of hearts
+ * costs zero requests on load. A save is a deliberate act, so a failure is
+ * shown rather than swallowed: the heart simply doesn't fill, which is the
+ * honest answer to the tap (docs/flag-seal-spec.md §6.2).
  */
-import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
-
-const GOLD = '#C8A96B';
+import { useState } from 'react';
+import { useTheme } from '@/components/theme/ThemeContext';
+import { toggleSavedItem } from '@/app/treasury/actions';
 
 export default function TreasuryHeart({
-  childId,
-  section,
+  itemType,
   itemId,
   itemTitle,
-  itemSubtitle = '',
-  itemImageUrl = '',
-  countryCode = '',
-  countryName = '',
-  themeTags = [],
+  itemSubtitle,
+  itemImageUrl,
+  countryCode,
+  countryName,
   editionDate,
+  initialSaved = false,
   size = 'md',
-  onSaved,
+  onToggled,
 }) {
-  const [saved, setSaved] = useState(false);
+  const { theme } = useTheme();
+  const [saved, setSaved] = useState(initialSaved);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!childId || !itemId) return;
-    base44.entities.Treasury
-      .filter({ child_id: childId, section, item_id: itemId }, '-created_date', 1)
-      .then(items => setSaved(items.length > 0))
-      .catch(() => {});
-  }, [childId, section, itemId]);
+  // Turning to another day, or a router.refresh() after a save elsewhere,
+  // re-renders this heart over a different item — or the same item with a new
+  // server answer. Adjusted during render rather than in an effect, which would
+  // paint the previous item's fill for a frame first (house pattern, precedent
+  // DGOnThisDay.jsx:112-116).
+  const identity = `${itemType}:${itemId}:${initialSaved}`;
+  const [lastIdentity, setLastIdentity] = useState(identity);
+  if (identity !== lastIdentity) {
+    setLastIdentity(identity);
+    setSaved(initialSaved);
+  }
 
   const handleToggle = async (e) => {
+    // The heart sits on cards that open a modal on tap — keep the tap local.
     e.stopPropagation();
-    if (!childId || loading) return;
+    if (loading) return;
     setLoading(true);
     try {
-      const res = await base44.functions.invoke('saveToTreasury', {
-        child_id: childId, section, item_id: itemId,
-        item_title: itemTitle, item_subtitle: itemSubtitle,
-        item_image_url: itemImageUrl, country_code: countryCode,
-        country_name: countryName, theme_tags: themeTags,
-        edition_date: editionDate || new Date().toISOString().slice(0, 10),
+      const res = await toggleSavedItem({
+        itemType,
+        itemId,
+        itemTitle,
+        itemSubtitle,
+        itemImageUrl,
+        countryCode,
+        countryName,
+        editionDate,
       });
-      if (res.data.status === 'saved') { setSaved(true); if (onSaved) onSaved(res.data.item); }
-      else if (res.data.status === 'removed') setSaved(false);
+      if (res.status === 'error') {
+        // Leave the heart exactly as it was: an unfilled heart after a tap is
+        // the surfaced failure, no toast required.
+        console.warn(`TreasuryHeart: save failed (${res.reason})`, { itemType, itemId });
+        return;
+      }
+      setSaved(res.status === 'saved');
+      onToggled?.(res.status);
     } catch (err) {
-      console.error('[TreasuryHeart]', err);
+      // The action itself never throws; this is the transport failing.
+      console.warn('TreasuryHeart: save failed', err);
     } finally {
       setLoading(false);
     }
@@ -58,36 +81,53 @@ export default function TreasuryHeart({
 
   return (
     <>
-      <style>{`@keyframes treasuryHeartPop { 0%,100%{transform:scale(1)} 50%{transform:scale(1.25)} }`}</style>
+      <style>{`
+        @keyframes heartSavedPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.18); }
+        }
+      `}</style>
       <button
+        type="button"
         onClick={handleToggle}
         disabled={loading}
-        title={saved ? 'Saved to Treasury' : 'Save to Treasury'}
+        aria-pressed={saved}
+        aria-label={saved ? 'Saved' : `Save ${itemTitle}`}
+        title={saved ? 'Saved' : 'Save to your treasury'}
         style={{
-          width: 34, height: 34, borderRadius: '50%',
-          border: 'none', background: 'transparent',
+          width: 44,
+          height: 44,
+          borderRadius: '50%',
+          border: 'none',
+          background: 'transparent',
           cursor: loading ? 'not-allowed' : 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 0, opacity: loading ? 0.5 : 1,
-          transition: 'transform 0.15s ease',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 0,
+          opacity: loading ? 0.5 : 1,
+          transition: 'transform 0.2s ease',
         }}
         onMouseEnter={e => { if (!loading) e.currentTarget.style.transform = 'scale(1.12)'; }}
         onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
       >
         <svg
-          width={heartSize} height={heartSize}
+          aria-hidden="true"
+          width={heartSize}
+          height={heartSize}
           viewBox="0 0 24 24"
-          fill={saved ? GOLD : 'none'}
-          stroke={GOLD}
+          fill={saved ? theme.accentGold : 'none'}
+          stroke={theme.accentGold}
           strokeWidth="1.8"
-          strokeLinecap="round" strokeLinejoin="round"
+          strokeLinecap="round"
+          strokeLinejoin="round"
           style={{
-            transition: 'fill 0.22s ease',
-            animation: saved ? 'treasuryHeartPop 0.4s ease' : 'none',
-            opacity: saved ? 1 : 0.75,
+            transition: 'fill 0.25s ease',
+            animation: saved ? 'heartSavedPulse 0.5s ease-in-out' : 'none',
+            opacity: saved ? 1 : 0.7,
           }}
         >
-          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
         </svg>
       </button>
     </>

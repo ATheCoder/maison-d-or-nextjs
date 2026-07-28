@@ -111,7 +111,7 @@ function OpeningCurtain({ person, imgUrl }) {
 }
 
 // ── ONE VOLUME ON THE SHELF ───────────────────────────────────────────────────
-function BookVolume({ person, onTrack, child, editionDate, index = 0 }) {
+function BookVolume({ person, onTrack, savedSet, editionDate, index = 0 }) {
   const { theme } = useTheme();
   // personToRecord emits snake_case; resolvePerson prefers the explicit code
   // and falls back to the nationality text (R4.1).
@@ -208,22 +208,26 @@ function BookVolume({ person, onTrack, child, editionDate, index = 0 }) {
             <div className="dgbt-cover dgbt-cover-closed">{boards}</div>
           )}
 
-          {/* Treasury heart — sibling of the cover link, never nested inside it */}
-          <div className="dgbt-heart">
-            <TreasuryHeart
-              childId={child?.id}
-              section="hero_stamps"
-              itemId={person.name}
-              itemTitle={person.name}
-              itemSubtitle={role || ''}
-              itemImageUrl={imgUrl || ''}
-              countryCode={iso2 || ''}
-              countryName={person.nationality || person.country || ''}
-              themeTags={[(person.field || person.role || 'person').toLowerCase()].filter(Boolean)}
-              editionDate={editionDate}
-              size="sm"
-            />
-          </div>
+          {/* Treasury heart — sibling of the cover link, never nested inside it.
+              A slugless volume gets none: with no story to open there is no
+              stable id to save it under and nowhere for the treasury card to
+              lead. No reader (savedSet null) means no hearts at all. */}
+          {savedSet && person.slug && (
+            <div className="dgbt-heart">
+              <TreasuryHeart
+                itemType="person"
+                itemId={person.slug}
+                itemTitle={person.name}
+                itemSubtitle={role}
+                itemImageUrl={imgUrl}
+                countryCode={iso2}
+                countryName={person.nationality || person.country}
+                editionDate={editionDate}
+                initialSaved={savedSet.has(`person:${person.slug}`)}
+                size="sm"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -234,7 +238,7 @@ function BookVolume({ person, onTrack, child, editionDate, index = 0 }) {
 }
 
 // ── MAIN EXPORT ───────────────────────────────────────────────────────────────
-export default function DGBornToday({ people = [], onTrack, child, editionDate }) {
+export default function DGBornToday({ people = [], onTrack, savedSet = null, editionDate }) {
   const { theme } = useTheme();
 
   if (!people.length) return null;
@@ -690,7 +694,7 @@ export default function DGBornToday({ people = [], onTrack, child, editionDate }
           <BookVolume
             key={person.slug || i}
             person={person}
-            child={child}
+            savedSet={savedSet}
             editionDate={editionDate}
             onTrack={onTrack}
             index={i}

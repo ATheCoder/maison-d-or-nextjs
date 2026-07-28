@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
+import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import { resolveLocation } from '@/lib/countries';
 
 // Small vintage wax seal for year navigation inside On This Day
@@ -59,7 +60,7 @@ function YearSeal({ direction, disabled, onPress, pressing }) {
   );
 }
 
-export default function DGOnThisDay({ events = [], onTrack, onFlagEarned }) {
+export default function DGOnThisDay({ events = [], onTrack, onFlagEarned, savedSet = null, editionDate }) {
   const { theme } = useTheme();
   const [pressingYear, setPressingYear] = useState(null); // 'back' | 'forward' | null
 
@@ -231,9 +232,32 @@ export default function DGOnThisDay({ events = [], onTrack, onFlagEarned }) {
               const iso2 = ev.location ? resolveLocation(ev.location) : null;
               return (
                 <div
-                  key={`${ev.year}:${ev.position ?? i}`}
-                  style={i > 0 ? { borderTop: `1px solid ${theme.accentGold}1F` } : undefined}
+                  key={ev.id ?? `${ev.year}:${ev.position ?? i}`}
+                  style={{
+                    position: 'relative',
+                    ...(i > 0 ? { borderTop: `1px solid ${theme.accentGold}1F` } : null),
+                  }}
                 >
+                  {/* Treasury heart — top-right of the event block. When the
+                      event has no picture it floats over the text, so the copy
+                      below is padded clear of the 44px target. */}
+                  {savedSet && (
+                    <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 10 }}>
+                      <TreasuryHeart
+                        itemType="on_this_day"
+                        itemId={String(ev.id)}
+                        itemTitle={ev.headline}
+                        itemSubtitle={String(ev.year)}
+                        itemImageUrl={ev.image_url}
+                        countryCode={iso2}
+                        countryName={ev.location}
+                        editionDate={editionDate}
+                        initialSaved={savedSet.has(`on_this_day:${ev.id}`)}
+                        size="sm"
+                      />
+                    </div>
+                  )}
+
                   {ev.image_url && (
                     <div style={{ position: 'relative' }}>
                       <img src={ev.image_url} alt="" style={{ display: 'block', width: '100%', aspectRatio: '16/10', objectFit: 'cover' }} />
@@ -241,7 +265,10 @@ export default function DGOnThisDay({ events = [], onTrack, onFlagEarned }) {
                     </div>
                   )}
 
-                  <div style={{ padding: '1rem 1.25rem 1.25rem' }}>
+                  <div style={{
+                    padding: '1rem 1.25rem 1.25rem',
+                    ...(savedSet && !ev.image_url ? { paddingRight: '3.25rem' } : null),
+                  }}>
                     {ev.location && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.6rem' }}>
                         {iso2 && <FlagSealMedallion countryCode={iso2} countryName={ev.location} size="xs" earned />}

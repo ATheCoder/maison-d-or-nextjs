@@ -38,6 +38,7 @@
     "MaisonHeader": "components/maison/MaisonHeader.tsx",
     "MMonogram": "components/maison/MMonogram.tsx",
     "TreasuryHeart": "components/treasury/TreasuryHeart.jsx",
+    "TreasuryView": "components/treasury/TreasuryView.jsx",
     "ChildSwitcherOverlay": "components/dailygold/ChildSwitcherOverlay.jsx",
     "DailyGoldEdition": "components/dailygold/DailyGoldEditionPage.jsx",
     "DGBornToday": "components/dailygold/DGBornToday.jsx",
@@ -59,7 +60,6 @@
     "FlagSealCelebration": "components/dailygold/FlagSealCelebration.jsx",
     "FlagSealMedallion": "components/dailygold/FlagSealMedallion.jsx",
     "GoldenStory": "components/dailygold/GoldenStory.jsx",
-    "SaveHeartSeal": "components/dailygold/SaveHeartSeal.jsx",
     "StorybookView": "components/dailygold/StorybookView.jsx"
   }
 }

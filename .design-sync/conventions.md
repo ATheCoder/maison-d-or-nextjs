@@ -78,9 +78,10 @@ collection, and the Golden Story book format.
   than the whole page, give an ancestor `transform: translateZ(0)`.
 - **`DGBornToday`** lays out five volumes across; below roughly 1100px it reflows
   to two. Give it full width.
-- Components that fetch their own data (`FlagCollectionView`, `SaveHeartSeal`,
-  `ChildSwitcherOverlay`, `DGDestination`'s save state) render empty in a
-  preview. Everything worth composing takes props.
+- Components that fetch their own data (`ChildSwitcherOverlay`) render empty in a
+  preview. Everything worth composing takes props — including the collection
+  views (`FlagCollectionView`, `TreasuryView`) and `TreasuryHeart`, whose saved
+  state is server-fed rather than fetched on mount.
 
 ## 5. An idiomatic composition
 

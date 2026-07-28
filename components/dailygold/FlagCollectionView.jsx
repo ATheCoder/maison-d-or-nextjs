@@ -14,7 +14,6 @@
  * the copy cannot drift from the data again.
  */
 import { useState } from 'react';
-import Link from 'next/link';
 import FlagSealMedallion from './FlagSealMedallion';
 import DGModal from './DGModal';
 import { COUNTRIES } from '@/lib/countries';
@@ -43,16 +42,19 @@ export default function FlagCollectionView({ seals = [], earnedCount = 0, totalC
   };
 
   return (
-    <main
+    /* A <div>, not a <main> — DGPageShell owns the page's <main> landmark. */
+    <div
+      /* No dark backdrop and no width cap: the parchment gradient fills the
+         shell's content area at any width, like the edition page — a capped
+         column here left bare shell bands beside the page on wide screens. */
       style={{
         minHeight: '100vh',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        background: 'rgba(15,12,8,0.94)',
       }}
     >
       <div
         style={{
-          width: '100%', maxWidth: 1100,
+          width: '100%',
           minHeight: '100vh',
           background: `radial-gradient(ellipse at 50% 0%, ${theme.bgCard} 0%, ${theme.bgSoft} 45%, ${theme.bgPrimary} 100%)`,
           padding: '2rem 1.5rem 4rem',
@@ -61,19 +63,6 @@ export default function FlagCollectionView({ seals = [], earnedCount = 0, totalC
       >
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <Link
-            href="/daily-gold-edition"
-            aria-label="Back to Daily Gold"
-            style={{
-              position: 'absolute', top: 12, left: 12,
-              background: `${theme.accentGold}26`, border: `1px solid ${theme.accentGold}40`,
-              borderRadius: 22, minWidth: 44, height: 44, cursor: 'pointer',
-              padding: '0 1rem', textDecoration: 'none',
-              fontFamily: theme.fontBody, fontSize: '0.85rem', color: theme.textBody,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            }}
-          ><span aria-hidden="true">←</span> Daily Gold</Link>
-
           <h1 style={{
             fontFamily: theme.fontHeadline,
             fontSize: 'clamp(1.6rem, 4vw, 2.4rem)',
@@ -186,6 +175,6 @@ export default function FlagCollectionView({ seals = [], earnedCount = 0, totalC
           </div>
         </DGModal>
       )}
-    </main>
+    </div>
   );
 }

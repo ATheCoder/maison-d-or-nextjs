@@ -169,6 +169,13 @@
       "when": 1785151665765,
       "tag": "0023_brief_madame_web",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1785238659690,
+      "tag": "0024_cloudy_magus",
+      "breakpoints": true
     }
   ]
 }

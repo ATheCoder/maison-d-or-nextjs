@@ -51,6 +51,9 @@ export type GoodNewsRecord = ReturnType<typeof goodNewsToRecord>;
 
 function goodNewsToRecord(row: GoodNewsItemRow) {
   return {
+    // The stable key a treasury heart saves under — (date, position) moves
+    // whenever an admin reorders the day.
+    id: row.id,
     headline: row.headline,
     description: row.description,
     location: row.location,
@@ -65,6 +68,7 @@ export type OnThisDayRecord = ReturnType<typeof onThisDayToRecord>;
 
 function onThisDayToRecord(row: OnThisDayEventRow) {
   return {
+    id: row.id,
     year: row.year,
     position: row.position,
     headline: row.headline,
@@ -232,6 +236,7 @@ export type GreatestMomentRecord = ReturnType<typeof momentToRecord>;
 
 function momentToRecord(row: GreatestMomentRow) {
   return {
+    id: row.id,
     rank: row.rank,
     year: row.year,
     headline: row.headline,

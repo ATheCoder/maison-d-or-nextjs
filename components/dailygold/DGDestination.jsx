@@ -1,42 +1,28 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
-import { base44 } from '@/api/base44Client';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
 import { resolveLocation } from '@/lib/countries';
-import SaveHeartSeal from '@/components/dailygold/SaveHeartSeal';
+import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import DGModal from '@/components/dailygold/DGModal';
 
+// `itemType` is the treasury enum each card saves under. The edition column it
+// reads and the type it saves as are separate things: the column can be
+// renamed without orphaning every save made under the old name.
 const DETAIL_CARDS = [
-  { key: 'taste_of_day', label: 'Taste of the Day', emoji: '🍵' },
-  { key: 'sound_of_day', label: 'Sound of the Day', emoji: '🎵' },
-  { key: 'nature_detail', label: 'Nature Detail', emoji: '🌿' },
-  { key: 'tiny_phrase', label: 'Tiny Phrase', emoji: '✍️' },
+  { key: 'taste_of_day', itemType: 'taste', label: 'Taste of the Day', emoji: '🍵' },
+  { key: 'sound_of_day', itemType: 'sound', label: 'Sound of the Day', emoji: '🎵' },
+  { key: 'nature_detail', itemType: 'nature', label: 'Nature Detail', emoji: '🌿' },
+  { key: 'tiny_phrase', itemType: 'phrase', label: 'Tiny Phrase', emoji: '✍️' },
 ];
 
-function DetailCard({ card, data, onTrack, theme, child, editionDate, iso2, countryName }) {
+function DetailCard({ card, data, onTrack, theme, savedSet, editionDate, iso2, countryName }) {
   const content = data?.[card.key];
   const title = content?.name || content?.word || '—';
   // tiny_phrase also carries a translation and the language it is in. Both are
   // stored on the edition and neither had anywhere to render.
   const subtitle = content?.translation || null;
   const label = content?.language ? `${card.label} · ${content.language}` : card.label;
-  const [savedItems, setSavedItems] = useState([]);
-
-  useEffect(() => {
-    if (!child || !child.id) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const items = await base44.entities.SavedItem.filter({ child_id: child.id, item_type: card.itemType }, '-saved_at', 10);
-        if (!cancelled) setSavedItems(items);
-      } catch (_) {}
-    })();
-    return () => { cancelled = true; };
-  }, [child?.id]);
-
-  const savedItem = savedItems.find(s => s.item_id === `${card.key}-${title}`);
-  const isSaved = !!savedItem;
 
   return (
     <div
@@ -50,21 +36,23 @@ function DetailCard({ card, data, onTrack, theme, child, editionDate, iso2, coun
         position: 'relative',
       }}
     >
-      <div style={{ position: 'absolute', top: 4, right: 4 }}>
-        <SaveHeartSeal
-          childId={child?.id}
-          itemType={card.itemType}
-          itemId={`${card.key}-${title}`}
-          itemTitle={title}
-          itemSubtitle={card.label}
-          itemImageUrl=""
-          countryCode={iso2 || ''}
-          countryName={countryName || ''}
-          themeTags={[card.label.toLowerCase()]}
-          editionDate={editionDate}
-          size="sm"
-        />
-      </div>
+      {/* Nothing authored means nothing to save — a heart over the em-dash
+          placeholder would file "—" in the treasury. */}
+      {savedSet && content && (
+        <div style={{ position: 'absolute', top: 4, right: 4 }}>
+          <TreasuryHeart
+            itemType={card.itemType}
+            itemId={title}
+            itemTitle={title}
+            itemSubtitle={card.label}
+            countryCode={iso2}
+            countryName={countryName}
+            editionDate={editionDate}
+            initialSaved={savedSet.has(`${card.itemType}:${title}`)}
+            size="sm"
+          />
+        </div>
+      )}
       <span aria-hidden="true" style={{ fontSize: '1.1rem' }}>{card.emoji}</span>
       <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: theme.accentGold, margin: '0.3rem 0 0.2rem' }}>
         {label}
@@ -81,28 +69,12 @@ function DetailCard({ card, data, onTrack, theme, child, editionDate, iso2, coun
   );
 }
 
-export default function DGDestination({ dest, imageUrl, onTrack, onFlagEarned, child, editionDate }) {
+export default function DGDestination({ dest, imageUrl, onTrack, onFlagEarned, savedSet = null, editionDate }) {
   const { theme } = useTheme();
   const [modalOpen, setModalOpen] = useState(false);
   const [flagTriggered, setFlagTriggered] = useState(false);
-  const [savedItems, setSavedItems] = useState([]);
-
-  useEffect(() => {
-    if (!child || !child.id) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const items = await base44.entities.SavedItem.filter({ child_id: child.id, item_type: 'destination' }, '-saved_at', 10);
-        if (!cancelled) setSavedItems(items);
-      } catch (_) {}
-    })();
-    return () => { cancelled = true; };
-  }, [child?.id]);
 
   if (!dest) return null;
-
-  const savedDestination = savedItems.find(s => s.item_id === dest.name);
-  const isDestinationSaved = !!savedDestination;
 
   const iso2 = resolveLocation(dest.name);
 
@@ -120,7 +92,7 @@ export default function DGDestination({ dest, imageUrl, onTrack, onFlagEarned, c
   return (
     <section style={{ background: theme.bgCard, borderRadius: theme.radius, border: `1px solid ${theme.accentGold}15`, overflow: 'hidden' }}>
       {/* Compact hero: the whole image is one button that opens the full story.
-          SaveHeartSeal is its own button, so it sits beside the hero button,
+          The heart is its own button, so it sits beside the hero button,
           never inside it. */}
       <div style={{ position: 'relative', aspectRatio: '16 / 9', overflow: 'hidden' }}>
         <button
@@ -151,21 +123,22 @@ export default function DGDestination({ dest, imageUrl, onTrack, onFlagEarned, c
             </span>
           </span>
         </button>
-        <div style={{ position: 'absolute', bottom: '1rem', right: '1.25rem' }}>
-          <SaveHeartSeal
-            childId={child?.id}
-            itemType="destination"
-            itemId={dest.name}
-            itemTitle={dest.name?.split(',')[0]}
-            itemSubtitle={dest.atmosphere?.split('.').slice(0, 1).join('.').trim() || 'Destination'}
-            itemImageUrl={heroImg}
-            countryCode={iso2 || ''}
-            countryName={dest.name?.split(',')[0] || ''}
-            themeTags={[dest.continent?.toLowerCase() || 'travel', 'geography']}
-            editionDate={editionDate}
-            size="md"
-          />
-        </div>
+        {savedSet && (
+          <div style={{ position: 'absolute', bottom: '1rem', right: '1.25rem' }}>
+            <TreasuryHeart
+              itemType="destination"
+              itemId={dest.name}
+              itemTitle={dest.name?.split(',')[0]}
+              itemSubtitle={dest.atmosphere?.split('.').slice(0, 1).join('.').trim() || 'Destination'}
+              itemImageUrl={heroImg}
+              countryCode={iso2}
+              countryName={dest.name?.split(',')[0]}
+              editionDate={editionDate}
+              initialSaved={savedSet.has(`destination:${dest.name}`)}
+              size="md"
+            />
+          </div>
+        )}
       </div>
 
       <div style={{ padding: '1rem 1.25rem 1.25rem' }}>
@@ -227,7 +200,7 @@ export default function DGDestination({ dest, imageUrl, onTrack, onFlagEarned, c
         {/* Detail cards — fluid grid, collapses gracefully */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '0.5rem' }}>
           {DETAIL_CARDS.map(card => (
-            <DetailCard key={card.key} card={card} data={dest} theme={theme} onTrack={onTrack} child={child} editionDate={editionDate} iso2={iso2} countryName={dest.name?.split(',')[0] || ''} />
+            <DetailCard key={card.key} card={card} data={dest} theme={theme} onTrack={onTrack} savedSet={savedSet} editionDate={editionDate} iso2={iso2} countryName={dest.name?.split(',')[0]} />
           ))}
         </div>
       </div>
