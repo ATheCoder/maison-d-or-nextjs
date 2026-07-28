@@ -1,8 +1,12 @@
 import DGBornToday from '@/components/dailygold/DGBornToday';
 
 // The shelf of people born on this day. Each `person` is a remarkable-person
-// row; the shelf reflows from five across down to two. It returns null on an
-// empty list, so every story supplies people.
+// row. Rank is staged, not labelled: the first volume stands front-and-centre
+// on a podium under a cone of light, the second and third flank it angled
+// inward and set back in depth, and everyone else stands in a smaller, dimmer
+// row behind. Hovering any volume hands it the spotlight. It returns null on
+// an empty list, so every story supplies people. `Shelf` shows the full
+// diorama; `ShortShelf` exercises the two-volume podium with no back row.
 
 const PORTRAIT = (a: string, b: string) =>
   'data:image/svg+xml;utf8,' +

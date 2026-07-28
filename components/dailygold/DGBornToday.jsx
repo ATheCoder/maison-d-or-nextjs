@@ -7,6 +7,15 @@
  * fore-edge, and a shelf shadow underneath. Opening one lands on the same book
  * full-size (<GoldenStory>), so the shelf and the destination share a language.
  *
+ * Rank is staged, never labelled. The first three volumes stand on a podium:
+ * the first front-and-centre under a cone of light, bound largest; the second
+ * and third flank it, smaller, angled inward like a display case and set back
+ * in depth (translateZ). Everyone else stands in a dimmer, smaller row behind.
+ * The light does the rest of the talking — hovering any volume hands it the
+ * spotlight (`:has()` dims the others), and the podium leans gently toward the
+ * pointer (CSS vars driven from pointermove; individual transform properties
+ * keep the entrance choreography composable with the 3D pose).
+ *
  * /stories/[name] is force-dynamic with no loading.tsx, which means the click
  * waits on a server round-trip with nothing to show for it. `useLinkStatus`
  * (next/link, Next 16) hands us exactly that pending window, and we spend it
@@ -14,6 +23,7 @@
  * The curtain itself is <BookOpeningCurtain>, shared with StorybookView, which
  * keeps it up past the navigation until the story's plates have loaded.
  */
+import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Link, { useLinkStatus } from 'next/link';
 import { useTheme } from '@/components/theme/ThemeContext';
@@ -41,7 +51,7 @@ function OpeningCurtain({ person, imgUrl }) {
 }
 
 // ── ONE VOLUME ON THE SHELF ───────────────────────────────────────────────────
-function BookVolume({ person, onTrack, savedSet, editionDate, index = 0 }) {
+function BookVolume({ person, onTrack, savedSet, editionDate, delay = '0s', tier = 'shelf' }) {
   const { theme } = useTheme();
   // personToRecord emits snake_case; resolvePerson prefers the explicit code
   // and falls back to the nationality text (R4.1).
@@ -115,7 +125,7 @@ function BookVolume({ person, onTrack, savedSet, editionDate, index = 0 }) {
   );
 
   return (
-    <div className="dgbt-cell" style={{ animationDelay: `${index * 65}ms` }}>
+    <div className={`dgbt-cell dgbt-cell--${tier}`} style={{ animationDelay: delay }}>
       <div className="dgbt-stage">
         <div className="dgbt-vol">
           {/* Fore-edge: the paper stack showing past the boards */}
@@ -171,11 +181,35 @@ function BookVolume({ person, onTrack, savedSet, editionDate, index = 0 }) {
 // ── MAIN EXPORT ───────────────────────────────────────────────────────────────
 export default function DGBornToday({ people = [], onTrack, savedSet = null, editionDate }) {
   const { theme } = useTheme();
+  const podiumRef = useRef(null);
+
+  // The podium leans a few degrees toward the pointer. CSS custom properties
+  // carry the normalized cursor position so the pose itself stays in CSS; the
+  // .5s transform transition on the cells turns raw pointermove into a damped,
+  // weighty follow rather than a 1:1 track.
+  const handleTilt = (e) => {
+    const el = podiumRef.current;
+    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty('--tiltx', String(((e.clientX - r.left) / r.width - 0.5).toFixed(3)));
+    el.style.setProperty('--tilty', String(((e.clientY - r.top) / r.height - 0.5).toFixed(3)));
+  };
+  const resetTilt = () => {
+    const el = podiumRef.current;
+    if (!el) return;
+    el.style.setProperty('--tiltx', '0');
+    el.style.setProperty('--tilty', '0');
+  };
 
   if (!people.length) return null;
 
-  // Up to 10 volumes — the shelf reflows from 5 across down to 2 (see <style>).
+  // Up to 10 volumes. The first three stand on the podium; the rest stand in
+  // the receded row behind it.
   const volumes = people.slice(0, 10);
+  const featured = volumes.slice(0, 3);
+  const shelf = volumes.slice(3);
+  const podiumTiers = ['lead', 'featl', 'featr'];
+  const podiumDelays = ['0.05s', '0.24s', '0.34s'];
 
   return (
     <section className="dgbt-section" style={{ background: 'transparent', position: 'relative' }}>
@@ -183,16 +217,171 @@ export default function DGBornToday({ people = [], onTrack, savedSet = null, edi
         /* ── shelf ─────────────────────────────────────────────────────────── */
         .dgbt-section { padding: 5rem clamp(1.25rem, 4vw, 3.5rem) 5.5rem; }
 
-        .dgbt-grid {
-          display: grid;
-          grid-template-columns: repeat(5, 1fr);
-          gap: clamp(0.9rem, 1.8vw, 1.6rem) clamp(0.75rem, 1.5vw, 1.35rem);
+        /* ── the podium ────────────────────────────────────────────────────
+           Rank staged in space: #1 front and centre and largest; #2 / #3
+           flanking, smaller, turned inward like a display case and pushed
+           back in Z; everyone else in the receded row behind. Sizes are
+           viewport-fluid (min(vw, px)) so the whole diorama scales without
+           breakpoints. --tiltx/--tilty arrive from pointermove. */
+        .dgbt-podium {
+          position: relative;
+          display: flex; align-items: flex-end; justify-content: center;
+          perspective: 1500px;
+          --tiltx: 0; --tilty: 0;
         }
 
+        .dgbt-cell--lead {
+          order: 2; z-index: 3;
+          width: min(38vw, 350px);
+          transform:
+            rotateY(calc(var(--tiltx) * -6deg))
+            rotateX(calc(var(--tilty) * 3deg));
+        }
+        .dgbt-cell--featl,
+        .dgbt-cell--featr {
+          z-index: 2;
+          width: min(26vw, 245px);
+        }
+        .dgbt-cell--featl {
+          order: 1;
+          /* -1%: tucks the flank behind the lead without the lead's boards
+             covering the flank's caption (the inward rotation already pulls
+             the inner edge away from the lead) */
+          margin-right: -1%;
+          transform:
+            translateZ(-70px)
+            rotateY(calc(16deg + var(--tiltx) * -6deg))
+            rotateX(calc(var(--tilty) * 3deg));
+        }
+        .dgbt-cell--featr {
+          order: 3;
+          margin-left: -1%;
+          transform:
+            translateZ(-70px)
+            rotateY(calc(-16deg + var(--tiltx) * -6deg))
+            rotateX(calc(var(--tilty) * 3deg));
+        }
+        .dgbt-podium .dgbt-cell {
+          transition: transform 0.5s cubic-bezier(.22,1,.36,1), filter 0.45s ease;
+        }
+
+        /* The cone of light the lead stands under, breathing slowly */
+        .dgbt-beam {
+          position: absolute; z-index: 0; pointer-events: none;
+          left: 50%; top: -8%; width: 160%; height: 126%;
+          transform: translateX(-50%);
+          background:
+            radial-gradient(ellipse 30% 46% at 50% 60%,
+              rgba(255,238,200,0.5), transparent 70%),
+            conic-gradient(from 0deg at 50% -14%,
+              transparent 148deg, ${theme.accentGold}14 168deg,
+              ${theme.accentGold}2E 180deg, ${theme.accentGold}14 192deg,
+              transparent 212deg);
+          /* Soft top and bottom so the cone fades in below the heading
+             instead of striping across it */
+          mask-image: linear-gradient(to bottom, transparent 0%, black 22%, black 78%, transparent 100%);
+          -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 22%, black 78%, transparent 100%);
+          animation: dgbtBreathe 7s ease-in-out infinite alternate;
+        }
+        @keyframes dgbtBreathe {
+          from { opacity: 0.7; }
+          to   { opacity: 1; }
+        }
+
+        /* The lead's own halo, plus a one-time gleam as it arrives */
+        .dgbt-cell--lead .dgbt-stage::before {
+          content: ''; position: absolute; inset: -16% -14% -4%;
+          background: radial-gradient(ellipse at 50% 44%,
+            rgba(255,240,205,0.34) 0%, ${theme.accentGold}21 45%, transparent 72%);
+          pointer-events: none;
+        }
+        .dgbt-cell--lead .dgbt-gleam {
+          animation: dgbtHello 1.4s cubic-bezier(.3,.6,.3,1) 1.05s backwards;
+        }
+        @keyframes dgbtHello {
+          0%   { opacity: 0; transform: translateX(-75%); }
+          30%  { opacity: 1; }
+          100% { opacity: 0; transform: translateX(75%); }
+        }
+        .dgbt-cell--lead .dgbt-cover {
+          box-shadow:
+            0 20px 38px rgba(52,33,12,0.32),
+            0 3px 7px rgba(52,33,12,0.22),
+            inset 0 1px 0 rgba(255,238,205,0.09);
+        }
+        .dgbt-cell--lead .dgbt-ledge::before {
+          left: 8%; right: 8%;
+          background: radial-gradient(ellipse at 50% 0%, rgba(72,46,17,0.38), transparent 72%);
+        }
+        .dgbt-cell--lead .dgbt-ledge::after {
+          background: linear-gradient(to right, transparent, ${theme.accentGold}B3, transparent);
+        }
+
+        /* Captions scale with the volume's standing */
+        .dgbt-cell--lead .dgbt-caption { padding-bottom: 1.05rem; }
+        .dgbt-cell--lead .dgbt-name  { font-size: clamp(1rem, 1.5vw, 1.32rem); }
+        .dgbt-cell--lead .dgbt-role  { font-size: clamp(0.76rem, 1vw, 0.92rem); }
+        .dgbt-cell--lead .dgbt-dates { font-size: clamp(0.72rem, 0.85vw, 0.82rem); }
+        .dgbt-cell--featl .dgbt-name, .dgbt-cell--featr .dgbt-name { font-size: clamp(0.78rem, 1.15vw, 1.02rem); }
+        .dgbt-cell--featl .dgbt-role, .dgbt-cell--featr .dgbt-role { font-size: clamp(0.66rem, 0.88vw, 0.82rem); }
+
+        /* ── the row behind ────────────────────────────────────────────────
+           Fixed-cap tracks + auto-fit keep the row centred under the podium
+           at any count; resting dimness sets it back in the light. */
+        .dgbt-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(min(23vw, 200px), 200px));
+          justify-content: center;
+          gap: clamp(0.9rem, 1.8vw, 1.6rem) clamp(0.75rem, 1.5vw, 1.35rem);
+          margin-top: clamp(2rem, 4vw, 3.25rem);
+        }
+        .dgbt-grid .dgbt-cell { filter: brightness(0.95) saturate(0.85); }
+
+        /* ── the spotlight follows attention ───────────────────────────────
+           Hovering any volume hands it the light: it comes to full brightness
+           and gains a halo while every other volume falls back into shadow. */
+        .dgbt-cell { transition: filter 0.45s ease; }
+        @media (hover: hover) {
+          .dgbt-books:has(.dgbt-stage:hover) .dgbt-cell:not(:has(.dgbt-stage:hover)) {
+            filter: brightness(0.86) saturate(0.8);
+          }
+          /* brightness(1), not none — an identity filter keeps the cell's
+             stacking context alive so the z-index:-1 halo stays visible */
+          .dgbt-books .dgbt-cell:has(.dgbt-stage:hover) { filter: brightness(1) saturate(1); }
+        }
+        .dgbt-stage { position: relative; }
+        .dgbt-stage::after {
+          content: ''; position: absolute; inset: -14% -12% -2%; z-index: -1;
+          background: radial-gradient(ellipse at 50% 46%,
+            rgba(255,240,205,0.30) 0%, ${theme.accentGold}1C 45%, transparent 72%);
+          opacity: 0; transition: opacity 0.5s ease;
+          pointer-events: none;
+        }
+        .dgbt-stage:hover::after,
+        .dgbt-stage:focus-within::after { opacity: 1; }
+
+        /* ── entrances: the lead arrives first, flanks slide in from the
+           wings, the back row rises last. Individual transform properties
+           (translate/scale) compose with each cell's 3D pose. ── */
         .dgbt-cell { animation: dgbtRise 0.6s cubic-bezier(.22,1,.36,1) backwards; }
         @keyframes dgbtRise {
-          from { opacity: 0; transform: translateY(18px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; translate: 0 18px; }
+          to   { opacity: 1; translate: 0 0; }
+        }
+        .dgbt-cell--lead { animation: dgbtLeadIn 0.9s cubic-bezier(.16,1,.3,1) backwards; }
+        @keyframes dgbtLeadIn {
+          from { opacity: 0; translate: 0 36px; scale: 0.94; }
+          to   { opacity: 1; translate: 0 0; scale: 1; }
+        }
+        .dgbt-cell--featl { animation: dgbtFlankL 0.8s cubic-bezier(.16,1,.3,1) backwards; }
+        @keyframes dgbtFlankL {
+          from { opacity: 0; translate: -40px 24px; }
+          to   { opacity: 1; translate: 0 0; }
+        }
+        .dgbt-cell--featr { animation: dgbtFlankR 0.8s cubic-bezier(.16,1,.3,1) backwards; }
+        @keyframes dgbtFlankR {
+          from { opacity: 0; translate: 40px 24px; }
+          to   { opacity: 1; translate: 0 0; }
         }
 
         /* ── one volume ────────────────────────────────────────────────────── */
@@ -394,26 +583,54 @@ export default function DGBornToday({ people = [], onTrack, savedSet = null, edi
           .dgbt-cta { display: none !important; }
         }
 
-        @media (max-width: 1024px) {
-          .dgbt-grid { grid-template-columns: repeat(4, 1fr); }
-        }
+        /* The podium and back row are viewport-fluid — no column reflow
+           needed, only padding and fore-edge tuning at small sizes. */
         @media (max-width: 768px) {
           .dgbt-section { padding: 3.5rem 1.25rem 4rem; }
-          .dgbt-grid { grid-template-columns: repeat(3, 1fr); }
-          .dgbt-name  { font-size: 0.86rem; }
-          .dgbt-role  { font-size: 0.72rem; }
-          .dgbt-dates { font-size: 0.69rem; }
           .dgbt-caption { padding-bottom: 0.75rem; }
         }
         @media (max-width: 560px) {
-          .dgbt-grid { grid-template-columns: repeat(2, 1fr); }
-          .dgbt-name  { font-size: 0.95rem; }
-          .dgbt-role  { font-size: 0.76rem; }
-          .dgbt-dates { font-size: 0.71rem; }
           .dgbt-edges { width: 7px; right: -5px; }
+
+          /* Below phone width the row of three would shrink the books until
+             the captions swallow the covers, so the podium restacks: the lead
+             alone on top, still clearly largest, its flanks beneath it, and
+             the back row capped narrower than the flanks so size keeps
+             telling the ranking. Explicit grid placement overrides order. */
+          .dgbt-podium {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            align-items: end; justify-items: center;
+            row-gap: 1.1rem;
+          }
+          .dgbt-cell--lead { grid-column: 1 / -1; grid-row: 1; width: min(64vw, 280px); }
+          .dgbt-cell--featl { grid-row: 2; width: min(40vw, 180px); justify-self: end; margin-right: 0.3rem; }
+          .dgbt-cell--featr { grid-row: 2; width: min(40vw, 180px); justify-self: start; margin-left: 0.3rem; }
+          /* Two volumes only: the lone flank centres under the lead */
+          .dgbt-podium[data-count="2"] .dgbt-cell--featl {
+            grid-column: 1 / -1; justify-self: center; margin-right: 0;
+          }
+
+          /* Small covers push the caption up over the portrait, so the
+             leather wash climbs higher to keep the foil text seated on dark
+             ground */
+          .dgbt-wash {
+            background:
+              linear-gradient(to bottom, rgba(20,13,6,0.55) 0%, transparent 22%),
+              linear-gradient(to top, rgba(14,9,4,0.97) 0%, rgba(24,16,7,0.86) 30%, rgba(24,16,7,0.42) 56%, transparent 76%),
+              linear-gradient(to right, rgba(12,8,4,0.62) 0%, transparent 26%),
+              linear-gradient(to left, rgba(12,8,4,0.42) 0%, transparent 22%);
+          }
+          .dgbt-grid {
+            grid-template-columns: repeat(2, 1fr);
+            max-width: 310px;
+            margin-left: auto; margin-right: auto;
+          }
         }
         @media (prefers-reduced-motion: reduce) {
           .dgbt-cell { animation: none; }
+          .dgbt-cell--lead, .dgbt-cell--featl, .dgbt-cell--featr { animation: none; }
+          .dgbt-beam { animation: none; }
           .dgbt-vol, .dgbt-portrait, .dgbt-cover { transition: none; }
           .dgbt-stage:hover .dgbt-vol,
           .dgbt-stage:focus-within .dgbt-vol { transform: none; }
@@ -455,18 +672,48 @@ export default function DGBornToday({ people = [], onTrack, savedSet = null, edi
         </p>
       </div>
 
-      {/* ── The shelf — 5 volumes across on desktop, reflowing down to 2 ── */}
-      <div className="dgbt-grid">
-        {volumes.map((person, i) => (
-          <BookVolume
-            key={person.slug || i}
-            person={person}
-            savedSet={savedSet}
-            editionDate={editionDate}
-            onTrack={onTrack}
-            index={i}
-          />
-        ))}
+      {/* ── One wrapper so hovering any volume can dim all the others ── */}
+      <div className="dgbt-books">
+        {/* The podium: #2 and #3 flank #1, angled inward, set back in depth.
+            DOM order stays rank order for readers and tab order; the visual
+            arrangement is pure CSS `order`. */}
+        <div
+          className="dgbt-podium"
+          data-count={featured.length}
+          ref={podiumRef}
+          onPointerMove={handleTilt}
+          onPointerLeave={resetTilt}
+        >
+          <div className="dgbt-beam" aria-hidden="true" />
+          {featured.map((person, i) => (
+            <BookVolume
+              key={person.slug || i}
+              person={person}
+              savedSet={savedSet}
+              editionDate={editionDate}
+              onTrack={onTrack}
+              tier={podiumTiers[i]}
+              delay={podiumDelays[i]}
+            />
+          ))}
+        </div>
+
+        {/* Everyone past the podium: a smaller, dimmer row behind it. No
+            heading — the staging says it. */}
+        {shelf.length > 0 && (
+          <div className="dgbt-grid">
+            {shelf.map((person, i) => (
+              <BookVolume
+                key={person.slug || i}
+                person={person}
+                savedSet={savedSet}
+                editionDate={editionDate}
+                onTrack={onTrack}
+                delay={`${0.45 + i * 0.07}s`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Bottom gold rule */}
