@@ -155,6 +155,7 @@ function BookVolume({ person, onTrack, savedSet, editionDate, index = 0 }) {
                 editionDate={editionDate}
                 initialSaved={savedSet.has(`person:${person.slug}`)}
                 size="sm"
+                onImage
               />
             </div>
           )}
@@ -312,7 +313,10 @@ export default function DGBornToday({ people = [], onTrack, savedSet = null, edi
         }
 
         .dgbt-flag { position: absolute; top: 12px; left: calc(15% + 6px); z-index: 5; }
-        .dgbt-heart { position: absolute; top: 8px; right: 8px; z-index: 20; }
+        /* The heart's 44px tap target is much bigger than the 26px disc inside
+           it, so this offset is 9px short of where the disc lands: 12px off the
+           boards, level with the flag seal across the cover. */
+        .dgbt-heart { position: absolute; top: 3px; right: 3px; z-index: 20; }
 
         /* ── foil-stamped caption ──────────────────────────────────────────── */
         .dgbt-caption {
