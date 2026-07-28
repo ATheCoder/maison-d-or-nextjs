@@ -13,17 +13,60 @@
  * visitors still read the story, they just earn nothing. GoldenStory only
  * reports the finish; the earn itself lives here. Same-navigation revisits
  * are deduped by the server action's idempotence, not by client state.
+ *
+ * It also owns the second half of the opening curtain: the book is only
+ * uncovered once every illustration in it has loaded, so no one lands on a
+ * page of blank plates filling in one by one. See BookOpeningCurtain.
  */
-import { useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import GoldenStory from '@/components/dailygold/GoldenStory';
+import GoldenStory, { storyImageUrls } from '@/components/dailygold/GoldenStory';
+import BookOpeningCurtain from '@/components/dailygold/BookOpeningCurtain';
 import FlagSealCelebration from '@/components/dailygold/FlagSealCelebration';
 import { useFlagEarn } from '@/components/dailygold/useFlagEarn';
 import { resolvePerson } from '@/lib/countries';
 
+// A plate that never resolves — a dead URL that hangs rather than 404s, a
+// stalled connection — must not hold the book shut forever. Past this the
+// reader gets the story with whatever has arrived, and the rest fills in.
+const MAX_WAIT_MS = 12000;
+
 export default function StorybookView({ story, canEarn = false }) {
   const router = useRouter();
   const { earn, celebration, dismissCelebration } = useFlagEarn();
+
+  // The curtain starts raised for everyone: arriving from the shelf it is
+  // already up (DGBornToday raised it on the click) and simply stays up, and a
+  // deep link gets the same wait rather than a book assembling itself. Both
+  // renders — server and hydration — agree on `false`, since the check can only
+  // run in an effect.
+  const images = useMemo(() => storyImageUrls(story), [story]);
+  const [imagesReady, setImagesReady] = useState(false);
+  // A text-only story (Tier 2, all parchment placeholders) has nothing to wait
+  // for, so it is never covered at all.
+  const curtain = !!story && images.length > 0 && !imagesReady;
+
+  useEffect(() => {
+    if (!images.length) return undefined;
+
+    // The same URLs are already in the DOM behind the curtain, so these are the
+    // very requests the book is making — the browser serves both from one.
+    let remaining = images.length;
+    const loaders = images.map((src) => {
+      const img = new Image();
+      // An image that fails still counts: the page shows its placeholder and
+      // waiting on it would strand the reader.
+      img.onload = img.onerror = () => { if (--remaining === 0) setImagesReady(true); };
+      img.src = src;
+      return img;
+    });
+    const timer = setTimeout(() => setImagesReady(true), MAX_WAIT_MS);
+
+    return () => {
+      clearTimeout(timer);
+      loaders.forEach((img) => { img.onload = img.onerror = null; });
+    };
+  }, [images]);
 
   const handleFinished = useCallback(() => {
     if (!canEarn || !story) return;
@@ -37,6 +80,12 @@ export default function StorybookView({ story, canEarn = false }) {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F5F0E7' }}>
+      {/* Fixed and above everything, so the book, the back button and the
+          story's own scroll all stay hidden until the art is here. */}
+      {curtain && (
+        <BookOpeningCurtain name={story.name} imgUrl={story.image_url || null} resume />
+      )}
+
       {celebration && (
         <FlagSealCelebration
           key={celebration.id}

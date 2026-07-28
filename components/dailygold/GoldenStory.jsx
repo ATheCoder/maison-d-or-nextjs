@@ -725,3 +725,27 @@ export function spreadCount(story) {
   const map = buildSectionSpreadMap(story);
   return (map.takeaway ?? 0) + 1;
 }
+
+/**
+ * Every illustration this story will actually put on a page, deduped — the
+ * cover, the childhood strip, chapter art, timeline and treasure plates, and
+ * the configurable pages. Mirrors the render conditions above (a treasures
+ * image on a story with no treasures is never shown, so it isn't listed), so
+ * that a caller waiting on this list waits for exactly what the reader is
+ * about to see and nothing more. StorybookView holds the opening curtain up
+ * until all of them have loaded.
+ */
+export function storyImageUrls(story) {
+  if (!story) return [];
+  const urls = [story.image_url, story.childhood_image_url];
+  urls.push(...(story.chapters || []).map((c) => c.image_url));
+  urls.push(...(story.timeline || []).filter((t) => t.year || t.caption).map((t) => t.image_url));
+  const treasures = (story.treasures || []).filter((t) => t.name);
+  if (treasures.length) {
+    urls.push(...treasures.map((t) => t.image_url));
+    // The facing leaf is either the configurable page or the default one.
+    urls.push(story.after_treasures ? story.after_treasures.image_url : story.treasures_image_url);
+  }
+  if (story.modern) urls.push(story.modern.image_url);
+  return [...new Set(urls.filter(Boolean))];
+}
