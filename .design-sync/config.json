@@ -25,7 +25,7 @@
     "MaisonBlendedImage": { "cardMode": "column" },
     "DGValuesStrip": { "cardMode": "column" },
     "DGInspirationBar": { "cardMode": "column" },
-    "DGBornToday": { "cardMode": "column", "viewport": "1400x760" },
+    "DGBornToday": { "cardMode": "column", "viewport": "1400x1280" },
     "DGGoodNews": { "cardMode": "single", "primaryStory": "LeadAndMore", "viewport": "900x1150" },
     "DGDestination": { "cardMode": "column" },
     "GoldenStory": { "cardMode": "column" }
