@@ -11,7 +11,17 @@ function NewsModal({ item, onClose }) {
   if (!item) return null;
 
   return (
-    <DGModal label="Good news story" onClose={onClose} maxWidth={720}>
+    <DGModal
+      label="Good news story"
+      onClose={onClose}
+      maxWidth={720}
+      tracking={{
+        contentType: 'news',
+        contentId: String(item.id),
+        label: item.headline,
+        section: 'good_news',
+      }}
+    >
       {/* Hero image */}
       <div style={{ position: 'relative', background: theme.bgSoft }}>
         {item.image_url ? (
@@ -57,7 +67,7 @@ function NewsModal({ item, onClose }) {
   );
 }
 
-export default function DGGoodNews({ items = [], onTrack, onFlagEarned, savedSet = null, editionDate }) {
+export default function DGGoodNews({ items = [], onFlagEarned, savedSet = null, editionDate }) {
   const { theme } = useTheme();
   const [selectedNews, setSelectedNews] = useState(null);
   const earnedHere = useRef(new Set());
@@ -65,15 +75,16 @@ export default function DGGoodNews({ items = [], onTrack, onFlagEarned, savedSet
   // Earning is a side effect of opening the story, never of the card sitting
   // in the list (spec R6.5/R6.7). `location` is mostly null in current data,
   // so the earn silently does nothing until the backfill lands — expected.
+  // The open itself is reported by the modal, which is also the only thing that
+  // knows when the story was closed again.
   const openNews = useCallback((item) => {
     setSelectedNews(item);
-    onTrack?.('news', item.headline);
     const iso2 = resolveLocation(item.location);
     if (iso2 && !earnedHere.current.has(iso2)) {
       earnedHere.current.add(iso2);
       onFlagEarned?.(item.location, iso2, 'good_news');
     }
-  }, [onTrack, onFlagEarned]);
+  }, [onFlagEarned]);
 
   if (!items.length) return null;
 

@@ -10,17 +10,24 @@
  */
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
+import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import { DG_DESTINATIONS, DG_SHELF, DGIcon } from '@/components/dailygold/dgNavConfig';
 
 export default function DGMobileTabBar({ child = null }) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme } = useTheme();
+  // No-ops on /passport and /treasury, which mount no provider.
+  const { track } = useInstrumentation();
 
+  // The two lists become one row of tabs, so which list a tab came from is
+  // recorded here, at the merge — the only place that still knows. A tap on
+  // "Treasury" is the child opening their own shelf, not choosing a
+  // destination of the app, and the roll-up counts them apart.
   const tabs = [
-    ...DG_DESTINATIONS,
+    ...DG_DESTINATIONS.map(tab => ({ ...tab, event: 'nav_select' })),
     // Shelf items only make sense with an active reader.
-    ...(child ? DG_SHELF : []),
+    ...(child ? DG_SHELF.map(tab => ({ ...tab, event: 'shelf_open' })) : []),
   ];
 
   const isActive = (tab) =>
@@ -41,7 +48,10 @@ export default function DGMobileTabBar({ child = null }) {
         return (
           <button
             key={tab.key}
-            onClick={() => router.push(tab.path)}
+            onClick={() => {
+              track(tab.event, { contentId: tab.path, label: tab.label, source: 'tabbar' });
+              router.push(tab.path);
+            }}
             aria-current={active ? 'page' : undefined}
             style={{
               flex: 1, minHeight: 48, border: 'none', background: 'transparent', cursor: 'pointer',

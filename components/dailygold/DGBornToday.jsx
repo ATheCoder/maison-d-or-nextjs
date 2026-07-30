@@ -27,6 +27,7 @@ import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Link, { useLinkStatus } from 'next/link';
 import { useTheme } from '@/components/theme/ThemeContext';
+import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import BookOpeningCurtain from '@/components/dailygold/BookOpeningCurtain';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
 import { resolvePerson } from '@/lib/countries';
@@ -51,8 +52,9 @@ function OpeningCurtain({ person, imgUrl }) {
 }
 
 // ── ONE VOLUME ON THE SHELF ───────────────────────────────────────────────────
-function BookVolume({ person, onTrack, savedSet, editionDate, delay = '0s', tier = 'shelf' }) {
+function BookVolume({ person, savedSet, editionDate, delay = '0s', tier = 'shelf' }) {
   const { theme } = useTheme();
+  const { track } = useInstrumentation();
   // personToRecord emits snake_case; resolvePerson prefers the explicit code
   // and falls back to the nationality text (R4.1).
   const iso2 = resolvePerson({
@@ -136,7 +138,16 @@ function BookVolume({ person, onTrack, savedSet, editionDate, delay = '0s', tier
               href={`/stories/${person.slug}`}
               prefetch={false}
               className="dgbt-cover"
-              onClick={() => onTrack?.('person', person.name)}
+              /* Leaving the shelf, not opening the book: the story route mounts
+                 its own provider and reports the read itself. What this records
+                 is the choice — which volume the child reached for, from where. */
+              onClick={() => track('nav_select', {
+                contentType: 'person',
+                contentId: `/stories/${person.slug}`,
+                label: person.name,
+                source: 'section',
+                section: 'born_today',
+              })}
               aria-label={`Open the story of ${person.name}`}
             >
               {boards}
@@ -179,7 +190,7 @@ function BookVolume({ person, onTrack, savedSet, editionDate, delay = '0s', tier
 }
 
 // ── MAIN EXPORT ───────────────────────────────────────────────────────────────
-export default function DGBornToday({ people = [], onTrack, savedSet = null, editionDate }) {
+export default function DGBornToday({ people = [], savedSet = null, editionDate }) {
   const { theme } = useTheme();
   const podiumRef = useRef(null);
 
@@ -691,7 +702,6 @@ export default function DGBornToday({ people = [], onTrack, savedSet = null, edi
               person={person}
               savedSet={savedSet}
               editionDate={editionDate}
-              onTrack={onTrack}
               tier={podiumTiers[i]}
               delay={podiumDelays[i]}
             />
@@ -708,7 +718,6 @@ export default function DGBornToday({ people = [], onTrack, savedSet = null, edi
                 person={person}
                 savedSet={savedSet}
                 editionDate={editionDate}
-                onTrack={onTrack}
                 delay={`${0.45 + i * 0.07}s`}
               />
             ))}

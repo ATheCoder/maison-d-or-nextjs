@@ -14,6 +14,9 @@ import {
   type DgSlotRequested, type DgImagesBatchRequested,
   type DgAskRequested, type DgRewriteRequested,
 } from './client';
+import { inArray, sql } from 'drizzle-orm';
+import { db } from '@/src/db';
+import { analyticsEvent } from '@/src/db/schema';
 import { renderSlotToCanonical, renderSlotToStaging } from '@/lib/golden-story/imageStore';
 import { runBriefJob, runRewriteJob } from '@/lib/golden-story/textStore';
 import { setSlotProgress, finishJob, failJob } from '@/lib/golden-story/jobs';
@@ -268,6 +271,68 @@ export const rewriteDailyGoldField = inngest.createFunction(
       await step.run('mark failed', () => failJob(jobId, message));
     }
     return { done: true };
+  },
+);
+
+// ── Analytics retention ──────────────────────────────────────────────────────
+
+/** Rows removed per DELETE — small enough that no single statement holds a long lock. */
+const PURGE_BATCH_SIZE = 5_000;
+/** Batches per run: 100,000 rows a month, far above what the daily budget can produce. */
+const PURGE_MAX_BATCHES = 20;
+
+/**
+ * The analytics retention job (analytics plan §7): once a month, delete
+ * `analytics_event` rows older than twelve months. The first cron-triggered
+ * function in this app — everything above it is event-triggered, so this is the
+ * one whose trigger carries a `cron` instead of an `event`.
+ *
+ * Each batch is its own `step.run`, so a run that dies mid-purge resumes at the
+ * next batch instead of repeating the deletes that already committed, and no
+ * one statement locks a large slice of the table.
+ */
+export const purgeAnalyticsEvents = inngest.createFunction(
+  {
+    id: 'purge-analytics-events',
+    triggers: [{ cron: '0 4 1 * *' }], // 04:00 UTC on the 1st of each month
+    retries: 1, // one more attempt; anything it misses the next month's run takes
+  },
+  async ({ step }) => {
+    let deleted = 0;
+    let batches = 0;
+
+    for (let i = 0; i < PURGE_MAX_BATCHES; i++) {
+      const removed: number = await step.run(`delete-batch-${i + 1}`, async () => {
+        // DELETE ... WHERE id IN (SELECT id ... LIMIT n): the inner select
+        // scans — no index leads with occurred_at alone, and a monthly purge
+        // doesn't need one. The LIMIT is what keeps each statement bounded.
+        const result = await db
+          .delete(analyticsEvent)
+          .where(inArray(
+            analyticsEvent.id,
+            db
+              .select({ id: analyticsEvent.id })
+              .from(analyticsEvent)
+              .where(sql`${analyticsEvent.occurredAt} < now() - interval '12 months'`)
+              .limit(PURGE_BATCH_SIZE),
+          ));
+
+        // Same driver caveat as the ingest insert: node-postgres reports the
+        // count, and a driver that doesn't reads as "nothing left", which only
+        // ends the loop early.
+        const count = (result as { rowCount?: number | null })?.rowCount;
+        return typeof count === 'number' ? count : 0;
+      });
+
+      // A short batch means the table is clean; a full one at the cap means
+      // there is more, and the leftovers deliberately wait for next month
+      // rather than holding this run open.
+      if (removed === 0) break;
+      deleted += removed;
+      batches++;
+    }
+
+    return { deleted, batches, capped: batches === PURGE_MAX_BATCHES };
   },
 );
 

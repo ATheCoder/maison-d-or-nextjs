@@ -16,7 +16,7 @@ const DETAIL_CARDS = [
   { key: 'tiny_phrase', itemType: 'phrase', label: 'Tiny Phrase', emoji: '✍️' },
 ];
 
-function DetailCard({ card, data, onTrack, theme, savedSet, editionDate, iso2, countryName }) {
+function DetailCard({ card, data, theme, savedSet, editionDate, iso2, countryName }) {
   const content = data?.[card.key];
   const title = content?.name || content?.word || '—';
   // tiny_phrase also carries a translation and the language it is in. Both are
@@ -24,10 +24,12 @@ function DetailCard({ card, data, onTrack, theme, savedSet, editionDate, iso2, c
   const subtitle = content?.translation || null;
   const label = content?.language ? `${card.label} · ${content.language}` : card.label;
 
+  // A stat card is read where it stands: it opens nothing, so it reports
+  // nothing. The hover and click trackers that used to sit on this tile fired
+  // twice for one pointer and counted a cursor crossing it as a child choosing
+  // to look at it.
   return (
     <div
-      onMouseEnter={() => onTrack?.('geography', card.label)}
-      onClick={() => onTrack?.('geography', card.label)}
       style={{
         padding: '0.75rem',
         borderRadius: theme.radiusSmall,
@@ -69,7 +71,7 @@ function DetailCard({ card, data, onTrack, theme, savedSet, editionDate, iso2, c
   );
 }
 
-export default function DGDestination({ dest, imageUrl, onTrack, onFlagEarned, savedSet = null, editionDate }) {
+export default function DGDestination({ dest, imageUrl, onFlagEarned, savedSet = null, editionDate }) {
   const { theme } = useTheme();
   const [modalOpen, setModalOpen] = useState(false);
   const [flagTriggered, setFlagTriggered] = useState(false);
@@ -78,6 +80,9 @@ export default function DGDestination({ dest, imageUrl, onTrack, onFlagEarned, s
 
   const iso2 = resolveLocation(dest.name);
 
+  // The hero is the door: opening the modal is the open worth reporting, and
+  // the modal reports it itself (mount == open), so there is nothing to emit
+  // here. Hovering the door is not walking through it.
   const handleDestinationView = () => {
     setModalOpen(true);
     // Trigger flag earn on first view
@@ -97,7 +102,6 @@ export default function DGDestination({ dest, imageUrl, onTrack, onFlagEarned, s
       <div style={{ position: 'relative', aspectRatio: '16 / 9', overflow: 'hidden' }}>
         <button
           onClick={handleDestinationView}
-          onMouseEnter={() => onTrack?.('geography', dest.name)}
           style={{
             display: 'block',
             width: '100%', height: '100%',
@@ -156,7 +160,19 @@ export default function DGDestination({ dest, imageUrl, onTrack, onFlagEarned, s
 
         {/* Destination Modal */}
         {modalOpen && (
-          <DGModal label="Destination of the day" onClose={() => setModalOpen(false)} maxWidth={800}>
+          <DGModal
+            label="Destination of the day"
+            onClose={() => setModalOpen(false)}
+            maxWidth={800}
+            /* The country code where there is one: it is the id the flag seals
+               and the treasury already file this place under. */
+            tracking={{
+              contentType: 'destination',
+              contentId: iso2 || dest.name,
+              label: dest.name,
+              section: 'destination',
+            }}
+          >
             <div style={{ position: 'relative', aspectRatio: '16 / 9', background: theme.bgSoft }}>
               {heroImg ? (
                 <img src={heroImg} alt={dest.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
@@ -200,7 +216,7 @@ export default function DGDestination({ dest, imageUrl, onTrack, onFlagEarned, s
         {/* Detail cards — fluid grid, collapses gracefully */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '0.5rem' }}>
           {DETAIL_CARDS.map(card => (
-            <DetailCard key={card.key} card={card} data={dest} theme={theme} onTrack={onTrack} savedSet={savedSet} editionDate={editionDate} iso2={iso2} countryName={dest.name?.split(',')[0]} />
+            <DetailCard key={card.key} card={card} data={dest} theme={theme} savedSet={savedSet} editionDate={editionDate} iso2={iso2} countryName={dest.name?.split(',')[0]} />
           ))}
         </div>
       </div>

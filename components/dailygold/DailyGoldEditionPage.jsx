@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import DGHero from '@/components/dailygold/DGHero';
 import DGBornToday from '@/components/dailygold/DGBornToday';
@@ -18,6 +18,8 @@ import DGWaxSealNavigator from '@/components/dailygold/DGWaxSealNavigator';
 import DGInspirationBar from '@/components/dailygold/DGInspirationBar';
 import FlagSealCelebration from '@/components/dailygold/FlagSealCelebration';
 import { useFlagEarn } from '@/components/dailygold/useFlagEarn';
+import { DGInstrumentationProvider } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
+import { TrackedSection } from '@/components/dailygold/instrumentation/TrackedSection';
 import { ThemeProvider, useTheme } from '@/components/theme/ThemeContext';
 
 /**
@@ -129,7 +131,7 @@ const SHELL_CSS = `
   }
 `;
 
-function DailyGoldShell({ date, today, child, edition: editionRecord, dates, people, goodNews, onThisDay, greatestMoments, savedKeys }) {
+function DailyGoldShell({ date, today, child, edition: editionRecord, dates, people, goodNews, onThisDay, greatestMoments, savedKeys, exploration }) {
   const { theme } = useTheme();
   const router = useRouter();
 
@@ -149,24 +151,11 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
     ? mapRecord(editionRecord)
     : { edition: EMPTY_EDITION, rawPost: null };
 
-  const [timeSpent, setTimeSpent] = useState(0);
-  const [topicsExplored, setTopicsExplored] = useState([]);
-  const startTime = useRef(null);
-
   // Earns resolve the child from the session inside the server action — the
   // client never names one. The hook dedupes by country for this page session
   // and queues celebrations so rapid earns play in order instead of
   // overwriting each other.
   const { earn, celebration, dismissCelebration } = useFlagEarn({ editionDate: viewedDate });
-
-  useEffect(() => {
-    // Track time spent
-    startTime.current = Date.now();
-    const interval = setInterval(() => {
-      setTimeSpent(Math.round((Date.now() - startTime.current) / 60000));
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Turning to another day is a navigation, not a state change: the address
   // bar leads and the server answers with that day's sections. Today keeps the
@@ -177,15 +166,6 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
     if (!next || next === viewedDate) return;
     router.push(next === today ? '/daily-gold-edition' : `/daily-gold-edition?date=${next}`, { scroll: false });
   }, [router, viewedDate, today]);
-
-  // Purely local: feeds the DGForParents summary. The old Base44
-  // AnalyticsEvent write posted child_profile ids into an entity where they
-  // never existed — the same dead write ThemeContext already disabled.
-  const trackInteraction = useCallback((contentType) => {
-    const topicMap = { person: 'People', news: 'Good News', history: 'History', geography: 'Geography' };
-    const topic = topicMap[contentType] || contentType;
-    setTopicsExplored(prev => prev.includes(topic) ? prev : [...prev, topic]);
-  }, []);
 
   return (
     <div
@@ -217,9 +197,15 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
         className="dg-shell"
         style={{ animation: 'dgFadeIn 0.4s ease-out' }}
       >
+        {/* The identity header and the day navigator are chrome, not reading:
+            they stay outside the tracked regions so a child hunting for
+            yesterday's paper doesn't bank dwell against whatever section the
+            sticky header happens to sit over. */}
         <DGIdentityHeader child={child} />
 
-        <DGHero dateStr={dateLabel} heroImageUrl={edition.images?.hero || rawPost?.image_url} />
+        <TrackedSection id="hero">
+          <DGHero dateStr={dateLabel} heroImageUrl={edition.images?.hero || rawPost?.image_url} />
+        </TrackedSection>
 
         <DGWaxSealNavigator
           currentDate={viewedDate}
@@ -227,35 +213,54 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
           onDateChange={handleDateChange}
         />
 
-        <DGBornToday people={people} onTrack={trackInteraction} savedSet={savedSet} editionDate={viewedDate} />
+        <TrackedSection id="born_today">
+          <DGBornToday people={people} savedSet={savedSet} editionDate={viewedDate} />
+        </TrackedSection>
 
+        {/* Each wrapper below becomes the grid item `.dg-band` lays out — which
+            is why Good News is rendered conditionally rather than left to
+            return null from the inside: an empty wrapper is still an item, and
+            auto-fit would hold a third column open for it. */}
         <div className="dg-band">
-          <DGGoodNews items={goodNews} onTrack={trackInteraction} onFlagEarned={earn} savedSet={savedSet} editionDate={viewedDate} />
-          <DGOnThisDay events={onThisDay} onTrack={trackInteraction} onFlagEarned={earn} savedSet={savedSet} editionDate={viewedDate} />
-          <DGGreatestMoments moments={greatestMoments} savedSet={savedSet} editionDate={viewedDate} />
+          {goodNews.length > 0 && (
+            <TrackedSection id="good_news">
+              <DGGoodNews items={goodNews} onFlagEarned={earn} savedSet={savedSet} editionDate={viewedDate} />
+            </TrackedSection>
+          )}
+          <TrackedSection id="on_this_day">
+            <DGOnThisDay events={onThisDay} onFlagEarned={earn} savedSet={savedSet} editionDate={viewedDate} />
+          </TrackedSection>
+          <TrackedSection id="greatest_moments">
+            <DGGreatestMoments moments={greatestMoments} savedSet={savedSet} editionDate={viewedDate} />
+          </TrackedSection>
         </div>
 
-        <DGInspirationBar edition={edition} />
+        <TrackedSection id="inspiration">
+          <DGInspirationBar edition={edition} />
+        </TrackedSection>
 
-        <div style={{ padding: '0.75rem clamp(1rem, 3vw, 2rem) 0.5rem' }}>
-          <DGDestination
-            dest={edition.destination}
-            imageUrl={rawPost?.image_url}
-            onTrack={trackInteraction}
-            onFlagEarned={earn}
-            savedSet={savedSet}
-            editionDate={viewedDate}
-          />
-        </div>
+        <TrackedSection id="destination">
+          <div style={{ padding: '0.75rem clamp(1rem, 3vw, 2rem) 0.5rem' }}>
+            <DGDestination
+              dest={edition.destination}
+              imageUrl={rawPost?.image_url}
+              onFlagEarned={earn}
+              savedSet={savedSet}
+              editionDate={viewedDate}
+            />
+          </div>
+        </TrackedSection>
 
-        <DGMoreToExplore />
-        <DGValuesStrip />
+        <TrackedSection id="more_to_explore">
+          <DGMoreToExplore />
+        </TrackedSection>
+        <TrackedSection id="values">
+          <DGValuesStrip />
+        </TrackedSection>
 
-        <DGForParents
-          edition={edition}
-          timeSpent={timeSpent}
-          topicsExplored={topicsExplored}
-        />
+        <TrackedSection id="for_parents">
+          <DGForParents edition={edition} exploration={exploration} />
+        </TrackedSection>
 
         <footer style={{
           padding: 'clamp(3rem, 6vw, 5rem) clamp(1.5rem, 5vw, 4rem)',
@@ -294,9 +299,13 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
  * `savedKeys` is the same answer for the hearts: the `type:id` keys this reader
  * has already saved, or null when there is no reader.
  *
- * @param {{ date?: string, today?: string, child?: any, edition?: any, dates?: string[], people?: any[], goodNews?: any[], onThisDay?: any[], greatestMoments?: any[], savedKeys?: string[] | null }} props
+ * `exploration` is today's activity roll-up for the For Parents card — also
+ * server-resolved, also null without a reader (or when the roll-up failed), in
+ * which case that card renders its own empty state.
+ *
+ * @param {{ date?: string, today?: string, child?: any, edition?: any, dates?: string[], people?: any[], goodNews?: any[], onThisDay?: any[], greatestMoments?: any[], savedKeys?: string[] | null, exploration?: any }} props
  */
-export default function DailyGoldEdition({ date, today, child = null, edition = null, dates = [], people = [], goodNews = [], onThisDay = [], greatestMoments = [], savedKeys = null }) {
+export default function DailyGoldEdition({ date, today, child = null, edition = null, dates = [], people = [], goodNews = [], onThisDay = [], greatestMoments = [], savedKeys = null, exploration = null }) {
   // Defaulted here rather than in the signature so a caller that knows neither
   // date — the design-sync preview — still renders a coherent single day.
   const todayStr = today || new Date().toISOString().slice(0, 10);
@@ -304,22 +313,32 @@ export default function DailyGoldEdition({ date, today, child = null, edition = 
   return (
     <DGErrorBoundary>
       <ThemeProvider childId={child?.id}>
-        {/* Keyed on the reader so a profile switch remounts the whole shell —
-            including useFlagEarn's dedupe guard, which is client state the
-            server-resolved child can't reach any other way (spec R7.24). */}
-        <DailyGoldShell
+        {/* Keyed on the reader so a profile switch remounts everything below —
+            the shell (including useFlagEarn's dedupe guard, client state the
+            server-resolved child can't reach any other way, spec R7.24) and the
+            instrumentation with it. The key belongs on the provider rather than
+            on the shell alone: an unmount is what flushes the departing
+            reader's buffer, so a provider that survived the switch would post
+            one child's events into the next child's session. */}
+        <DGInstrumentationProvider
           key={child?.id || 'no-child'}
-          date={date || todayStr}
-          today={todayStr}
-          child={child}
-          edition={edition}
-          dates={dates}
-          people={people}
-          goodNews={goodNews}
-          onThisDay={onThisDay}
-          greatestMoments={greatestMoments}
-          savedKeys={savedKeys}
-        />
+          childId={child?.id ?? null}
+          editionDate={date || todayStr}
+        >
+          <DailyGoldShell
+            date={date || todayStr}
+            today={todayStr}
+            child={child}
+            edition={edition}
+            dates={dates}
+            people={people}
+            goodNews={goodNews}
+            onThisDay={onThisDay}
+            greatestMoments={greatestMoments}
+            savedKeys={savedKeys}
+            exploration={exploration}
+          />
+        </DGInstrumentationProvider>
       </ThemeProvider>
     </DGErrorBoundary>
   );

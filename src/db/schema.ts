@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, serial, integer, boolean, char, text, date, timestamp, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, pgEnum, serial, integer, smallint, boolean, char, text, date, timestamp, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import type { Brief } from '@/lib/golden-story/brief';
 
 // ── Identity ─────────────────────────────────────────────────────────────────
@@ -661,3 +661,71 @@ export const savedItem = pgTable('saved_item', {
 ]);
 
 export type SavedItemRow = typeof savedItem.$inferSelect;
+
+// ── Analytics Events ─────────────────────────────────────────────────────────
+// Raw child-activity stream (docs/daily-gold-analytics-plan.md §2). One row per
+// tracked moment: a section came into view, a modal opened and closed, a book
+// page turned. The parent roll-up in DGForParents reads it; nothing else does.
+//
+// Trust invariant (auth-plan §6): **the client reports what, never who.** No
+// event payload carries a child or family id — `child_id` below is stamped by
+// app/analytics/actions.ts from getActiveChild(), never from the request.
+//
+// `occurred_at` is deliberately NOT defaultNow(): it is the client's own clock
+// reading, validated into a [now − 48 h, now + 2 min] window by
+// lib/analytics-event-input.ts (localStorage carryover legitimately replays
+// hours-old events). `created_at` is the server's receipt time, kept alongside
+// it so clock-skewed carryover is debuggable.
+//
+// The (batch_id, seq) unique index is the whole idempotency story: a client
+// freezes `seq` when it assembles a batch and never renumbers it, so a replayed
+// flush — carryover, double-fire, captured request — writes zero rows through
+// ON CONFLICT DO NOTHING.
+
+// Mirrors ANALYTICS_EVENT_TYPES in lib/analytics-events.ts — drizzle needs
+// literals here, so the two lists must be edited together (that module is the
+// vocabulary of record; this is its DB shadow).
+export const analyticsEventType = pgEnum('analytics_event_type', [
+  'section_view', 'content_open', 'content_close', 'nav_select', 'shelf_open',
+  'collection_view', 'edition_turn', 'story_page_view', 'story_finished',
+  'session_pause', 'session_resume', 'session_heartbeat', 'reader_switch',
+]);
+
+export const analyticsEvent = pgTable('analytics_event', {
+  id: text('id').primaryKey(),
+  childId: text('child_id').notNull()
+    .references(() => childProfile.id, { onDelete: 'cascade' }),
+
+  eventType: analyticsEventType('event_type').notNull(),
+
+  // All four are whitelist-or-null, never free text from the client: the
+  // whitelists live in lib/analytics-events.ts and are applied by the
+  // normaliser before anything reaches here.
+  section: text('section'),
+  contentType: text('content_type'),
+  // A slug, a String(serial id), or a year — the content tables share no id
+  // space (same compromise as saved_item.item_id).
+  contentId: text('content_id'),
+  // Display snapshot for the parent roll-up (capped at 120 chars), so titles
+  // survive a later edit of the source row without a join.
+  label: text('label'),
+  source: text('source'),
+
+  editionDate: date('edition_date'),
+  // Clamped to [0, 10 min]; null for instantaneous events.
+  durationMs: integer('duration_ms'),
+
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+
+  batchId: text('batch_id').notNull(),
+  seq: smallint('seq').notNull(),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('analytics_event_child_occurred_idx').on(t.childId, t.occurredAt.desc()),
+  index('analytics_event_child_edition_idx').on(t.childId, t.editionDate),
+  uniqueIndex('analytics_event_batch_seq_idx').on(t.batchId, t.seq),
+]);
+
+export type AnalyticsEventRow = typeof analyticsEvent.$inferSelect;
+export type NewAnalyticsEvent = typeof analyticsEvent.$inferInsert;

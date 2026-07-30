@@ -7,6 +7,7 @@ import { inngest } from '@/lib/inngest/client';
 import {
   renderImagesBatch, renderSlot, generateBrief, rewriteField,
   renderDailyGoldSlot, renderDailyGoldImages, runDailyGoldAsk, rewriteDailyGoldField,
+  purgeAnalyticsEvents,
 } from '@/lib/inngest/functions';
 
 export const { GET, POST, PUT } = serve({
@@ -14,5 +15,7 @@ export const { GET, POST, PUT } = serve({
   functions: [
     renderImagesBatch, renderSlot, generateBrief, rewriteField,
     renderDailyGoldSlot, renderDailyGoldImages, runDailyGoldAsk, rewriteDailyGoldField,
+    // Cron-triggered; registering it here is what puts its schedule on the platform.
+    purgeAnalyticsEvents,
   ],
 });

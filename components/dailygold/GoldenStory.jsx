@@ -15,6 +15,8 @@
  */
 import { Fragment, useEffect, useRef, useState } from 'react';
 import styles from './GoldenStory.module.css';
+import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
+import { MAX_DURATION_MS } from '@/lib/analytics-events';
 import { formatDate, formatYear } from '@/lib/dates';
 
 // Join truthy class names.
@@ -188,6 +190,15 @@ export function spreadIndexFor(story, sectionId) {
  * keeps its own internal page state, exactly as before.
  */
 export default function GoldenStory({ story, page, onPageChange, embedded = false, onFinished = null }) {
+  // Reading time per page (docs/daily-gold-analytics-plan.md §4), reported
+  // through the provider StorybookView mounts. There is none in the admin
+  // editor, where useInstrumentation() hands back its no-op API — `embedded`
+  // then makes doubly sure no clock is even started.
+  const { track, enabled, attention, subscribeAttention, registerFlushCollector } = useInstrumentation();
+  const tracking = enabled && !embedded;
+  // The story's own id in the events — a string, so a re-rendered parent
+  // handing down a fresh `story` object cannot restart the page clock.
+  const slug = story?.slug || null;
   const controlled = typeof page === 'number';
   const [internalCur, setInternalCur] = useState(0);
   const cur = controlled ? page : internalCur;
@@ -597,6 +608,75 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
   const stepNow = portrait
     ? leaves.slice(0, cur).reduce((n, l) => n + l, 0) + activeLeaf + 1
     : cur + 1;
+
+  // One effect per page turned to, so its cleanup *is* the page being left.
+  // The signal is `stepNow` and never go()/goTo(): in portrait a turn is a
+  // leaf change that goTo never sees. `stepNow` is already the 1-based page
+  // the reader is on — the number printed in "n / total" — so it is what the
+  // parent's roll-up reads back as the page.
+  useEffect(() => {
+    if (!tracking) return undefined;
+
+    // The clock lives in the closure (TrackedSection's pattern): the book
+    // re-renders for its own reasons and none of them may restart it. Only
+    // attentive time counts — tab hidden or window blurred and it stops.
+    let accrued = 0;
+    let since = attention.current ? Date.now() : null;
+    let banked = false;
+
+    const bank = () => {
+      const now = Date.now();
+      if (since !== null) {
+        accrued += now - since;
+        // The reader is still on this page at a flush; the clock runs on.
+        since = now;
+      }
+      const durationMs = Math.min(Math.round(accrued), MAX_DURATION_MS);
+      // A flush harvested this page moments ago and nothing has been read
+      // since: a second row of zero milliseconds is noise, not a page view.
+      if (durationMs === 0 && banked) return;
+      accrued = 0;
+      banked = true;
+      track('story_page_view', {
+        contentType: 'story',
+        contentId: slug,
+        label: String(stepNow),
+        durationMs,
+      });
+    };
+
+    const unsubscribeAttention = subscribeAttention((attentive) => {
+      if (attentive) {
+        since = Date.now();
+        return;
+      }
+      if (since !== null) {
+        accrued += Date.now() - since;
+        since = null;
+      }
+    });
+
+    // The page in hand when a batch is assembled would otherwise wait for a
+    // turn that may never come — and the provider harvests collectors from
+    // its own unmount cleanup, which is what saves the page the book was
+    // closed on when the reader navigates back to the paper.
+    const unregisterCollector = registerFlushCollector(bank);
+
+    return () => {
+      unsubscribeAttention();
+      unregisterCollector();
+      // The page being turned away from, or the one the book closed on.
+      bank();
+    };
+  }, [
+    tracking,
+    stepNow,
+    slug,
+    track,
+    attention,
+    subscribeAttention,
+    registerFlushCollector,
+  ]);
 
   // Fit the book: to the host container when embedded, otherwise to the
   // viewport (plus keyboard nav for the full-screen view only — a global key

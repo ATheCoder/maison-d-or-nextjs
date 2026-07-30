@@ -6,6 +6,7 @@
  */
 import { useState, useCallback, useOptimistic, useTransition } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
+import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 
 // SVG seal face — vintage engraved arrow as the clear primary mark,
 // with a fine embossed ring frame and small corner flourishes.
@@ -118,6 +119,7 @@ function indexForDate(dates, date) {
  */
 export default function DGWaxSealNavigator({ currentDate, onDateChange, availableDates = [] }) {
   const { theme } = useTheme();
+  const { track } = useInstrumentation();
   const [pressing, setPressing] = useState(null); // 'back' | 'forward' | null
   const [flipping, setFlipping] = useState(false);
   const [flipDir, setFlipDir] = useState(0); // -1 = going back, +1 = going forward
@@ -165,13 +167,18 @@ export default function DGWaxSealNavigator({ currentDate, onDateChange, availabl
     // transition: `pending` then holds the loading line, and the optimistic
     // date, until the new day's content has actually arrived.
     startTransition(() => {
+      // Recorded here because this is the one moment both days are in hand: the
+      // edition being turned to is the event's edition_date, the day being left
+      // is its label. Ahead of the state change, so the closure still names the
+      // day the child is leaving.
+      track('edition_turn', { editionDate: targetDate, label: displayDate, source: 'seal_navigator' });
       setDisplayDate(targetDate);
       onDateChange(targetDate);
     });
 
     await new Promise(r => setTimeout(r, 200));
     setFlipping(false);
-  }, [currentIndex, allDates, pending, onDateChange, setDisplayDate]);
+  }, [currentIndex, allDates, pending, onDateChange, setDisplayDate, displayDate, track]);
 
   const canGoBack = currentIndex > 0;
   const canGoForward = currentIndex < allDates.length - 1;

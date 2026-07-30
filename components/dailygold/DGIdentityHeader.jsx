@@ -12,6 +12,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
+import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import { DG_SHELF, DGIcon } from '@/components/dailygold/dgNavConfig';
 import ChildSwitcherOverlay from '@/components/dailygold/ChildSwitcherOverlay';
 import { AVATARS } from '@/lib/avatars';
@@ -19,6 +20,7 @@ import { AVATARS } from '@/lib/avatars';
 export default function DGIdentityHeader({ child }) {
   const router = useRouter();
   const { theme } = useTheme();
+  const { track } = useInstrumentation();
   const [showSwitcher, setShowSwitcher] = useState(false);
 
   if (!child) return null;
@@ -78,7 +80,12 @@ export default function DGIdentityHeader({ child }) {
         {DG_SHELF.map(item => (
           <button
             key={item.key}
-            onClick={() => router.push(item.path)}
+            /* Chips are the shelf in miniature — same event as the rail's My
+               World items, distinguished only by where the child tapped. */
+            onClick={() => {
+              track('shelf_open', { contentId: item.path, label: item.label, source: 'header' });
+              router.push(item.path);
+            }}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               minHeight: 44, padding: '0.35rem 0.85rem', flexShrink: 0,

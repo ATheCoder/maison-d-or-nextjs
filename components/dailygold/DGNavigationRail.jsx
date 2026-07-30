@@ -15,6 +15,7 @@
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
+import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import { DG_DESTINATIONS, DG_SHELF, DGIcon } from '@/components/dailygold/dgNavConfig';
 import ChildSwitcherOverlay from '@/components/dailygold/ChildSwitcherOverlay';
 import { AVATARS } from '@/lib/avatars';
@@ -23,6 +24,9 @@ export default function DGNavigationRail({ child = null }) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme } = useTheme();
+  // The rail also hangs on /passport and /treasury, which mount no provider —
+  // there this is the no-op API and nothing is recorded. No conditional needed.
+  const { track } = useInstrumentation();
   const [showSwitcher, setShowSwitcher] = useState(false);
 
   const avatar = child ? (AVATARS[child.avatar] || AVATARS.sun) : null;
@@ -96,7 +100,10 @@ export default function DGNavigationRail({ child = null }) {
             <button
               key={item.key}
               className={`dg-rail-item${active ? ' dg-rail-active' : ''}`}
-              onClick={() => router.push(item.path)}
+              onClick={() => {
+                track('nav_select', { contentId: item.path, label: item.label, source: 'rail' });
+                router.push(item.path);
+              }}
               aria-current={active ? 'page' : undefined}
               aria-label={item.label}
               title={item.label}
@@ -134,7 +141,12 @@ export default function DGNavigationRail({ child = null }) {
                 <button
                   key={item.key}
                   className={`dg-rail-item${active ? ' dg-rail-active' : ''}`}
-                  onClick={() => router.push(item.path)}
+                  /* The shelf is the child's own space, not a destination of the
+                     app — its own event, from the same source. */
+                  onClick={() => {
+                    track('shelf_open', { contentId: item.path, label: item.label, source: 'rail' });
+                    router.push(item.path);
+                  }}
                   aria-current={active ? 'page' : undefined}
                   aria-label={item.label}
                   title={item.label}

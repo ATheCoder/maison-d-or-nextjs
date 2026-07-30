@@ -7,10 +7,11 @@
  * set) or the guardian override credential is. The client never asserts a
  * profile id into the session, so a forged request cannot bypass a PIN.
  */
+import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { verifyPassword } from 'better-auth/crypto';
 import { db } from '@/src/db';
-import { childProfile, session as sessionTable } from '@/src/db/schema';
+import { analyticsEvent, childProfile, session as sessionTable } from '@/src/db/schema';
 import { getActiveChild, requireGuardian } from '@/lib/dal';
 import { verifyGuardianCredential } from '@/lib/guardian-credential';
 
@@ -87,6 +88,38 @@ async function setActiveProfile(sessionId: string, profileId: string | null) {
 }
 
 /**
+ * Note who handed the tablet to whom (analytics-plan §2): `reader_switch` is
+ * the one event the server owns outright — it knows both ends of the switch,
+ * and a client can't forget to send it. The row belongs to the reader being
+ * entered; `content_id` holds the one being left (null on the session's first
+ * entry).
+ *
+ * Analytics must never cost a child their profile: the whole body is
+ * swallowed, so a dead database logs and returns rather than breaking the
+ * PIN flow.
+ */
+async function recordReaderSwitch(fromChildId: string | null, toChildId: string): Promise<void> {
+  // Re-entering the profile you're already in isn't a switch.
+  if (fromChildId === toChildId) return;
+  try {
+    await db.insert(analyticsEvent)
+      .values({
+        id: randomUUID(),
+        childId: toChildId,
+        eventType: 'reader_switch',
+        contentId: fromChildId,
+        source: 'server',
+        occurredAt: new Date(),
+        batchId: `server-switch-${randomUUID()}`,
+        seq: 0,
+      })
+      .onConflictDoNothing();
+  } catch (error) {
+    console.error('profiles: reader_switch insert failed', error);
+  }
+}
+
+/**
  * Enter a child profile. PIN-protected profiles demand the PIN, with a
  * lockout after repeated failures — attempts are counted in the DB, so
  * retrying across sessions or devices doesn't reset the meter.
@@ -130,7 +163,9 @@ export async function enterChildProfile(profileId: string, pin?: string): Promis
       .where(eq(childProfile.id, profile.id));
   }
 
+  const fromChildId = session.session.activeChildProfileId ?? null;
   await setActiveProfile(session.session.id, profile.id);
+  await recordReaderSwitch(fromChildId, profile.id);
   return { ok: true };
 }
 
@@ -153,7 +188,9 @@ export async function enterChildProfileAsGuardian(profileId: string, credential:
   await db.update(childProfile)
     .set({ pinAttempts: 0, pinLockedUntil: null, updatedAt: new Date() })
     .where(eq(childProfile.id, rows[0].id));
+  const fromChildId = session.session.activeChildProfileId ?? null;
   await setActiveProfile(session.session.id, rows[0].id);
+  await recordReaderSwitch(fromChildId, rows[0].id);
   return { ok: true };
 }
 

@@ -17,13 +17,23 @@
  * It also owns the second half of the opening curtain: the book is only
  * uncovered once every illustration in it has loaded, so no one lands on a
  * page of blank plates filling in one by one. See BookOpeningCurtain.
+ *
+ * The whole route is one analytics section ("story"), so it mounts its own
+ * provider (docs/daily-gold-analytics-plan.md §4) — per-route, not in a shared
+ * shell, so the story passes its own context. `childId` is the provider's
+ * routing hint for the localStorage carryover and never reaches a payload.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import GoldenStory, { storyImageUrls } from '@/components/dailygold/GoldenStory';
 import BookOpeningCurtain from '@/components/dailygold/BookOpeningCurtain';
 import FlagSealCelebration from '@/components/dailygold/FlagSealCelebration';
 import { useFlagEarn } from '@/components/dailygold/useFlagEarn';
+import {
+  DGInstrumentationProvider,
+  useInstrumentation,
+} from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
+import { MAX_DURATION_MS } from '@/lib/analytics-events';
 import { resolvePerson } from '@/lib/countries';
 
 // A plate that never resolves — a dead URL that hangs rather than 404s, a
@@ -31,7 +41,85 @@ import { resolvePerson } from '@/lib/countries';
 // reader gets the story with whatever has arrived, and the rest fills in.
 const MAX_WAIT_MS = 12000;
 
-export default function StorybookView({ story, canEarn = false }) {
+/**
+ * `content_close` has exactly one chance to be written: the reader is leaving,
+ * and the provider directly above is being deleted in the same commit. React
+ * runs a deleted subtree's *layout* cleanups (mutation phase) before any
+ * passive cleanup, so a layout cleanup lands the close in the buffer while the
+ * provider's own unmount flush is still ahead of it — a plain useEffect
+ * cleanup would run after that flush and the event would go nowhere. Matched
+ * to useEffect on the server, where neither fires and useLayoutEffect would
+ * only warn.
+ */
+const useReadingSessionEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
+
+/**
+ * The reading session itself: one `content_open` when the book is opened, its
+ * attention-paused dwell, and one `content_close` when the reader leaves it.
+ * It also owns `story_finished`, which is emitted for EVERY reader — earning
+ * is a separate question, answered by the parent's handleFinished.
+ *
+ * It exists as its own component only because the provider is mounted inside
+ * StorybookView: useInstrumentation() has to be called below it.
+ */
+function StoryReader({ story, onFinished }) {
+  const { track, enabled, attention, subscribeAttention } = useInstrumentation();
+  const slug = story?.slug || null;
+  const title = story?.story_title || story?.name || null;
+
+  useReadingSessionEffect(() => {
+    // No provider, no child, or a story with no identity to report.
+    if (!enabled || !slug) return undefined;
+
+    // The clock lives in the closure, like TrackedSection's: a re-render of
+    // the book must never restart the reader's dwell.
+    let accrued = 0;
+    let since = attention.current ? Date.now() : null;
+
+    track('content_open', { contentType: 'story', contentId: slug, label: title });
+
+    const unsubscribeAttention = subscribeAttention((attentive) => {
+      if (attentive) {
+        since = Date.now();
+        return;
+      }
+      if (since !== null) {
+        accrued += Date.now() - since;
+        since = null;
+      }
+    });
+
+    return () => {
+      unsubscribeAttention();
+      if (since !== null) {
+        accrued += Date.now() - since;
+        since = null;
+      }
+      track('content_close', {
+        contentType: 'story',
+        contentId: slug,
+        durationMs: Math.min(Math.round(accrued), MAX_DURATION_MS),
+      });
+    };
+  }, [enabled, slug, title, track, attention, subscribeAttention]);
+
+  // GoldenStory's onFinished is already fire-once, but the finish is the one
+  // event a parent reads as an achievement — latch it here too rather than
+  // trust a collaborator's bookkeeping.
+  const finishedRef = useRef(false);
+  const handleFinished = useCallback(() => {
+    if (!finishedRef.current) {
+      finishedRef.current = true;
+      track('story_finished', { contentType: 'story', contentId: slug });
+    }
+    onFinished?.();
+  }, [track, slug, onFinished]);
+
+  return <GoldenStory story={story} onFinished={handleFinished} />;
+}
+
+/** @param {{ story?: any, canEarn?: boolean, childId?: string | null }} props */
+export default function StorybookView({ story, canEarn = false, childId = null }) {
   const router = useRouter();
   const { earn, celebration, dismissCelebration } = useFlagEarn();
 
@@ -79,73 +167,77 @@ export default function StorybookView({ story, canEarn = false }) {
   }, [canEarn, story, earn]);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F5F0E7' }}>
-      {/* Fixed and above everything, so the book, the back button and the
-          story's own scroll all stay hidden until the art is here. */}
-      {curtain && (
-        <BookOpeningCurtain name={story.name} imgUrl={story.image_url || null} resume />
-      )}
+    // Mounted here, not in a layout: it unmounts with the view, and that
+    // cleanup flush is what carries the last page back to the paper.
+    <DGInstrumentationProvider childId={childId} staticSection="story">
+      <div style={{ minHeight: '100vh', background: '#F5F0E7' }}>
+        {/* Fixed and above everything, so the book, the back button and the
+            story's own scroll all stay hidden until the art is here. */}
+        {curtain && (
+          <BookOpeningCurtain name={story.name} imgUrl={story.image_url || null} resume />
+        )}
 
-      {celebration && (
-        <FlagSealCelebration
-          key={celebration.id}
-          countryCode={celebration.countryCode}
-          countryName={celebration.countryName}
-          type={celebration.type}
-          onDone={dismissCelebration}
-        />
-      )}
+        {celebration && (
+          <FlagSealCelebration
+            key={celebration.id}
+            countryCode={celebration.countryCode}
+            countryName={celebration.countryName}
+            type={celebration.type}
+            onDone={dismissCelebration}
+          />
+        )}
 
-      {/* Back to the edition */}
-      <button
-        onClick={() => router.back()}
-        aria-label="Back to Daily Gold"
-        className="mdo-story-back"
-        style={{
-          position: 'fixed', top: 20, left: 20, zIndex: 50,
-          display: 'inline-flex', alignItems: 'center', gap: 8,
-          padding: '0.55rem 1.15rem',
-          background: 'rgba(251,248,241,0.9)',
-          border: '1px solid rgba(201,169,110,0.4)',
-          borderRadius: 30,
-          color: '#A8884A',
-          fontFamily: 'Lato, sans-serif',
-          fontSize: '0.68rem', letterSpacing: '0.16em', textTransform: 'uppercase',
-          cursor: 'pointer',
-          boxShadow: '0 6px 18px rgba(90,60,20,0.12)',
-          backdropFilter: 'blur(6px)',
-        }}
-      >
-        <span style={{ fontSize: '0.9rem', lineHeight: 1 }}>‹</span> Back
-      </button>
+        {/* Back to the edition */}
+        <button
+          onClick={() => router.back()}
+          aria-label="Back to Daily Gold"
+          className="mdo-story-back"
+          style={{
+            position: 'fixed', top: 20, left: 20, zIndex: 50,
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '0.55rem 1.15rem',
+            background: 'rgba(251,248,241,0.9)',
+            border: '1px solid rgba(201,169,110,0.4)',
+            borderRadius: 30,
+            color: '#A8884A',
+            fontFamily: 'Lato, sans-serif',
+            fontSize: '0.68rem', letterSpacing: '0.16em', textTransform: 'uppercase',
+            cursor: 'pointer',
+            boxShadow: '0 6px 18px rgba(90,60,20,0.12)',
+            backdropFilter: 'blur(6px)',
+          }}
+        >
+          <span style={{ fontSize: '0.9rem', lineHeight: 1 }}>‹</span> Back
+        </button>
 
-      {story ? (
-        <GoldenStory story={story} onFinished={handleFinished} />
-      ) : (
-        <div style={{
-          minHeight: '100vh', display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', gap: '1.25rem', padding: '2rem',
-          textAlign: 'center',
-        }}>
-          <p style={{
-            fontFamily: 'Playfair Display, serif', fontSize: '1.4rem',
-            color: '#4A3B2A', margin: 0,
+        {story ? (
+          <StoryReader story={story} onFinished={handleFinished} />
+        ) : (
+          <div style={{
+            minHeight: '100vh', display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: '1.25rem', padding: '2rem',
+            textAlign: 'center',
           }}>
-            This story could not be found.
-          </p>
-          <button
-            onClick={() => router.push('/daily-gold-edition')}
-            style={{
-              padding: '0.7rem 1.6rem', background: '#C8A96B', border: 'none',
-              borderRadius: 30, color: '#2C1F0E', cursor: 'pointer',
-              fontFamily: 'Lato, sans-serif', fontSize: '0.72rem',
-              letterSpacing: '0.14em', textTransform: 'uppercase',
-            }}
-          >
-            Return to Daily Gold
-          </button>
-        </div>
-      )}
-    </div>
+            <p style={{
+              fontFamily: 'Playfair Display, serif', fontSize: '1.4rem',
+              color: '#4A3B2A', margin: 0,
+            }}>
+              This story could not be found.
+            </p>
+            <button
+              onClick={() => router.push('/daily-gold-edition')}
+              style={{
+                padding: '0.7rem 1.6rem', background: '#C8A96B', border: 'none',
+                borderRadius: 30, color: '#2C1F0E', cursor: 'pointer',
+                fontFamily: 'Lato, sans-serif', fontSize: '0.72rem',
+                letterSpacing: '0.14em', textTransform: 'uppercase',
+              }}
+            >
+              Return to Daily Gold
+            </button>
+          </div>
+        )}
+      </div>
+    </DGInstrumentationProvider>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
+import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import { resolveLocation } from '@/lib/countries';
@@ -60,8 +61,9 @@ function YearSeal({ direction, disabled, onPress, pressing }) {
   );
 }
 
-export default function DGOnThisDay({ events = [], onTrack, onFlagEarned, savedSet = null, editionDate }) {
+export default function DGOnThisDay({ events = [], onFlagEarned, savedSet = null, editionDate }) {
   const { theme } = useTheme();
+  const { track } = useInstrumentation();
   const [pressingYear, setPressingYear] = useState(null); // 'back' | 'forward' | null
 
   // Published events from the on_this_day_event table, grouped year → list in
@@ -124,22 +126,36 @@ export default function DGOnThisDay({ events = [], onTrack, onFlagEarned, savedS
   const canGoBack = currentYear - 1 >= MIN_YEAR && hasEventsIn(currentYear - 1);
   const canGoForward = currentYear + 1 <= MAX_YEAR && hasEventsIn(currentYear + 1);
 
+  // Stepping to a year *is* opening what that year holds — there is no modal to
+  // wait for, the card simply turns. So the year is the content and the arrival
+  // is instantaneous: no dwell, and no close to match it. The label carries the
+  // first headline of the year where there is one, so a parent's roll-up reads
+  // "Apollo 11 lands" rather than "1969".
+  const trackYearOpen = useCallback((year) => {
+    track('content_open', {
+      contentType: 'on_this_day',
+      contentId: String(year),
+      label: byYear[year]?.[0]?.headline || String(year),
+      section: 'on_this_day',
+    });
+  }, [track, byYear]);
+
   // Handle year navigation
   const goBackOneYear = useCallback(() => {
     if (canGoBack) {
       const newYear = currentYear - 1;
       setCurrentYear(newYear);
-      onTrack?.('history', String(newYear));
+      trackYearOpen(newYear);
     }
-  }, [currentYear, onTrack, canGoBack]);
+  }, [currentYear, trackYearOpen, canGoBack]);
 
   const goForwardOneYear = useCallback(() => {
     if (canGoForward) {
       const newYear = currentYear + 1;
       setCurrentYear(newYear);
-      onTrack?.('history', String(newYear));
+      trackYearOpen(newYear);
     }
-  }, [currentYear, onTrack, canGoForward]);
+  }, [currentYear, trackYearOpen, canGoForward]);
 
   // Which years inside the band actually hold something, nearest first from
   // wherever the child is standing. An unauthored year is an ordinary outcome,
@@ -159,8 +175,8 @@ export default function DGOnThisDay({ events = [], onTrack, onFlagEarned, savedS
 
   const jumpToYear = useCallback((year) => {
     setCurrentYear(year);
-    onTrack?.('history', String(year));
-  }, [onTrack]);
+    trackYearOpen(year);
+  }, [trackYearOpen]);
 
   const yearEvents = useMemo(() => byYear[currentYear] || [], [byYear, currentYear]);
 

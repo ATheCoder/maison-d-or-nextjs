@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import DailyGoldEditionPage from '@/components/dailygold/DailyGoldEditionPage';
 import { getActiveChildProfile } from '@/app/profiles/actions';
 import { getSavedKeys } from '@/app/treasury/actions';
+import { getTodayExplorationForActiveChild } from '@/app/analytics/actions';
 import { getEditionByDate, getAvailableDates, getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate, getGreatestMomentsForDate } from './actions';
 
 // Editions live in the database and change over time, so render per-request.
@@ -78,6 +79,13 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
   // The child's saved keys are fetched here too, in one query, so no heart on
   // the page fetches its own fill state. `null` outside child mode, which is
   // how the sections tell "saved nothing" from "no one to save for".
+  //
+  // `exploration` is the same story for the For Parents card: today's real
+  // activity roll-up, resolved from the session like everything else here, and
+  // `null` when there is no reader or the roll-up could not be read — the card
+  // then shows its own empty state rather than invented numbers. It is always
+  // *today's* activity, even when the URL asks for an archive day: the card
+  // reports what this child did, not what the paper on screen contains.
   const [
     edition,
     dates,
@@ -87,6 +95,7 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     greatestMoments,
     child,
     savedKeys,
+    exploration,
   ] = await Promise.all([
     getEditionByDate(date),
     getAvailableDates(),
@@ -96,6 +105,7 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     getGreatestMomentsForDate(date),
     getActiveChildProfile(),
     getSavedKeys(),
+    getTodayExplorationForActiveChild(),
   ]);
 
   return (
@@ -110,6 +120,7 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
       onThisDay={onThisDay}
       greatestMoments={greatestMoments}
       savedKeys={savedKeys}
+      exploration={exploration}
     />
   );
 }

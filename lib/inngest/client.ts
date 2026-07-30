@@ -84,3 +84,6 @@ export type DgRewriteRequested = {
   current: string;
   context: string;
 };
+
+// purgeAnalyticsEvents (analytics retention) is cron-triggered, not sent — nothing
+// dispatches it, so it has no payload type here.

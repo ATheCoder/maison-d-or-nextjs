@@ -14,7 +14,19 @@ function MomentModal({ item, onClose }) {
   if (!item) return null;
 
   return (
-    <DGModal label="Greatest moment" onClose={onClose} maxWidth={680}>
+    <DGModal
+      label="Greatest moment"
+      onClose={onClose}
+      maxWidth={680}
+      /* This section reported nothing at all until now — the whole reason
+         tracking moved off threaded callback props and into context. */
+      tracking={{
+        contentType: 'moment',
+        contentId: String(item.id),
+        label: item.headline,
+        section: 'greatest_moments',
+      }}
+    >
       {/* Hero image */}
       <div style={{ position: 'relative', background: theme.bgSoft }}>
         {item.image_url ? (

@@ -1,8 +1,16 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
+import { SECTION_LABELS } from '@/lib/analytics-events';
 
-export default function DGForParents({ edition, timeSpent, topicsExplored }) {
+/**
+ * `exploration` is the server's roll-up of what this child actually did today
+ * (app/analytics/actions.ts) — or null when there is no reader in session and
+ * when the roll-up could not be read. There is no placeholder behind it: a card
+ * showing "3 topics" to a parent whose child has not opened the paper today
+ * would be a lie, so an absent roll-up shows "--" and no chips.
+ */
+export default function DGForParents({ edition, exploration = null }) {
   const router = useRouter();
   const { theme } = useTheme();
 
@@ -10,8 +18,11 @@ export default function DGForParents({ edition, timeSpent, topicsExplored }) {
   const goldBg = `${theme.accentGold}14`;
 
   const dest = edition?.destination?.name || 'World Journey';
-  const topics = topicsExplored || ['Geography', 'History', 'Good News'];
-  const time = timeSpent || 0;
+  // Chips carry the child's own words for each part of the paper, never the
+  // internal section ids; an id with no display name (a vocabulary that grew
+  // past this map) still shows rather than vanishing.
+  const topics = (exploration?.sections ?? []).map((s) => SECTION_LABELS[s.section] ?? s.section);
+  const time = exploration?.totalMinutes ?? 0;
 
   return (
     <section style={{
