@@ -10,7 +10,7 @@ export function proxy(request: NextRequest) {
   const hasSessionCookie = !!getSessionCookie(request);
   const { pathname } = request.nextUrl;
 
-  const protectedPath = ['/admin', '/family', '/profiles', '/gate', '/passport', '/treasury'].some((p) => pathname.startsWith(p));
+  const protectedPath = ['/admin', '/family', '/profiles', '/gate', '/passport', '/treasury', '/parent-observatory'].some((p) => pathname.startsWith(p));
   if (!hasSessionCookie && protectedPath) {
     const url = new URL('/login', request.url);
     url.searchParams.set('next', pathname);
@@ -25,5 +25,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/family/:path*', '/profiles/:path*', '/gate', '/login', '/signup', '/passport', '/treasury'],
+  // Both the bare path and the wildcard: the observatory index and one child's
+  // page are separate routes, and only the second matches ':path*'.
+  matcher: ['/admin/:path*', '/family/:path*', '/profiles/:path*', '/gate', '/login', '/signup', '/passport', '/treasury', '/parent-observatory', '/parent-observatory/:path*'],
 };

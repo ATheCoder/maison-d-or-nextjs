@@ -15,6 +15,11 @@ export const userRole = pgEnum('user_role', ['admin', 'guardian']);
 export const family = pgTable('family', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
+  // IANA zone name. Every "day" a parent is shown — the observatory's bars and
+  // the child card's "today" — is bucketed in this zone, so the two surfaces
+  // can never disagree about where a day ends. 'UTC' reproduces the
+  // server-local behaviour this column replaced on a UTC-hosted deployment.
+  timezone: text('timezone').notNull().default('UTC'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

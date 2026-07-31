@@ -15,6 +15,7 @@ import {
   setChildPin,
   removeChildPin,
   setGuardianPin,
+  setFamilyTimezone,
   type FamilyOverview,
 } from '@/app/family/actions';
 import { AVATARS, type AvatarKey } from '@/lib/avatars';
@@ -27,6 +28,18 @@ const C = {
   brown: '#5C4A2A',
   muted: '#8B7355',
 };
+
+/**
+ * Every zone the runtime knows, with UTC guaranteed present: a family that has
+ * never chosen one is stored as 'UTC', and a select must always be able to show
+ * the value it already holds. Asking Intl beats shipping a list that would rot.
+ */
+const TIME_ZONES: string[] = (() => {
+  const supported = typeof Intl.supportedValuesOf === 'function'
+    ? Intl.supportedValuesOf('timeZone')
+    : [];
+  return Array.from(new Set(['UTC', ...supported]));
+})();
 
 const card: React.CSSProperties = {
   background: 'rgba(255,248,238,0.8)',
@@ -254,6 +267,13 @@ export default function FamilyManager({ initialOverview }: { initialOverview: Fa
     else { setError(null); await refresh(); }
   }
 
+  async function handleTimezone(zone: string) {
+    if (zone === overview.timezone) return;
+    const res = await setFamilyTimezone(zone);
+    if (!res.ok) setError(res.error ?? null);
+    else { setError(null); await refresh(); }
+  }
+
   async function handleInvite() {
     if (pending) return;
     setPending(true);
@@ -303,6 +323,24 @@ export default function FamilyManager({ initialOverview }: { initialOverview: Fa
             />
             <button onClick={handleRename} style={buttonGold}>Save</button>
           </div>
+        </section>
+
+        {/* Timezone */}
+        <section style={card}>
+          <h2 style={h2}>Timezone</h2>
+          <p style={{ fontSize: '0.8rem', color: C.muted, margin: '0 0 0.9rem', lineHeight: 1.6 }}>
+            Where your days begin and end. Today&apos;s reading is counted in this zone on the
+            Parent Observatory and on your child&apos;s own For Parents card.
+          </p>
+          <select
+            value={overview.timezone}
+            onChange={(e) => handleTimezone(e.target.value)}
+            style={{ ...input, width: '100%', maxWidth: 340 }}
+          >
+            {TIME_ZONES.map((zone) => (
+              <option key={zone} value={zone}>{zone.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
         </section>
 
         {/* Children */}

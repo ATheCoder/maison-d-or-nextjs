@@ -15,6 +15,7 @@ import { family, familyInvite, user, childProfile } from '@/src/db/schema';
 import { getSession, requireFamily } from '@/lib/dal';
 import { verifyGuardianCredential } from '@/lib/guardian-credential';
 import { isAvatarKey } from '@/lib/avatars';
+import { isValidTimeZone } from '@/lib/family-time';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -28,6 +29,8 @@ async function inviteUrl(token: string) {
 export type FamilyOverview = {
   id: string;
   name: string;
+  /** IANA zone; drives day boundaries on both parent surfaces. */
+  timezone: string;
   members: { id: string; name: string; email: string; isSelf: boolean }[];
   invites: { id: string; email: string; expiresAt: string }[];
   children: { id: string; displayName: string; birthYear: number; avatar: string; hasPin: boolean }[];
@@ -48,6 +51,7 @@ export async function getFamilyOverview(): Promise<FamilyOverview> {
   return {
     id: fam.id,
     name: fam.name,
+    timezone: fam.timezone,
     members: members.map((m) => ({ ...m, isSelf: m.id === session.user.id })),
     invites: invites.map((i) => ({ ...i, expiresAt: i.expiresAt.toISOString() })),
     children: children.map((c) => ({
@@ -162,6 +166,23 @@ export async function renameFamily(name: string): Promise<{ ok: boolean; error?:
   const trimmed = typeof name === 'string' ? name.trim().slice(0, 80) : '';
   if (trimmed.length < 2) return { ok: false, error: 'Please give the family a name.' };
   await db.update(family).set({ name: trimmed, updatedAt: new Date() }).where(eq(family.id, fam.id));
+  return { ok: true };
+}
+
+/**
+ * Set the household's timezone — the zone every "day" a parent is shown is
+ * bucketed in (parent-observatory spec §8.1).
+ *
+ * Validated by asking Intl whether the name exists rather than against a list,
+ * because the runtime's own tzdata is the only authority that cannot rot. An
+ * unrecognised zone is refused rather than silently stored, since a bad value
+ * would quietly shift the day boundary on both the observatory and the child's
+ * own For Parents card.
+ */
+export async function setFamilyTimezone(timezone: string): Promise<{ ok: boolean; error?: string }> {
+  const { family: fam } = await requireFamily();
+  if (!isValidTimeZone(timezone)) return { ok: false, error: 'That is not a timezone we recognise.' };
+  await db.update(family).set({ timezone, updatedAt: new Date() }).where(eq(family.id, fam.id));
   return { ok: true };
 }
 

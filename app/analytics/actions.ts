@@ -18,8 +18,9 @@ import {
   and, count, countDistinct, desc, eq, gt, gte, inArray, isNotNull, max, ne, sql,
 } from 'drizzle-orm';
 import { db } from '@/src/db';
-import { analyticsEvent, flagSeal, type AnalyticsEventRow } from '@/src/db/schema';
+import { analyticsEvent, family, flagSeal, type AnalyticsEventRow } from '@/src/db/schema';
 import { getActiveChild } from '@/lib/dal';
+import { safeTimeZone, startOfZonedDay, zonedDayKey } from '@/lib/family-time';
 import { normaliseEventBatch } from '@/lib/analytics-event-input';
 import { MAX_EVENTS_PER_BATCH } from '@/lib/analytics-events';
 
@@ -169,27 +170,33 @@ export async function getTodayExplorationForActiveChild(): Promise<TodayExplorat
   const child = await getActiveChild();
   if (!child) return null;
 
-  // "Today" is the *host's* local day. Accepted for v1: until a family carries
-  // a timezone, there is no better answer, and a UTC-hosted deployment shifts
-  // the boundary for readers west of Greenwich (an evening's reading can land
-  // on tomorrow's card). One-line change when family timezone exists (§6).
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const dayKey = [
-    start.getFullYear(),
-    String(start.getMonth() + 1).padStart(2, '0'),
-    String(start.getDate()).padStart(2, '0'),
-  ].join('-');
-
-  // Every event read is this child, today, one type — served by the
-  // (child_id, occurred_at DESC) index.
-  const mine = (type: EventType) => and(
-    eq(analyticsEvent.childId, child.id),
-    gte(analyticsEvent.occurredAt, start),
-    eq(analyticsEvent.eventType, type),
-  );
-
   try {
+    // "Today" is the *family's* local day, read from the household's own
+    // timezone (parent-observatory spec §8.1) — the v1 note here promised this
+    // change once a family carried a zone, and the observatory now does the
+    // same bucketing from the same column. That is what makes the two surfaces
+    // agree on a day: an evening's reading in Paris lands on tonight's card,
+    // not tomorrow's, and on tonight's bar in the observatory too.
+    //
+    // One indexed row read on the household this child belongs to.
+    const household = await db
+      .select({ timezone: family.timezone })
+      .from(family)
+      .where(eq(family.id, child.familyId))
+      .limit(1);
+    const zone = safeTimeZone(household[0]?.timezone);
+    const now = new Date();
+    const start = startOfZonedDay(zone, now);
+    const dayKey = zonedDayKey(zone, now);
+
+    // Every event read is this child, today, one type — served by the
+    // (child_id, occurred_at DESC) index.
+    const mine = (type: EventType) => and(
+      eq(analyticsEvent.childId, child.id),
+      gte(analyticsEvent.occurredAt, start),
+      eq(analyticsEvent.eventType, type),
+    );
+
     // Four answers, six statements: stories need their title and their
     // finished flag from sibling event types, and merging three small grouped
     // reads in memory beats a join or a lateral over the same narrow index.
