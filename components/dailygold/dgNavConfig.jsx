@@ -18,7 +18,33 @@ export const DG_DESTINATIONS = [
   { key: 'today', label: 'Today', path: '/daily-gold-edition', icon: 'gold' },
   { key: 'stories', label: 'Home', path: '/', icon: 'home' },
   { key: 'family', label: 'Family', path: '/family', icon: 'family' },
+  // The parent observatory. Like Family it is a grown-up room behind
+  // requireFamily, so a tap from the child's paper goes through /gate first and
+  // comes back here — that is the normal path, not an edge case.
+  //
+  // Labelled "Parents", not "Observatory": with a reader signed in the mobile
+  // bar now carries six tabs, and at 320px each gets ~53px. Eleven characters
+  // wrap there, which is the same constraint that made "Treasury" out of
+  // "My Treasury".
+  { key: 'parents', label: 'Parents', path: '/parent-observatory', icon: 'insights' },
 ];
+
+/**
+ * Whether a nav item is the page currently being viewed.
+ *
+ * Lives here rather than in each renderer because the rail and the tab bar
+ * disagreeing about the active tab is the same class of bug as them disagreeing
+ * about routes — and this file exists so that cannot happen. Both destinations
+ * that own a subtree need more than string equality: the edition reader appears
+ * under several daily-gold paths, and the observatory's real pages are
+ * /parent-observatory/<childId>.
+ */
+export function isNavItemActive(item, pathname) {
+  const path = pathname || '';
+  if (item.key === 'today') return path.includes('daily-gold');
+  if (item.key === 'parents') return path.startsWith('/parent-observatory');
+  return path === item.path;
+}
 
 export const DG_SHELF = [
   { key: 'flags', label: 'My Flags', path: '/passport', icon: 'flag' },
@@ -47,6 +73,12 @@ export function DGIcon({ name, size = 20, color = 'currentColor' }) {
     case 'treasury':
       // Same outline as the save heart the child taps to fill the shelf.
       return <svg {...shared}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>;
+    case 'insights':
+      // The observatory's own bar chart. Deliberately not an eye or a
+      // telescope: the surface's governing stance is "curiosity, not
+      // surveillance" (parent-observatory spec §1), and a watching glyph in the
+      // child's own rail would say the opposite of what the page does.
+      return <svg {...shared}><line x1="6" y1="20" x2="6" y2="13" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="18" y1="20" x2="18" y2="9" /></svg>;
     default:
       return null;
   }

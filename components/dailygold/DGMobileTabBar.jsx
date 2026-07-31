@@ -11,7 +11,7 @@
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
-import { DG_DESTINATIONS, DG_SHELF, DGIcon } from '@/components/dailygold/dgNavConfig';
+import { DG_DESTINATIONS, DG_SHELF, DGIcon, isNavItemActive } from '@/components/dailygold/dgNavConfig';
 
 export default function DGMobileTabBar({ child = null }) {
   const router = useRouter();
@@ -30,8 +30,7 @@ export default function DGMobileTabBar({ child = null }) {
     ...(child ? DG_SHELF.map(tab => ({ ...tab, event: 'shelf_open' })) : []),
   ];
 
-  const isActive = (tab) =>
-    pathname === tab.path || (tab.key === 'today' && (pathname || '').includes('daily-gold'));
+  const isActive = (tab) => isNavItemActive(tab, pathname);
 
   return (
     <nav
@@ -60,13 +59,17 @@ export default function DGMobileTabBar({ child = null }) {
             }}
           >
             <DGIcon name={tab.icon} size={22} color={active ? theme.accentGold : theme.textMuted} />
-            <span style={{
-              fontFamily: theme.fontBody,
-              fontSize: '0.7rem',
-              color: active ? theme.accentGold : theme.textMuted,
-              fontWeight: active ? 700 : 400,
-              letterSpacing: '0.02em',
-            }}>
+            {/* Size and wrapping live in NAV_SHELL_CSS (.dg-tab-label), which
+                owns every breakpoint tier; only the palette-driven bits stay
+                inline. Six tabs do not fit at 0.7rem on a 320px phone. */}
+            <span
+              className="dg-tab-label"
+              style={{
+                fontFamily: theme.fontBody,
+                color: active ? theme.accentGold : theme.textMuted,
+                fontWeight: active ? 700 : 400,
+              }}
+            >
               {tab.label}
             </span>
             <span aria-hidden="true" style={{

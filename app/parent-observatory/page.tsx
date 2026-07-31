@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getObservatoryIndex } from './actions';
 import { ObservatoryInvite } from '@/components/observatory/ObservatoryInvite';
+import DGPageShell from '@/components/dailygold/DGPageShell';
+import { ThemeProvider } from '@/components/theme/ThemeContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,5 +24,11 @@ export const metadata: Metadata = {
 export default async function Page() {
   const { children } = await getObservatoryIndex();
   if (children.length > 0) redirect(`/parent-observatory/${children[0].id}`);
-  return <ObservatoryInvite />;
+  return (
+    <ThemeProvider>
+      <DGPageShell>
+        <ObservatoryInvite />
+      </DGPageShell>
+    </ThemeProvider>
+  );
 }

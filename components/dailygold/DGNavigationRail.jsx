@@ -16,7 +16,7 @@ import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
-import { DG_DESTINATIONS, DG_SHELF, DGIcon } from '@/components/dailygold/dgNavConfig';
+import { DG_DESTINATIONS, DG_SHELF, DGIcon, isNavItemActive } from '@/components/dailygold/dgNavConfig';
 import ChildSwitcherOverlay from '@/components/dailygold/ChildSwitcherOverlay';
 import { AVATARS } from '@/lib/avatars';
 
@@ -31,8 +31,7 @@ export default function DGNavigationRail({ child = null }) {
 
   const avatar = child ? (AVATARS[child.avatar] || AVATARS.sun) : null;
 
-  const isActive = (item) =>
-    pathname === item.path || (item.key === 'today' && (pathname || '').includes('daily-gold'));
+  const isActive = (item) => isNavItemActive(item, pathname);
 
   return (
     <nav className="dg-rail" aria-label="Daily Gold navigation">

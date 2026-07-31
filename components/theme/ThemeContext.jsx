@@ -10,7 +10,14 @@ const ThemeContext = createContext();
 // child that does not exist there. Until `child_profile.theme_preference`
 // lands (auth-plan §8, phase 5) the theme is in-memory only: switching still
 // works for the visit, it just does not survive a reload.
-export function ThemeProvider({ children, childId }) {
+// `childId` is optional and currently unread — the grown-up rooms (/family,
+// /parent-observatory) mount this with no child at all, and even the edition
+// passes `child?.id`, which is undefined before a reader is chosen. The JSDoc
+// is load-bearing: without it TS infers the parameter's type from the default
+// and decides the prop may only ever be null, which breaks /treasury and
+// /passport where a real id is passed.
+/** @param {{ children?: React.ReactNode, childId?: string | null }} props */
+export function ThemeProvider({ children, childId = null }) {
   const [currentTheme, setCurrentTheme] = useState(DEFAULT_THEME);
   // Nothing is fetched, so there is never a moment of not-knowing.
   const loading = false;

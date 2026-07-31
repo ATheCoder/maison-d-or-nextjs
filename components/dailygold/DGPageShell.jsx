@@ -109,6 +109,23 @@ export const NAV_SHELL_CSS = `
       padding: 0.25rem 0.5rem calc(0.25rem + env(safe-area-inset-bottom, 0px));
       z-index: 1000;
     }
+    /* One line, always: a wrapped tab label makes the bar two rows tall and
+       pushes the icons off their baseline. */
+    .dg-tab-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+  }
+
+  /* Narrow phones. With a reader signed in the bar carries six tabs — the three
+     destinations, the observatory, and the two shelf items — so a 320px screen
+     gives each about 50px. At 0.7rem "Treasury" alone needs ~46px of that and
+     wraps; shrinking the type is what keeps every tab legible and one line. */
+  @media (max-width: 380px) {
+    .dg-tabbar { padding-left: 0.25rem; padding-right: 0.25rem; }
+    .dg-tabbar > button { padding-left: 0.1rem !important; padding-right: 0.1rem !important; }
+    .dg-tab-label { font-size: 0.6rem; letter-spacing: 0; }
   }
 
   /* Keyboard focus is visible everywhere on the page */

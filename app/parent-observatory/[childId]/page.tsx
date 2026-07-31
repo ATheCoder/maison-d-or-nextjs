@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getObservatory } from '../actions';
 import { ObservatoryLedger } from '@/components/observatory/ObservatoryLedger';
+import DGPageShell from '@/components/dailygold/DGPageShell';
+import { ThemeProvider } from '@/components/theme/ThemeContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,5 +39,16 @@ export default async function Page({
   const data = await getObservatory(childId, edition);
   if (!data) redirect('/parent-observatory');
 
-  return <ObservatoryLedger data={data} />;
+  // No `child` on the shell: this page is only reachable once child mode has
+  // been cleared, so the rail hides its identity block and "My World" shelf and
+  // shows just the app's destinations. The observatory paints its own fixed
+  // Ledger canvas inside the shell's <main>, so the rail themes normally while
+  // the grown-up room stays light.
+  return (
+    <ThemeProvider>
+      <DGPageShell>
+        <ObservatoryLedger data={data} />
+      </DGPageShell>
+    </ThemeProvider>
+  );
 }

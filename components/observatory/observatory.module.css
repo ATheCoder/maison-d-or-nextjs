@@ -42,8 +42,19 @@
   color: var(--ink);
   font-family: var(--sans);
   font-weight: 300;
-  padding: 52px 64px 56px;
   box-sizing: border-box;
+
+  /*
+   * The layout below responds to THIS box, not to the viewport.
+   *
+   * The page renders inside DGPageShell, whose rail takes 224px at ≥1024px and
+   * 84px between 768 and 1023 — so a 1100px window leaves the observatory only
+   * 876px. Viewport media queries could not see that, and the two-column grid
+   * held its `1fr 380px` shape until the main column was *narrower than the
+   * rail column beside it* (319px against 380px at 950px). Querying the
+   * container makes the breakpoints mean what they say: available width.
+   */
+  container-type: inline-size;
 }
 
 .obs *,
@@ -52,9 +63,12 @@
   box-sizing: border-box;
 }
 
+/* Padding lives here, not on .obs: a container cannot query itself, so the
+   element whose padding changes must be inside the container it responds to. */
 .shell {
   max-width: 1120px;
   margin: 0 auto;
+  padding: 52px 64px 56px;
 }
 
 /* ── Masthead ─────────────────────────────────────────────────────────────── */
@@ -327,11 +341,17 @@
   color: var(--ink);
 }
 
-/* Wide enough for "under a minute" on one line — the longest value a meter can
-   carry, and wrapping it made the row look like two readings. */
+/*
+ * Sized to its own content rather than to a fixed width, because the longest
+ * value a meter can carry is the words "under a minute" (~113px), not a figure
+ * like "38 min" (~44px) — and any fixed width picked for one is wrong for the
+ * other. Wrapping it split the row into what looked like two readings. The
+ * track is the flexible element, so it simply gives up the space.
+ */
 .smin {
-  width: 84px;
   flex: none;
+  min-width: 44px;
+  white-space: nowrap;
   text-align: right;
   color: var(--clay);
   font-size: 12px;
@@ -695,10 +715,13 @@
   }
 }
 
-/* ── Responsive (also absent from the mock, which is a fixed 1120px canvas) ── */
+/* ── Responsive (also absent from the mock, which is a fixed 1120px canvas) ──
+   Container queries, not media queries — see the note on .obs. The widths are
+   the observatory's own box, so the layout is identical whether the rail is
+   224px wide, 84px wide, or absent on a phone. */
 
-@media (max-width: 900px) {
-  .obs {
+@container (max-width: 900px) {
+  .shell {
     padding: 40px 28px 44px;
   }
 
@@ -725,8 +748,8 @@
   }
 }
 
-@media (max-width: 480px) {
-  .obs {
+@container (max-width: 480px) {
+  .shell {
     padding: 32px 18px 40px;
   }
 
@@ -777,7 +800,7 @@
   }
 
   .smin {
-    width: 52px;
+    min-width: 40px;
     font-size: 11px;
   }
 
