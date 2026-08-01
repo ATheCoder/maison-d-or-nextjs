@@ -66,22 +66,22 @@ export const DG_FIELDS: Record<string, DgField> = {
   taste_of_day: {
     path: 'taste_of_day',
     label: 'Taste of the day',
-    guidance: 'A single named food or drink from this place — 4-8 words, no sentence, no full stop. Like "Pastéis de nata, still warm". Not a description of cuisine.',
+    guidance: 'A single food or drink named as it is named AT THIS DESTINATION — a local speciality a family living there would recognise, never a dish borrowed from a neighbouring country and never a generic one. 4-8 words, no sentence, no full stop. For "Lisbon, Portugal": "Pastéis de nata, still warm". Not a description of cuisine.',
   },
   sound_of_day: {
     path: 'sound_of_day',
     label: 'Sound of the day',
-    guidance: 'One sound a child would actually hear there — 4-8 words, no sentence, no full stop. Like "Trams climbing the hill at dawn".',
+    guidance: 'One sound a child would actually hear AT THIS DESTINATION — from its own streets, water, weather, animals or work. If the same sentence would be true of any city in the world, it is the wrong answer. 4-8 words, no sentence, no full stop. For "Lisbon, Portugal": "Trams climbing the hill at dawn".',
   },
   nature_detail: {
     path: 'nature_detail',
     label: 'Nature detail',
-    guidance: 'One specific living or natural thing from this place — 4-8 words, no sentence, no full stop. Like "Storks nesting on the church tower".',
+    guidance: 'One living or natural thing that belongs to THIS DESTINATION — a plant, animal, bird, river, hill or weather found there and out of place anywhere else. 4-8 words, no sentence, no full stop. For "Lisbon, Portugal": "Storks nesting on the church tower".',
   },
   tiny_phrase: {
     path: 'tiny_phrase',
     label: 'Tiny phrase',
-    guidance: 'One short everyday word or phrase in the language actually spoken at this destination — never English. One to three words a child could repeat. Return only the phrase itself.',
+    guidance: 'One short everyday word or phrase in the language actually spoken AT THIS DESTINATION — the local language, not English, and not the language of a nearby country. Where the local language really is English, use a turn of phrase particular to that place. One to three words a child could repeat. Return only the phrase itself. For "Lisbon, Portugal": "Obrigado".',
   },
   daily_quote: {
     path: 'daily_quote',
@@ -144,10 +144,21 @@ export function resolveDgField(path: string): DgField | null {
  * The proposal is applied on the editor's explicit Accept, never here.
  */
 export function rewriteDgField(field: DgField, current: string, context?: string): ChatPrompt {
+  // The sensory trio and the tiny phrase are only right *for one place*, so the
+  // rule that resolves "THIS DESTINATION" in their guidance is stated next to
+  // the context that supplies it. With no destination in the context the honest
+  // fallback is the place the current text already names — choosing a new one
+  // would move the edition somewhere else without saying so. Added only to the
+  // fields that ask for a destination: an On This Day headline has none.
+  const anchor = !field.guidance.includes('THIS DESTINATION') ? ''
+    : context
+      ? '\nThe context above names the destination this edition visits. "THIS DESTINATION" below means that place and no other; do not move the edition somewhere else.\n'
+      : '\nNo destination was supplied, so "THIS DESTINATION" below means whichever place the current text is about — keep it there rather than choosing a new one.\n';
+
   return {
     system: DG_VOICE,
     user: `${context ? `Context: ${context}\n\n` : ''}Rewrite the "${field.label}" field of a Daily Gold edition.
-
+${anchor}
 ${field.guidance}
 
 Current text:
@@ -240,10 +251,12 @@ Fields:
 - sound_of_day: ${DG_FIELDS.sound_of_day.guidance}
 - nature_detail: ${DG_FIELDS.nature_detail.guidance}
 - tiny_phrase: ${DG_FIELDS.tiny_phrase.guidance}
-- tiny_phrase_language: the language that phrase is in, in English, e.g. "Portuguese".
+- tiny_phrase_language: the language that phrase is in, in English, e.g. "Portuguese". It must be a language genuinely spoken at the destination you chose.
 - tiny_phrase_translation: what it means in English, e.g. "Thank you". The phrase and its translation are a factual claim — use a phrase you are certain of.
 - hero_scene: a SUBJECT description for the masthead painting. One or two sentences of concrete nouns describing a wide, calm view of this place. No style words (no "oil painting", "warm light") — a fixed style block is added separately. No text or lettering in the scene.
-- destination_scene: a SUBJECT description for the destination card painting: the place itself, a street, coastline or building, with the subject slightly below centre. Same rules — no style words, no text.`,
+- destination_scene: a SUBJECT description for the destination card painting: the place itself, a street, coastline or building, with the subject slightly below centre. Same rules — no style words, no text.
+
+"THIS DESTINATION" above means the one place you name in destination_country, and nowhere else in the world. The taste, the sound, the nature detail and the tiny phrase are what make this edition feel like that place rather than any other, so all four must be specifically true of it: a food eaten there, a sound heard there, something that grows or lives there, a phrase spoken there. If you cannot name a real one for the place you picked, pick a place you know well enough to.`,
     schema: DAY_DRAFT_SCHEMA,
   };
 }
