@@ -96,18 +96,22 @@ function DGChromeFrame({ child, viewer, children }) {
  * @param {{
  *   child?: { id: string, name: string, avatar: string } | null,
  *   viewer?: { name: string, role: 'admin' | 'guardian' } | null,
+ *   initialTheme?: string | null,
  *   today: string,
  *   children: import('react').ReactNode,
  * }} props
  */
-export default function DailyGoldEditionChrome({ child = null, viewer = null, today, children }) {
+export default function DailyGoldEditionChrome({ child = null, viewer = null, initialTheme = null, today, children }) {
   const searchParams = useSearchParams();
   // The bare route is the paper of the moment; every earlier day names itself.
   const editionDate = searchParams.get('date') || today;
 
   return (
     <DGErrorBoundary>
-      <ThemeProvider childId={child?.id}>
+      {/* The reader's saved palette, read from their profile server-side, so
+          the paper opens in the colours they chose rather than fading into
+          them. */}
+      <ThemeProvider childId={child?.id} initialTheme={initialTheme}>
         {/* Keyed on the reader so a profile switch remounts everything below —
             the chrome, the page under it, and the instrumentation with it. The
             key belongs on the provider rather than on the frame alone: an

@@ -20,6 +20,7 @@ import {
 } from '@/app/(dg)/family/actions';
 import { AVATARS, type AvatarKey } from '@/lib/avatars';
 import SignOutButton from '@/components/auth/SignOutButton';
+import { authClient } from '@/lib/auth-client';
 
 const C = {
   gold: '#C9A96E',
@@ -249,6 +250,55 @@ const smallLink: React.CSSProperties = {
   padding: 0,
 };
 
+/**
+ * The verify-your-email nag (auth-plan §9.4). Deliberately a note and not a
+ * gate: nothing in the app waits on a confirmed address, so this asks once,
+ * closes on request, and never comes back in this session. The reason it is
+ * worth asking at all is password recovery — an unconfirmed address is a
+ * family whose history no one can get back into.
+ */
+function VerifyEmailNote({ email }: { email: string }) {
+  const [dismissed, setDismissed] = useState(false);
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle');
+  if (dismissed) return null;
+
+  async function resend() {
+    if (state === 'sending') return;
+    setState('sending');
+    const res = await authClient.sendVerificationEmail({ email, callbackURL: '/family' });
+    setState(res.error ? 'failed' : 'sent');
+  }
+
+  return (
+    <div style={{
+      background: 'rgba(201,169,110,0.12)',
+      border: '1px dashed rgba(201,169,110,0.5)',
+      borderRadius: 12,
+      padding: '0.9rem 1rem',
+      marginBottom: '1.25rem',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.9rem',
+      flexWrap: 'wrap',
+    }}>
+      <span style={{ fontSize: '1.1rem' }}>✉️</span>
+      <p style={{ flex: 1, minWidth: 200, fontSize: '0.8rem', lineHeight: 1.6, color: C.brown, margin: 0 }}>
+        {state === 'sent'
+          ? <>A fresh confirmation link is on its way to <strong>{email}</strong>.</>
+          : state === 'failed'
+            ? 'We could not send that just now — please try again in a moment.'
+            : <>Confirm <strong>{email}</strong> so you can recover your account if you ever forget your password.</>}
+      </p>
+      {state !== 'sent' && (
+        <button onClick={resend} style={{ ...buttonGold, padding: '0.45rem 0.9rem' }}>
+          {state === 'sending' ? 'Sending…' : 'Resend'}
+        </button>
+      )}
+      <button onClick={() => setDismissed(true)} style={smallLink} aria-label="Dismiss">Not now</button>
+    </div>
+  );
+}
+
 export default function FamilyManager({ initialOverview }: { initialOverview: FamilyOverview }) {
   const [overview, setOverview] = useState(initialOverview);
   const [nameDraft, setNameDraft] = useState(initialOverview.name);
@@ -257,6 +307,10 @@ export default function FamilyManager({ initialOverview }: { initialOverview: Fa
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  // The caller's own address, as the overview already reports it — the resend
+  // endpoint needs an address, and this is the one the session belongs to.
+  const selfEmail = overview.members.find((m) => m.isSelf)?.email ?? '';
 
   const refresh = async () => setOverview(await getFamilyOverview());
 
@@ -310,6 +364,8 @@ export default function FamilyManager({ initialOverview }: { initialOverview: Fa
             <SignOutButton />
           </span>
         </div>
+
+        {!overview.emailVerified && selfEmail && <VerifyEmailNote email={selfEmail} />}
 
         {/* Family name */}
         <section style={card}>

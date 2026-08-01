@@ -1,0 +1,1 @@
+ALTER TABLE "child_profile" ADD COLUMN "theme_preference" text;

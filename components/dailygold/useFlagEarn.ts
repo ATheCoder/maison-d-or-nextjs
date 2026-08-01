@@ -15,6 +15,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { earnFlagSeal } from '@/app/(dg)/passport/actions';
+import { useSignupInvite } from '@/components/dailygold/SignupInvite';
 import { isValidIso2 } from '@/lib/countries';
 import type { FlagSource } from '@/lib/flag-seal-input';
 
@@ -34,6 +35,8 @@ export function useFlagEarn({ editionDate }: { editionDate?: string } = {}) {
   const [queue, setQueue] = useState<CelebrationItem[]>([]);
   const seq = useRef(0);
   const alive = useRef(true);
+  // Inert unless the edition is being read without a session.
+  const { signedOut, invite } = useSignupInvite();
 
   useEffect(() => {
     alive.current = true;
@@ -45,6 +48,20 @@ export function useFlagEarn({ editionDate }: { editionDate?: string } = {}) {
     if (!isValidIso2(code)) return;            // no server call on junk (R7.22)
     if (attempted.current.has(code)) return;
     attempted.current.add(code);
+
+    /**
+     * A visitor with no session has no passport to earn into, so the action
+     * would only answer `noop` — don't ask. Whether that silence is worth
+     * breaking depends on how the earn was triggered: good news and On This Day
+     * earn from a mount effect, and a toast that appears on its own the moment
+     * the page loads is an interruption, not an invitation. The destination
+     * earns from a press (opening the country's story), which is a visitor
+     * reaching for the thing an account would keep — that one gets answered.
+     */
+    if (signedOut) {
+      if (source === 'destination') invite('flag');
+      return;
+    }
 
     earnFlagSeal({ countryCode: code, countryName: countryName || '', source, editionDate })
       .then((res) => {
@@ -65,7 +82,7 @@ export function useFlagEarn({ editionDate }: { editionDate?: string } = {}) {
         // Swallowed on purpose — earns are invisible when they fail (R6.4).
         attempted.current.delete(code);
       });
-  }, [editionDate]);
+  }, [editionDate, signedOut, invite]);
 
   const dismissCelebration = useCallback(() => setQueue((q) => q.slice(1)), []);
 

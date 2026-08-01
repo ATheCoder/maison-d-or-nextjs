@@ -1,61 +1,48 @@
 'use client';
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useTransition } from 'react';
 import { THEMES, DEFAULT_THEME } from './themes';
+import { setThemePreference } from '@/app/theme/actions';
 
 const ThemeContext = createContext();
 
-// PERSISTENCE DISABLED — `childId` is now a child_profile UUID from the
-// session, which the Base44 `Child` entity has never seen: the read below
-// would never match and the write would create an orphan row keyed to a
-// child that does not exist there. Until `child_profile.theme_preference`
-// lands (auth-plan §8, phase 5) the theme is in-memory only: switching still
-// works for the visit, it just does not survive a reload.
-// `childId` is optional and currently unread — the grown-up rooms (/family,
-// /parent-observatory) mount this with no child at all, and even the edition
-// passes `child?.id`, which is undefined before a reader is chosen. The JSDoc
-// is load-bearing: without it TS infers the parameter's type from the default
-// and decides the prop may only ever be null, which breaks /treasury and
-// /passport where a real id is passed.
-/** @param {{ children?: React.ReactNode, childId?: string | null }} props */
-export function ThemeProvider({ children, childId = null }) {
-  const [currentTheme, setCurrentTheme] = useState(DEFAULT_THEME);
-  // Nothing is fetched, so there is never a moment of not-knowing.
+// The theme is read on the server and written back through a server action, so
+// nothing is fetched here: `initialTheme` is child_profile.theme_preference,
+// resolved from the session by whichever layout mounts this provider, and there
+// is never a moment of not-knowing on the client.
+// `childId` is *not* the identity of the write — the action takes no id and
+// resolves the child from the session itself (auth-plan §1). It is read only as
+// "is there anyone to persist for", so the grown-up rooms (/family,
+// /parent-observatory), which mount this with no child at all, and the edition
+// before a reader is chosen, skip the round trip instead of POSTing a no-op.
+// The JSDoc is load-bearing: without it TS infers each parameter's type from
+// its default and decides the props may only ever be null, which breaks
+// /treasury and /passport where a real id and a real theme are passed.
+/** @param {{ children?: React.ReactNode, childId?: string | null, initialTheme?: string | null }} props */
+export function ThemeProvider({ children, childId = null, initialTheme = null }) {
+  // A stored key that is no longer a palette (a theme retired between the write
+  // and this read) falls back rather than leaving the picker pointing at
+  // nothing.
+  const [currentTheme, setCurrentTheme] = useState(
+    initialTheme && THEMES[initialTheme] ? initialTheme : DEFAULT_THEME,
+  );
   const loading = false;
+  const [, startPersist] = useTransition();
 
-  // // Load theme from child profile on mount
-  // useEffect(() => {
-  //   if (!childId) {
-  //     setLoading(false);
-  //     return;
-  //   }
-  //
-  //   const loadTheme = async () => {
-  //     try {
-  //       const child = await base44.entities.Child.filter({ id: childId }, '-created_date', 1).catch(() => []);
-  //       if (child[0]?.theme_preference) {
-  //         setCurrentTheme(child[0].theme_preference);
-  //       }
-  //     } catch (_) {
-  //       // Fallback to default
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-  //
-  //   loadTheme();
-  // }, [childId]);
-
-  const switchTheme = async (themeName) => {
+  const switchTheme = (themeName) => {
     if (!THEMES[themeName]) return;
 
+    // Optimistic: the palette changes on the tap. The write is a background
+    // errand, and a failed one costs the child nothing this visit.
     setCurrentTheme(themeName);
+    if (!childId) return;
 
-    // // Persist to child profile
-    // if (childId) {
-    //   try {
-    //     await base44.entities.Child.update(childId, { theme_preference: themeName }).catch(() => {});
-    //   } catch (_) {}
-    // }
+    startPersist(async () => {
+      try {
+        await setThemePreference(themeName);
+      } catch (error) {
+        console.warn('theme: preference not saved', error);
+      }
+    });
   };
 
   const theme = THEMES[currentTheme] || THEMES[DEFAULT_THEME];

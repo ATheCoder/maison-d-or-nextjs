@@ -13,8 +13,10 @@ import { hashPassword } from 'better-auth/crypto';
 import { db } from '@/src/db';
 import { family, familyInvite, user, childProfile } from '@/src/db/schema';
 import { getSession, requireFamily } from '@/lib/dal';
+import { sendEmail, brandedEmail } from '@/lib/email';
 import { verifyGuardianCredential } from '@/lib/guardian-credential';
 import { isAvatarKey } from '@/lib/avatars';
+import { isThemeKey } from '@/lib/theme-keys';
 import { isValidTimeZone } from '@/lib/family-time';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -35,6 +37,11 @@ export type FamilyOverview = {
   invites: { id: string; email: string; expiresAt: string }[];
   children: { id: string; displayName: string; birthYear: number; avatar: string; hasPin: boolean }[];
   guardianHasPin: boolean;
+  /**
+   * The caller's own address confirmation. Nothing is gated on it — it only
+   * decides whether /family shows the verify-your-email note (auth-plan §9.4).
+   */
+  emailVerified: boolean;
 };
 
 /** Everything the /family page shows, scoped to the caller's family. */
@@ -62,6 +69,7 @@ export async function getFamilyOverview(): Promise<FamilyOverview> {
       hasPin: c.pinHash != null,
     })),
     guardianHasPin: selfRows[0]?.pinHash != null,
+    emailVerified: session.user.emailVerified === true,
   };
 }
 
@@ -85,17 +93,33 @@ function validateChildInput(displayName: unknown, birthYear: unknown, avatar: un
   return { ok: true, displayName: name, birthYear: year, avatar };
 }
 
-export async function createChildProfile(input: { displayName: string; birthYear: number; avatar: string }):
+/**
+ * `themePreference` is optional and additive: /family creates profiles without
+ * one (the reader gets the default palette and may change it themselves), while
+ * the /welcome wizard lets the grown-up choose a palette in the same breath as
+ * the name. Absent means "no choice recorded", which is not the same as
+ * choosing the default — hence null rather than DEFAULT_THEME_KEY.
+ *
+ * Validated against the shared key module, exactly as app/theme/actions.ts
+ * does, so there is one whitelist and a retired palette can never be written
+ * from either door.
+ */
+export async function createChildProfile(input: { displayName: string; birthYear: number; avatar: string; themePreference?: string | null }):
   Promise<{ ok: boolean; error?: string }> {
   const { family: fam } = await requireFamily();
   const v = validateChildInput(input?.displayName, input?.birthYear, input?.avatar);
   if (!v.ok) return v;
+  const wantsTheme = input?.themePreference != null && input.themePreference !== '';
+  if (wantsTheme && !isThemeKey(input.themePreference)) {
+    return { ok: false, error: 'Please pick one of the colour themes.' };
+  }
   await db.insert(childProfile).values({
     id: randomUUID(),
     familyId: fam.id,
     displayName: v.displayName,
     birthYear: v.birthYear,
     avatar: v.avatar,
+    themePreference: wantsTheme ? (input.themePreference as string) : null,
   });
   return { ok: true };
 }
@@ -189,8 +213,12 @@ export async function setFamilyTimezone(timezone: string): Promise<{ ok: boolean
 /**
  * Create (or rotate) an invite for a co-guardian. Returns the invite URL —
  * the only moment the raw token exists, so the UI shows it for copying.
- * Actual email delivery needs a mail provider; until one is wired up the
- * guardian shares the link themselves.
+ *
+ * The same URL is also mailed to the invitee. The copy-link panel stays: mail
+ * can bounce, land in spam, or (with no RESEND_API_KEY) only reach the server
+ * console, and the guardian standing there with the link in hand must never be
+ * the thing that fails. For that reason a delivery failure is not surfaced as
+ * an error either — the invite itself is already created and valid.
  */
 export async function createInvite(email: string): Promise<{ ok: true; url: string; email: string } | { ok: false; error: string }> {
   const { session, family: fam } = await requireFamily();
@@ -213,7 +241,23 @@ export async function createInvite(email: string): Promise<{ ok: true; url: stri
     .values({ id: randomUUID(), familyId: fam.id, email: normalized, ...values })
     .onConflictDoUpdate({ target: [familyInvite.familyId, familyInvite.email], set: values });
 
-  return { ok: true, url: await inviteUrl(token), email: normalized };
+  const url = await inviteUrl(token);
+  const inviter = session.user.name?.trim() || 'A parent';
+  await sendEmail({
+    to: normalized,
+    subject: `${inviter} invited you to ${fam.name} on Maison d'Ore`,
+    ...brandedEmail({
+      heading: `You're invited to ${fam.name}`,
+      body: [
+        `${inviter} would like you to join their family on Maison d'Ore — the house where their children read the Daily Gold edition each morning.`,
+        'Accepting gives you the same view they have: the readers, their saved treasures, and the reading journey behind them.',
+      ],
+      action: { label: 'Join the family', url },
+      footnote: 'This invitation expires in 7 days. If you were not expecting it, you can ignore this message.',
+    }),
+  });
+
+  return { ok: true, url, email: normalized };
 }
 
 export async function revokeInvite(inviteId: string): Promise<{ ok: boolean }> {

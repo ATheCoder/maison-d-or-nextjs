@@ -59,6 +59,10 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
   }
 
   const next = encodeURIComponent(`/invite/${token}`);
+  // The invite is bound to one address, so the sign-up form may as well arrive
+  // already holding it (AuthForm prefills, editable). Nothing is trusted from
+  // this: acceptInvite compares the *session's* email to the invite's.
+  const signupHref = `/signup?next=${next}&email=${encodeURIComponent(invite.email)}`;
 
   return (
     <div style={shell}>
@@ -78,7 +82,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
         ) : (
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
             <a href={`/login?next=${next}`} style={linkButton}>Log in</a>
-            <a href={`/signup?next=${next}`} style={{ ...linkButton, background: 'transparent', color: '#8B7355', border: '1px solid rgba(201,169,110,0.5)' }}>
+            <a href={signupHref} style={{ ...linkButton, background: 'transparent', color: '#8B7355', border: '1px solid rgba(201,169,110,0.5)' }}>
               Sign up
             </a>
           </div>

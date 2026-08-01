@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import DailyGoldEditionPage from '@/components/dailygold/DailyGoldEditionPage';
 import { getSavedKeys } from '@/app/(dg)/treasury/actions';
 import { getTodayExplorationForActiveChild } from '@/app/analytics/actions';
+import { getActiveChildProfile } from '@/app/profiles/actions';
+import { getSession } from '@/lib/dal';
 import { getEditionByDate, getLatestEdition, getAvailableDates, getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate, getGreatestMomentsForDate } from './actions';
 
 // Editions live in the database and change over time, so render per-request.
@@ -86,6 +88,15 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
   // then shows its own empty state rather than invented numbers. It is always
   // *today's* activity, even when the URL asks for an archive day: the card
   // reports what this child did, not what the paper on screen contains.
+  //
+  // `session` and `child` are the last two: this route is public, and who is
+  // holding the paper decides two things the day itself does not. With no
+  // session at all the reader is a stranger, which is worth saying plainly
+  // rather than leaving them tapping hearts that were never rendered
+  // (onboarding plan WP-D). With `?welcome=1` the reader has just been created
+  // by the /welcome wizard, and their paper opens with a flourish — the name
+  // comes from the session's own active child, never from the URL, so the
+  // parameter can announce nobody else's child.
   const [
     edition,
     dates,
@@ -95,6 +106,8 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     greatestMoments,
     savedKeys,
     exploration,
+    session,
+    child,
   ] = await Promise.all([
     getEditionByDate(date),
     getAvailableDates(),
@@ -104,7 +117,12 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     getGreatestMomentsForDate(date),
     getSavedKeys(),
     getTodayExplorationForActiveChild(),
+    getSession(),
+    getActiveChildProfile(),
   ]);
+
+  const params = await searchParams;
+  const welcomeName = params.welcome === '1' && child ? child.name : null;
 
   // Arriving at the bare route on a day with nothing on it — before the
   // morning's edition is published, or on a day that was never authored — used
@@ -131,8 +149,15 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     const lastGoodDay = latest && latest.edition_date < todayStr
       ? latest.edition_date
       : dates.filter((d) => d < todayStr).pop();
+    // `welcome=1` rides along, because this hop is exactly when a new family is
+    // most likely to be sent through it: the wizard lands on the bare route, and
+    // a household that finishes before the morning's paper is published would
+    // otherwise lose the flourish to a redirect it never asked for.
     // Nothing anywhere: fall through and render today's empty paper.
-    if (lastGoodDay) redirect(`/daily-gold-edition?date=${lastGoodDay}`);
+    if (lastGoodDay) {
+      const flourish = params.welcome === '1' ? '&welcome=1' : '';
+      redirect(`/daily-gold-edition?date=${lastGoodDay}${flourish}`);
+    }
   }
 
   return (
@@ -147,6 +172,8 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
       greatestMoments={greatestMoments}
       savedKeys={savedKeys}
       exploration={exploration}
+      signedOut={!session}
+      welcomeName={welcomeName}
     />
   );
 }

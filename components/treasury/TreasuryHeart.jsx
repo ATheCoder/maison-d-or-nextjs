@@ -21,6 +21,7 @@
  */
 import { useState } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
+import { useSignupInvite } from '@/components/dailygold/SignupInvite';
 import { toggleSavedItem } from '@/app/(dg)/treasury/actions';
 
 export default function TreasuryHeart({
@@ -38,6 +39,8 @@ export default function TreasuryHeart({
   onToggled,
 }) {
   const { theme } = useTheme();
+  // Inert everywhere but the public edition read without a session.
+  const { signedOut, invite } = useSignupInvite();
   const [saved, setSaved] = useState(initialSaved);
   const [loading, setLoading] = useState(false);
 
@@ -57,6 +60,11 @@ export default function TreasuryHeart({
     // The heart sits on cards that open a modal on tap — keep the tap local.
     e.stopPropagation();
     if (loading) return;
+    // A visitor with no session has no child to save against; the action would
+    // answer `no_child` and the heart would sit there unmoved. Answer the tap
+    // with the thing that would make it work instead — and without a round trip
+    // to learn what the page already knows.
+    if (signedOut) { invite('save'); return; }
     setLoading(true);
     try {
       const res = await toggleSavedItem({

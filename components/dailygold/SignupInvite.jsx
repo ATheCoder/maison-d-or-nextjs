@@ -1,0 +1,126 @@
+'use client';
+/**
+ * The signed-out visitor's answer (onboarding plan WP-D).
+ *
+ * /daily-gold-edition is public, so a stranger can read the whole paper. What
+ * they cannot do is keep any of it: saves and flags both resolve the child from
+ * the session, and with no session there is nothing to resolve. Before this,
+ * that showed as nothing at all — hearts were simply absent (the page passes
+ * `savedKeys: null`) and flag earns returned a silent no-op. A tap that does
+ * nothing reads as a broken page, not as a closed door.
+ *
+ * So this: one context, mounted by the edition only when there is no session,
+ * that turns those dead ends into the same small invitation. Components ask
+ * `signedOut` before doing the work, and call `invite()` instead — no server
+ * round trip to discover what the page already knows.
+ *
+ * Outside the provider the hook returns an inert value, so /treasury,
+ * /passport and the design-sync previews mount these components unchanged and
+ * behave exactly as they did.
+ */
+import { createContext, useContext, useMemo, useState } from 'react';
+import { useTheme } from '@/components/theme/ThemeContext';
+
+const SignupInviteContext = createContext(null);
+
+/** Where every invitation leads — back here once the account exists. */
+export const SIGNUP_HREF = '/signup?next=/daily-gold-edition';
+
+const INERT = { signedOut: false, invite: () => {} };
+
+/** @returns {{ signedOut: boolean, invite: (kind?: 'save' | 'flag') => void }} */
+export function useSignupInvite() {
+  return useContext(SignupInviteContext) ?? INERT;
+}
+
+const MESSAGES = {
+  save: 'Treasures are kept in your family’s own collection.',
+  flag: 'Flags are collected in your reader’s passport.',
+};
+
+function InviteToast({ message, onClose }) {
+  const { theme } = useTheme();
+  return (
+    <div
+      role="status"
+      style={{
+        position: 'fixed',
+        left: '50%',
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.5rem)',
+        transform: 'translateX(-50%)',
+        // Above DGModal (2000): most hearts on the page are reached *inside* a
+        // card's modal, so a toast below it would answer the tap invisibly.
+        zIndex: 2500,
+        maxWidth: 'min(92vw, 420px)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.9rem',
+        padding: '0.85rem 1rem',
+        borderRadius: 14,
+        background: theme.bgCard,
+        border: `1px solid ${theme.accentGold}55`,
+        boxShadow: '0 10px 34px rgba(60,45,20,0.22)',
+        animation: 'dgFadeIn 0.3s ease-out',
+      }}
+    >
+      <span style={{
+        fontFamily: theme.fontBody,
+        fontSize: '0.8rem',
+        color: theme.textBody,
+        lineHeight: 1.5,
+        flex: 1,
+      }}>
+        {message}
+      </span>
+      <a
+        href={SIGNUP_HREF}
+        style={{
+          flexShrink: 0,
+          padding: '0.5rem 0.9rem',
+          borderRadius: 10,
+          background: theme.accentGold,
+          color: '#FFF',
+          fontFamily: theme.fontBody,
+          fontSize: '0.7rem',
+          fontWeight: 700,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          textDecoration: 'none',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        Sign up
+      </a>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Dismiss"
+        style={{
+          flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer',
+          color: theme.textMuted, fontSize: '1rem', lineHeight: 1, padding: '0.2rem',
+        }}
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
+/** @param {{ signedOut?: boolean, children?: import('react').ReactNode }} props */
+export function SignupInviteProvider({ signedOut = false, children }) {
+  const [reason, setReason] = useState(null);
+
+  const value = useMemo(() => ({
+    signedOut,
+    // Guarded here as well as at each call site: a component that forgets to
+    // check can never pop a signup prompt at a signed-in reader.
+    invite: (kind) => { if (signedOut) setReason(kind === 'flag' ? 'flag' : 'save'); },
+  }), [signedOut]);
+
+  return (
+    <SignupInviteContext.Provider value={value}>
+      {children}
+      {reason && <InviteToast message={MESSAGES[reason]} onClose={() => setReason(null)} />}
+    </SignupInviteContext.Provider>
+  );
+}

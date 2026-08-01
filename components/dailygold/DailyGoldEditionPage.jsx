@@ -15,6 +15,8 @@ import DGInspirationBar from '@/components/dailygold/DGInspirationBar';
 import FlagSealCelebration from '@/components/dailygold/FlagSealCelebration';
 import { useFlagEarn } from '@/components/dailygold/useFlagEarn';
 import { TrackedSection } from '@/components/dailygold/instrumentation/TrackedSection';
+import { SignupInviteProvider } from '@/components/dailygold/SignupInvite';
+import { SignedOutCta, WelcomeFlourish } from '@/components/dailygold/DGVisitorBanners';
 import { useTheme } from '@/components/theme/ThemeContext';
 
 /**
@@ -105,7 +107,7 @@ const PAGE_CSS = `
   }
 `;
 
-function DailyGoldDay({ date, today, edition: editionRecord, dates, people, goodNews, onThisDay, greatestMoments, savedKeys, exploration }) {
+function DailyGoldDay({ date, today, edition: editionRecord, dates, people, goodNews, onThisDay, greatestMoments, savedKeys, exploration, signedOut, welcomeName }) {
   const { theme } = useTheme();
   const router = useRouter();
 
@@ -113,7 +115,17 @@ function DailyGoldDay({ date, today, edition: editionRecord, dates, people, good
   // `type:id` in it instead of each heart asking after itself. `null` — not an
   // empty set — outside child mode, and a section with no set renders no hearts
   // at all: an absent heart is honest where a heart that can't save is not.
-  const savedSet = useMemo(() => (savedKeys ? new Set(savedKeys) : null), [savedKeys]);
+  //
+  // The signed-out visitor is the one exception, and for the same reason: for
+  // them an absent heart is *not* honest, because there is something to offer
+  // (an account). They get an empty set, so every heart renders unfilled, and
+  // TreasuryHeart turns the tap into an invitation rather than a save
+  // (SignupInvite). A signed-in grown-up outside child mode still gets null —
+  // they already have an account, so there is nothing to invite them to.
+  const savedSet = useMemo(
+    () => (savedKeys ? new Set(savedKeys) : signedOut ? new Set() : null),
+    [savedKeys, signedOut],
+  );
 
   // Every section is the server's answer for `date`, so the masthead, the
   // footer and the content can never disagree about which day this is.
@@ -147,6 +159,11 @@ function DailyGoldDay({ date, today, edition: editionRecord, dates, people, good
     // not once when the chrome first mounts.
     <div style={{ animation: 'dgFadeIn 0.4s ease-out' }}>
       <style>{PAGE_CSS}</style>
+
+      {/* Who is holding the paper, not what is in it — so both sit above the
+          masthead and outside every tracked region. */}
+      {welcomeName && <WelcomeFlourish name={welcomeName} />}
+      {signedOut && <SignedOutCta />}
 
       {celebration && (
         <FlagSealCelebration
@@ -260,25 +277,37 @@ function DailyGoldDay({ date, today, edition: editionRecord, dates, people, good
  * server-resolved, also null without a reader (or when the roll-up failed), in
  * which case that card renders its own empty state.
  *
- * @param {{ date?: string, today?: string, edition?: any, dates?: string[], people?: any[], goodNews?: any[], onThisDay?: any[], greatestMoments?: any[], savedKeys?: string[] | null, exploration?: any }} props
+ * `signedOut` and `welcomeName` are the two facts about the *visitor* the day
+ * itself cannot supply: whether there is a session at all, and whether this is
+ * the first paper of a reader the /welcome wizard has just created. Both are
+ * decided on the server; neither is ever inferred here.
+ *
+ * @param {{ date?: string, today?: string, edition?: any, dates?: string[], people?: any[], goodNews?: any[], onThisDay?: any[], greatestMoments?: any[], savedKeys?: string[] | null, exploration?: any, signedOut?: boolean, welcomeName?: string | null }} props
  */
-export default function DailyGoldEdition({ date, today, edition = null, dates = [], people = [], goodNews = [], onThisDay = [], greatestMoments = [], savedKeys = null, exploration = null }) {
+export default function DailyGoldEdition({ date, today, edition = null, dates = [], people = [], goodNews = [], onThisDay = [], greatestMoments = [], savedKeys = null, exploration = null, signedOut = false, welcomeName = null }) {
   // Defaulted here rather than in the signature so a caller that knows neither
   // date — the design-sync preview — still renders a coherent single day.
   const todayStr = today || new Date().toISOString().slice(0, 10);
 
   return (
-    <DailyGoldDay
-      date={date || todayStr}
-      today={todayStr}
-      edition={edition}
-      dates={dates}
-      people={people}
-      goodNews={goodNews}
-      onThisDay={onThisDay}
-      greatestMoments={greatestMoments}
-      savedKeys={savedKeys}
-      exploration={exploration}
-    />
+    // The provider is inert unless there is no session, so signed-in readers
+    // pay nothing for it and the hearts below behave exactly as they always
+    // have.
+    <SignupInviteProvider signedOut={signedOut}>
+      <DailyGoldDay
+        date={date || todayStr}
+        today={todayStr}
+        edition={edition}
+        dates={dates}
+        people={people}
+        goodNews={goodNews}
+        onThisDay={onThisDay}
+        greatestMoments={greatestMoments}
+        savedKeys={savedKeys}
+        exploration={exploration}
+        signedOut={signedOut}
+        welcomeName={welcomeName}
+      />
+    </SignupInviteProvider>
   );
 }

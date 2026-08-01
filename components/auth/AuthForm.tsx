@@ -43,7 +43,12 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  // An invite link carries the address it was sent to (`?email=`), so the
+  // invitee does not have to re-type the one address their invite is bound to.
+  // Prefill only — the field stays editable, because the person following the
+  // link may well want a different account, and acceptInvite checks the address
+  // properly on the server either way.
+  const [email, setEmail] = useState(() => searchParams.get('email') ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -69,21 +74,43 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
       return;
     }
 
-    // Admins land on /admin, guardians on the profile picker. `next` wins
-    // when present (e.g. an invite link).
+    // Admins land on /admin, returning guardians on the profile picker, and
+    // `next` wins for both — it is how a protected page a visitor was bounced
+    // off gets handed back to them.
+    //
+    // Signup is the exception. A brand-new family has no readers, so every
+    // destination in the app is an empty room until the /welcome wizard has run;
+    // honouring `next` there would strand the account on a page that cannot
+    // work yet (the signed-out edition's own CTA carries exactly such a `next`).
+    // The one `next` worth keeping is an invite, because accepting one *is* the
+    // setup — it moves the account into a family that already has readers, and
+    // /welcome would only bounce it back out again.
+    //
     // Push only — a router.refresh() here would re-fetch /login while the push
     // is in flight and hang the navigation. Every landing route reads the
     // session, so it is dynamic and never served from the client cache.
     const role = 'user' in result.data ? (result.data.user as { role?: string }).role : undefined;
     const next = searchParams.get('next');
+    if (isSignup && role !== 'admin') {
+      router.push(next?.startsWith('/invite/') ? next : '/welcome');
+      return;
+    }
     router.push(next || (role === 'admin' ? '/admin' : '/profiles'));
   }
 
   return (
     <div style={{
       minHeight: '100vh',
+      // Ivory stays as the paint under the photo: it is what shows if the
+      // image 404s, and it matches the wall closely enough that the failure
+      // is invisible rather than a white flash.
       background: C.ivory,
-      backgroundImage: 'radial-gradient(ellipse at 15% 25%, rgba(139,115,80,0.06) 0%, transparent 55%), radial-gradient(ellipse at 85% 75%, rgba(100,75,45,0.04) 0%, transparent 45%)',
+      // Vignette sits above the photo, settling the gilt frames at the edges
+      // so they frame the card instead of pulling the eye outward.
+      backgroundImage: "radial-gradient(ellipse at 50% 50%, transparent 45%, rgba(120,95,55,0.10) 100%), url('/auth/maison-drawing-room.webp')",
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -92,10 +119,15 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
       <div style={{
         width: '100%',
         maxWidth: 400,
-        background: 'rgba(255,248,238,0.85)',
+        // The wall behind the card reads ~#F3E7D0; this composites brighter
+        // than that, so the card lifts off the photo instead of dissolving
+        // into it. The shadow does the rest of the separating.
+        background: 'rgba(255,250,242,0.82)',
+        backdropFilter: 'blur(10px) saturate(1.08)',
+        WebkitBackdropFilter: 'blur(10px) saturate(1.08)',
         borderRadius: 18,
-        border: `1px solid rgba(201,169,110,0.3)`,
-        boxShadow: '0 8px 40px rgba(100,80,40,0.12)',
+        border: `1px solid rgba(201,169,110,0.42)`,
+        boxShadow: '0 24px 60px rgba(92,72,38,0.20), 0 2px 10px rgba(92,72,38,0.08), inset 0 1px 0 rgba(255,255,255,0.55)',
         padding: '2.5rem 2rem',
       }}>
         <p style={{
@@ -159,6 +191,23 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
               autoComplete={isSignup ? 'new-password' : 'current-password'}
               style={inputStyle}
             />
+            {!isSignup && (
+              // Quiet on purpose: the way out for the one guardian who needs
+              // it, not a second call to action competing with Log in.
+              <p style={{ margin: '0.5rem 0 0', textAlign: 'right' }}>
+                <a
+                  href="/forgot-password"
+                  style={{
+                    fontFamily: 'Lato, sans-serif',
+                    fontSize: '0.72rem',
+                    color: C.muted,
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Forgot password?
+                </a>
+              </p>
+            )}
           </div>
 
           {error && (

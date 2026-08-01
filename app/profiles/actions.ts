@@ -11,7 +11,7 @@ import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { verifyPassword } from 'better-auth/crypto';
 import { db } from '@/src/db';
-import { analyticsEvent, childProfile, session as sessionTable } from '@/src/db/schema';
+import { analyticsEvent, childProfile, session as sessionTable, user } from '@/src/db/schema';
 import { getActiveChild, requireGuardian } from '@/lib/dal';
 import { verifyGuardianCredential } from '@/lib/guardian-credential';
 
@@ -201,16 +201,30 @@ export async function exitChildProfile(): Promise<{ ok: boolean }> {
   return { ok: true };
 }
 
+export type GatePassResult =
+  | { ok: true; hasPin: boolean }
+  | { ok: false; error: string };
+
 /**
  * The grown-up gate: verify the guardian PIN or password, then drop child
  * mode so parent surfaces (requireFamily) open. The gate page redirects on
  * success.
+ *
+ * `hasPin` reports whether this guardian has a gate PIN at all. It is not an
+ * authorization signal — the gate has already been passed by the time it is
+ * read — only the answer to "was that a password because there was no
+ * shortcut?", which is what lets the gate offer to set one on the way through
+ * (onboarding plan WP-D) instead of leaving the guardian to find /family alone.
+ * Deliberately part of the *result* and not of the inputs: nothing the client
+ * sends decides it.
  */
-export async function passGrownUpGate(credential: string): Promise<{ ok: boolean; error?: string }> {
+export async function passGrownUpGate(credential: string): Promise<GatePassResult> {
   const session = await requireGuardian();
   if (!(await verifyGuardianCredential(session.user.id, credential))) {
     return { ok: false, error: 'That PIN or password is incorrect.' };
   }
   await setActiveProfile(session.session.id, null);
-  return { ok: true };
+  const rows = await db.select({ pinHash: user.pinHash }).from(user)
+    .where(eq(user.id, session.user.id)).limit(1);
+  return { ok: true, hasPin: rows[0]?.pinHash != null };
 }

@@ -20,6 +20,10 @@ import { ThemeProvider } from '@/components/theme/ThemeContext';
  * flushing on unmount), and the rail has to stay under that provider for its
  * nav_select / shelf_open events to be recorded at all.
  *
+ * The reader's stored theme travels with them: `theme_preference` is read here
+ * so /treasury and /passport paint in the child's own palette from the first
+ * frame, with no flash of the default and no client fetch.
+ *
  * The reader is resolved once, here. `getActiveChild` is the non-redirecting,
  * React-cached accessor, so the pages that also need the child (/passport,
  * /treasury, via requireChildContext) pay no second query. Grown-up rooms
@@ -35,7 +39,7 @@ export default async function DGLayout({ children }: { children: React.ReactNode
   const session = await getSession();
 
   return (
-    <ThemeProvider childId={child?.id ?? null}>
+    <ThemeProvider childId={child?.id ?? null} initialTheme={child?.themePreference ?? null}>
       {/* The safe subset the picker exposes: id, display name, avatar key —
           never the row, which carries pinHash. The viewer is the same idea for
           the account: name and role only, so the chrome can say whose session

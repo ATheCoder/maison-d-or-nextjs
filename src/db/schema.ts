@@ -53,6 +53,11 @@ export const childProfile = pgTable('child_profile', {
   birthYear: integer('birth_year').notNull(),
   // Key into AVATARS (lib/avatars.ts).
   avatar: text('avatar').notNull().default('sun'),
+  // Key into THEME_KEYS (lib/theme-keys.ts), written only by the theme action
+  // for the session's own child. Null means "never chose" — the reader falls
+  // back to DEFAULT_THEME rather than storing a copy of the default, so a
+  // change of default follows every profile that has not opted out of it.
+  themePreference: text('theme_preference'),
   pinHash: text('pin_hash'),
   pinAttempts: integer('pin_attempts').notNull().default(0),
   pinLockedUntil: timestamp('pin_locked_until', { withTimezone: true }),
