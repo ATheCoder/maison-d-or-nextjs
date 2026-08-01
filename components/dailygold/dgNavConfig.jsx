@@ -16,18 +16,28 @@
 
 export const DG_DESTINATIONS = [
   { key: 'today', label: 'Today', path: '/daily-gold-edition', icon: 'gold' },
-  { key: 'stories', label: 'Home', path: '/', icon: 'home' },
-  { key: 'family', label: 'Family', path: '/family', icon: 'family' },
-  // The parent observatory. Like Family it is a grown-up room behind
-  // requireFamily, so a tap from the child's paper goes through /gate first and
-  // comes back here — that is the normal path, not an edge case.
+  // "Home" (/) is deliberately absent: it is the landing page, not an app
+  // destination, so it earns no tab for anyone.
   //
-  // Labelled "Parents", not "Observatory": with a reader signed in the mobile
-  // bar now carries six tabs, and at 320px each gets ~53px. Eleven characters
-  // wrap there, which is the same constraint that made "Treasury" out of
-  // "My Treasury".
-  { key: 'parents', label: 'Parents', path: '/parent-observatory', icon: 'insights' },
+  // `grownUp` marks the rooms behind requireFamily. They are listed for
+  // grown-ups and signed-out visitors, and hidden from a session in child
+  // mode — a reader's rail carries no doors it cannot open.
+  { key: 'family', label: 'Family', path: '/family', icon: 'family', grownUp: true },
+  // The parent observatory. Labelled "Parents", not "Observatory": at 320px a
+  // mobile tab gets little width, and eleven characters wrap — the same
+  // constraint that made "Treasury" out of "My Treasury".
+  { key: 'parents', label: 'Parents', path: '/parent-observatory', icon: 'insights', grownUp: true },
 ];
+
+/**
+ * The destinations a given session may see. Child mode (a non-null reader)
+ * drops the grown-up rooms; everyone else gets the full list. Both renderers
+ * must call this rather than filtering themselves — the rail and the tab bar
+ * disagreeing about which rooms exist is the bug this file prevents.
+ */
+export function dgDestinationsFor(child) {
+  return child ? DG_DESTINATIONS.filter((d) => !d.grownUp) : DG_DESTINATIONS;
+}
 
 /**
  * Whether a nav item is the page currently being viewed.
@@ -64,8 +74,6 @@ export function DGIcon({ name, size = 20, color = 'currentColor' }) {
   switch (name) {
     case 'gold':
       return <svg {...shared}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>;
-    case 'home':
-      return <svg {...shared}><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>;
     case 'family':
       return <svg {...shared}><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></svg>;
     case 'flag':

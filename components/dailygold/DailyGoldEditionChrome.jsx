@@ -62,7 +62,7 @@ class DGErrorBoundary extends React.Component {
  * the reader's own — they belong to the frame rather than the day, so they are
  * painted once and survive every page turn.
  */
-function DGChromeFrame({ child, children }) {
+function DGChromeFrame({ child, viewer, children }) {
   const { theme } = useTheme();
 
   return (
@@ -78,13 +78,14 @@ function DGChromeFrame({ child, children }) {
     >
       <style>{NAV_SHELL_CSS}</style>
 
-      <DGNavigationRail child={child} />
+      <DGNavigationRail child={child} viewer={viewer} />
       <DGMobileTabBar child={child} />
 
       <main className="dg-shell">
-        {/* Chrome, not reading: the identity header names the reader, not the
-            day, so it stays out of the page and out of the tracked regions. */}
-        <DGIdentityHeader child={child} />
+        {/* Chrome, not reading: the identity header names the reader (or the
+            signed-in grown-up), not the day, so it stays out of the page and
+            out of the tracked regions. */}
+        <DGIdentityHeader child={child} viewer={viewer} />
         {children}
       </main>
     </div>
@@ -94,11 +95,12 @@ function DGChromeFrame({ child, children }) {
 /**
  * @param {{
  *   child?: { id: string, name: string, avatar: string } | null,
+ *   viewer?: { name: string, role: 'admin' | 'guardian' } | null,
  *   today: string,
  *   children: import('react').ReactNode,
  * }} props
  */
-export default function DailyGoldEditionChrome({ child = null, today, children }) {
+export default function DailyGoldEditionChrome({ child = null, viewer = null, today, children }) {
   const searchParams = useSearchParams();
   // The bare route is the paper of the moment; every earlier day names itself.
   const editionDate = searchParams.get('date') || today;
@@ -117,7 +119,7 @@ export default function DailyGoldEditionChrome({ child = null, today, children }
           childId={child?.id ?? null}
           editionDate={editionDate}
         >
-          <DGChromeFrame child={child}>{children}</DGChromeFrame>
+          <DGChromeFrame child={child} viewer={viewer}>{children}</DGChromeFrame>
         </DGInstrumentationProvider>
       </ThemeProvider>
     </DGErrorBoundary>

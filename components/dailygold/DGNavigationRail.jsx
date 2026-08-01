@@ -3,8 +3,10 @@
  * DGNavigationRail (desktop, ≥768px)
  *
  * One of the two renderers of dgNavConfig (the other is DGMobileTabBar).
- * Top to bottom: monogram, identity block ("Hi, {name}" + reader switcher),
- * global destinations, then the child's own "My World" shelf.
+ * Top to bottom: monogram, identity block, global destinations, then the
+ * child's own "My World" shelf. The identity block wears whichever identity
+ * the session holds: the active reader ("Hi, {name}" + reader switcher), or
+ * the signed-in grown-up (role caption + account menu with sign-out).
  *
  * Layout contract: the rail's width is the shared `--dg-rail-w` CSS variable
  * set by DailyGoldEditionPage's shell stylesheet, which also pads the page
@@ -16,11 +18,11 @@ import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
-import { DG_DESTINATIONS, DG_SHELF, DGIcon, isNavItemActive } from '@/components/dailygold/dgNavConfig';
+import { dgDestinationsFor, DG_SHELF, DGIcon, isNavItemActive } from '@/components/dailygold/dgNavConfig';
 import ChildSwitcherOverlay from '@/components/dailygold/ChildSwitcherOverlay';
 import { AVATARS } from '@/lib/avatars';
 
-export default function DGNavigationRail({ child = null }) {
+export default function DGNavigationRail({ child = null, viewer = null }) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme } = useTheme();
@@ -30,8 +32,26 @@ export default function DGNavigationRail({ child = null }) {
   const [showSwitcher, setShowSwitcher] = useState(false);
 
   const avatar = child ? (AVATARS[child.avatar] || AVATARS.sun) : null;
+  const destinations = dgDestinationsFor(child);
 
   const isActive = (item) => isNavItemActive(item, pathname);
+
+  /**
+   * Where a completed switch lands. A grown-up entering a reader heads for the
+   * paper — the same landing /profiles chose — unless already on it, where a
+   * refresh suffices (and push+refresh must never be paired; the pair races,
+   * see ProfilePicker). Every other switch stays put: reader-to-reader keeps
+   * the page, and a reader becoming the parent keeps it too — the pages that
+   * cannot host a parent bounce through their own guards.
+   */
+  const handleSwitched = (kind) => {
+    setShowSwitcher(false);
+    if (kind === 'child' && !child && !pathname.startsWith('/daily-gold-edition')) {
+      router.push('/daily-gold-edition');
+      return;
+    }
+    router.refresh();
+  };
 
   /**
    * Warm the destination before the press.
@@ -103,7 +123,54 @@ export default function DGNavigationRail({ child = null }) {
           {showSwitcher && (
             <ChildSwitcherOverlay
               currentChildId={child.id}
-              onSwitched={() => { setShowSwitcher(false); router.refresh(); }}
+              viewer={viewer}
+              onSwitched={handleSwitched}
+              onClose={() => setShowSwitcher(false)}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Grown-up identity block — a parent or admin with no active reader.
+          Same slot, same menu affordance; the caption names the role so the
+          account holder always knows which hat they are wearing. */}
+      {!child && viewer && (
+        <div style={{ position: 'relative', marginTop: '1.5rem' }}>
+          <button
+            className="dg-rail-item dg-rail-id"
+            onClick={() => setShowSwitcher(v => !v)}
+            aria-haspopup="menu"
+            aria-expanded={showSwitcher}
+            aria-label={`Signed in as ${viewer.name} (${viewer.role === 'admin' ? 'admin' : 'parent'}). Account menu`}
+          >
+            <span aria-hidden="true" style={{
+              width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+              background: '#E4DCCE', border: `1.5px solid ${theme.accentGold}80`,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '1rem',
+            }}>
+              🗝️
+            </span>
+            <span className="dg-rail-label" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 }}>
+              <span style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', color: theme.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                {viewer.role === 'admin' ? 'Admin' : 'Parent'}
+              </span>
+              <span style={{
+                fontFamily: theme.fontHeadline, fontStyle: 'italic', fontWeight: 600,
+                fontSize: '0.95rem', color: theme.textHeadline,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110,
+              }}>
+                {viewer.name}
+              </span>
+            </span>
+            <svg className="dg-rail-label" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ marginLeft: 'auto', flexShrink: 0 }}>
+              <path d="M2 3.5l3 3 3-3" stroke={theme.textMuted} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          {showSwitcher && (
+            <ChildSwitcherOverlay
+              viewer={viewer}
+              onSwitched={handleSwitched}
               onClose={() => setShowSwitcher(false)}
             />
           )}
@@ -112,7 +179,7 @@ export default function DGNavigationRail({ child = null }) {
 
       {/* Global destinations */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: '1.5rem' }}>
-        {DG_DESTINATIONS.map(item => {
+        {destinations.map(item => {
           const active = isActive(item);
           return (
             <button

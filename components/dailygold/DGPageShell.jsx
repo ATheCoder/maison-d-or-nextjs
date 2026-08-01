@@ -12,6 +12,7 @@
  */
 import DGNavigationRail from '@/components/dailygold/DGNavigationRail';
 import DGMobileTabBar from '@/components/dailygold/DGMobileTabBar';
+import DGIdentityHeader from '@/components/dailygold/DGIdentityHeader';
 import { useTheme } from '@/components/theme/ThemeContext';
 
 /**
@@ -151,10 +152,11 @@ export const NAV_SHELL_CSS = `
 /**
  * @param {{
  *   child?: { id: string, name: string, avatar: string } | null,
+ *   viewer?: { name: string, role: 'admin' | 'guardian' } | null,
  *   children: import('react').ReactNode,
  * }} props
  */
-export default function DGPageShell({ child = null, children }) {
+export default function DGPageShell({ child = null, viewer = null, children }) {
   const { theme } = useTheme();
 
   return (
@@ -169,10 +171,18 @@ export default function DGPageShell({ child = null, children }) {
     >
       <style>{NAV_SHELL_CSS}</style>
 
-      <DGNavigationRail child={child} />
+      <DGNavigationRail child={child} viewer={viewer} />
       <DGMobileTabBar child={child} />
 
-      <main className="dg-shell">{children}</main>
+      <main className="dg-shell">
+        {/* On mobile the rail is gone, and with no reader there is no page
+            chrome naming the account at all — so the grown-up rooms (/family,
+            /parent-observatory) carry the identity header here. Child mode
+            keeps its status quo: those pages had no header before and the
+            child-only pages guard themselves. */}
+        {!child && <DGIdentityHeader viewer={viewer} />}
+        {children}
+      </main>
     </div>
   );
 }

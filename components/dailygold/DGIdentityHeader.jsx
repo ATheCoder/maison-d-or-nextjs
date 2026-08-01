@@ -8,23 +8,40 @@
  * scrolling back up. Replaces the scroll-away ChildGreetingStrip. Hidden at
  * ≥768px by the shell stylesheet (`.dg-idheader`), where the rail's identity
  * block takes over.
+ *
+ * With no active reader but a signed-in grown-up it wears the account instead:
+ * role caption + name, opening the same menu (readers to enter, sign out).
+ * Renders nothing only for signed-out visitors.
  */
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import { DG_SHELF, DGIcon } from '@/components/dailygold/dgNavConfig';
 import ChildSwitcherOverlay from '@/components/dailygold/ChildSwitcherOverlay';
 import { AVATARS } from '@/lib/avatars';
 
-export default function DGIdentityHeader({ child }) {
+export default function DGIdentityHeader({ child = null, viewer = null }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { theme } = useTheme();
   const { track } = useInstrumentation();
   const [showSwitcher, setShowSwitcher] = useState(false);
 
-  if (!child) return null;
-  const avatar = AVATARS[child.avatar] || AVATARS.sun;
+  if (!child && !viewer) return null;
+  const avatar = child ? (AVATARS[child.avatar] || AVATARS.sun) : { emoji: '🗝️', bg: '#E4DCCE' };
+
+  // Same landing rule as the rail: a grown-up entering a reader heads for the
+  // paper (push only, never push+refresh — the pair races); everything else
+  // stays on the page and refreshes.
+  const handleSwitched = (kind) => {
+    setShowSwitcher(false);
+    if (kind === 'child' && !child && !pathname.startsWith('/daily-gold-edition')) {
+      router.push('/daily-gold-edition');
+      return;
+    }
+    router.refresh();
+  };
 
   return (
     <div
@@ -40,7 +57,9 @@ export default function DGIdentityHeader({ child }) {
           onClick={() => setShowSwitcher(v => !v)}
           aria-haspopup="menu"
           aria-expanded={showSwitcher}
-          aria-label={`Reading as ${child.name}. Switch reader`}
+          aria-label={child
+            ? `Reading as ${child.name}. Switch reader`
+            : `Signed in as ${viewer.name} (${viewer.role === 'admin' ? 'admin' : 'parent'}). Account menu`}
           style={{
             display: 'flex', alignItems: 'center', gap: 8, minHeight: 44,
             background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem 0.25rem 0.25rem 0',
@@ -58,9 +77,10 @@ export default function DGIdentityHeader({ child }) {
           <span style={{
             fontFamily: theme.fontHeadline, fontStyle: 'italic', fontSize: '0.95rem',
             color: theme.textMuted, whiteSpace: 'nowrap',
+            overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
           }}>
-            Hi,{' '}
-            <span style={{ fontWeight: 600, color: theme.textHeadline }}>{child.name}</span>
+            {child ? 'Hi, ' : `${viewer.role === 'admin' ? 'Admin' : 'Parent'} · `}
+            <span style={{ fontWeight: 600, color: theme.textHeadline }}>{child ? child.name : viewer.name}</span>
           </span>
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
             <path d="M2 3.5l3 3 3-3" stroke={theme.textMuted} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -68,16 +88,17 @@ export default function DGIdentityHeader({ child }) {
         </button>
         {showSwitcher && (
           <ChildSwitcherOverlay
-            currentChildId={child.id}
-            onSwitched={() => { setShowSwitcher(false); router.refresh(); }}
+            currentChildId={child?.id ?? null}
+            viewer={viewer}
+            onSwitched={handleSwitched}
             onClose={() => setShowSwitcher(false)}
           />
         )}
       </div>
 
-      {/* My World chips */}
+      {/* My World chips — the reader's own space; grown-ups have no shelf */}
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        {DG_SHELF.map(item => (
+        {child && DG_SHELF.map(item => (
           <button
             key={item.key}
             /* Chips are the shelf in miniature — same event as the rail's My

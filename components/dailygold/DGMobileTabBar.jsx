@@ -11,7 +11,7 @@
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
-import { DG_DESTINATIONS, DG_SHELF, DGIcon, isNavItemActive } from '@/components/dailygold/dgNavConfig';
+import { dgDestinationsFor, DG_SHELF, DGIcon, isNavItemActive } from '@/components/dailygold/dgNavConfig';
 
 export default function DGMobileTabBar({ child = null }) {
   const router = useRouter();
@@ -25,7 +25,8 @@ export default function DGMobileTabBar({ child = null }) {
   // "Treasury" is the child opening their own shelf, not choosing a
   // destination of the app, and the roll-up counts them apart.
   const tabs = [
-    ...DG_DESTINATIONS.map(tab => ({ ...tab, event: 'nav_select' })),
+    // Child mode hides the grown-up rooms; dgDestinationsFor owns that rule.
+    ...dgDestinationsFor(child).map(tab => ({ ...tab, event: 'nav_select' })),
     // Shelf items only make sense with an active reader.
     ...(child ? DG_SHELF.map(tab => ({ ...tab, event: 'shelf_open' })) : []),
   ];

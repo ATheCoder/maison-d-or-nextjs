@@ -1,4 +1,5 @@
 import { getActiveChildProfile } from '@/app/profiles/actions';
+import { getSession } from '@/lib/dal';
 import DailyGoldEditionChrome from '@/components/dailygold/DailyGoldEditionChrome';
 
 /**
@@ -21,10 +22,17 @@ export const dynamic = 'force-dynamic';
 
 export default async function DailyGoldEditionLayout({ children }: { children: React.ReactNode }) {
   const child = await getActiveChildProfile();
+  // React-cached alongside the child read — one session query serves both.
+  // Name and role only: the chrome names the account, it never holds it.
+  const session = await getSession();
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <DailyGoldEditionChrome child={child} today={today}>
+    <DailyGoldEditionChrome
+      child={child}
+      viewer={session ? { name: session.user.name, role: session.user.role === 'admin' ? 'admin' as const : 'guardian' as const } : null}
+      today={today}
+    >
       {children}
     </DailyGoldEditionChrome>
   );

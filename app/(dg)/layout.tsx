@@ -1,4 +1,4 @@
-import { getActiveChild } from '@/lib/dal';
+import { getActiveChild, getSession } from '@/lib/dal';
 import DGPageShell from '@/components/dailygold/DGPageShell';
 import { ThemeProvider } from '@/components/theme/ThemeContext';
 
@@ -30,13 +30,19 @@ import { ThemeProvider } from '@/components/theme/ThemeContext';
  */
 export default async function DGLayout({ children }: { children: React.ReactNode }) {
   const child = await getActiveChild();
+  // Both accessors are React-cached, so this is the same session read the
+  // pages themselves perform — no second query.
+  const session = await getSession();
 
   return (
     <ThemeProvider childId={child?.id ?? null}>
       {/* The safe subset the picker exposes: id, display name, avatar key —
-          never the row, which carries pinHash. */}
+          never the row, which carries pinHash. The viewer is the same idea for
+          the account: name and role only, so the chrome can say whose session
+          this is without ever holding the session itself. */}
       <DGPageShell
         child={child ? { id: child.id, name: child.displayName, avatar: child.avatar } : null}
+        viewer={session ? { name: session.user.name, role: session.user.role === 'admin' ? 'admin' as const : 'guardian' as const } : null}
       >
         {children}
       </DGPageShell>
