@@ -148,6 +148,7 @@ export function DGInstrumentationProvider({
   const retryRef = useRef<AssembledBatch[]>([]);
   const inFlightRef = useRef(false);
   const collectorsRef = useRef<Set<() => void>>(new Set());
+  const harvestingRef = useRef(false);
   const attentionSubscribersRef = useRef<Set<(attentive: boolean) => void>>(new Set());
   const activeSectionRef = useRef<AnalyticsSection | null>(null);
   // SSR-safe: no document exists at first render, and assuming attention keeps
@@ -172,12 +173,21 @@ export function DGInstrumentationProvider({
 
   /** Let every registered clock bank its in-progress segment into the buffer. */
   const harvest = useCallback(() => {
-    for (const collect of Array.from(collectorsRef.current)) {
-      try {
-        collect();
-      } catch {
-        // One broken collector must not cost the rest of the flush.
+    // Collectors call track(), and track() can trigger a flush, which harvests.
+    // Reentry would run the collectors inside themselves — refuse it; the
+    // outer pass is already collecting everything there is.
+    if (harvestingRef.current) return;
+    harvestingRef.current = true;
+    try {
+      for (const collect of Array.from(collectorsRef.current)) {
+        try {
+          collect();
+        } catch {
+          // One broken collector must not cost the rest of the flush.
+        }
       }
+    } finally {
+      harvestingRef.current = false;
     }
   }, []);
 

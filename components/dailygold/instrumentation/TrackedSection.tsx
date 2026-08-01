@@ -62,8 +62,12 @@ export function TrackedSection({ id, children, className }: {
     const bank = (discardRemainder: boolean) => {
       stopClock();
       if (accrued >= MIN_DWELL_MS) {
-        track('section_view', { section: id, durationMs: accrued });
+        // Zero before tracking: track() can synchronously flush, and a flush
+        // harvests this very collector again — a stale accumulator here is a
+        // track → flush → bank loop.
+        const durationMs = accrued;
         accrued = 0;
+        track('section_view', { section: id, durationMs });
       } else if (discardRemainder) {
         accrued = 0;
       }
