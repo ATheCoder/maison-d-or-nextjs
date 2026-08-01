@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import DailyGoldEditionPage from '@/components/dailygold/DailyGoldEditionPage';
-import { getActiveChildProfile } from '@/app/profiles/actions';
 import { getSavedKeys } from '@/app/(dg)/treasury/actions';
 import { getTodayExplorationForActiveChild } from '@/app/analytics/actions';
 import { getEditionByDate, getLatestEdition, getAvailableDates, getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate, getGreatestMomentsForDate } from './actions';
@@ -72,10 +71,10 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
   // the server answers it the same way for a fresh visitor following a shared
   // link as for a reader pressing the wax seal.
   //
-  // The reader comes from the session's active child profile (auth-plan §1) —
-  // resolved here, never asserted by the client. Outside child mode it is
-  // null and every child-specific surface simply stays absent; the edition
-  // itself is the same for everyone, so the page still renders.
+  // The reader itself belongs to layout.tsx, which resolves the session's
+  // active child profile once for the chrome that names them (auth-plan §1) —
+  // never asserted by the client, and never re-resolved per page turn. What is
+  // fetched here is only what the reader may see of the day.
   //
   // The child's saved keys are fetched here too, in one query, so no heart on
   // the page fetches its own fill state. `null` outside child mode, which is
@@ -94,7 +93,6 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     goodNews,
     onThisDay,
     greatestMoments,
-    child,
     savedKeys,
     exploration,
   ] = await Promise.all([
@@ -104,7 +102,6 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     getGoodNewsForDate(date),
     getOnThisDayForDate(date),
     getGreatestMomentsForDate(date),
-    getActiveChildProfile(),
     getSavedKeys(),
     getTodayExplorationForActiveChild(),
   ]);
@@ -142,7 +139,6 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     <DailyGoldEditionPage
       date={date}
       today={todayStr}
-      child={child}
       edition={edition}
       dates={dates}
       people={people}

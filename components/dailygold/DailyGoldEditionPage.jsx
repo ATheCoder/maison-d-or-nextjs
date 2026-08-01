@@ -1,5 +1,5 @@
 'use client';
-import React, { useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import DGHero from '@/components/dailygold/DGHero';
 import DGBornToday from '@/components/dailygold/DGBornToday';
@@ -8,19 +8,14 @@ import DGOnThisDay from '@/components/dailygold/DGOnThisDay';
 import DGDestination from '@/components/dailygold/DGDestination';
 import DGMoreToExplore from '@/components/dailygold/DGMoreToExplore';
 import DGForParents from '@/components/dailygold/DGForParents';
-import DGNavigationRail from '@/components/dailygold/DGNavigationRail';
-import DGMobileTabBar from '@/components/dailygold/DGMobileTabBar';
-import { NAV_SHELL_CSS } from '@/components/dailygold/DGPageShell';
-import DGIdentityHeader from '@/components/dailygold/DGIdentityHeader';
 import DGValuesStrip from '@/components/dailygold/DGValuesStrip';
 import DGGreatestMoments from '@/components/dailygold/DGGreatestMoments';
 import DGWaxSealNavigator from '@/components/dailygold/DGWaxSealNavigator';
 import DGInspirationBar from '@/components/dailygold/DGInspirationBar';
 import FlagSealCelebration from '@/components/dailygold/FlagSealCelebration';
 import { useFlagEarn } from '@/components/dailygold/useFlagEarn';
-import { DGInstrumentationProvider } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import { TrackedSection } from '@/components/dailygold/instrumentation/TrackedSection';
-import { ThemeProvider, useTheme } from '@/components/theme/ThemeContext';
+import { useTheme } from '@/components/theme/ThemeContext';
 
 /**
  * PAGE — /daily-gold-edition
@@ -33,31 +28,12 @@ import { ThemeProvider, useTheme } from '@/components/theme/ThemeContext';
  * component with them, which is why nothing below holds edition content in
  * state.
  *
- * Layout contract (navigation-redesign-spec §4/§7):
- * - ≥1024px: labelled navigation rail on the left, content offset by the
- *   shared `--dg-rail-w` variable (the rail reads the same variable, so the
- *   two can never drift apart — replaces the old hard-coded marginLeft: 80).
- * - 768–1023px: the rail collapses to icons (labels hidden), narrower var.
- * - <768px: rail hidden; sticky identity header on top, tab bar at the
- *   bottom, content padded by `--dg-tabbar-h` (includes the safe-area inset).
+ * This file is only the day itself. The chrome around it — theme,
+ * instrumentation, the rail, the tab bar, the identity header and the shell
+ * padding — lives in DailyGoldEditionChrome, mounted by the route's layout, so
+ * that turning to another day rebuilds only what is below. The layout contract
+ * (navigation-redesign-spec §4/§7) is documented there and in NAV_SHELL_CSS.
  */
-
-class DGErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { error: null }; }
-  componentDidCatch(error, info) { console.error('DG CRASH:', error, info); }
-  static getDerivedStateFromError(error) { return { error }; }
-  render() {
-    if (this.state.error) return (
-      <div role="alert" style={{ padding: 40, background: '#F5F0E7', minHeight: '100vh' }}>
-        <h2 style={{ color: '#C46D46' }}>Daily Gold Error</h2>
-        <pre style={{ fontSize: 12, color: '#4A3B2A', whiteSpace: 'pre-wrap' }}>
-          {this.state.error?.toString()}
-        </pre>
-      </div>
-    );
-    return this.props.children;
-  }
-}
 
 // Today has no edition row. An explicit absent state — never another day's
 // content, and never sample content dressed up as today's.
@@ -112,13 +88,11 @@ function mapRecord(record) {
 }
 
 /**
- * The shell stylesheet: the shared navigation layout system (NAV_SHELL_CSS,
- * owned by DGPageShell so /passport and /treasury can never drift from the
- * reader) plus this page's own section-band grid.
+ * The day's own stylesheet. The navigation layout system it sits inside
+ * (NAV_SHELL_CSS) belongs to the chrome and is emitted once by the layout —
+ * only what is specific to the reading column lives here.
  */
-const SHELL_CSS = `
-  ${NAV_SHELL_CSS}
-
+const PAGE_CSS = `
   /* The three-section band: steps 3 → 2 → 1 columns on its own */
   .dg-band {
     display: grid;
@@ -131,7 +105,7 @@ const SHELL_CSS = `
   }
 `;
 
-function DailyGoldShell({ date, today, child, edition: editionRecord, dates, people, goodNews, onThisDay, greatestMoments, savedKeys, exploration }) {
+function DailyGoldDay({ date, today, edition: editionRecord, dates, people, goodNews, onThisDay, greatestMoments, savedKeys, exploration }) {
   const { theme } = useTheme();
   const router = useRouter();
 
@@ -168,17 +142,11 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
   }, [router, viewedDate, today]);
 
   return (
-    <div
-      className="dg-root"
-      style={{
-        '--dg-gold': theme.accentGold,
-        backgroundColor: theme.bgPrimary,
-        backgroundImage: 'radial-gradient(ellipse at 15% 25%, rgba(139,115,80,0.06) 0%, transparent 55%), radial-gradient(ellipse at 85% 75%, rgba(100,75,45,0.04) 0%, transparent 45%)',
-        fontFamily: theme.fontBody,
-        color: theme.textBody,
-      }}
-    >
-      <style>{SHELL_CSS}</style>
+    // The day's content, inside the <main> the chrome provides. The fade is
+    // here rather than on <main> so it plays on each day the reader turns to,
+    // not once when the chrome first mounts.
+    <div style={{ animation: 'dgFadeIn 0.4s ease-out' }}>
+      <style>{PAGE_CSS}</style>
 
       {celebration && (
         <FlagSealCelebration
@@ -190,98 +158,87 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
         />
       )}
 
-      <DGNavigationRail child={child} />
-      <DGMobileTabBar child={child} />
+      <TrackedSection id="hero">
+        <DGHero dateStr={dateLabel} heroImageUrl={edition.images?.hero || rawPost?.image_url} />
+      </TrackedSection>
 
-      <main
-        className="dg-shell"
-        style={{ animation: 'dgFadeIn 0.4s ease-out' }}
-      >
-        {/* The identity header and the day navigator are chrome, not reading:
-            they stay outside the tracked regions so a child hunting for
-            yesterday's paper doesn't bank dwell against whatever section the
-            sticky header happens to sit over. */}
-        <DGIdentityHeader child={child} />
+      {/* The day navigator is chrome, not reading: it stays outside the tracked
+          regions so a child hunting for yesterday's paper doesn't bank dwell
+          against whatever section they happen to be over. */}
+      <DGWaxSealNavigator
+        currentDate={viewedDate}
+        availableDates={dates}
+        onDateChange={handleDateChange}
+      />
 
-        <TrackedSection id="hero">
-          <DGHero dateStr={dateLabel} heroImageUrl={edition.images?.hero || rawPost?.image_url} />
-        </TrackedSection>
+      <TrackedSection id="born_today">
+        <DGBornToday people={people} savedSet={savedSet} editionDate={viewedDate} />
+      </TrackedSection>
 
-        <DGWaxSealNavigator
-          currentDate={viewedDate}
-          availableDates={dates}
-          onDateChange={handleDateChange}
-        />
-
-        <TrackedSection id="born_today">
-          <DGBornToday people={people} savedSet={savedSet} editionDate={viewedDate} />
-        </TrackedSection>
-
-        {/* Each wrapper below becomes the grid item `.dg-band` lays out — which
-            is why Good News is rendered conditionally rather than left to
-            return null from the inside: an empty wrapper is still an item, and
-            auto-fit would hold a third column open for it. */}
-        <div className="dg-band">
-          {goodNews.length > 0 && (
-            <TrackedSection id="good_news">
-              <DGGoodNews items={goodNews} onFlagEarned={earn} savedSet={savedSet} editionDate={viewedDate} />
-            </TrackedSection>
-          )}
-          <TrackedSection id="on_this_day">
-            <DGOnThisDay events={onThisDay} onFlagEarned={earn} savedSet={savedSet} editionDate={viewedDate} />
+      {/* Each wrapper below becomes the grid item `.dg-band` lays out — which
+          is why Good News is rendered conditionally rather than left to
+          return null from the inside: an empty wrapper is still an item, and
+          auto-fit would hold a third column open for it. */}
+      <div className="dg-band">
+        {goodNews.length > 0 && (
+          <TrackedSection id="good_news">
+            <DGGoodNews items={goodNews} onFlagEarned={earn} savedSet={savedSet} editionDate={viewedDate} />
           </TrackedSection>
-          <TrackedSection id="greatest_moments">
-            <DGGreatestMoments moments={greatestMoments} savedSet={savedSet} editionDate={viewedDate} />
-          </TrackedSection>
+        )}
+        <TrackedSection id="on_this_day">
+          <DGOnThisDay events={onThisDay} onFlagEarned={earn} savedSet={savedSet} editionDate={viewedDate} />
+        </TrackedSection>
+        <TrackedSection id="greatest_moments">
+          <DGGreatestMoments moments={greatestMoments} savedSet={savedSet} editionDate={viewedDate} />
+        </TrackedSection>
+      </div>
+
+      <TrackedSection id="inspiration">
+        <DGInspirationBar edition={edition} />
+      </TrackedSection>
+
+      <TrackedSection id="destination">
+        <div style={{ padding: '0.75rem clamp(1rem, 3vw, 2rem) 0.5rem' }}>
+          <DGDestination
+            dest={edition.destination}
+            imageUrl={rawPost?.image_url}
+            onFlagEarned={earn}
+            savedSet={savedSet}
+            editionDate={viewedDate}
+          />
         </div>
+      </TrackedSection>
 
-        <TrackedSection id="inspiration">
-          <DGInspirationBar edition={edition} />
-        </TrackedSection>
+      <TrackedSection id="more_to_explore">
+        <DGMoreToExplore />
+      </TrackedSection>
+      <TrackedSection id="values">
+        <DGValuesStrip />
+      </TrackedSection>
 
-        <TrackedSection id="destination">
-          <div style={{ padding: '0.75rem clamp(1rem, 3vw, 2rem) 0.5rem' }}>
-            <DGDestination
-              dest={edition.destination}
-              imageUrl={rawPost?.image_url}
-              onFlagEarned={earn}
-              savedSet={savedSet}
-              editionDate={viewedDate}
-            />
-          </div>
-        </TrackedSection>
+      <TrackedSection id="for_parents">
+        <DGForParents edition={edition} exploration={exploration} />
+      </TrackedSection>
 
-        <TrackedSection id="more_to_explore">
-          <DGMoreToExplore />
-        </TrackedSection>
-        <TrackedSection id="values">
-          <DGValuesStrip />
-        </TrackedSection>
-
-        <TrackedSection id="for_parents">
-          <DGForParents edition={edition} exploration={exploration} />
-        </TrackedSection>
-
-        <footer style={{
-          padding: 'clamp(3rem, 6vw, 5rem) clamp(1.5rem, 5vw, 4rem)',
-          textAlign: 'center',
+      <footer style={{
+        padding: 'clamp(3rem, 6vw, 5rem) clamp(1.5rem, 5vw, 4rem)',
+        textAlign: 'center',
+      }}>
+        <p style={{
+          fontFamily: theme.fontHeadline, fontStyle: 'italic',
+          fontSize: 'clamp(1.1rem, 2.5vw, 1.6rem)', fontWeight: 300,
+          color: theme.textMuted, margin: '0 auto 1rem', maxWidth: 600, lineHeight: 1.8,
         }}>
-          <p style={{
-            fontFamily: theme.fontHeadline, fontStyle: 'italic',
-            fontSize: 'clamp(1.1rem, 2.5vw, 1.6rem)', fontWeight: 300,
-            color: theme.textMuted, margin: '0 auto 1rem', maxWidth: 600, lineHeight: 1.8,
-          }}>
-            &ldquo;The more we learn about the world, the more we learn about ourselves.&rdquo;
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center', marginTop: '1.5rem' }}>
-            <div aria-hidden="true" style={{ height: 1, width: 60, background: `${theme.accentGold}4D` }} />
-            <span style={{ fontFamily: theme.fontHeadline, fontSize: '0.85rem', color: theme.textMuted, letterSpacing: '0.1em' }}>
-              Daily Gold · {dateLabel}
-            </span>
-            <div aria-hidden="true" style={{ height: 1, width: 60, background: `${theme.accentGold}4D` }} />
-          </div>
-        </footer>
-      </main>
+          &ldquo;The more we learn about the world, the more we learn about ourselves.&rdquo;
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center', marginTop: '1.5rem' }}>
+          <div aria-hidden="true" style={{ height: 1, width: 60, background: `${theme.accentGold}4D` }} />
+          <span style={{ fontFamily: theme.fontHeadline, fontSize: '0.85rem', color: theme.textMuted, letterSpacing: '0.1em' }}>
+            Daily Gold · {dateLabel}
+          </span>
+          <div aria-hidden="true" style={{ height: 1, width: 60, background: `${theme.accentGold}4D` }} />
+        </div>
+      </footer>
     </div>
   );
 }
@@ -291,55 +248,37 @@ function DailyGoldShell({ date, today, child, edition: editionRecord, dates, peo
  * prop is the server's content for `date`, already filtered to what a reader
  * may see.
  *
- * The reader (`child`) is resolved on the server from the session's active
- * child profile, so there is nothing to fetch and no client-side cache to keep
- * in sync: switching profiles refreshes the route and this prop changes.
- * Outside child mode it stays null and every child surface simply stays absent.
+ * The reader is not a prop here: the chrome resolves the active child profile
+ * in the layout and owns every surface that names them (the rail, the identity
+ * header, the switcher). What reaches this component is only what the reader
+ * may *see* of the day.
  *
- * `savedKeys` is the same answer for the hearts: the `type:id` keys this reader
- * has already saved, or null when there is no reader.
+ * `savedKeys` is the reader's answer for the hearts: the `type:id` keys they
+ * have already saved, or null when there is no reader.
  *
  * `exploration` is today's activity roll-up for the For Parents card — also
  * server-resolved, also null without a reader (or when the roll-up failed), in
  * which case that card renders its own empty state.
  *
- * @param {{ date?: string, today?: string, child?: any, edition?: any, dates?: string[], people?: any[], goodNews?: any[], onThisDay?: any[], greatestMoments?: any[], savedKeys?: string[] | null, exploration?: any }} props
+ * @param {{ date?: string, today?: string, edition?: any, dates?: string[], people?: any[], goodNews?: any[], onThisDay?: any[], greatestMoments?: any[], savedKeys?: string[] | null, exploration?: any }} props
  */
-export default function DailyGoldEdition({ date, today, child = null, edition = null, dates = [], people = [], goodNews = [], onThisDay = [], greatestMoments = [], savedKeys = null, exploration = null }) {
+export default function DailyGoldEdition({ date, today, edition = null, dates = [], people = [], goodNews = [], onThisDay = [], greatestMoments = [], savedKeys = null, exploration = null }) {
   // Defaulted here rather than in the signature so a caller that knows neither
   // date — the design-sync preview — still renders a coherent single day.
   const todayStr = today || new Date().toISOString().slice(0, 10);
 
   return (
-    <DGErrorBoundary>
-      <ThemeProvider childId={child?.id}>
-        {/* Keyed on the reader so a profile switch remounts everything below —
-            the shell (including useFlagEarn's dedupe guard, client state the
-            server-resolved child can't reach any other way, spec R7.24) and the
-            instrumentation with it. The key belongs on the provider rather than
-            on the shell alone: an unmount is what flushes the departing
-            reader's buffer, so a provider that survived the switch would post
-            one child's events into the next child's session. */}
-        <DGInstrumentationProvider
-          key={child?.id || 'no-child'}
-          childId={child?.id ?? null}
-          editionDate={date || todayStr}
-        >
-          <DailyGoldShell
-            date={date || todayStr}
-            today={todayStr}
-            child={child}
-            edition={edition}
-            dates={dates}
-            people={people}
-            goodNews={goodNews}
-            onThisDay={onThisDay}
-            greatestMoments={greatestMoments}
-            savedKeys={savedKeys}
-            exploration={exploration}
-          />
-        </DGInstrumentationProvider>
-      </ThemeProvider>
-    </DGErrorBoundary>
+    <DailyGoldDay
+      date={date || todayStr}
+      today={todayStr}
+      edition={edition}
+      dates={dates}
+      people={people}
+      goodNews={goodNews}
+      onThisDay={onThisDay}
+      greatestMoments={greatestMoments}
+      savedKeys={savedKeys}
+      exploration={exploration}
+    />
   );
 }
