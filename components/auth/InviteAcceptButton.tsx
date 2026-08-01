@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { acceptInviteAndGoToFamily } from '@/app/family/actions';
+import { acceptInviteAndGoToFamily } from '@/app/(dg)/family/actions';
 
 export default function InviteAcceptButton({ token }: { token: string }) {
   const [error, setError] = useState<string | null>(null);

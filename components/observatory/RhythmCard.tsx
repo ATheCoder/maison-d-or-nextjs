@@ -1,4 +1,4 @@
-import type { ObservatoryData } from '@/app/parent-observatory/actions';
+import type { ObservatoryData } from '@/app/(dg)/parent-observatory/actions';
 import { RHYTHM_BANDS } from '@/lib/observatory/constants';
 import { EmptyNote } from './EmptyNote';
 import styles from './observatory.module.css';

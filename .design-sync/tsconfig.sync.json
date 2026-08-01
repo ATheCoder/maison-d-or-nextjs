@@ -25,9 +25,9 @@
       "next/link": ["./.design-sync/stubs/next-link.tsx"],
       "next/navigation": ["./.design-sync/stubs/next-navigation.ts"],
       "@/app/daily-gold-edition/actions": ["./.design-sync/stubs/daily-gold-edition-actions.ts"],
-      "@/app/passport/actions": ["./.design-sync/stubs/passport-actions.ts"],
+      "@/app/(dg)/passport/actions": ["./.design-sync/stubs/passport-actions.ts"],
       "@/app/profiles/actions": ["./.design-sync/stubs/profiles-actions.ts"],
-      "@/app/treasury/actions": ["./.design-sync/stubs/treasury-actions.ts"],
+      "@/app/(dg)/treasury/actions": ["./.design-sync/stubs/treasury-actions.ts"],
       "@/*": ["./*"]
     }
   }

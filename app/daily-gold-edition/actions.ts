@@ -166,9 +166,11 @@ export async function getEditionByDate(date: string): Promise<EditionRecord | nu
 
 /**
  * The single most recent edition overall.
- * Deliberately NOT the reader's fallback for "today": the reader declares one
- * date and shows today's content or nothing, so borrowing the latest edition
- * would put another day's content under today's masthead.
+ *
+ * The reader uses this only to find *which day* to open when today is blank,
+ * and then navigates to that day — never to borrow this edition's content for
+ * today. The page still declares one date and shows that date's content or
+ * nothing; putting another day's edition under today's masthead stays wrong.
  */
 export async function getLatestEdition(): Promise<EditionRecord | null> {
   const rows = await db

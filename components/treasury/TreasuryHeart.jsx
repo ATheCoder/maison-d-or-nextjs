@@ -21,7 +21,7 @@
  */
 import { useState } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
-import { toggleSavedItem } from '@/app/treasury/actions';
+import { toggleSavedItem } from '@/app/(dg)/treasury/actions';
 
 export default function TreasuryHeart({
   itemType,

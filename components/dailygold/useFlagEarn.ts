@@ -14,7 +14,7 @@
  * would stall.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { earnFlagSeal } from '@/app/passport/actions';
+import { earnFlagSeal } from '@/app/(dg)/passport/actions';
 import { isValidIso2 } from '@/lib/countries';
 import type { FlagSource } from '@/lib/flag-seal-input';
 

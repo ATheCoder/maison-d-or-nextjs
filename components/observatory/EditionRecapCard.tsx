@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { ObservatoryData } from '@/app/parent-observatory/actions';
+import type { ObservatoryData } from '@/app/(dg)/parent-observatory/actions';
 import { weekdayForKey } from '@/lib/family-time';
 import { formatMinutes } from '@/lib/observatory/format';
 import { EmptyNote } from './EmptyNote';

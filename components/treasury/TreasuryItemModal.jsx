@@ -287,7 +287,7 @@ const LABELS = {
 /**
  * @param {{
  *   item: { item_type: string, item_id: string, item_title: string, item_subtitle: string|null, item_image_url: string|null, country_name: string|null, edition_date: string|null },
- *   detail: import('@/app/treasury/actions').SavedItemDetail,
+ *   detail: import('@/app/(dg)/treasury/actions').SavedItemDetail,
  *   loading: boolean,
  *   onClose: () => void,
  * }} props

@@ -33,6 +33,25 @@ export default function DGNavigationRail({ child = null }) {
 
   const isActive = (item) => isNavItemActive(item, pathname);
 
+  /**
+   * Warm the destination before the press.
+   *
+   * These are buttons, not <Link>s, so nothing is prefetched for us. Every
+   * destination in the (dg) group is force-dynamic, and the router can only
+   * show app/(dg)/loading.tsx if it already holds that route's boundary — with
+   * a cold cache the press instead sits on the old page until the whole server
+   * render lands, which is the stall this is here to remove. Hover and focus,
+   * never mount: prefetching six dynamic routes on arrival would cost six
+   * server renders nobody asked for.
+   */
+  const warm = (path) => () => {
+    try {
+      router.prefetch(path);
+    } catch {
+      // A prefetch is an optimisation; it must never be why a press fails.
+    }
+  };
+
   return (
     <nav className="dg-rail" aria-label="Daily Gold navigation">
       {/* Monogram */}
@@ -103,6 +122,8 @@ export default function DGNavigationRail({ child = null }) {
                 track('nav_select', { contentId: item.path, label: item.label, source: 'rail' });
                 router.push(item.path);
               }}
+              onPointerEnter={warm(item.path)}
+              onFocus={warm(item.path)}
               aria-current={active ? 'page' : undefined}
               aria-label={item.label}
               title={item.label}
@@ -146,6 +167,8 @@ export default function DGNavigationRail({ child = null }) {
                     track('shelf_open', { contentId: item.path, label: item.label, source: 'rail' });
                     router.push(item.path);
                   }}
+                  onPointerEnter={warm(item.path)}
+                  onFocus={warm(item.path)}
                   aria-current={active ? 'page' : undefined}
                   aria-label={item.label}
                   title={item.label}

@@ -1,4 +1,4 @@
-// design-sync stub for `@/app/treasury/actions`.
+// design-sync stub for `@/app/(dg)/treasury/actions`.
 // The real module is a Next.js server-action file — it imports drizzle/pg,
 // none of which can be bundled into a browser IIFE. Previews get inert saves:
 // the heart renders, and a tap reports a failure it can show.

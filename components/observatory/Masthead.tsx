@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { ObservatoryChild } from '@/app/parent-observatory/actions';
+import type { ObservatoryChild } from '@/app/(dg)/parent-observatory/actions';
 import styles from './observatory.module.css';
 
 /** First character of the name, unicode-safe (a name may start with an emoji or a surrogate pair). */

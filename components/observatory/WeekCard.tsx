@@ -1,4 +1,4 @@
-import type { SectionMeter } from '@/app/parent-observatory/actions';
+import type { SectionMeter } from '@/app/(dg)/parent-observatory/actions';
 import type { WeekBar } from '@/lib/observatory/derive';
 import { formatMinutes } from '@/lib/observatory/format';
 import { EmptyNote } from './EmptyNote';

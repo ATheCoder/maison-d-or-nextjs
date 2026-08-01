@@ -17,7 +17,7 @@ import {
   setGuardianPin,
   setFamilyTimezone,
   type FamilyOverview,
-} from '@/app/family/actions';
+} from '@/app/(dg)/family/actions';
 import { AVATARS, type AvatarKey } from '@/lib/avatars';
 import SignOutButton from '@/components/auth/SignOutButton';
 

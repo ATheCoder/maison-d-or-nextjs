@@ -43,7 +43,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import TreasuryItemModal from '@/components/treasury/TreasuryItemModal';
-import { getSavedItemDetail } from '@/app/treasury/actions';
+import { getSavedItemDetail } from '@/app/(dg)/treasury/actions';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { MUSEUM_CSS } from '@/components/treasury/museumCss';
 import { ROMAN, ROOM_COMPONENTS, SECTIONS, Sun } from '@/components/treasury/museumRooms';

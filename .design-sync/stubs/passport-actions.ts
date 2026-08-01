@@ -1,4 +1,4 @@
-// design-sync stub for `@/app/passport/actions`.
+// design-sync stub for `@/app/(dg)/passport/actions`.
 // The real module is a Next.js server-action file — it imports drizzle/pg,
 // none of which can be bundled into a browser IIFE. Previews get inert earns.
 export type FlagSource = 'born_today' | 'on_this_day' | 'destination' | 'good_news';

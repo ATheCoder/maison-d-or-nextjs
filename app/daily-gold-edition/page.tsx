@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
 import DailyGoldEditionPage from '@/components/dailygold/DailyGoldEditionPage';
 import { getActiveChildProfile } from '@/app/profiles/actions';
-import { getSavedKeys } from '@/app/treasury/actions';
+import { getSavedKeys } from '@/app/(dg)/treasury/actions';
 import { getTodayExplorationForActiveChild } from '@/app/analytics/actions';
-import { getEditionByDate, getAvailableDates, getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate, getGreatestMomentsForDate } from './actions';
+import { getEditionByDate, getLatestEdition, getAvailableDates, getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate, getGreatestMomentsForDate } from './actions';
 
 // Editions live in the database and change over time, so render per-request.
 export const dynamic = 'force-dynamic';
@@ -60,8 +60,9 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
 
   // The page declares one date — the one in the URL — and every section shows
   // that day's content or nothing; it never borrows another day's content to
-  // fill a gap. So the edition row is that day's or absent (no
-  // getLatestEdition fallback), and Born Today / On This Day / Greatest
+  // fill a gap. So the edition row is that day's or absent (see the
+  // last-good-day redirect below, which moves the *date* rather than borrowing
+  // content for today), and Born Today / On This Day / Greatest
   // Moments are fetched unconditionally: they are keyed by the day's month-day
   // ("what happened on this day across history") and are correct whether or
   // not an edition row exists.
@@ -107,6 +108,35 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     getSavedKeys(),
     getTodayExplorationForActiveChild(),
   ]);
+
+  // Arriving at the bare route on a day with nothing on it — before the
+  // morning's edition is published, or on a day that was never authored — used
+  // to open a masthead with empty sections under it. Send that reader to the
+  // most recent day that does have a paper instead, at that day's own address:
+  // the page still declares one date, every section is still that date's
+  // content, and the URL still says which day is on screen, so the wax seal
+  // lands on the right day and the link stays shareable.
+  //
+  // Only when today has *nothing*. A day with good news but no edition row, or
+  // only a Born Today gallery, is a real day and shows what it has. And only
+  // for the bare route: an explicit `?date=` is the reader asking for that day,
+  // empty or not.
+  const todayIsBlank = !edition
+    && people.length === 0
+    && goodNews.length === 0
+    && onThisDay.length === 0
+    && greatestMoments.length === 0;
+  if (date === todayStr && todayIsBlank) {
+    // The newest published edition is the fallback because the edition row is
+    // what makes a full paper; `dates` catches the case where there is no
+    // edition at all but some earlier day still has good news or a birthday.
+    const latest = await getLatestEdition();
+    const lastGoodDay = latest && latest.edition_date < todayStr
+      ? latest.edition_date
+      : dates.filter((d) => d < todayStr).pop();
+    // Nothing anywhere: fall through and render today's empty paper.
+    if (lastGoodDay) redirect(`/daily-gold-edition?date=${lastGoodDay}`);
+  }
 
   return (
     <DailyGoldEditionPage

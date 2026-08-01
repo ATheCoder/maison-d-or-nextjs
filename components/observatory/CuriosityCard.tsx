@@ -1,4 +1,4 @@
-import type { ObservatoryData, SectionMeter } from '@/app/parent-observatory/actions';
+import type { ObservatoryData, SectionMeter } from '@/app/(dg)/parent-observatory/actions';
 import { TOP_CONTENT_VISIBLE } from '@/lib/observatory/constants';
 import { formatMinutes } from '@/lib/observatory/format';
 import { EmptyNote } from './EmptyNote';

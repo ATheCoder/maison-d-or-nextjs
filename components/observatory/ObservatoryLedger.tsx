@@ -1,4 +1,4 @@
-import type { ObservatoryData } from '@/app/parent-observatory/actions';
+import type { ObservatoryData } from '@/app/(dg)/parent-observatory/actions';
 import { Masthead } from './Masthead';
 import { StatTrio } from './StatTrio';
 import { WeekCard } from './WeekCard';

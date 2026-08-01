@@ -1,4 +1,4 @@
-import { getInviteByToken } from '@/app/family/actions';
+import { getInviteByToken } from '@/app/(dg)/family/actions';
 import { getSession } from '@/lib/dal';
 import InviteAcceptButton from '@/components/auth/InviteAcceptButton';
 
