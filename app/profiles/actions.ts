@@ -14,15 +14,18 @@ import { db } from '@/src/db';
 import { analyticsEvent, childProfile, session as sessionTable, user } from '@/src/db/schema';
 import { getActiveChild, requireGuardian } from '@/lib/dal';
 import { verifyGuardianCredential } from '@/lib/guardian-credential';
+import { ageOnDay, MIN_CHILD_AGE } from '@/lib/child-birth-date';
 
 const MAX_ATTEMPTS = 5;
 const LOCK_MS = 5 * 60 * 1000; // 5 minutes
 
-// Only a birth year is stored (auth-plan §7: minimal child PII), so this is
-// the age the child reaches this year — right for most of the year, a year
-// ahead before their birthday. Good enough for "Age 9" next to a name.
-function ageFromBirthYear(birthYear: number): number {
-  return new Date().getFullYear() - birthYear;
+// The profile carries a full birthday, so this is the child's real age in
+// completed years — not the age they turn this year. Reading level and "Age 9"
+// next to a name both flip on the birthday itself rather than on 1 January.
+// A row whose date somehow won't parse falls back to MIN_CHILD_AGE, the
+// gentlest reading level, rather than blocking entry to the profile.
+function ageOf(birthDate: string): number {
+  return ageOnDay(birthDate) ?? MIN_CHILD_AGE;
 }
 
 export type PickerProfile = {
@@ -51,7 +54,7 @@ export async function getActiveChildProfile(): Promise<ActiveChildProfile | null
   return {
     id: child.id,
     name: child.displayName,
-    age: ageFromBirthYear(child.birthYear),
+    age: ageOf(child.birthDate),
     avatar: child.avatar,
   };
 }
@@ -75,7 +78,7 @@ export async function getProfilesForPicker(): Promise<{ userName: string; inChil
       id: c.id,
       displayName: c.displayName,
       avatar: c.avatar,
-      age: ageFromBirthYear(c.birthYear),
+      age: ageOf(c.birthDate),
       hasPin: c.pinHash != null,
     })),
   };

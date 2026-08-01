@@ -42,15 +42,18 @@ export const user = pgTable('user', {
 });
 
 // A child in a family — a profile, never an account (auth-plan §1). Minimal
-// PII by design: nickname, birth year, preset avatar key. The optional PIN
+// PII by design: nickname, birthday, preset avatar key. The optional PIN
 // is a sibling lock (auth-plan §4): scrypt-hashed and attempt-throttled, with
 // the guardian PIN/password as the override.
 export const childProfile = pgTable('child_profile', {
   id: text('id').primaryKey(),
   familyId: text('family_id').notNull().references(() => family.id, { onDelete: 'cascade' }),
   displayName: text('display_name').notNull(),
-  // Age 5–17 at creation, enforced in the server action.
-  birthYear: integer('birth_year').notNull(),
+  // The full birthday, so age is exact rather than "the age they turn this
+  // year" — and so the house knows when to say happy birthday. A plain date
+  // with no zone: a birthday is the same calendar day everywhere. Read back
+  // as 'YYYY-MM-DD'. Age 5–17 at creation, enforced in the server action.
+  birthDate: date('birth_date').notNull(),
   // Key into AVATARS (lib/avatars.ts).
   avatar: text('avatar').notNull().default('sun'),
   // Key into THEME_KEYS (lib/theme-keys.ts), written only by the theme action

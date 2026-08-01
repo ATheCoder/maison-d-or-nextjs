@@ -69,7 +69,7 @@ Domain:
 |---|---|---|
 | `family` | id, name | |
 | `family_invite` | family_id, email, hashed token, role, expires_at, invited_by | Path for additional guardians |
-| `child_profile` | family_id, display_name, birth_year, avatar (preset key), `pin_hash` (nullable — optional PIN), pin_locked_until, `theme_preference` (phase 5, for `ThemeContext`) | Age 5–17 enforced at creation. Minimal PII by design: nickname + birth year + preset avatar only |
+| `child_profile` | family_id, display_name, birth_date, avatar (preset key), `pin_hash` (nullable — optional PIN), pin_locked_until, `theme_preference` (phase 5, for `ThemeContext`) | Age 5–17 enforced at creation (lib/child-birth-date.ts). Minimal PII by design: nickname + birthday + preset avatar only |
 | `saved_item` | child_profile_id, item_type, item_id, denormalized title/subtitle/image, saved_at | Replaces Base44 `SavedItem` |
 | `flag_seal` | child_profile_id, country_code, source, earned_at; unique (child_profile_id, country_code) | Replaces Base44 `FlagSeal` + `earnFlagSeal` |
 | `analytics_event` | child_profile_id, event_type, content_type, content_id, duration_seconds, occurred_at | Replaces Base44 `AnalyticsEvent`; consider daily rollup table when the dashboard lands |
@@ -152,7 +152,7 @@ moves fully server-side (until then, phase 4 gates it behind a session).
 
 - No child credentials or contact info anywhere; guardian-created profiles
   are the parental-consent path (COPPA/GDPR-K aligned).
-- Child PII limited to nickname, birth year, preset avatar.
+- Child PII limited to nickname, birthday, preset avatar.
 - Analytics visible only to same-family guardians; never third parties.
 - Retention: raw `analytics_event` rows kept for a fixed window (default
   12 months, see §9), rollups kept longer.

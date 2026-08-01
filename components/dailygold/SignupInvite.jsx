@@ -25,6 +25,11 @@ const SignupInviteContext = createContext(null);
 
 /** Where every invitation leads — back here once the account exists. */
 export const SIGNUP_HREF = '/signup?next=/daily-gold-edition';
+// The returning family's door. No `next` round trip here on purpose: after
+// login the picker asks "who's reading?", and the reader arrives back at the
+// edition in child mode — landing a guardian straight on the edition would
+// show the readerless, heartless view instead.
+export const LOGIN_HREF = '/login';
 
 const INERT = { signedOut: false, invite: () => {} };
 

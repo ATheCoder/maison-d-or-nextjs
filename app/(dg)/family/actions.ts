@@ -16,6 +16,7 @@ import { getSession, requireFamily } from '@/lib/dal';
 import { sendEmail, brandedEmail } from '@/lib/email';
 import { verifyGuardianCredential } from '@/lib/guardian-credential';
 import { isAvatarKey } from '@/lib/avatars';
+import { normalizeBirthDate } from '@/lib/child-birth-date';
 import { isThemeKey } from '@/lib/theme-keys';
 import { isValidTimeZone } from '@/lib/family-time';
 
@@ -35,7 +36,8 @@ export type FamilyOverview = {
   timezone: string;
   members: { id: string; name: string; email: string; isSelf: boolean }[];
   invites: { id: string; email: string; expiresAt: string }[];
-  children: { id: string; displayName: string; birthYear: number; avatar: string; hasPin: boolean }[];
+  /** `birthDate` is a 'YYYY-MM-DD' day key — see lib/child-birth-date.ts. */
+  children: { id: string; displayName: string; birthDate: string; avatar: string; hasPin: boolean }[];
   guardianHasPin: boolean;
   /**
    * The caller's own address confirmation. Nothing is gated on it — it only
@@ -64,7 +66,7 @@ export async function getFamilyOverview(): Promise<FamilyOverview> {
     children: children.map((c) => ({
       id: c.id,
       displayName: c.displayName,
-      birthYear: c.birthYear,
+      birthDate: c.birthDate,
       avatar: c.avatar,
       hasPin: c.pinHash != null,
     })),
@@ -75,22 +77,19 @@ export async function getFamilyOverview(): Promise<FamilyOverview> {
 
 // ── Child profiles (auth-plan phase 3) ───────────────────────────────────────
 
-const MIN_AGE = 5;
-const MAX_AGE = 17;
 const validPin = (pin: unknown): pin is string => typeof pin === 'string' && /^\d{4}$/.test(pin);
 
-function validateChildInput(displayName: unknown, birthYear: unknown, avatar: unknown):
-  | { ok: true; displayName: string; birthYear: number; avatar: string }
+function validateChildInput(displayName: unknown, birthDate: unknown, avatar: unknown):
+  | { ok: true; displayName: string; birthDate: string; avatar: string }
   | { ok: false; error: string } {
   const name = typeof displayName === 'string' ? displayName.trim().slice(0, 40) : '';
   if (name.length < 1) return { ok: false, error: 'Please give the profile a name.' };
-  const year = Number(birthYear);
-  const age = new Date().getFullYear() - year;
-  if (!Number.isInteger(year) || age < MIN_AGE || age > MAX_AGE) {
-    return { ok: false, error: `Children are ${MIN_AGE}–${MAX_AGE} years old.` };
-  }
+  // The full birthday, range-checked against the same 5–17 the date pickers
+  // advertise — the control's min/max are a courtesy, this is the rule.
+  const born = normalizeBirthDate(birthDate);
+  if (!born.ok) return born;
   if (!isAvatarKey(avatar)) return { ok: false, error: 'Please pick an avatar.' };
-  return { ok: true, displayName: name, birthYear: year, avatar };
+  return { ok: true, displayName: name, birthDate: born.birthDate, avatar };
 }
 
 /**
@@ -104,10 +103,10 @@ function validateChildInput(displayName: unknown, birthYear: unknown, avatar: un
  * does, so there is one whitelist and a retired palette can never be written
  * from either door.
  */
-export async function createChildProfile(input: { displayName: string; birthYear: number; avatar: string; themePreference?: string | null }):
+export async function createChildProfile(input: { displayName: string; birthDate: string; avatar: string; themePreference?: string | null }):
   Promise<{ ok: boolean; error?: string }> {
   const { family: fam } = await requireFamily();
-  const v = validateChildInput(input?.displayName, input?.birthYear, input?.avatar);
+  const v = validateChildInput(input?.displayName, input?.birthDate, input?.avatar);
   if (!v.ok) return v;
   const wantsTheme = input?.themePreference != null && input.themePreference !== '';
   if (wantsTheme && !isThemeKey(input.themePreference)) {
@@ -117,20 +116,20 @@ export async function createChildProfile(input: { displayName: string; birthYear
     id: randomUUID(),
     familyId: fam.id,
     displayName: v.displayName,
-    birthYear: v.birthYear,
+    birthDate: v.birthDate,
     avatar: v.avatar,
     themePreference: wantsTheme ? (input.themePreference as string) : null,
   });
   return { ok: true };
 }
 
-export async function updateChildProfile(profileId: string, input: { displayName: string; birthYear: number; avatar: string }):
+export async function updateChildProfile(profileId: string, input: { displayName: string; birthDate: string; avatar: string }):
   Promise<{ ok: boolean; error?: string }> {
   const { family: fam } = await requireFamily();
-  const v = validateChildInput(input?.displayName, input?.birthYear, input?.avatar);
+  const v = validateChildInput(input?.displayName, input?.birthDate, input?.avatar);
   if (!v.ok) return v;
   await db.update(childProfile)
-    .set({ displayName: v.displayName, birthYear: v.birthYear, avatar: v.avatar, updatedAt: new Date() })
+    .set({ displayName: v.displayName, birthDate: v.birthDate, avatar: v.avatar, updatedAt: new Date() })
     .where(and(eq(childProfile.id, String(profileId)), eq(childProfile.familyId, fam.id)));
   return { ok: true };
 }

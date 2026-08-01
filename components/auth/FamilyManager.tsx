@@ -11,6 +11,7 @@ import {
   createInvite,
   revokeInvite,
   createChildProfile,
+  updateChildProfile,
   deleteChildProfile,
   setChildPin,
   removeChildPin,
@@ -19,6 +20,7 @@ import {
   type FamilyOverview,
 } from '@/app/(dg)/family/actions';
 import { AVATARS, type AvatarKey } from '@/lib/avatars';
+import { ageOnDay, birthDateBounds, formatBirthDate, normalizeBirthDate } from '@/lib/child-birth-date';
 import SignOutButton from '@/components/auth/SignOutButton';
 import { authClient } from '@/lib/auth-client';
 
@@ -84,14 +86,21 @@ const buttonGold: React.CSSProperties = {
 };
 
 function ChildrenSection({ overview, refresh }: { overview: FamilyOverview; refresh: () => Promise<void> }) {
-  const currentYear = new Date().getFullYear();
+  const bounds = birthDateBounds();
   const [name, setName] = useState('');
-  const [birthYear, setBirthYear] = useState(currentYear - 8);
+  const [birthDate, setBirthDate] = useState('');
   const [avatar, setAvatar] = useState<AvatarKey>('sun');
   const [pinEditFor, setPinEditFor] = useState<string | null>(null);
   const [pinDraft, setPinDraft] = useState('');
+  const [dobEditFor, setDobEditFor] = useState<string | null>(null);
+  const [dobDraft, setDobDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  // The client half of the same rule the action enforces — it decides whether
+  // Add is offered, never whether the write is allowed.
+  const born = normalizeBirthDate(birthDate);
+  const canAdd = name.trim() !== '' && born.ok;
 
   // Guardian gate PIN
   const [gatePin, setGatePin] = useState('');
@@ -102,10 +111,30 @@ function ChildrenSection({ overview, refresh }: { overview: FamilyOverview; refr
     if (pending) return;
     setPending(true);
     setError(null);
-    const res = await createChildProfile({ displayName: name, birthYear, avatar });
+    const res = await createChildProfile({ displayName: name, birthDate, avatar });
     setPending(false);
     if (!res.ok) { setError(res.error ?? null); return; }
     setName('');
+    setBirthDate('');
+    await refresh();
+  }
+
+  /**
+   * Correct a birthday after the fact. Profiles created before birthdays were
+   * collected were backfilled to 1 January of the year on file, so this is the
+   * one door that fixes them — it sends the name and avatar back unchanged,
+   * because updateChildProfile validates the whole profile at once.
+   */
+  async function saveBirthday(child: FamilyOverview['children'][number]) {
+    const res = await updateChildProfile(child.id, {
+      displayName: child.displayName,
+      birthDate: dobDraft,
+      avatar: child.avatar,
+    });
+    if (!res.ok) { setError(res.error ?? null); return; }
+    setError(null);
+    setDobEditFor(null);
+    setDobDraft('');
     await refresh();
   }
 
@@ -140,10 +169,22 @@ function ChildrenSection({ overview, refresh }: { overview: FamilyOverview; refr
               <div style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ fontSize: '0.88rem', color: C.ink }}>{c.displayName}</span>
                 <span style={{ fontSize: '0.72rem', color: C.muted, marginLeft: 8 }}>
-                  age {currentYear - c.birthYear}{c.hasPin ? ' · PIN set 🔒' : ''}
+                  age {ageOnDay(c.birthDate) ?? '—'} · born {formatBirthDate(c.birthDate) ?? 'unknown'}
+                  {c.hasPin ? ' · PIN set 🔒' : ''}
                 </span>
               </div>
-              {pinEditFor === c.id ? (
+              {dobEditFor === c.id ? (
+                <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                  <input
+                    type="date" value={dobDraft} min={bounds.min} max={bounds.max}
+                    onChange={(e) => setDobDraft(e.target.value)}
+                    style={{ ...input, width: 150 }}
+                    autoFocus
+                  />
+                  <button onClick={() => saveBirthday(c)} style={{ ...buttonGold, padding: '0.45rem 0.8rem' }}>Save</button>
+                  <button onClick={() => { setDobEditFor(null); setDobDraft(''); }} style={smallLink}>Cancel</button>
+                </span>
+              ) : pinEditFor === c.id ? (
                 <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
                   <input
                     type="password" inputMode="numeric" maxLength={4} placeholder="4 digits"
@@ -157,6 +198,9 @@ function ChildrenSection({ overview, refresh }: { overview: FamilyOverview; refr
                 </span>
               ) : (
                 <span style={{ display: 'flex', gap: '0.7rem' }}>
+                  <button onClick={() => { setDobEditFor(c.id); setDobDraft(c.birthDate); }} style={smallLink}>
+                    Birthday
+                  </button>
                   <button onClick={() => { setPinEditFor(c.id); setPinDraft(''); }} style={smallLink}>
                     {c.hasPin ? 'Change PIN' : 'Set PIN'}
                   </button>
@@ -182,12 +226,19 @@ function ChildrenSection({ overview, refresh }: { overview: FamilyOverview; refr
           <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '0.6rem' }}>
             <input placeholder="Child's name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} style={{ ...input, flex: 1 }} />
             <input
-              type="number" value={birthYear} min={currentYear - 17} max={currentYear - 5}
-              onChange={(e) => setBirthYear(Number(e.target.value))}
-              style={{ ...input, width: 92 }}
-              title="Birth year"
+              type="date" value={birthDate} min={bounds.min} max={bounds.max}
+              onChange={(e) => setBirthDate(e.target.value)}
+              style={{ ...input, width: 150 }}
+              aria-label="Date of birth"
+              title="Date of birth"
             />
-            <button onClick={addChild} disabled={pending} style={{ ...buttonGold, opacity: pending ? 0.6 : 1 }}>Add</button>
+            <button
+              onClick={addChild}
+              disabled={pending || !canAdd}
+              style={{ ...buttonGold, opacity: pending || !canAdd ? 0.5 : 1, cursor: pending || !canAdd ? 'default' : 'pointer' }}
+            >
+              Add
+            </button>
           </div>
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             {(Object.keys(AVATARS) as AvatarKey[]).map((k) => (
@@ -204,6 +255,9 @@ function ChildrenSection({ overview, refresh }: { overview: FamilyOverview; refr
               </button>
             ))}
           </div>
+          {birthDate !== '' && !born.ok && (
+            <p style={{ fontSize: '0.78rem', color: '#A4442E', margin: '0.6rem 0 0' }}>{born.error}</p>
+          )}
           {error && <p style={{ fontSize: '0.78rem', color: '#A4442E', margin: '0.6rem 0 0' }}>{error}</p>}
         </div>
       </section>

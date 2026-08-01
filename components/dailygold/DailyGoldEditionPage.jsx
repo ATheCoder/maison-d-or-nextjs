@@ -161,9 +161,17 @@ function DailyGoldDay({ date, today, edition: editionRecord, dates, people, good
       <style>{PAGE_CSS}</style>
 
       {/* Who is holding the paper, not what is in it — so both sit above the
-          masthead and outside every tracked region. */}
-      {welcomeName && <WelcomeFlourish name={welcomeName} />}
+          masthead and outside every tracked region. The signed-out bar is
+          full-bleed and sticky, so it lives directly in the flow; the flourish
+          is a card, and its slot pads instead of the card carrying a top
+          margin — a first-child margin would collapse out of the page and open
+          a white body-band above the themed background. */}
       {signedOut && <SignedOutCta />}
+      {welcomeName && (
+        <div style={{ paddingTop: 'clamp(0.75rem, 2vw, 1.25rem)' }}>
+          <WelcomeFlourish name={welcomeName} />
+        </div>
+      )}
 
       {celebration && (
         <FlagSealCelebration

@@ -15,7 +15,7 @@
  */
 import { useState } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
-import { SIGNUP_HREF } from '@/components/dailygold/SignupInvite';
+import { SIGNUP_HREF, LOGIN_HREF } from '@/components/dailygold/SignupInvite';
 
 /** @param {{ name: string }} props */
 export function WelcomeFlourish({ name }) {
@@ -25,7 +25,10 @@ export function WelcomeFlourish({ name }) {
 
   return (
     <div style={{
-      margin: 'clamp(0.75rem, 2vw, 1.25rem) clamp(1rem, 3vw, 2rem) 0',
+      // No top margin: as the first element in the page flow it would collapse
+      // through the unpadded wrappers and shove the whole themed page down,
+      // leaving a white body-band above. The page's banner slot pads instead.
+      margin: '0 clamp(1rem, 3vw, 2rem)',
       padding: '1rem 1.15rem',
       borderRadius: 16,
       background: `linear-gradient(135deg, ${theme.accentGold}22 0%, ${theme.accentGold}0D 100%)`,
@@ -66,53 +69,120 @@ export function WelcomeFlourish({ name }) {
   );
 }
 
+// The bar's two homes, chosen by viewport (the Spotify/Pinterest mobile-web
+// pattern): a bar stuck to the top of the desktop viewport, and on phones a
+// bar docked above the tab bar, where a thumb already is and the masthead
+// stays clear. One solid colour either way — content scrolls underneath, so
+// any transparency would show it through. z-index sits above the day's content
+// but below DGModal (2000) and the invite toast (2500). Theme colours arrive
+// as CSS vars from the component, since a <style> block cannot read the hook.
+const CTA_CSS = `
+  .dg-signedout-cta {
+    position: sticky;
+    top: 0;
+    z-index: 1500;
+    padding: 0.55rem clamp(1rem, 3vw, 2rem);
+    background: var(--cta-bg);
+    border-bottom: 1px solid var(--cta-border);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .dg-signedout-cta .dg-cta-label-mobile { display: none; }
+  @media (max-width: 767px) {
+    .dg-signedout-cta {
+      position: fixed;
+      top: auto;
+      bottom: var(--dg-tabbar-h, 0px);
+      left: 0;
+      right: 0;
+      border-bottom: none;
+      border-top: 1px solid var(--cta-border);
+      box-shadow: 0 -4px 20px rgba(44, 36, 22, 0.08);
+      /* Signed out there is no tab bar below, so the bar sits on the screen's
+         own edge and owes the home-indicator inset itself. */
+      padding: 0.55rem 1rem calc(0.55rem + env(safe-area-inset-bottom, 0px));
+      gap: 0.75rem;
+      flex-wrap: nowrap;
+    }
+    /* On a phone the bar is just the button: the text block is desktop
+       comfort, and the button's own words carry the invitation. */
+    .dg-signedout-cta-sub { display: none; }
+    .dg-signedout-cta a:last-child { flex: 1 1 auto; text-align: center; }
+    .dg-signedout-cta .dg-cta-label-desktop { display: none; }
+    .dg-signedout-cta .dg-cta-label-mobile { display: inline; }
+    /* The docked bar floats over the tail of the page; give the shell that
+       much extra bottom room so the last section can scroll clear of it. */
+    .dg-root:has(.dg-signedout-cta) .dg-shell {
+      padding-bottom: calc(var(--dg-tabbar-h, 0px) + 64px + env(safe-area-inset-bottom, 0px));
+    }
+  }
+`;
+
 export function SignedOutCta() {
   const { theme } = useTheme();
 
   return (
-    <div style={{
-      margin: 'clamp(0.75rem, 2vw, 1.25rem) clamp(1rem, 3vw, 2rem) 0',
-      padding: '1rem 1.15rem',
-      borderRadius: 16,
-      background: theme.bgCard,
-      border: `1px solid ${theme.accentGold}44`,
-      display: 'flex',
-      alignItems: 'center',
-      gap: '1rem',
-      flexWrap: 'wrap',
-    }}>
-      <div style={{ flex: '1 1 260px', minWidth: 0 }}>
-        <p style={{
-          fontFamily: theme.fontHeadline,
-          fontSize: 'clamp(1rem, 2.2vw, 1.15rem)',
-          color: theme.textHeadline,
-          margin: '0 0 0.2rem',
-        }}>
-          Start your family&rsquo;s collection
-        </p>
-        <p style={{ fontFamily: theme.fontBody, fontSize: '0.78rem', color: theme.textMuted, margin: 0, lineHeight: 1.5 }}>
-          Save treasures, earn flags, follow the reading journey.
-        </p>
-      </div>
-      <a
-        href={SIGNUP_HREF}
-        style={{
-          flexShrink: 0,
-          padding: '0.65rem 1.3rem',
-          borderRadius: 12,
-          background: theme.accentGold,
-          color: '#FFF',
-          fontFamily: theme.fontBody,
-          fontSize: '0.75rem',
-          fontWeight: 700,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          textDecoration: 'none',
-          whiteSpace: 'nowrap',
-        }}
+    <>
+      <style>{CTA_CSS}</style>
+      <div
+        className="dg-signedout-cta"
+        style={{ '--cta-bg': theme.bgCard, '--cta-border': `${theme.accentGold}44` }}
       >
-        Create an account
-      </a>
-    </div>
+        <div className="dg-signedout-cta-sub" style={{ flex: '1 1 200px', minWidth: 0 }}>
+          <p style={{
+            fontFamily: theme.fontHeadline,
+            fontSize: 'clamp(0.95rem, 2vw, 1.1rem)',
+            color: theme.textHeadline,
+            margin: 0,
+          }}>
+            Start your family&rsquo;s collection
+          </p>
+          <p style={{
+            fontFamily: theme.fontBody, fontSize: '0.75rem', color: theme.textMuted,
+            margin: 0, lineHeight: 1.4,
+          }}>
+            Save treasures, earn flags, follow the reading journey.
+          </p>
+        </div>
+        <a
+          href={LOGIN_HREF}
+          style={{
+            flexShrink: 0,
+            padding: '0.5rem 0.35rem',
+            fontFamily: theme.fontBody,
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            letterSpacing: '0.04em',
+            color: theme.textMuted,
+            textDecoration: 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Sign in
+        </a>
+        <a
+          href={SIGNUP_HREF}
+          style={{
+            flexShrink: 0,
+            padding: '0.5rem 1.15rem',
+            borderRadius: 10,
+            background: theme.accentGold,
+            color: '#FFF',
+            fontFamily: theme.fontBody,
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            textDecoration: 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <span className="dg-cta-label-desktop">Create an account</span>
+          <span className="dg-cta-label-mobile">Start your family&rsquo;s journey</span>
+        </a>
+      </div>
+    </>
   );
 }

@@ -13,7 +13,7 @@
  * guess: an invited co-parent inherits a named household and starts at the
  * reader.
  */
-import { useState, useSyncExternalStore } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import {
   createChildProfile,
   createInvite,
@@ -22,6 +22,7 @@ import {
 } from '@/app/(dg)/family/actions';
 import { finishWelcome } from '@/app/welcome/actions';
 import { AVATARS, type AvatarKey } from '@/lib/avatars';
+import { ageOnDay, birthDateBounds, formatBirthDate, normalizeBirthDate } from '@/lib/child-birth-date';
 import { THEME_KEYS, type ThemeKey } from '@/lib/theme-keys';
 import { THEMES } from '@/components/theme/themes';
 
@@ -172,10 +173,16 @@ export default function WelcomeWizard({
   const [zoneChoice, setZoneChoice] = useState<string | null>(null);
   const zone = zoneChoice ?? (timezone === 'UTC' ? detected ?? timezone : timezone);
 
-  // Step 2 — the first reader
-  const currentYear = new Date().getFullYear();
+  // Step 2 — the first reader. The birthday starts empty rather than at a
+  // guessed date: a prefilled day is one the grown-up can leave uncorrected,
+  // and a wrong birthday is worse than a blank one.
   const [childName, setChildName] = useState('');
-  const [birthYear, setBirthYear] = useState(currentYear - 8);
+  const [birthDate, setBirthDate] = useState('');
+  const bounds = useMemo(() => birthDateBounds(), []);
+  // The same rule the action enforces, so Continue can never offer to submit a
+  // birthday the server is going to send straight back.
+  const born = normalizeBirthDate(birthDate);
+  const readerReady = childName.trim() !== '' && born.ok;
   const [avatar, setAvatar] = useState<AvatarKey>('sun');
   const [themeKey, setThemeKey] = useState<ThemeKey>(THEME_KEYS[0]);
 
@@ -204,7 +211,7 @@ export default function WelcomeWizard({
     setError(null);
     const res = await createChildProfile({
       displayName: childName,
-      birthYear,
+      birthDate,
       avatar,
       themePreference: themeKey,
     });
@@ -327,17 +334,23 @@ export default function WelcomeWizard({
             </div>
 
             <div style={{ marginBottom: '1.2rem' }}>
-              <label htmlFor="birthYear" style={label}>Year they were born</label>
+              <label htmlFor="birthDate" style={label}>The day they were born</label>
               <input
-                id="birthYear"
-                type="number"
-                value={birthYear}
-                min={currentYear - 17}
-                max={currentYear - 5}
-                onChange={(e) => setBirthYear(Number(e.target.value))}
-                style={{ ...input, maxWidth: 140 }}
+                id="birthDate"
+                type="date"
+                value={birthDate}
+                min={bounds.min}
+                max={bounds.max}
+                onChange={(e) => setBirthDate(e.target.value)}
+                style={{ ...input, maxWidth: 200 }}
               />
-              <p style={hint}>We store the year only — it sets the reading level. Ages 5 to 17.</p>
+              <p style={hint}>
+                {birthDate === ''
+                  ? 'It sets their reading level, and tells us when to wish them a happy birthday. Ages 5 to 17.'
+                  : born.ok
+                    ? `${formatBirthDate(birthDate)} — that makes them ${ageOnDay(birthDate)}.`
+                    : born.error}
+              </p>
             </div>
 
             <div style={{ marginBottom: '1.2rem' }}>
@@ -407,10 +420,10 @@ export default function WelcomeWizard({
               reading history you control.
             </p>
 
-            <button onClick={saveChild} disabled={pending || !childName.trim()} style={{
+            <button onClick={saveChild} disabled={pending || !readerReady} style={{
               ...buttonGold,
-              background: pending || !childName.trim() ? 'rgba(201,169,110,0.5)' : C.gold,
-              cursor: pending || !childName.trim() ? 'default' : 'pointer',
+              background: pending || !readerReady ? 'rgba(201,169,110,0.5)' : C.gold,
+              cursor: pending || !readerReady ? 'default' : 'pointer',
             }}>
               {pending ? 'One moment…' : 'Continue'}
             </button>

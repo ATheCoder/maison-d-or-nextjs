@@ -70,6 +70,9 @@ function DGChromeFrame({ child, viewer, children }) {
       className="dg-root"
       style={{
         '--dg-gold': theme.accentGold,
+        // Signed out there is no tab bar, so the shell must not reserve room
+        // for one — the signed-out CTA docks at the true bottom instead.
+        ...(viewer ? null : { '--dg-tabbar-h': '0px' }),
         backgroundColor: theme.bgPrimary,
         backgroundImage: 'radial-gradient(ellipse at 15% 25%, rgba(139,115,80,0.06) 0%, transparent 55%), radial-gradient(ellipse at 85% 75%, rgba(100,75,45,0.04) 0%, transparent 45%)',
         fontFamily: theme.fontBody,
@@ -79,7 +82,9 @@ function DGChromeFrame({ child, viewer, children }) {
       <style>{NAV_SHELL_CSS}</style>
 
       <DGNavigationRail child={child} viewer={viewer} />
-      <DGMobileTabBar child={child} />
+      {/* A stranger gets no tab bar: every destination on it is login-gated,
+          and the signed-out CTA bar takes its place at the bottom edge. */}
+      {viewer && <DGMobileTabBar child={child} />}
 
       <main className="dg-shell">
         {/* Chrome, not reading: the identity header names the reader (or the
