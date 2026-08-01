@@ -32,6 +32,7 @@ const story = (over: Partial<StoryRow> = {}): StoryRow => ({
   ms: 41 * MIN,
   lastDay: TODAY,
   finishedDay: null,
+  coverUrl: null,
   ...over,
 });
 
@@ -277,6 +278,17 @@ describe('storyState / buildShelf', () => {
   it('names an untitled book rather than rendering a blank row', () => {
     expect(buildShelf([story({ title: null })], TODAY)[0].title).toBe('A story');
     expect(buildShelf([story({ title: '   ' })], TODAY)[0].title).toBe('A story');
+  });
+
+  // A blank or whitespace cover column must reach the card as null, not as an
+  // empty src — a rendered <img src=""> refetches the page itself.
+  it.each([
+    ['/stories/the-star-cartographer/cover.png', '/stories/the-star-cartographer/cover.png'],
+    ['', null],
+    ['   ', null],
+    [null, null],
+  ])('carries the cover %o through as %o', (coverUrl, expected) => {
+    expect(buildShelf([story({ coverUrl })], TODAY)[0].coverUrl).toBe(expected);
   });
 
   it('is empty for an empty shelf', () => {

@@ -42,7 +42,19 @@ export function BookshelfCard({ books, childName }: { books: ShelfBook[]; childN
         <div className={styles.shelf}>
           {books.map((book) => (
             <div key={book.storyId} className={styles.bkrow}>
-              <div className={`${styles.spine} ${SPINE[book.state]}`} aria-hidden="true" />
+              {/* The real cover when the book has one, the painted spine when it
+                  doesn't — and the painted spine stays underneath either way, so
+                  a cover that fails to load leaves a book rather than a hole.
+                  Decorative: the title is already the row's next line. */}
+              <div
+                className={`${styles.spine} ${SPINE[book.state]} ${book.coverUrl ? styles.spineCover : ''}`}
+                aria-hidden="true"
+              >
+                {book.coverUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className={styles.spineImg} src={book.coverUrl} alt="" loading="lazy" />
+                ) : null}
+              </div>
               <div className={styles.bkbody}>
                 <p className={styles.bktitle}>{book.title}</p>
                 <p className={styles.bkmeta}>{book.meta}</p>

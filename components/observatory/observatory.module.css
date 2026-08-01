@@ -476,6 +476,21 @@
   background: linear-gradient(105deg, rgba(196, 109, 70, 0.24), rgba(196, 109, 70, 0.08));
 }
 
+/* A book with real cover art wears it. The state's painted fill is covered up,
+   but its border colour is not, so reading / finished / set aside still reads
+   at a glance the way the mock intended. */
+.spineCover {
+  overflow: hidden;
+  box-shadow: 0 3px 9px rgba(40, 26, 12, 0.18);
+}
+
+.spineImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .bkbody {
   flex: 1;
   min-width: 0;

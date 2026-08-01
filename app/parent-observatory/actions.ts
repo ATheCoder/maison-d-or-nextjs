@@ -25,7 +25,9 @@ import {
   and, asc, count, countDistinct, desc, eq, gt, gte, inArray, isNotNull, lt, max, ne, or, sql,
 } from 'drizzle-orm';
 import { db } from '@/src/db';
-import { analyticsEvent, childProfile, flagSeal, goodNewsItem } from '@/src/db/schema';
+import {
+  analyticsEvent, childProfile, flagSeal, goodNewsItem, remarkablePerson,
+} from '@/src/db/schema';
 import { requireFamily } from '@/lib/dal';
 import {
   daysBetweenKeys, lastNDayKeys, safeTimeZone, shortDateForKey, startOfZonedDay,
@@ -347,6 +349,23 @@ export async function getObservatory(
     const finishedDays = new Map(storyFinishedRows.flatMap((row) => (
       row.contentId && row.day ? [[row.contentId, row.day] as const] : []
     )));
+    /**
+     * The book covers, keyed by the very slug the reading events already carry
+     * (`remarkablePerson.slug` is the story's identity, StorybookView:79).
+     *
+     * A second round trip rather than a join, because the shelf's slugs aren't
+     * known until the grouped read above returns, and it is bounded by how many
+     * books one child has ever opened. `published` is deliberately not filtered:
+     * the row is already naming the book from the child's own history, and
+     * showing a title with its cover blanked would only look broken.
+     */
+    const storySlugs = [...new Set(storyPageRows.flatMap((row) => (row.contentId ? [row.contentId] : [])))];
+    const covers = new Map(storySlugs.length === 0 ? [] : (
+      await db
+        .select({ slug: remarkablePerson.slug, imageUrl: remarkablePerson.imageUrl })
+        .from(remarkablePerson)
+        .where(inArray(remarkablePerson.slug, storySlugs))
+    ).flatMap((row) => (row.imageUrl ? [[row.slug, row.imageUrl] as const] : [])));
     const bookshelf = buildShelf(
       storyPageRows.flatMap((row) => (row.contentId && row.lastDay ? [{
         storyId: row.contentId,
@@ -356,6 +375,7 @@ export async function getObservatory(
         ms: Number(row.dwell ?? 0),
         lastDay: row.lastDay,
         finishedDay: finishedDays.get(row.contentId) ?? null,
+        coverUrl: covers.get(row.contentId) ?? null,
       }] : [])),
       todayKey,
     );

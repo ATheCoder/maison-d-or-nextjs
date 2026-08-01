@@ -206,6 +206,8 @@ export type StoryRow = {
   ms: number;
   lastDay: string;
   finishedDay: string | null;
+  /** The book's cover art, or null when the person has none on file. */
+  coverUrl: string | null;
 };
 
 export type ShelfState = 'reading' | 'finished' | 'set_aside';
@@ -221,6 +223,8 @@ export type ShelfBook = {
   fill: number;
   pagesReached: number;
   ms: number;
+  /** The cover the child saw, or null — the card paints a spine instead. */
+  coverUrl: string | null;
 };
 
 /** Reading now, then finished, then set aside — a parent's order of interest. */
@@ -265,6 +269,7 @@ export function buildShelf(rows: readonly StoryRow[], todayKey: string): ShelfBo
         fill: state === 'finished' ? 100 : maxMs > 0 ? Math.max(4, Math.round((row.ms / maxMs) * 100)) : 0,
         pagesReached: row.pagesReached,
         ms: row.ms,
+        coverUrl: row.coverUrl?.trim() || null,
       };
     })
     .sort((a, b) => STATE_RANK[a.state] - STATE_RANK[b.state] || b.ms - a.ms);
