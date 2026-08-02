@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import ResetPasswordForm from '@/components/auth/ResetPasswordForm';
+import AuthCardFallback from '@/components/auth/AuthCardFallback';
 
 export const metadata = { title: 'Choose a new password — Maison d\'Oré' };
 
@@ -8,7 +9,7 @@ export const metadata = { title: 'Choose a new password — Maison d\'Oré' };
 // from bailing out, exactly as /login does.
 export default function ResetPasswordPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<AuthCardFallback />}>
       <ResetPasswordForm />
     </Suspense>
   );

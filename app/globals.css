@@ -149,3 +149,346 @@ h1, h2, h3, h4, h5, h6 {
   50%  { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
+
+/* ============================================================
+   MAISON DATE PICKER — components/ui/DatePicker.tsx
+   The whole look of the control lives here rather than inline,
+   because the two things it has to get right are pseudo-classes
+   (hover, focus-visible, disabled) and viewport: the same markup
+   is an anchored popover on a desk and a bottom sheet on a phone,
+   and only a media query can be trusted to say which. The panel
+   renders in a portal, so these are all flat, prefixed classes
+   with no reliance on where the field sits in the tree.
+
+   Palette is the guardian-surface one (FamilyManager, the welcome
+   wizard) spelled out rather than tokenised, so the picker looks
+   the same inside the Daily Gold themes, which repaint --gold.
+   ============================================================ */
+.mdo-dp {
+  --dp-gold: #C9A96E;
+  --dp-gold-deep: #A8843F;
+  --dp-ink: #241A0C;
+  --dp-brown: #5C4A2A;
+  --dp-muted: #8B7355;
+  --dp-line: rgba(201, 169, 110, 0.45);
+  --dp-soft: rgba(201, 169, 110, 0.14);
+  --dp-red: #A4442E;
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 0;
+  font-family: var(--font-sans);
+}
+
+/* ── The field: one box around the text and the calendar button ── */
+.mdo-dp-field {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0 0.25rem 0 0.85rem;
+  border: 1px solid var(--dp-line);
+  border-radius: 10px;
+  background: #FFFDF9;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.mdo-dp-field:hover { border-color: var(--dp-gold); }
+.mdo-dp-field:focus-within {
+  border-color: var(--dp-gold-deep);
+  box-shadow: 0 0 0 3px var(--dp-soft);
+}
+.mdo-dp-field[data-invalid='true'] { border-color: var(--dp-red); }
+.mdo-dp-field[data-invalid='true']:focus-within { box-shadow: 0 0 0 3px rgba(164, 68, 46, 0.15); }
+.mdo-dp-field[data-disabled='true'] { opacity: 0.55; background: #F7F2E9; }
+
+.mdo-dp-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.7rem 0;
+  border: none;
+  background: none;
+  outline: none;
+  color: var(--dp-ink);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.mdo-dp-input::placeholder { color: #B9A98D; letter-spacing: 0.06em; }
+.mdo-dp-input:disabled { cursor: not-allowed; }
+
+.mdo-dp-open {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--dp-muted);
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+.mdo-dp-open:hover { background: var(--dp-soft); color: var(--dp-gold-deep); }
+.mdo-dp-open[aria-expanded='true'] { background: var(--dp-soft); color: var(--dp-gold-deep); }
+.mdo-dp-open:disabled { cursor: not-allowed; }
+
+/* The field's own complaint about text it could not read — the caller sees
+   only '', so it cannot tell "nothing typed" from "31 February". */
+.mdo-dp-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--dp-red);
+}
+
+/* ── The panel ── */
+.mdo-dp-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 2400;
+  background: rgba(24, 18, 10, 0.42);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: dpFade 0.2s ease-out;
+}
+
+.mdo-dp-panel {
+  --dp-gold: #C9A96E;
+  --dp-gold-deep: #A8843F;
+  --dp-ink: #241A0C;
+  --dp-brown: #5C4A2A;
+  --dp-muted: #8B7355;
+  --dp-line: rgba(201, 169, 110, 0.45);
+  --dp-soft: rgba(201, 169, 110, 0.14);
+  position: fixed;
+  z-index: 2401;
+  box-sizing: border-box;
+  padding: 0.85rem 0.85rem 0.7rem;
+  background: #FFF8EE;
+  border: 1px solid rgba(201, 169, 110, 0.4);
+  border-radius: 16px;
+  box-shadow: 0 18px 48px rgba(70, 52, 24, 0.22);
+  font-family: var(--font-sans);
+  color: var(--dp-ink);
+  outline: none;
+}
+.mdo-dp-panel[data-mode='pop'] {
+  width: 320px;
+  max-width: calc(100vw - 16px);
+  animation: dpRise 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* The sheet is pinned to the bottom edge; `100%` of the dynamic viewport keeps
+   it above a phone's browser chrome, and the safe-area inset above the home
+   indicator. Both fall back cleanly where they are not supported. */
+.mdo-dp-panel[data-mode='sheet'] {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  width: 100%;
+  max-width: none;
+  border-radius: 20px 20px 0 0;
+  border-bottom: none;
+  padding: 0.5rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+  animation: dpSheetUp 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.mdo-dp-grab {
+  width: 42px;
+  height: 4px;
+  margin: 0.35rem auto 0.6rem;
+  border-radius: 2px;
+  background: rgba(201, 169, 110, 0.5);
+}
+
+/* ── Caption: month back/forward, month and year ── */
+.mdo-dp-cap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+.mdo-dp-arrow {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: none;
+  color: var(--dp-brown);
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.mdo-dp-arrow:hover:not(:disabled) { background: var(--dp-soft); border-color: var(--dp-line); }
+.mdo-dp-arrow:disabled { opacity: 0.3; cursor: default; }
+
+.mdo-dp-caps {
+  flex: 1;
+  display: flex;
+  gap: 0.35rem;
+  justify-content: center;
+  min-width: 0;
+}
+.mdo-dp-select,
+.mdo-dp-year {
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 0.4rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: none;
+  color: var(--dp-ink);
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  appearance: none;
+}
+/* The native arrow is dropped with `appearance`, so a caret is drawn back on —
+   without one the month and year read as a title rather than as controls. */
+.mdo-dp-select {
+  padding-right: 1.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6' viewBox='0 0 9 6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%238B7355' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.4rem center;
+}
+.mdo-dp-year {
+  width: 5.2ch;
+  font-variant-numeric: tabular-nums;
+  cursor: text;
+  text-align: center;
+}
+.mdo-dp-select:hover,
+.mdo-dp-year:hover { background: var(--dp-soft); }
+.mdo-dp-select:focus-visible,
+.mdo-dp-year:focus-visible {
+  outline: none;
+  border-color: var(--dp-gold-deep);
+  box-shadow: 0 0 0 3px var(--dp-soft);
+}
+
+/* ── The month grid ──
+   One grid for the weekday row and the weeks; the rows are `display: contents`
+   so the ARIA row structure survives without a second nesting level. */
+.mdo-dp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.mdo-dp-row { display: contents; }
+.mdo-dp-wd {
+  padding: 0.35rem 0 0.5rem;
+  text-align: center;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dp-muted);
+}
+.mdo-dp-cell { display: grid; place-items: stretch; }
+.mdo-dp-day {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 38px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  color: var(--dp-brown);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.mdo-dp-day:hover:not(:disabled) { background: var(--dp-soft); color: var(--dp-ink); }
+.mdo-dp-day:disabled { color: #C8BBA4; cursor: default; }
+/* Today is an outline, the selection is a fill — so a selected today still
+   reads as selected. */
+.mdo-dp-day[data-today='true'] { border-color: var(--dp-line); font-weight: 700; }
+.mdo-dp-day[data-selected='true'] {
+  background: var(--dp-gold);
+  border-color: var(--dp-gold-deep);
+  color: #FFF;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(168, 132, 63, 0.35);
+}
+.mdo-dp-day:focus-visible {
+  outline: 2px solid var(--dp-gold-deep);
+  outline-offset: 1px;
+}
+
+/* ── Footer: what is chosen, and the ways out ── */
+.mdo-dp-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.65rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(201, 169, 110, 0.25);
+}
+.mdo-dp-chosen {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--dp-muted);
+}
+.mdo-dp-quiet {
+  flex: 0 0 auto;
+  padding: 0.4rem 0.5rem;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--dp-muted);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.mdo-dp-quiet:hover { color: var(--dp-red); }
+.mdo-dp-done {
+  flex: 0 0 auto;
+  padding: 0.55rem 1.1rem;
+  border: none;
+  border-radius: 10px;
+  background: var(--dp-gold);
+  color: #FFF;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.mdo-dp-done:hover { background: var(--dp-gold-deep); }
+
+/* ── Touch and small screens ──
+   Coarse pointers get 44px targets whatever the panel mode; the sheet gets
+   more air still, because it has the width to spend. */
+@media (pointer: coarse) {
+  .mdo-dp-day { min-height: 44px; font-size: 0.92rem; }
+  .mdo-dp-arrow { width: 40px; height: 40px; }
+}
+.mdo-dp-panel[data-mode='sheet'] .mdo-dp-day { min-height: 46px; font-size: 0.95rem; }
+.mdo-dp-panel[data-mode='sheet'] .mdo-dp-wd { font-size: 0.62rem; }
+.mdo-dp-panel[data-mode='sheet'] .mdo-dp-select { font-size: 1.1rem; }
+.mdo-dp-panel[data-mode='sheet'] .mdo-dp-foot { margin-top: 0.9rem; }
+
+@keyframes dpFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dpRise { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes dpSheetUp { from { transform: translateY(100%); } to { transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .mdo-dp-scrim,
+  .mdo-dp-panel { animation: none; }
+  .mdo-dp-field,
+  .mdo-dp-open,
+  .mdo-dp-arrow,
+  .mdo-dp-day { transition: none; }
+}

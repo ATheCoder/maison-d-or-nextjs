@@ -21,7 +21,7 @@
  */
 import { useTheme } from '@/components/theme/ThemeContext';
 
-const SKELETON_CSS = `
+export const SKELETON_CSS = `
   .dg-skel {
     position: relative;
     overflow: hidden;
@@ -45,7 +45,7 @@ const SKELETON_CSS = `
 `;
 
 /** A single shimmering block. `w` and `h` take any CSS length. */
-function Bar({ w = '100%', h = 14, radius = 10, style }) {
+export function Bar({ w = '100%', h = 14, radius = 10, style }) {
   return <div className="dg-skel" style={{ width: w, height: h, borderRadius: radius, ...style }} />;
 }
 

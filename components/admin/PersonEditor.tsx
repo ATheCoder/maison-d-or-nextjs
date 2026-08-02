@@ -38,6 +38,7 @@ import { deriveSections, type Section, type SectionStatus } from './personSectio
 import { withKeys, stripKeys, type DraftPerson, type Keyed } from './draftTypes';
 import { buildSlotViews, type SlotView } from './imageSlots';
 import { toImageSlot } from '@/lib/golden-story/slots';
+import DatePicker from '@/components/ui/DatePicker';
 import ImageModal from './ImageModal';
 import SlotChip from './SlotChip';
 import ImageStatusBoard from './ImageStatusBoard';
@@ -490,8 +491,12 @@ function DeathDateControl({ value, onChange }: { value: string; onChange: (v: st
         <button className={mode === 'living' ? styles.segOn : ''} onClick={() => pick('living')}>Living</button>
       </div>
       {mode === 'full' && (
-        <input type="date" className={styles.field} style={{ padding: '10px 14px', maxWidth: 200 }}
-          value={/^\d{4}-\d{2}-\d{2}$/.test(value) ? value : ''} onChange={(e) => onChange(e.target.value)} />
+        <DatePicker
+          value={/^\d{4}-\d{2}-\d{2}$/.test(value) ? value : ''}
+          onChange={onChange}
+          aria-label="Death date"
+          style={{ maxWidth: 200, width: '100%' }}
+        />
       )}
       {mode === 'year' && (
         <input type="text" inputMode="numeric" className={styles.field} style={{ padding: '10px 14px', maxWidth: 120 }} placeholder="1519"
@@ -1508,8 +1513,13 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
             <TextField label="Story title" value={draft.story_title ?? ''} onChange={set('story_title')} placeholder={draft.name ?? ''} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <Kick>Birth date <span style={{ color: 'var(--red)' }}>*</span></Kick>
-              <input type="date" className={styles.field} style={{ padding: '10px 14px' }}
-                value={draft.birth_date ?? ''} onChange={(e) => dispatch({ type: 'field', key: 'birth_date', value: e.target.value })} />
+              <DatePicker
+                value={draft.birth_date ?? ''}
+                onChange={(v) => dispatch({ type: 'field', key: 'birth_date', value: v })}
+                aria-label="Birth date"
+                invalid={!draft.birth_date}
+                style={{ width: '100%' }}
+              />
               <div className={styles.muted} style={{ fontSize: 10.5, color: draft.birth_date ? 'var(--brown2)' : 'var(--red)' }}>
                 Required — Born Today surfaces a person by their birth month-day.
               </div>

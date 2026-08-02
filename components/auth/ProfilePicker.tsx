@@ -5,7 +5,7 @@
  * the Parent tile heads to the family area — requireFamily routes it through
  * the grown-up gate when the session is in child mode.
  */
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   enterChildProfile,
@@ -15,32 +15,69 @@ import {
 } from '@/app/profiles/actions';
 import { AVATARS, type AvatarKey } from '@/lib/avatars';
 import SignOutButton from '@/components/auth/SignOutButton';
+import ProfileEnteringCurtain from '@/components/auth/ProfileEnteringCurtain';
 
 const C = { gold: '#C9A96E', ivory: '#F5F0E7', ink: '#241A0C', brown: '#5C4A2A', muted: '#8B7355' };
 
-function Tile({ label, emoji, bg, locked, onClick }: {
+// The tile the child pressed keeps the hover look for the whole wait ('chosen',
+// plus a pulse ring so it reads as *chosen* rather than merely hovered); every
+// other tile fades back ('dimmed') and stops taking clicks.
+// The pulse lives on a pseudo-element rather than the circle itself: an
+// animated box-shadow on the circle would override the inline lifted shadow
+// (animations outrank inline styles), and we want both.
+const TILE_PULSE_CSS = `
+  @keyframes mdoTilePulse {
+    from { box-shadow: 0 0 0 0 rgba(201,169,110,0.45); }
+    to   { box-shadow: 0 0 0 12px rgba(201,169,110,0); }
+  }
+  .mdo-tile-chosen::after {
+    content: ''; position: absolute; inset: -3px;
+    border-radius: 50%; pointer-events: none;
+    animation: mdoTilePulse 1.1s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    /* Keep the ring, drop the throb. */
+    .mdo-tile-chosen::after {
+      animation: none;
+      box-shadow: 0 0 0 6px rgba(201,169,110,0.3);
+    }
+  }
+`;
+
+function Tile({ label, emoji, bg, locked, onClick, state = 'idle' }: {
   label: string; emoji: string; bg: string; locked?: boolean; onClick: () => void;
+  state?: 'idle' | 'chosen' | 'dimmed';
 }) {
   const [hover, setHover] = useState(false);
+  const chosen = state === 'chosen';
+  const dimmed = state === 'dimmed';
+  const lifted = hover || chosen;
   return (
     <button
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center' }}
+      style={{
+        background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center',
+        opacity: dimmed ? 0.35 : 1,
+        transition: 'opacity 0.3s ease',
+        pointerEvents: dimmed ? 'none' : undefined,
+      }}
     >
-      <div style={{
-        width: 108, height: 108, borderRadius: '50%',
-        background: bg,
-        border: `3px solid ${hover ? C.gold : 'rgba(201,169,110,0.35)'}`,
-        boxShadow: hover ? '0 6px 24px rgba(100,80,40,0.25)' : '0 2px 12px rgba(100,80,40,0.12)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '3rem',
-        position: 'relative',
-        transform: hover ? 'translateY(-4px)' : 'none',
-        transition: 'all 0.2s ease',
-        margin: '0 auto',
-      }}>
+      <div
+        className={chosen ? 'mdo-tile-chosen' : undefined}
+        style={{
+          width: 108, height: 108, borderRadius: '50%',
+          background: bg,
+          border: `3px solid ${lifted ? C.gold : 'rgba(201,169,110,0.35)'}`,
+          boxShadow: lifted ? '0 6px 24px rgba(100,80,40,0.25)' : '0 2px 12px rgba(100,80,40,0.12)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '3rem',
+          position: 'relative',
+          transform: lifted ? 'translateY(-4px)' : 'none',
+          transition: 'all 0.2s ease',
+          margin: '0 auto',
+        }}>
         {emoji}
         {locked && (
           <span style={{
@@ -66,7 +103,8 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
   const [credential, setCredential] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
-  const [pending, setPending] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [entering, setEntering] = useState<PickerProfile | null>(null);
 
   function resetModal() {
     setPinFor(null); setPin(''); setOverrideMode(false); setCredential(''); setError(null); setLocked(false);
@@ -77,26 +115,44 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
   // navigation pending forever and the picker frozen. It buys nothing either —
   // /daily-gold-edition is dynamic, and dynamic routes are never served from
   // the client cache, so the push already re-renders against the new session.
-  async function pickProfile(p: PickerProfile) {
+  //
+  // The action and the push both run inside one startTransition so isPending
+  // stays true right through the navigation commit — a plain `await` would
+  // drop it the instant the action resolved, leaving the picker looking idle
+  // while the route is still arriving. `entering` is what drives the curtain,
+  // and it is only ever cleared on failure: on success the picker unmounts at
+  // commit and takes the curtain with it, handing the wait straight over to
+  // the edition's loading skeleton.
+  function pickProfile(p: PickerProfile) {
+    if (entering || isPending) return;
     setError(null);
     if (p.hasPin) { setPinFor(p); return; }
-    const res = await enterChildProfile(p.id);
-    if (res.ok) { router.push('/daily-gold-edition'); }
-    else setError(res.error);
+    setEntering(p);
+    startTransition(async () => {
+      const res = await enterChildProfile(p.id);
+      if (res.ok) { router.push('/daily-gold-edition'); }
+      else { setEntering(null); setError(res.error); }
+    });
   }
 
-  async function submitPin() {
-    if (!pinFor || pending) return;
-    setPending(true);
+  // Same shape, one extra rule: the curtain goes up only *after* the PIN comes
+  // back correct, never optimistically — a wrong PIN must not flash a sunrise
+  // at a child who isn't going anywhere. Once it is up, z-9999 puts it over
+  // this modal (z-1000), which stays mounted for the rest of the navigation.
+  // (The old bug lived here: clearing pending before the push left the modal
+  // frozen with a live-looking button for the whole wait.)
+  function submitPin() {
+    if (!pinFor || isPending || entering) return;
     setError(null);
-    const res = overrideMode
-      ? await enterChildProfileAsGuardian(pinFor.id, credential)
-      : await enterChildProfile(pinFor.id, pin);
-    setPending(false);
-    if (res.ok) { router.push('/daily-gold-edition'); return; }
-    setPin('');
-    setError(res.error);
-    if ('locked' in res && res.locked) setLocked(true);
+    startTransition(async () => {
+      const res = overrideMode
+        ? await enterChildProfileAsGuardian(pinFor.id, credential)
+        : await enterChildProfile(pinFor.id, pin);
+      if (res.ok) { setEntering(pinFor); router.push('/daily-gold-edition'); return; }
+      setPin('');
+      setError(res.error);
+      if ('locked' in res && res.locked) setLocked(true);
+    });
   }
 
   return (
@@ -107,6 +163,7 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       padding: '3rem 1.5rem',
     }}>
+      <style>{TILE_PULSE_CSS}</style>
       <p style={{ fontFamily: 'Lato, sans-serif', fontSize: '0.6rem', letterSpacing: '0.3em', textTransform: 'uppercase', color: C.gold, margin: '0 0 0.5rem' }}>
         Maison d&apos;Oré
       </p>
@@ -125,10 +182,17 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
               bg={a.bg}
               locked={p.hasPin}
               onClick={() => pickProfile(p)}
+              state={entering ? (entering.id === p.id ? 'chosen' : 'dimmed') : 'idle'}
             />
           );
         })}
-        <Tile label={userName} emoji="🗝️" bg="#E4DCCE" onClick={() => router.push('/family')} />
+        <Tile
+          label={userName}
+          emoji="🗝️"
+          bg="#E4DCCE"
+          onClick={() => router.push('/family')}
+          state={entering ? 'dimmed' : 'idle'}
+        />
       </div>
 
       {profiles.length === 0 && (
@@ -221,15 +285,15 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
 
             <button
               onClick={submitPin}
-              disabled={pending || (!overrideMode && (locked || pin.length < 4))}
+              disabled={isPending || (!overrideMode && (locked || pin.length < 4))}
               style={{
                 width: '100%', marginTop: '1.1rem', padding: '0.75rem', borderRadius: 12, border: 'none',
-                background: pending || (!overrideMode && (locked || pin.length < 4)) ? 'rgba(201,169,110,0.4)' : C.gold,
+                background: isPending || (!overrideMode && (locked || pin.length < 4)) ? 'rgba(201,169,110,0.4)' : C.gold,
                 color: '#FFF', fontFamily: 'Lato, sans-serif', fontSize: '0.8rem', fontWeight: 700,
                 letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
               }}
             >
-              {pending ? '…' : overrideMode ? 'Unlock' : 'Enter'}
+              {isPending ? '…' : overrideMode ? 'Unlock' : 'Enter'}
             </button>
 
             <button
@@ -241,6 +305,13 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
           </div>
         </div>
       )}
+
+      {/* No portal: the picker already owns the viewport and has no clipping
+          ancestor, so a fixed child covers everything — including the modal. */}
+      {entering && (() => {
+        const a = AVATARS[entering.avatar as AvatarKey] ?? AVATARS.sun;
+        return <ProfileEnteringCurtain name={entering.displayName} emoji={a.emoji} bg={a.bg} />;
+      })()}
     </div>
   );
 }

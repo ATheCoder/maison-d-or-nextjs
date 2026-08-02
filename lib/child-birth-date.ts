@@ -3,50 +3,20 @@
  *
  * The column is a plain `date`, read back as 'YYYY-MM-DD'. Everything here
  * works on that string rather than a Date, because a birthday has no time and
- * no zone: parsing '2016-03-04' with `new Date()` makes it UTC midnight, which
- * is the 3rd of March for anyone west of Greenwich. So the string is split by
- * hand and the calendar arithmetic is done on the numbers.
+ * no zone; the mechanics of that live in `lib/day-key`, which this module
+ * re-exports so existing callers keep their single import.
  *
  * Both doors that create a profile — the /welcome wizard and /family — go
  * through `normalizeBirthDate`, so there is one definition of a valid birthday
  * and one age range, checked on the server whatever the input control allows.
  */
 
+import { parseDayKey, toDayKey, todayKey, type DayKey } from './day-key';
+
+export { parseDayKey, toDayKey, todayKey, type DayKey };
+
 export const MIN_CHILD_AGE = 5;
 export const MAX_CHILD_AGE = 17;
-
-/** A 'YYYY-MM-DD' day, as `date` columns and `<input type="date">` both use. */
-export type DayKey = string;
-
-const DAY_KEY = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-/** Today on the server's own calendar, as a 'YYYY-MM-DD' key. */
-export function todayKey(at: Date = new Date()): DayKey {
-  return toDayKey(at.getFullYear(), at.getMonth() + 1, at.getDate());
-}
-
-export function toDayKey(year: number, month: number, day: number): DayKey {
-  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-/**
- * Split a day key, returning null for anything that isn't a real calendar
- * date. The round-trip through UTC is what rejects 31 February and 30 February
- * — the regex alone would let both through.
- */
-export function parseDayKey(value: unknown): { year: number; month: number; day: number } | null {
-  if (typeof value !== 'string') return null;
-  const m = DAY_KEY.exec(value.trim());
-  if (!m) return null;
-  const year = Number(m[1]);
-  const month = Number(m[2]);
-  const day = Number(m[3]);
-  const probe = new Date(Date.UTC(year, month - 1, day));
-  if (probe.getUTCFullYear() !== year || probe.getUTCMonth() !== month - 1 || probe.getUTCDate() !== day) {
-    return null;
-  }
-  return { year, month, day };
-}
 
 /**
  * Completed years lived on `on` — the real age, not "the age they turn this

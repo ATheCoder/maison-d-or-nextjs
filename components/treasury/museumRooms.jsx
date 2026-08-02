@@ -18,6 +18,7 @@
  * (docs/treasury-museum-redesign-mock.html) is its source of truth.
  */
 import Link from 'next/link';
+import StoryOpeningCurtain from '@/components/dailygold/StoryOpeningCurtain';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import { TOKEN_META } from '@/components/treasury/tokenMeta';
 
@@ -195,8 +196,16 @@ function Picture({ src, mark, top = false }) {
  * div when it does neither. The heart is rendered by the caller as a sibling:
  * nesting a button in an anchor — or in another button — swallows the tap and
  * is invalid markup.
+ *
+ * `curtain` ({ name, imgUrl }) raises the book-opening curtain over the wait
+ * for a Golden Story. Every room passes it unconditionally, which is safe:
+ * itemHref() returns an href only for `person`, so no other treasure ever
+ * reaches the link branch — they take the button or div, where it is ignored.
+ * Feed it item_title/item_image_url, the same snapshot the Born Today shelf
+ * saved, so the curtain's cover is the story's own and the `resume` handoff
+ * into StorybookView lines up.
  */
-export function CardSurface({ href, onOpen, className, children }) {
+export function CardSurface({ href, onOpen, className, children, curtain = null }) {
   if (onOpen) {
     return (
       <button type="button" onClick={onOpen} aria-haspopup="dialog" className={`tv-card ${className}`}>
@@ -205,7 +214,17 @@ export function CardSurface({ href, onOpen, className, children }) {
     );
   }
   if (!href) return <div className={`tv-card ${className}`}>{children}</div>;
-  return <Link href={href} className={`tv-card ${className}`}>{children}</Link>;
+  // Two things the curtain rests on, both easy to break from a distance:
+  // prefetch={false}, because a prefetched route navigates from cache and
+  // never reports `pending` at all; and /stories/[name] never gaining a
+  // loading.tsx, because a committing Suspense fallback drops `pending` and
+  // would cut the curtain short mid-handoff.
+  return (
+    <Link href={href} prefetch={curtain ? false : undefined} className={`tv-card ${className}`}>
+      {children}
+      {curtain && <StoryOpeningCurtain name={curtain.name} imgUrl={curtain.imgUrl} />}
+    </Link>
+  );
 }
 
 /** The unsave control every treasure carries, always a sibling of its link. */
@@ -366,6 +385,7 @@ export function HallOfHeroes({ items, cap, numberLabel, room, status, onOpenPile
               className="tv-stamp"
               href={itemHref(item)}
               onOpen={item.item_type === 'person' ? undefined : () => onOpenItem(item)}
+              curtain={{ name: item.item_title, imgUrl: item.item_image_url }}
             >
               <span className="tv-pic"><Picture src={item.item_image_url} mark="✶" top /></span>
               <span className="tv-cap">
@@ -441,7 +461,7 @@ export function MapRoom({ items, cap, numberLabel, room, status, onOpenPile, onC
             >
               <span className="tv-tape tv-tape-l" aria-hidden="true" />
               <span className="tv-tape tv-tape-r" aria-hidden="true" />
-              <CardSurface className="tv-postcard" href={itemHref(item)} onOpen={() => onOpenItem(item)}>
+              <CardSurface className="tv-postcard" href={itemHref(item)} onOpen={() => onOpenItem(item)} curtain={{ name: item.item_title, imgUrl: item.item_image_url }}>
                 <span className="tv-pic"><Picture src={item.item_image_url} mark="✉" /></span>
                 <span className="tv-cap">
                   <span className="tv-t">{item.item_title}</span>
@@ -504,7 +524,7 @@ export function GoodNewsPress({ items, cap, numberLabel, room, status, onOpenPil
               {...shelf.slotProps(i)}
             >
               <span className="tv-pin" aria-hidden="true" />
-              <CardSurface className="tv-clip" href={itemHref(item)} onOpen={() => onOpenItem(item)}>
+              <CardSurface className="tv-clip" href={itemHref(item)} onOpen={() => onOpenItem(item)} curtain={{ name: item.item_title, imgUrl: item.item_image_url }}>
                 <span className="tv-eyebrow">Good News{dateLabel ? ` · ${dateLabel}` : ''}</span>
                 <span className="tv-pic"><Picture src={item.item_image_url} mark="✦" /></span>
                 <h3>{item.item_title}</h3>
@@ -576,7 +596,7 @@ export function HallOfTime({ items, cap, numberLabel, room, status, onOpenPile, 
               {...shelf.slotProps(i)}
             >
               <div className="tv-plaque-w">
-                <CardSurface className="tv-plaque" href={itemHref(item)} onOpen={() => onOpenItem(item)}>
+                <CardSurface className="tv-plaque" href={itemHref(item)} onOpen={() => onOpenItem(item)} curtain={{ name: item.item_title, imgUrl: item.item_image_url }}>
                   {/* The gold of a coin, like the red of wax, stays literal in
                       every theme. item_subtitle holds the moment's year. The
                       glint delay is staggered so a wall of plaques doesn't
@@ -643,7 +663,7 @@ export function CabinetOfWonders({ items, cap, cols, numberLabel, room, status, 
       style={{ '--d': `${j * 110}ms` }}
       {...shelf.slotProps(i)}
     >
-      <CardSurface className="tv-token" href={itemHref(item)} onOpen={() => onOpenItem(item)}>
+      <CardSurface className="tv-token" href={itemHref(item)} onOpen={() => onOpenItem(item)} curtain={{ name: item.item_title, imgUrl: item.item_image_url }}>
         <span aria-hidden="true" className="tv-disc">{(TOKEN_META[item.item_type] ?? { emoji: '✦' }).emoji}</span>
         <span className="tv-txt">
           <span className="tv-t">{item.item_title}</span>

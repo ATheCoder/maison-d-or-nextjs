@@ -22,6 +22,7 @@ import {
 } from '@dnd-kit/sortable';
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { CSS as dndCSS } from '@dnd-kit/utilities';
+import DatePicker from '@/components/ui/DatePicker';
 import { slugify, SLUG_RE } from '@/lib/slug';
 import { flagEmoji } from '@/lib/countries';
 import { createPerson, deletePerson, reorderBornToday, suggestPeople, type PersonListItem, type PersonSuggestion } from '@/app/admin/people/actions';
@@ -343,12 +344,11 @@ function CreateDialog({ onClose, existingNames, initialDate }: {
         <div className="panel" style={{ marginTop: 18, padding: '14px 15px', background: 'var(--gold-soft)' }}>
           <label className="flabel" style={{ margin: 0, color: 'var(--gold-deep)' }}>✦ Suggest a person born on a date</label>
           <div style={{ display: 'flex', gap: 8, marginTop: 9, alignItems: 'center' }}>
-            <input
-              type="date"
-              className="finput"
-              style={{ maxWidth: 200 }}
+            <DatePicker
               value={sugDate}
-              onChange={(e) => setSugDate(e.target.value)}
+              onChange={setSugDate}
+              aria-label="Date of birth to suggest for"
+              style={{ maxWidth: 200 }}
             />
             <button
               className="btn btn-sm"

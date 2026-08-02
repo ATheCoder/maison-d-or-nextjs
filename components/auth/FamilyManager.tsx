@@ -21,6 +21,7 @@ import {
 } from '@/app/(dg)/family/actions';
 import { AVATARS, type AvatarKey } from '@/lib/avatars';
 import { ageOnDay, birthDateBounds, formatBirthDate, normalizeBirthDate } from '@/lib/child-birth-date';
+import DatePicker from '@/components/ui/DatePicker';
 import SignOutButton from '@/components/auth/SignOutButton';
 import { authClient } from '@/lib/auth-client';
 
@@ -174,11 +175,13 @@ function ChildrenSection({ overview, refresh }: { overview: FamilyOverview; refr
                 </span>
               </div>
               {dobEditFor === c.id ? (
-                <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                  <input
-                    type="date" value={dobDraft} min={bounds.min} max={bounds.max}
-                    onChange={(e) => setDobDraft(e.target.value)}
-                    style={{ ...input, width: 150 }}
+                <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <DatePicker
+                    value={dobDraft} min={bounds.min} max={bounds.max}
+                    onChange={setDobDraft}
+                    aria-label={`${c.displayName}'s date of birth`}
+                    invalid={dobDraft !== '' && !normalizeBirthDate(dobDraft).ok}
+                    style={{ width: 186 }}
                     autoFocus
                   />
                   <button onClick={() => saveBirthday(c)} style={{ ...buttonGold, padding: '0.45rem 0.8rem' }}>Save</button>
@@ -223,14 +226,14 @@ function ChildrenSection({ overview, refresh }: { overview: FamilyOverview; refr
 
         {/* Add child */}
         <div style={{ marginTop: '1rem' }}>
-          <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '0.6rem' }}>
-            <input placeholder="Child's name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} style={{ ...input, flex: 1 }} />
-            <input
-              type="date" value={birthDate} min={bounds.min} max={bounds.max}
-              onChange={(e) => setBirthDate(e.target.value)}
-              style={{ ...input, width: 150 }}
+          <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '0.6rem', flexWrap: 'wrap' }}>
+            <input placeholder="Child's name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} style={{ ...input, flex: '1 1 9rem', minWidth: 0 }} />
+            <DatePicker
+              value={birthDate} min={bounds.min} max={bounds.max}
+              onChange={setBirthDate}
+              invalid={birthDate !== '' && !born.ok}
               aria-label="Date of birth"
-              title="Date of birth"
+              style={{ width: 186 }}
             />
             <button
               onClick={addChild}

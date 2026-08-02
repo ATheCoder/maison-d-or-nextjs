@@ -24,32 +24,14 @@
  * keeps it up past the navigation until the story's plates have loaded.
  */
 import { useRef } from 'react';
-import { createPortal } from 'react-dom';
-import Link, { useLinkStatus } from 'next/link';
+import Link from 'next/link';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
-import BookOpeningCurtain from '@/components/dailygold/BookOpeningCurtain';
+import StoryOpeningCurtain from '@/components/dailygold/StoryOpeningCurtain';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
 import { resolvePerson } from '@/lib/countries';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import { formatDate, formatYear } from '@/lib/dates';
-
-// ── OPENING CURTAIN ───────────────────────────────────────────────────────────
-// Lives inside the <Link>, because useLinkStatus only reports for the link it
-// is nested in. Rendered through a portal so the full-screen curtain escapes
-// the tile's overflow and stacking context.
-function OpeningCurtain({ person, imgUrl }) {
-  const { pending } = useLinkStatus();
-
-  // `pending` can only turn true after a click, so the portal is never reached
-  // on the server and the SSR/hydration passes both render nothing.
-  if (!pending || typeof document === 'undefined') return null;
-
-  return createPortal(
-    <BookOpeningCurtain name={person.name} imgUrl={imgUrl} />,
-    document.body,
-  );
-}
 
 // ── ONE VOLUME ON THE SHELF ───────────────────────────────────────────────────
 function BookVolume({ person, savedSet, editionDate, delay = '0s', tier = 'shelf' }) {
@@ -151,7 +133,7 @@ function BookVolume({ person, savedSet, editionDate, delay = '0s', tier = 'shelf
               aria-label={`Open the story of ${person.name}`}
             >
               {boards}
-              <OpeningCurtain person={person} imgUrl={imgUrl} />
+              <StoryOpeningCurtain name={person.name} imgUrl={imgUrl} />
             </Link>
           ) : (
             /* No slug means no story to open yet — the volume still stands on

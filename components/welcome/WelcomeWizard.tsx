@@ -25,6 +25,7 @@ import { AVATARS, type AvatarKey } from '@/lib/avatars';
 import { ageOnDay, birthDateBounds, formatBirthDate, normalizeBirthDate } from '@/lib/child-birth-date';
 import { THEME_KEYS, type ThemeKey } from '@/lib/theme-keys';
 import { THEMES } from '@/components/theme/themes';
+import DatePicker from '@/components/ui/DatePicker';
 
 const C = {
   gold: '#C9A96E',
@@ -335,16 +336,18 @@ export default function WelcomeWizard({
 
             <div style={{ marginBottom: '1.2rem' }}>
               <label htmlFor="birthDate" style={label}>The day they were born</label>
-              <input
+              <DatePicker
                 id="birthDate"
-                type="date"
                 value={birthDate}
                 min={bounds.min}
                 max={bounds.max}
-                onChange={(e) => setBirthDate(e.target.value)}
-                style={{ ...input, maxWidth: 200 }}
+                onChange={setBirthDate}
+                autoComplete="bday"
+                invalid={birthDate !== '' && !born.ok}
+                aria-describedby="birthDateHint"
+                style={{ width: '100%', maxWidth: 240 }}
               />
-              <p style={hint}>
+              <p id="birthDateHint" style={hint}>
                 {birthDate === ''
                   ? 'It sets their reading level, and tells us when to wish them a happy birthday. Ages 5 to 17.'
                   : born.ok
