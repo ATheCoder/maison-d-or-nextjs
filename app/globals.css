@@ -212,8 +212,9 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--dp-ink);
   font-family: var(--font-sans);
   font-size: 0.9rem;
+  font-weight: 300;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
 }
 .mdo-dp-input::placeholder { color: #B9A98D; letter-spacing: 0.06em; }
 .mdo-dp-input:disabled { cursor: not-allowed; }
@@ -240,6 +241,8 @@ h1, h2, h3, h4, h5, h6 {
 .mdo-dp-note {
   margin: 0.35rem 0 0;
   font-size: 0.72rem;
+  font-weight: 300;
+  letter-spacing: 0.02em;
   line-height: 1.4;
   color: var(--dp-red);
 }
@@ -342,9 +345,14 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 9px;
   background: none;
   color: var(--dp-ink);
+  /* Playfair italic at 300 — the house's serif in the same voice the page
+     ledes and the footer use, rather than the upright 400 a browser would
+     pick for a <select>. */
   font-family: var(--font-serif);
-  font-size: 1rem;
-  letter-spacing: 0.02em;
+  font-style: italic;
+  font-size: 1.1rem;
+  font-weight: 300;
+  letter-spacing: 0.04em;
   cursor: pointer;
   appearance: none;
 }
@@ -357,7 +365,7 @@ h1, h2, h3, h4, h5, h6 {
   background-position: right 0.4rem center;
 }
 .mdo-dp-year {
-  width: 5.2ch;
+  width: 6ch;
   font-variant-numeric: tabular-nums;
   cursor: text;
   text-align: center;
@@ -380,12 +388,17 @@ h1, h2, h3, h4, h5, h6 {
   gap: 2px;
 }
 .mdo-dp-row { display: contents; }
+/* The weekday row is an eyebrow label like every other one on the site —
+   light, small and widely tracked, not bold. `text-indent` puts back the half
+   of the trailing letter-space that would otherwise shove each one off-centre
+   above its column. */
 .mdo-dp-wd {
   padding: 0.35rem 0 0.5rem;
   text-align: center;
+  text-indent: 0.18em;
   font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-weight: 400;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--dp-muted);
 }
@@ -402,7 +415,9 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--dp-brown);
   font-family: var(--font-sans);
   font-size: 0.85rem;
+  font-weight: 300;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
@@ -410,12 +425,12 @@ h1, h2, h3, h4, h5, h6 {
 .mdo-dp-day:disabled { color: #C8BBA4; cursor: default; }
 /* Today is an outline, the selection is a fill — so a selected today still
    reads as selected. */
-.mdo-dp-day[data-today='true'] { border-color: var(--dp-line); font-weight: 700; }
+.mdo-dp-day[data-today='true'] { border-color: var(--dp-line); font-weight: 400; }
 .mdo-dp-day[data-selected='true'] {
   background: var(--dp-gold);
   border-color: var(--dp-gold-deep);
   color: #FFF;
-  font-weight: 700;
+  font-weight: 400;
   box-shadow: 0 2px 8px rgba(168, 132, 63, 0.35);
 }
 .mdo-dp-day:focus-visible {
@@ -432,10 +447,16 @@ h1, h2, h3, h4, h5, h6 {
   padding-top: 0.6rem;
   border-top: 1px solid rgba(201, 169, 110, 0.25);
 }
+/* The chosen day is prose, not data — so it speaks in the house's caption
+   voice (Playfair italic 300), the one the footer and the page ledes use. */
 .mdo-dp-chosen {
   flex: 1;
   min-width: 0;
-  font-size: 0.72rem;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.78rem;
+  font-weight: 300;
+  letter-spacing: 0.02em;
   line-height: 1.4;
   color: var(--dp-muted);
 }
@@ -447,8 +468,12 @@ h1, h2, h3, h4, h5, h6 {
   background: none;
   color: var(--dp-muted);
   font-family: var(--font-sans);
-  font-size: 0.72rem;
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   text-decoration: underline;
+  text-underline-offset: 3px;
   cursor: pointer;
 }
 .mdo-dp-quiet:hover { color: var(--dp-red); }
@@ -459,10 +484,13 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 10px;
   background: var(--dp-gold);
   color: #FFF;
+  /* The house button (`.mdo-btn` on hover) is exactly this: white on gold,
+     Lato 400, tracked 0.2em. */
   font-family: var(--font-sans);
   font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -477,7 +505,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 .mdo-dp-panel[data-mode='sheet'] .mdo-dp-day { min-height: 46px; font-size: 0.95rem; }
 .mdo-dp-panel[data-mode='sheet'] .mdo-dp-wd { font-size: 0.62rem; }
-.mdo-dp-panel[data-mode='sheet'] .mdo-dp-select { font-size: 1.1rem; }
+.mdo-dp-panel[data-mode='sheet'] .mdo-dp-select,
+.mdo-dp-panel[data-mode='sheet'] .mdo-dp-year { font-size: 1.1rem; }
 .mdo-dp-panel[data-mode='sheet'] .mdo-dp-foot { margin-top: 0.9rem; }
 
 @keyframes dpFade { from { opacity: 0; } to { opacity: 1; } }
