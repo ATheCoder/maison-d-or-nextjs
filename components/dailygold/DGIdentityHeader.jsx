@@ -14,33 +14,29 @@
  * Renders nothing only for signed-out visitors.
  */
 import { useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import { DG_SHELF, DGIcon } from '@/components/dailygold/dgNavConfig';
 import ChildSwitcherOverlay from '@/components/dailygold/ChildSwitcherOverlay';
+import SwitchCurtain, { useProfileSwitch } from '@/components/dailygold/ProfileSwitchCurtain';
 import { AVATARS } from '@/lib/avatars';
 
 export default function DGIdentityHeader({ child = null, viewer = null }) {
   const router = useRouter();
-  const pathname = usePathname();
   const { theme } = useTheme();
   const { track } = useInstrumentation();
   const [showSwitcher, setShowSwitcher] = useState(false);
+  // Same landing rule as the rail — it lives in useProfileSwitch, along with
+  // the curtain that covers the wait.
+  const { switching, handleSwitched: landSwitch } = useProfileSwitch(!!child);
 
   if (!child && !viewer) return null;
   const avatar = child ? (AVATARS[child.avatar] || AVATARS.sun) : { emoji: '🗝️', bg: '#E4DCCE' };
 
-  // Same landing rule as the rail: a grown-up entering a reader heads for the
-  // paper (push only, never push+refresh — the pair races); everything else
-  // stays on the page and refreshes.
-  const handleSwitched = (kind) => {
+  const handleSwitched = (kind, profile) => {
     setShowSwitcher(false);
-    if (kind === 'child' && !child && !pathname.startsWith('/daily-gold-edition')) {
-      router.push('/daily-gold-edition');
-      return;
-    }
-    router.refresh();
+    landSwitch(kind, profile);
   };
 
   return (
@@ -51,6 +47,7 @@ export default function DGIdentityHeader({ child = null, viewer = null }) {
         borderBottom: `1px solid ${theme.accentGold}26`,
       }}
     >
+      <SwitchCurtain switching={switching} />
       {/* Identity + switcher */}
       <div style={{ position: 'relative', minWidth: 0 }}>
         <button

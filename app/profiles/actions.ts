@@ -8,6 +8,7 @@
  * profile id into the session, so a forged request cannot bypass a PIN.
  */
 import { randomUUID } from 'node:crypto';
+import { revalidatePath } from 'next/cache';
 import { and, eq } from 'drizzle-orm';
 import { verifyPassword } from 'better-auth/crypto';
 import { db } from '@/src/db';
@@ -88,6 +89,16 @@ async function setActiveProfile(sessionId: string, profileId: string | null) {
   await db.update(sessionTable)
     .set({ activeChildProfileId: profileId, updatedAt: new Date() })
     .where(eq(sessionTable.id, sessionId));
+  // Every layout that names an identity — the rail, the tab bar, the identity
+  // header — is now stale wherever the client router cache holds it, and the
+  // cache holds more than it looks like: the rail's <Link>s prefetch each
+  // destination's layout, so a push after this switch would otherwise commit
+  // chrome rendered for the *previous* identity (the stale-rail bug: enter a
+  // child from the observatory and land on the edition still wearing the
+  // parent's rail). Purging the whole client cache here is the documented
+  // remedy, and it belongs in this helper because there is no identity change
+  // that doesn't pass through it.
+  revalidatePath('/', 'layout');
 }
 
 /**

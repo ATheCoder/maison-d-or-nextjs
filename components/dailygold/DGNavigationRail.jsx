@@ -16,15 +16,15 @@
  */
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import { dgDestinationsFor, DG_SHELF, DGIcon, isNavItemActive } from '@/components/dailygold/dgNavConfig';
 import ChildSwitcherOverlay from '@/components/dailygold/ChildSwitcherOverlay';
+import SwitchCurtain, { useProfileSwitch } from '@/components/dailygold/ProfileSwitchCurtain';
 import { AVATARS } from '@/lib/avatars';
 
 export default function DGNavigationRail({ child = null, viewer = null }) {
-  const router = useRouter();
   const pathname = usePathname();
   const { theme } = useTheme();
   // The rail also hangs on /passport and /treasury, which mount no provider —
@@ -37,25 +37,17 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
 
   const isActive = (item) => isNavItemActive(item, pathname);
 
-  /**
-   * Where a completed switch lands. A grown-up entering a reader heads for the
-   * paper — the same landing /profiles chose — unless already on it, where a
-   * refresh suffices (and push+refresh must never be paired; the pair races,
-   * see ProfilePicker). Every other switch stays put: reader-to-reader keeps
-   * the page, and a reader becoming the parent keeps it too — the pages that
-   * cannot host a parent bounce through their own guards.
-   */
-  const handleSwitched = (kind) => {
+  // The landing rule and the curtain that covers it live in useProfileSwitch;
+  // this only closes the menu before handing the switch over.
+  const { switching, handleSwitched: landSwitch } = useProfileSwitch(!!child);
+  const handleSwitched = (kind, profile) => {
     setShowSwitcher(false);
-    if (kind === 'child' && !child && !pathname.startsWith('/daily-gold-edition')) {
-      router.push('/daily-gold-edition');
-      return;
-    }
-    router.refresh();
+    landSwitch(kind, profile);
   };
 
   return (
     <nav className="dg-rail" aria-label="Daily Gold navigation">
+      <SwitchCurtain switching={switching} />
       {/* Monogram */}
       <div aria-hidden="true" style={{
         width: 44, height: 44, borderRadius: '50%', alignSelf: 'center',

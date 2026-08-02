@@ -20,9 +20,10 @@
  *   (getProfilesForPicker requires a guardian and would redirect) — their
  *   menu is the sign-out row alone.
  *
- * `onSwitched(kind)` reports what happened — 'child' (a reader was entered)
- * or 'parent' (child mode was cleared) — so the mount site can decide where
- * to land.
+ * `onSwitched(kind, profile?)` reports what happened — 'child' (a reader was
+ * entered, with the picker row that was pressed) or 'parent' (child mode was
+ * cleared) — so the mount site can decide where to land and raise the right
+ * curtain over the wait.
  */
 import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
@@ -70,7 +71,7 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
     setPending(true);
     const res = await enterChildProfile(kid.id);
     setPending(false);
-    if (res.ok) onSwitched('child');
+    if (res.ok) onSwitched('child', kid);
     else setError(res.error);
   }
 
@@ -87,7 +88,7 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
       res = await enterChildProfile(pinFor.id, pin);
     }
     setPending(false);
-    if (res.ok) { onSwitched(parentGate ? 'parent' : 'child'); return; }
+    if (res.ok) { onSwitched(parentGate ? 'parent' : 'child', parentGate ? null : pinFor); return; }
     setPin('');
     setError(res.error);
   }

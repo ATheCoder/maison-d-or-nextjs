@@ -1,6 +1,8 @@
+import { Suspense } from 'react';
 import { getActiveChildProfile } from '@/app/profiles/actions';
 import { getActiveChild, getSession } from '@/lib/dal';
 import DailyGoldEditionChrome from '@/components/dailygold/DailyGoldEditionChrome';
+import DGChromeSkeleton from '@/components/dailygold/DGChromeSkeleton';
 
 /**
  * The reader's persistent chrome.
@@ -11,6 +13,18 @@ import DailyGoldEditionChrome from '@/components/dailygold/DailyGoldEditionChrom
  * Next.js does not re-render it during a client-side transition, so turning to
  * another day (`?date=`) swaps only the reading column instead of tearing the
  * rail down and building a new one.
+ *
+ * The session reads are runtime data, and a layout that awaits runtime data
+ * blocks entry navigations until it has rendered — loading.tsx cannot cover a
+ * layout above it. So the reads live in ChromeWithIdentity, inside the
+ * layout's own Suspense boundary: an entry navigation commits immediately to
+ * DGChromeSkeleton (the rail, header and tab bar drawn empty) and the real
+ * chrome streams in over its own outline. The moment this earns its keep is
+ * the landing after a profile switch, which purges the client router cache
+ * (see setActiveProfile) so no prefetched chrome from the previous identity
+ * can be committed — the price of that purge is a fresh render on arrival,
+ * and this boundary is what plays a skeleton over it instead of a frozen
+ * screen.
  *
  * The reader is resolved here as well as in the page. `getActiveChildProfile`
  * is React-cached for the request, so the second read costs nothing, and the
@@ -27,7 +41,7 @@ import DailyGoldEditionChrome from '@/components/dailygold/DailyGoldEditionChrom
 // The chrome names the active child, which comes from the session.
 export const dynamic = 'force-dynamic';
 
-export default async function DailyGoldEditionLayout({ children }: { children: React.ReactNode }) {
+async function ChromeWithIdentity({ children }: { children: React.ReactNode }) {
   const child = await getActiveChildProfile();
   // The row behind that profile, for the one field the picker shape omits.
   const childRow = await getActiveChild();
@@ -45,5 +59,13 @@ export default async function DailyGoldEditionLayout({ children }: { children: R
     >
       {children}
     </DailyGoldEditionChrome>
+  );
+}
+
+export default function DailyGoldEditionLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<DGChromeSkeleton />}>
+      <ChromeWithIdentity>{children}</ChromeWithIdentity>
+    </Suspense>
   );
 }

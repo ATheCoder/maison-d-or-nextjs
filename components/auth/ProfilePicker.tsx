@@ -16,6 +16,7 @@ import {
 import { AVATARS, type AvatarKey } from '@/lib/avatars';
 import SignOutButton from '@/components/auth/SignOutButton';
 import ProfileEnteringCurtain from '@/components/auth/ProfileEnteringCurtain';
+import StudyOpeningCurtain from '@/components/auth/StudyOpeningCurtain';
 
 const C = { gold: '#C9A96E', ivory: '#F5F0E7', ink: '#241A0C', brown: '#5C4A2A', muted: '#8B7355' };
 
@@ -105,6 +106,9 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
   const [locked, setLocked] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [entering, setEntering] = useState<PickerProfile | null>(null);
+  // The parent tile's counterpart of `entering`: the push to /family is in
+  // flight. Never cleared — the picker unmounts at the navigation commit.
+  const [toStudy, setToStudy] = useState(false);
 
   function resetModal() {
     setPinFor(null); setPin(''); setOverrideMode(false); setCredential(''); setError(null); setLocked(false);
@@ -113,8 +117,9 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
   // Never follow the push with router.refresh(): refresh() re-fetches the
   // *current* route, so firing it alongside an in-flight push leaves the
   // navigation pending forever and the picker frozen. It buys nothing either —
-  // /daily-gold-edition is dynamic, and dynamic routes are never served from
-  // the client cache, so the push already re-renders against the new session.
+  // the switch action purges the whole client router cache (setActiveProfile
+  // in actions.ts; prefetched *layouts* are cached even for dynamic routes),
+  // so the push already re-renders everything against the new session.
   //
   // The action and the push both run inside one startTransition so isPending
   // stays true right through the navigation commit — a plain `await` would
@@ -124,7 +129,7 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
   // commit and takes the curtain with it, handing the wait straight over to
   // the edition's loading skeleton.
   function pickProfile(p: PickerProfile) {
-    if (entering || isPending) return;
+    if (entering || isPending || toStudy) return;
     setError(null);
     if (p.hasPin) { setPinFor(p); return; }
     setEntering(p);
@@ -141,6 +146,15 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
   // this modal (z-1000), which stays mounted for the rest of the navigation.
   // (The old bug lived here: clearing pending before the push left the modal
   // frozen with a live-looking button for the whole wait.)
+  // The parent tile. No server action to await — /family's requireFamily does
+  // the checking — so the transition holds only the push, keeping isPending
+  // true through the commit exactly like pickProfile's.
+  function goToStudy() {
+    if (entering || isPending || toStudy) return;
+    setToStudy(true);
+    startTransition(() => { router.push('/family'); });
+  }
+
   function submitPin() {
     if (!pinFor || isPending || entering) return;
     setError(null);
@@ -182,7 +196,7 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
               bg={a.bg}
               locked={p.hasPin}
               onClick={() => pickProfile(p)}
-              state={entering ? (entering.id === p.id ? 'chosen' : 'dimmed') : 'idle'}
+              state={entering ? (entering.id === p.id ? 'chosen' : 'dimmed') : toStudy ? 'dimmed' : 'idle'}
             />
           );
         })}
@@ -190,8 +204,8 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
           label={userName}
           emoji="🗝️"
           bg="#E4DCCE"
-          onClick={() => router.push('/family')}
-          state={entering ? 'dimmed' : 'idle'}
+          onClick={goToStudy}
+          state={toStudy ? 'chosen' : entering ? 'dimmed' : 'idle'}
         />
       </div>
 
@@ -312,6 +326,12 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
         const a = AVATARS[entering.avatar as AvatarKey] ?? AVATARS.sun;
         return <ProfileEnteringCurtain name={entering.displayName} emoji={a.emoji} bg={a.bg} />;
       })()}
+
+      {/* Only when the study is actually next: in child mode, /family bounces
+          this push through the grown-up gate, and a curtain promising the
+          study would be interrupted by a credential form. The gate raises the
+          same curtain itself once the credential passes. */}
+      {toStudy && !inChildMode && <StudyOpeningCurtain />}
     </div>
   );
 }

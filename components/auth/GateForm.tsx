@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { passGrownUpGate } from '@/app/profiles/actions';
 import { setGuardianPin } from '@/app/(dg)/family/actions';
+import StudyOpeningCurtain from '@/components/auth/StudyOpeningCurtain';
 
 const shell: React.CSSProperties = {
   minHeight: '100vh', background: '#F5F0E7',
@@ -45,6 +46,13 @@ export default function GateForm({ next }: { next: string }) {
   // requires it — run without asking a second time.
   const [pinOffer, setPinOffer] = useState<{ password: string } | null>(null);
   const [newPin, setNewPin] = useState('');
+  // The gate has been passed and the push to `next` is in flight. Raised only
+  // after the credential comes back correct — a wrong PIN must not flash the
+  // study at someone who isn't going in — and never lowered: the form unmounts
+  // at the navigation commit and takes the curtain with it, handing the wait
+  // to the destination's own loading skeleton (same contract as ProfilePicker's
+  // sunrise).
+  const [leaving, setLeaving] = useState(false);
 
   async function submit() {
     if (pending || !credential) return;
@@ -65,8 +73,11 @@ export default function GateForm({ next }: { next: string }) {
       return;
     }
     // Push only — a router.refresh() here would re-fetch /gate while the push
-    // is in flight and hang the navigation. Parent surfaces are dynamic, so
-    // the push already re-renders with child mode cleared.
+    // is in flight and hang the navigation. It buys nothing either: passing
+    // the gate purges the whole client router cache (setActiveProfile in
+    // app/profiles/actions.ts), so the push re-renders everything, layouts
+    // included, with child mode cleared.
+    setLeaving(true);
     router.push(next);
   }
 
@@ -81,6 +92,7 @@ export default function GateForm({ next }: { next: string }) {
       setError(res.error ?? 'That PIN could not be saved.');
       return;
     }
+    setLeaving(true);
     router.push(next);
   }
 
@@ -128,8 +140,8 @@ export default function GateForm({ next }: { next: string }) {
           </button>
 
           <button
-            onClick={() => router.push(next)}
-            disabled={pending}
+            onClick={() => { setLeaving(true); router.push(next); }}
+            disabled={pending || leaving}
             style={{
               display: 'inline-block', marginTop: '1rem', fontSize: '0.75rem', color: '#8B7355',
               background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer',
@@ -138,6 +150,7 @@ export default function GateForm({ next }: { next: string }) {
             Skip
           </button>
         </div>
+        {leaving && <StudyOpeningCurtain />}
       </div>
     );
   }
@@ -182,6 +195,7 @@ export default function GateForm({ next }: { next: string }) {
           Back to profiles
         </a>
       </div>
+      {leaving && <StudyOpeningCurtain />}
     </div>
   );
 }
