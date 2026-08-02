@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import DailyGoldEditionPage from '@/components/dailygold/DailyGoldEditionPage';
+import SettleAddress from './SettleAddress';
 import { getSavedKeys } from '@/app/(dg)/treasury/actions';
 import { getTodayExplorationForActiveChild } from '@/app/analytics/actions';
 import { getActiveChildProfile } from '@/app/profiles/actions';
@@ -43,6 +44,21 @@ function formatDate(date: string): string {
   });
 }
 
+// Everything on the page that is keyed by the day itself — refetched as a unit
+// when the bare route falls back to the last good day, while the reader-keyed
+// queries (saved keys, exploration, session, profile) are fetched once and
+// kept.
+async function fetchDay(date: string) {
+  const [edition, people, goodNews, onThisDay, greatestMoments] = await Promise.all([
+    getEditionByDate(date),
+    getPeopleForDate(date),
+    getGoodNewsForDate(date),
+    getOnThisDayForDate(date),
+    getGreatestMomentsForDate(date),
+  ]);
+  return { edition, people, goodNews, onThisDay, greatestMoments };
+}
+
 // A shared archive link should say which day it opens, both in the tab title
 // and wherever the link is unfurled.
 export async function generateMetadata({ searchParams }: { searchParams: SearchParams }) {
@@ -62,7 +78,7 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
   // The page declares one date — the one in the URL — and every section shows
   // that day's content or nothing; it never borrows another day's content to
   // fill a gap. So the edition row is that day's or absent (see the
-  // last-good-day redirect below, which moves the *date* rather than borrowing
+  // last-good-day fallback below, which moves the *date* rather than borrowing
   // content for today), and Born Today / On This Day / Greatest
   // Moments are fetched unconditionally: they are keyed by the day's month-day
   // ("what happened on this day across history") and are correct whether or
@@ -97,24 +113,9 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
   // by the /welcome wizard, and their paper opens with a flourish — the name
   // comes from the session's own active child, never from the URL, so the
   // parameter can announce nobody else's child.
-  const [
-    edition,
-    dates,
-    people,
-    goodNews,
-    onThisDay,
-    greatestMoments,
-    savedKeys,
-    exploration,
-    session,
-    child,
-  ] = await Promise.all([
-    getEditionByDate(date),
+  const [requestedDay, dates, savedKeys, exploration, session, child] = await Promise.all([
+    fetchDay(date),
     getAvailableDates(),
-    getPeopleForDate(date),
-    getGoodNewsForDate(date),
-    getOnThisDayForDate(date),
-    getGreatestMomentsForDate(date),
     getSavedKeys(),
     getTodayExplorationForActiveChild(),
     getSession(),
@@ -126,21 +127,31 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
 
   // Arriving at the bare route on a day with nothing on it — before the
   // morning's edition is published, or on a day that was never authored — used
-  // to open a masthead with empty sections under it. Send that reader to the
-  // most recent day that does have a paper instead, at that day's own address:
+  // to open a masthead with empty sections under it. Show the most recent day
+  // that does have a paper instead, rendered in *this* request: by the time the
+  // blankness is known, loading.tsx has already begun streaming, so a
+  // `redirect()` here can only be the meta-refresh kind (Next 16 redirect
+  // reference, "streaming context") — a second navigation, a second full
+  // render, and the skeleton flashing twice. Fetching the fallback day in
+  // place keeps the skeleton up exactly once, and <SettleAddress> then moves
+  // the URL (and tab title) to that day's own address without refetching, so
   // the page still declares one date, every section is still that date's
-  // content, and the URL still says which day is on screen, so the wax seal
-  // lands on the right day and the link stays shareable.
+  // content, the wax seal lands on the right day, and the link stays
+  // shareable.
   //
   // Only when today has *nothing*. A day with good news but no edition row, or
   // only a Born Today gallery, is a real day and shows what it has. And only
   // for the bare route: an explicit `?date=` is the reader asking for that day,
   // empty or not.
-  const todayIsBlank = !edition
-    && people.length === 0
-    && goodNews.length === 0
-    && onThisDay.length === 0
-    && greatestMoments.length === 0;
+  const todayIsBlank = !requestedDay.edition
+    && requestedDay.people.length === 0
+    && requestedDay.goodNews.length === 0
+    && requestedDay.onThisDay.length === 0
+    && requestedDay.greatestMoments.length === 0;
+
+  let shownDate = date;
+  let day = requestedDay;
+  let settleUrl: string | null = null;
   if (date === todayStr && todayIsBlank) {
     // The newest published edition is the fallback because the edition row is
     // what makes a full paper; `dates` catches the case where there is no
@@ -149,31 +160,42 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     const lastGoodDay = latest && latest.edition_date < todayStr
       ? latest.edition_date
       : dates.filter((d) => d < todayStr).pop();
-    // `welcome=1` rides along, because this hop is exactly when a new family is
-    // most likely to be sent through it: the wizard lands on the bare route, and
-    // a household that finishes before the morning's paper is published would
-    // otherwise lose the flourish to a redirect it never asked for.
+    // `welcome=1` rides along in the settled address, because this fallback is
+    // exactly when a new family is most likely to hit it: the wizard lands on
+    // the bare route, and a household that finishes before the morning's paper
+    // is published keeps the flourish — on screen now, and on a reload of the
+    // address the URL settles to.
     // Nothing anywhere: fall through and render today's empty paper.
     if (lastGoodDay) {
+      shownDate = lastGoodDay;
+      day = await fetchDay(lastGoodDay);
       const flourish = params.welcome === '1' ? '&welcome=1' : '';
-      redirect(`/daily-gold-edition?date=${lastGoodDay}${flourish}`);
+      settleUrl = `/daily-gold-edition?date=${lastGoodDay}${flourish}`;
     }
   }
 
   return (
-    <DailyGoldEditionPage
-      date={date}
-      today={todayStr}
-      edition={edition}
-      dates={dates}
-      people={people}
-      goodNews={goodNews}
-      onThisDay={onThisDay}
-      greatestMoments={greatestMoments}
-      savedKeys={savedKeys}
-      exploration={exploration}
-      signedOut={!session}
-      welcomeName={welcomeName}
-    />
+    <>
+      {settleUrl && (
+        <SettleAddress
+          url={settleUrl}
+          title={`Daily Gold Edition — ${formatDate(shownDate)}`}
+        />
+      )}
+      <DailyGoldEditionPage
+        date={shownDate}
+        today={todayStr}
+        edition={day.edition}
+        dates={dates}
+        people={day.people}
+        goodNews={day.goodNews}
+        onThisDay={day.onThisDay}
+        greatestMoments={day.greatestMoments}
+        savedKeys={savedKeys}
+        exploration={exploration}
+        signedOut={!session}
+        welcomeName={welcomeName}
+      />
+    </>
   );
 }
