@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { getObservatory } from '../actions';
+import { requireFamily } from '@/lib/dal';
 import { ObservatoryLedger } from '@/components/observatory/ObservatoryLedger';
 
 export const dynamic = 'force-dynamic';
@@ -15,14 +14,22 @@ export const metadata: Metadata = {
  *
  * `params` and `searchParams` are promises in Next 16, so both are awaited
  * before use. Neither value is trusted: `childId` is verified against the
- * caller's family inside the action, and `edition` is only honoured if it
+ * caller's family inside getObservatory, and `edition` is only honoured if it
  * appears in the list of days the action itself produced.
  *
- * A null answer means the id is foreign, deleted, or nonsense — or the database
- * could not answer. All four collapse to the index, which tells an attacker
- * nothing they did not already know and puts a guardian who mistyped a URL back
- * on their own first child. The index never bounces back here for a family with
- * no children, so there is no loop.
+ * The page hands both straight to ObservatoryLedger, which streams the
+ * masthead and the ledger body as their reads land. A null answer for the id
+ * — foreign, deleted, nonsense, or a database that could not answer — still
+ * collapses to the index (see LedgerBody), which tells an attacker nothing
+ * they did not already know and puts a guardian who mistyped a URL back on
+ * their own first child. The index renders inline rather than bouncing back
+ * here, so there is no loop.
+ *
+ * The (dg) layout resolves no `child` here: this page is only reachable once
+ * child mode has been cleared, so the rail hides its identity block and
+ * "My World" shelf and shows just the app's destinations. The observatory
+ * paints its own fixed Ledger canvas inside the shell's <main>, so the rail
+ * themes normally while the grown-up room stays light.
  */
 export default async function Page({
   params,
@@ -33,14 +40,8 @@ export default async function Page({
 }) {
   const { childId } = await params;
   const { edition } = await searchParams;
-
-  const data = await getObservatory(childId, edition);
-  if (!data) redirect('/parent-observatory');
-
-  // The (dg) layout resolves no `child` here: this page is only reachable once
-  // child mode has been cleared, so the rail hides its identity block and
-  // "My World" shelf and shows just the app's destinations. The observatory
-  // paints its own fixed Ledger canvas inside the shell's <main>, so the rail
-  // themes normally while the grown-up room stays light.
-  return <ObservatoryLedger data={data} />;
+  // The guardian gate, before any UI streams (React-cached; the ledger's
+  // stages re-use this same read).
+  await requireFamily(`/parent-observatory/${encodeURIComponent(childId)}`);
+  return <ObservatoryLedger childId={childId} edition={edition} />;
 }

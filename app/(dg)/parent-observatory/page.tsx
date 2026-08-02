@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { getObservatoryIndex } from './actions';
-import { ObservatoryInvite } from '@/components/observatory/ObservatoryInvite';
+import { requireFamily } from '@/lib/dal';
+import { ObservatoryLedger } from '@/components/observatory/ObservatoryLedger';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,12 +14,19 @@ export const metadata: Metadata = {
  * The observatory's front door — the target of "Open Parent View" on the
  * child's own page (components/dailygold/DGForParents.jsx:81).
  *
- * It holds no UI of its own for a family that has children: the observatory is
- * always *one child's*, so this hands straight off to the first profile and
- * lets the switcher take over from there.
+ * The observatory is always *one child's*, and here that child is the first
+ * profile — rendered inline, not redirected into. The old redirect hop cost a
+ * second navigation and remounted the loading skeleton, which read as the page
+ * refreshing twice; now a rail press is one navigation that fills in as its
+ * two reads land (see ObservatoryLedger). The pills still navigate to the
+ * canonical /parent-observatory/[childId] routes, so switching children is
+ * unchanged.
+ *
+ * The guardian gate runs before any UI: the ledger's stages each re-check it
+ * (requireFamily is React-cached, so this costs one read), but awaiting it
+ * here keeps a child-mode session from ever being shown even the frame.
  */
 export default async function Page() {
-  const { children } = await getObservatoryIndex();
-  if (children.length > 0) redirect(`/parent-observatory/${children[0].id}`);
-  return <ObservatoryInvite />;
+  await requireFamily('/parent-observatory');
+  return <ObservatoryLedger />;
 }

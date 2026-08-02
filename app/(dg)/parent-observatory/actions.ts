@@ -50,11 +50,8 @@ export type SectionMeter = { section: string; label: string; ms: number; minutes
 
 export type ObservatoryData = {
   child: ObservatoryChild;
-  /** The switcher's targets. Navigation only — never two children's numbers side by side. */
-  children: ObservatoryChild[];
   timezone: string;
   todayKey: string;
-  weekLabel: string;
   week: {
     bars: WeekBar[];
     totalMs: number;
@@ -83,19 +80,30 @@ export type ObservatoryData = {
   starters: Starter[];
 };
 
-/** The child pills, and what the index page redirects into. */
-export async function getObservatoryIndex(): Promise<{ children: ObservatoryChild[] }> {
+/**
+ * The masthead's stage: the child pills and the week line.
+ *
+ * This is the fast half of the page — one indexed read plus date arithmetic —
+ * and it is what ObservatoryLedger streams first, so the switcher shows every
+ * child while the heavy per-child read below is still running. `weekLabel` is
+ * computed here rather than carried on ObservatoryData precisely so the
+ * masthead does not have to wait for that read.
+ */
+export async function getObservatoryIndex(): Promise<{ children: ObservatoryChild[]; weekLabel: string }> {
   const { family: fam } = await requireFamily('/parent-observatory');
+  const tz = safeTimeZone(fam.timezone);
+  const weekKeys = lastNDayKeys(tz, WEEK_DAYS, new Date());
+  const weekLabel = weekRangeLabel(weekKeys[0], weekKeys[weekKeys.length - 1]);
   try {
     const rows = await db
       .select({ id: childProfile.id, displayName: childProfile.displayName, avatar: childProfile.avatar })
       .from(childProfile)
       .where(eq(childProfile.familyId, fam.id))
       .orderBy(asc(childProfile.createdAt));
-    return { children: rows };
+    return { children: rows, weekLabel };
   } catch (error) {
     console.error('observatory: index read failed', error);
-    return { children: [] };
+    return { children: [], weekLabel };
   }
 }
 
@@ -475,10 +483,8 @@ export async function getObservatory(
 
     return {
       child,
-      children: await siblings(fam.id),
       timezone: tz,
       todayKey,
-      weekLabel: weekRangeLabel(weekKeys[0], weekKeys[weekKeys.length - 1]),
       week: {
         bars,
         totalMs: weekTotalMs,
@@ -505,15 +511,6 @@ export async function getObservatory(
     console.error('observatory: read failed', error);
     return null;
   }
-}
-
-/** The switcher's other profiles, scoped to the same family (getFamilyOverview idiom). */
-async function siblings(familyScope: string): Promise<ObservatoryChild[]> {
-  return db
-    .select({ id: childProfile.id, displayName: childProfile.displayName, avatar: childProfile.avatar })
-    .from(childProfile)
-    .where(eq(childProfile.familyId, familyScope))
-    .orderBy(asc(childProfile.createdAt));
 }
 
 /**
