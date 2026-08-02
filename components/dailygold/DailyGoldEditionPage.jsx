@@ -32,8 +32,9 @@ import { useTheme } from '@/components/theme/ThemeContext';
  *
  * This file is only the day itself. The chrome around it — theme,
  * instrumentation, the rail, the tab bar, the identity header and the shell
- * padding — lives in DailyGoldEditionChrome, mounted by the route's layout, so
- * that turning to another day rebuilds only what is below. The layout contract
+ * padding — lives in DGAppChrome, mounted by the (dg) group's layout and shared
+ * with every other rail destination, so that turning to another day rebuilds
+ * only what is below. The layout contract
  * (navigation-redesign-spec §4/§7) is documented there and in NAV_SHELL_CSS.
  */
 

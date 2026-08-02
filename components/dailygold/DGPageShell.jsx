@@ -1,11 +1,17 @@
 'use client';
 /**
- * DGPageShell — the navigation chrome for full pages outside the edition
- * reader: the desktop rail, the mobile tab bar, and the shell padding that
- * keeps content clear of both. /passport and /treasury wrap their views in
- * it; DailyGoldEditionPage renders the same chrome itself (it interleaves
- * more — celebrations, the identity header — but shares NAV_SHELL_CSS below,
- * so the layout contract can never fork).
+ * DGPageShell — the navigation chrome for every page in the (dg) group: the
+ * desktop rail, the mobile tab bar, the identity header, and the shell padding
+ * that keeps content clear of all three.
+ *
+ * There used to be two of these. The edition reader lived outside the group
+ * with a near-identical frame of its own (DGChromeFrame, in the file now
+ * called DGAppChrome), because its rail has to sit under DGInstrumentationProvider
+ * and the group's layout did not mount one. The two copies drifted — different
+ * tab-bar and identity-header conditions, a background the other did not have
+ * — and each layout awaited the reader separately, which is what made the
+ * edition paint two skeletons back to back. The provider now lives in the
+ * shared chrome, so this is the only frame.
  *
  * Must render inside ThemeProvider — the rail, the bar and the shell colours
  * all come from the active palette.
@@ -154,13 +160,29 @@ export const NAV_SHELL_CSS = `
 `;
 
 /**
+ * `paper` marks the edition reader. It carries the two look-and-feel
+ * differences between the two shells this file replaces, preserved verbatim
+ * rather than reconciled — merging the layouts was not the moment to change
+ * what four pages look like. Both are one-line decisions whenever someone
+ * wants to make them:
+ *
+ * - The background gradients were the reader's alone. The other four rooms
+ *   paint their own canvas over most of it (the museum, the passport's
+ *   parchment, the Ledger), so turning them on everywhere would be a subtle
+ *   change to backdrops nobody has asked to change.
+ * - The identity header hung on the edition always, and elsewhere only for
+ *   grown-ups. So /treasury and /passport in child mode still have no header;
+ *   giving them the reader's switcher is the obvious unification, and just as
+ *   obviously a UI decision rather than a refactor.
+ *
  * @param {{
  *   child?: { id: string, name: string, avatar: string } | null,
  *   viewer?: { name: string, role: 'admin' | 'guardian' } | null,
+ *   paper?: boolean,
  *   children: import('react').ReactNode,
  * }} props
  */
-export default function DGPageShell({ child = null, viewer = null, children }) {
+export default function DGPageShell({ child = null, viewer = null, paper = false, children }) {
   const { theme } = useTheme();
 
   return (
@@ -168,7 +190,11 @@ export default function DGPageShell({ child = null, viewer = null, children }) {
       className="dg-root"
       style={{
         '--dg-gold': theme.accentGold,
+        // Signed out there is no tab bar, so the shell must not reserve room
+        // for one — the signed-out CTA docks at the true bottom instead.
+        ...(viewer ? null : { '--dg-tabbar-h': '0px' }),
         backgroundColor: theme.bgPrimary,
+        ...(paper ? { backgroundImage: 'radial-gradient(ellipse at 15% 25%, rgba(139,115,80,0.06) 0%, transparent 55%), radial-gradient(ellipse at 85% 75%, rgba(100,75,45,0.04) 0%, transparent 45%)' } : null),
         fontFamily: theme.fontBody,
         color: theme.textBody,
       }}
@@ -176,15 +202,18 @@ export default function DGPageShell({ child = null, viewer = null, children }) {
       <style>{NAV_SHELL_CSS}</style>
 
       <DGNavigationRail child={child} viewer={viewer} />
-      <DGMobileTabBar child={child} />
+      {/* A stranger gets no tab bar: every destination on it is login-gated,
+          and the signed-out CTA bar takes its place at the bottom edge. Only
+          the edition is reachable signed out, so this is the reader's rule
+          applied to a shell the other four never hit it with. */}
+      {viewer && <DGMobileTabBar child={child} />}
 
       <main className="dg-shell">
-        {/* On mobile the rail is gone, and with no reader there is no page
-            chrome naming the account at all — so the grown-up rooms (/family,
-            /parent-observatory) carry the identity header here. Child mode
-            keeps its status quo: those pages had no header before and the
-            child-only pages guard themselves. */}
-        {!child && <DGIdentityHeader viewer={viewer} />}
+        {/* Chrome, not reading: the identity header names the reader (or the
+            signed-in grown-up), not the day, so it stays out of the page and
+            out of the tracked regions. On mobile the rail is gone, which is
+            what makes it the only thing naming the account at all. */}
+        {(paper || !child) && <DGIdentityHeader child={child} viewer={viewer} />}
         {children}
       </main>
     </div>

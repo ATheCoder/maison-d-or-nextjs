@@ -3,8 +3,8 @@
  * DGEditionSkeleton — the paper before the ink: what the reader sees while the
  * edition itself is still being fetched.
  *
- * Rendered by app/daily-gold-edition/loading.tsx, which Next.js mounts inside
- * the route layout's <main class="dg-shell"> — so the rail, the tab bar and the
+ * Rendered by app/(dg)/daily-gold-edition/loading.tsx, which Next.js mounts
+ * inside the group layout's <main class="dg-shell"> — so the rail, the tab bar and the
  * identity header are never replaced, only the reading column is. Being inside
  * `.dg-root` also means three things are already ours and must not be
  * re-declared here: `--dg-gold` (set on the root by the chrome), the `dgFadeIn`

@@ -1,4 +1,4 @@
-import { getPersonBySlug } from '@/app/daily-gold-edition/actions';
+import { getPersonBySlug } from '@/app/(dg)/daily-gold-edition/actions';
 import StorybookView from '@/components/dailygold/StorybookView';
 import { getActiveChild } from '@/lib/dal';
 

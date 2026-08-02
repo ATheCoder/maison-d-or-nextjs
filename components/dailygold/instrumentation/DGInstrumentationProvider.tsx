@@ -28,6 +28,7 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
+import { usePathname } from 'next/navigation';
 import { recordEvents } from '@/app/analytics/actions';
 import {
   chunkIntoBatches,
@@ -144,6 +145,26 @@ export function DGInstrumentationProvider({
   // provided so consumers below need no null checks.
   const enabled = childId !== null;
 
+  /**
+   * Whether this mount is sitting on something the child is *reading*.
+   *
+   * The provider used to be mounted per reading route, so "mounted" and "on a
+   * reading surface" were the same fact. It now lives in the (dg) chrome above
+   * the rail, so it is also mounted over /treasury and /passport — and the
+   * three events the provider emits about itself (session_pause /
+   * session_resume / session_heartbeat) describe a *reading sitting*, not a
+   * page view. The observatory folds pause/resume into "a typical sitting is
+   * X–Y minutes" (sessionSpans → typicalSession), while its "time reading"
+   * comes only from section_view; letting the museum emit sittings would put
+   * two numbers that disagree on the same card. Heartbeats are read by nothing
+   * and would be pure rows against the daily budget (analytics plan §3.4).
+   *
+   * A reading surface is one that names what is being read: the edition passes
+   * its day, the story passes its static section. Nav events are unaffected —
+   * those are about the chrome and are wanted everywhere.
+   */
+  const onReadingSurface = editionDate !== null || staticSection !== null;
+
   const bufferRef = useRef<BufferedEvent[]>([]);
   const retryRef = useRef<AssembledBatch[]>([]);
   const inFlightRef = useRef(false);
@@ -164,12 +185,14 @@ export function DGInstrumentationProvider({
   const editionDateRef = useRef(editionDate);
   const staticSectionRef = useRef(staticSection);
   const enabledRef = useRef(enabled);
+  const onReadingSurfaceRef = useRef(onReadingSurface);
   useEffect(() => {
     childIdRef.current = childId;
     editionDateRef.current = editionDate;
     staticSectionRef.current = staticSection;
     enabledRef.current = enabled;
-  }, [childId, editionDate, staticSection, enabled]);
+    onReadingSurfaceRef.current = onReadingSurface;
+  }, [childId, editionDate, staticSection, enabled, onReadingSurface]);
 
   /** Let every registered clock bank its in-progress segment into the buffer. */
   const harvest = useCallback(() => {
@@ -279,6 +302,10 @@ export function DGInstrumentationProvider({
         // A subscriber's bookkeeping is not the provider's problem.
       }
     }
+    // Subscribers still run off a reading surface — a dwell clock that missed a
+    // pause would keep counting — but the sitting itself is only stamped where
+    // a sitting is a meaningful thing to have had.
+    if (!onReadingSurfaceRef.current) return;
     track(attentive ? 'session_resume' : 'session_pause', { section: activeSectionRef.current });
   }, [track]);
 
@@ -385,9 +412,11 @@ export function DGInstrumentationProvider({
   }, [enabled, flush]);
 
   // Liveness: bounds worst-case tail loss and distinguishes a child reading
-  // from a tablet left open on the page. Silent while away, by construction.
+  // from a tablet left open on the page. Silent while away, by construction,
+  // and silent off a reading surface — a tablet left open on the Treasury is
+  // not a reading sitting to bound.
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !onReadingSurface) return;
     let accrued = 0;
     let since: number | null = attentionRef.current ? Date.now() : null;
     const unsubscribe = subscribeAttention((attentive) => {
@@ -415,19 +444,31 @@ export function DGInstrumentationProvider({
       unsubscribe();
       window.clearInterval(timer);
     };
-  }, [enabled, subscribeAttention, track]);
+  }, [enabled, onReadingSurface, subscribeAttention, track]);
 
-  // Unmount is the reader switch (the shell is keyed on the child id) and the
-  // route change. Best effort, kicked off synchronously: React runs a deleted
-  // subtree's cleanups top-down, so the collectors below are still registered
-  // here. No carryover write — the page is alive, this send is the insurance.
+  /**
+   * Leaving a route is a flush trigger, and so is the reader switch (the chrome
+   * is keyed on the child id, so that one is an unmount). Best effort, kicked
+   * off synchronously: React runs a deleted subtree's cleanups top-down, so the
+   * collectors below are still registered here. No carryover write — the page is
+   * alive, this send is the insurance.
+   *
+   * `pathname` is in the deps for the route half. The provider used to be
+   * mounted per route, so a route change *was* an unmount and this cleanup ran
+   * for free; above the rail it survives the navigation, so the flush has to be
+   * asked for explicitly. That keeps the guarantee the analytics plan wanted
+   * from per-route mounting (§4: "buffer flushes on route change… so the last
+   * page's dwell survives navigating back to the paper") without giving the
+   * rail's own nav events back to the no-op API.
+   */
+  const pathname = usePathname();
   useEffect(() => {
     if (!enabled) return;
     return () => {
       harvest();
       flush().catch(() => {});
     };
-  }, [enabled, harvest, flush]);
+  }, [enabled, pathname, harvest, flush]);
 
   const api = useMemo<InstrumentationApi>(() => (enabled ? {
     track,
