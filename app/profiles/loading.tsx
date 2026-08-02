@@ -47,8 +47,9 @@ export default function Loading() {
         Maison d&apos;Oré
       </p>
 
-      {/* Stands in for the 1.9rem Playfair "Who's reading today?" */}
-      <SkeletonBar w={260} h={30} style={{ margin: '0 0 2.5rem' }} />
+      {/* Stands in for the 1.9rem Playfair "Who's reading today?" — at lh 1.2
+          and the global heading letter-spacing that line is ~340×37. */}
+      <SkeletonBar w={340} h={37} style={{ maxWidth: '90%', margin: '0 0 2.5rem' }} />
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', justifyContent: 'center', maxWidth: 640 }}>
         {[0, 1, 2, 3].map((i) => (
@@ -70,10 +71,21 @@ export default function Loading() {
                 style={{ border: '3px solid rgba(201,169,110,0.35)', margin: '0 auto' }}
               />
             </div>
-            <SkeletonBar w={64} h={10} style={{ margin: '0.7rem auto 0' }} />
+            {/* Caption: 0.9rem at the body's lh 1.75 is a 25px line box. */}
+            <SkeletonBar w={64} h={25} style={{ margin: '0.7rem auto 0' }} />
           </div>
         ))}
       </div>
+
+      {/* The sign-out row — 3rem below the tiles on the real page. Without a
+          ghost the picker is ~87px shorter than the page it stands in for, and
+          the vertically-centred tiles jump up when the real one mounts. */}
+      <SkeletonBar
+        w={97}
+        h={39}
+        radius={10}
+        style={{ marginTop: '3rem', background: 'transparent', border: '1px solid rgba(201,169,110,0.5)' }}
+      />
     </SkeletonStatus>
   );
 }

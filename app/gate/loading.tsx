@@ -37,28 +37,39 @@ export default function Loading() {
         boxShadow: '0 8px 40px rgba(100,80,40,0.12)',
         padding: '2.5rem 2rem',
       }}>
-        {/* The gate's own key, ringed in gold and breathing — a shimmer bar here
-            would say "a picture is loading", which is not what is happening. */}
+        {/* The gate's own key, breathing — a shimmer bar here would say "a
+            picture is loading", which is not what is happening. Drawn exactly
+            as GateForm draws it (2rem glyph, no ring): the body's 1.75
+            line-height makes this a 56px line box, and the real key lands on
+            top of it without the card moving. */}
         <div
           className="mdo-anim"
           aria-hidden="true"
           style={{
-            width: 44, height: 44, borderRadius: '50%',
-            border: '2px solid rgba(201,169,110,0.6)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.2rem', opacity: 0.7,
-            margin: '0 auto 0.4rem',
+            fontSize: '2rem', lineHeight: 1.75, opacity: 0.7,
+            marginBottom: '0.4rem',
             animation: 'mdoSkelBreathe 2.4s ease-in-out infinite alternate',
           }}
         >
           🗝️
         </div>
 
-        <SkeletonBar w="60%" h={20} style={{ margin: '0 auto 1.5rem' }} />
+        {/* "Grown-ups only" (1.4rem Playfair, lh 1.2 ≈ 27px) and the one-line
+            prompt under it (0.82rem, lh 1.75 ≈ 23px) — bars sized to the full
+            line boxes so the column below them starts at the same y. */}
+        <SkeletonBar w="55%" h={27} style={{ margin: '0 auto 0.5rem' }} />
+        <SkeletonBar w="80%" h={23} style={{ margin: '0 auto 1.5rem' }} />
 
-        <SkeletonBar h={42} radius={10} />
+        {/* field: 0.7rem×2 padding + 0.9rem text at lh 1.75 + 2px border ≈ 50px */}
+        <SkeletonBar h={50} radius={10} />
 
-        <SkeletonBar h={42} radius={12} style={{ marginTop: '1.1rem', background: 'rgba(201,169,110,0.4)' }} />
+        {/* Continue: 0.75rem×2 padding + 0.8rem text at lh 1.75 ≈ 46px; the
+            tint is the button's own disabled gold. */}
+        <SkeletonBar h={46} radius={12} style={{ marginTop: '1.1rem', background: 'rgba(201,169,110,0.4)' }} />
+
+        {/* The "Back to profiles" link — small, but it is 36px of card, and
+            without a ghost the whole centred card jumps up when it arrives. */}
+        <SkeletonBar w={96} h={12} style={{ margin: '1.4rem auto 0' }} />
       </div>
     </SkeletonStatus>
   );

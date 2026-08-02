@@ -31,12 +31,6 @@ export default function Loading() {
         animation: 'mdoSkelFade 0.3s ease-out',
       }}
     >
-      {/* The globals.css gold-ink-reveal idiom, redrawn locally: a loading state
-          must not depend on another stylesheet having loaded first. `.mdo-anim`
-          hands it to the shared reduced-motion block, which stops the animation
-          and leaves the rule at its untransformed full width. */}
-      <style>{`@keyframes mdoInkDraw { from { transform: scaleX(0) } to { transform: scaleX(1) } }`}</style>
-
       <div style={{
         width: '100%',
         maxWidth: 480,
@@ -55,13 +49,16 @@ export default function Loading() {
           Maison d&apos;Oré
         </p>
 
-        {/* StepDots: the wizard opens on step one, so the first dot is already gold. */}
+        {/* StepDots as the wizard draws them: the current dot is a 22px lozenge,
+            the waiting ones are 6px rounds. Three dots is the full-wizard
+            guess; an invited co-parent gets two, and that one-dot pop is
+            accepted over drawing the wrong shape for everyone else. */}
         <div aria-hidden="true" style={{ display: 'flex', gap: 6, justifyContent: 'center', margin: '0 0 1.5rem' }}>
           {[0, 1, 2].map((i) => (
             <span
               key={i}
               style={{
-                width: 28,
+                width: i === 0 ? 22 : 6,
                 height: 6,
                 borderRadius: 3,
                 background: i === 0 ? '#C9A96E' : 'rgba(201,169,110,0.3)',
@@ -70,25 +67,29 @@ export default function Loading() {
           ))}
         </div>
 
-        <SkeletonBar w="70%" h={26} style={{ margin: '0 auto' }} />
-        <div
-          className="mdo-anim"
-          style={{
-            height: 1,
-            background: '#C9A96E',
-            transformOrigin: 'left',
-            animation: 'mdoInkDraw 1.2s cubic-bezier(0.22,1,0.36,1) forwards',
-            margin: '0.6rem 0 1.75rem',
-          }}
-        />
+        {/* Heading (1.6rem Playfair ≈ 31px), then the two-line lede that sits
+            under it on every step — the wizard has no rule or divider here. */}
+        <SkeletonBar w="70%" h={31} style={{ margin: '0 auto 0.6rem' }} />
+        <SkeletonBar w="88%" h={17} style={{ margin: '0 auto 6px' }} />
+        <SkeletonBar w="60%" h={17} style={{ margin: '0 auto 1.75rem' }} />
 
-        <SkeletonBar w={90} h={9} style={{ marginBottom: '0.35rem' }} />
-        <SkeletonBar h={42} radius={10} style={{ marginBottom: '1.1rem' }} />
+        {/* Field one: label (0.62rem, lh 1.75 ≈ 17px) over a 50px input. */}
+        <div style={{ marginBottom: '1.1rem' }}>
+          <SkeletonBar w={130} h={17} style={{ marginBottom: '0.35rem' }} />
+          <SkeletonBar h={50} radius={10} />
+        </div>
 
-        <SkeletonBar w={90} h={9} style={{ marginBottom: '0.35rem' }} />
-        <SkeletonBar h={42} radius={10} style={{ marginBottom: '1.5rem' }} />
+        {/* Field two: the timezone select, plus its two-line hint. */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <SkeletonBar w={130} h={17} style={{ marginBottom: '0.35rem' }} />
+          <SkeletonBar h={50} radius={10} />
+          <SkeletonBar w="96%" h={12} style={{ margin: '0.45rem 0 0' }} />
+          <SkeletonBar w="70%" h={12} style={{ margin: '5px 0 0' }} />
+        </div>
 
-        <SkeletonBar h={44} radius={12} style={{ background: 'rgba(201,169,110,0.4)' }} />
+        {/* Continue: 0.8rem×2 padding + 0.85rem text ≈ 49px, in the ghost's
+            gold tint of the wizard's solid-gold button. */}
+        <SkeletonBar h={49} radius={12} style={{ background: 'rgba(201,169,110,0.4)' }} />
       </div>
     </SkeletonStatus>
   );

@@ -10,9 +10,14 @@ import { SkeletonBar, SkeletonStatus } from '@/components/maison/ParchmentSkelet
  *
  * The one thing this screen can honestly say up front is what it is — the
  * eyebrow is the same static line the page renders, so an invitee knows they
- * have arrived somewhere expected while the token is still being checked. The
- * wax seal is pressed and released for as long as the verification runs;
- * whether the invitation turns out to be valid is the page's news to break.
+ * have arrived somewhere expected while the token is still being checked.
+ * Whether the invitation turns out to be valid is the page's news to break.
+ *
+ * The ghosts model the logged-out happy path (two-line title, one sub line,
+ * the Log in / Sign up pair) because that is who follows an invite link. A
+ * signed-in visitor gets a single accept button instead, and an expired token
+ * gets neither — those hand-offs shift, and that is accepted: no one shape
+ * can match all three, so the skeleton matches the common one.
  */
 export default function Loading() {
   return (
@@ -29,16 +34,6 @@ export default function Loading() {
         animation: 'mdoSkelFade 0.3s ease-out',
       }}
     >
-      {/* Local to this file — the seal is the only thing in the app that does
-          this. `.mdo-anim` hands it to the shared reduced-motion block, which
-          leaves the seal simply pressed and still. */}
-      <style>{`
-        @keyframes mdoSealPress {
-          0%, 100% { transform: scale(1); box-shadow: 0 2px 8px rgba(100,80,40,0.18); }
-          50% { transform: scale(0.94); box-shadow: 0 1px 4px rgba(100,80,40,0.10); }
-        }
-      `}</style>
-
       <div style={{
         width: '100%',
         maxWidth: 440,
@@ -56,28 +51,20 @@ export default function Loading() {
           Maison d&apos;Oré — Family invite
         </p>
 
-        <div
-          className="mdo-anim"
-          aria-hidden="true"
-          style={{
-            width: 40, height: 40, borderRadius: '50%',
-            background: 'radial-gradient(circle at 35% 30%, #FAF7F2, #EDE0CC 55%, #D8CCBA)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#C9A96E', fontSize: '1rem',
-            margin: '0 auto 0.9rem',
-            boxShadow: '0 2px 8px rgba(100,80,40,0.18)',
-            animation: 'mdoSealPress 1.6s ease-in-out infinite',
-          }}
-        >
-          ✦
-        </div>
+        {/* "You're invited to join {family}" — 1.6rem Playfair wraps to two
+            ~31px lines for almost any family name at this card width. */}
+        <SkeletonBar w="85%" h={28} style={{ margin: '0 auto 6px' }} />
+        <SkeletonBar w="55%" h={28} style={{ margin: '0 auto 0.75rem' }} />
 
-        <SkeletonBar w="80%" h={24} style={{ margin: '0 auto 0.75rem' }} />
-        <SkeletonBar w="55%" h={12} style={{ margin: '0 auto 1.75rem' }} />
+        {/* "This invitation was sent to …" — one 0.85rem line, lh 1.75 ≈ 24px */}
+        <SkeletonBar w="60%" h={24} style={{ margin: '0 auto 1.75rem' }} />
 
+        {/* Log in (solid gold) and Sign up (outlined) — the flex row stretches
+            both to the bordered one's ~50px, and the widths are what the two
+            uppercase labels actually set. */}
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-          <SkeletonBar w={110} h={40} radius={12} />
-          <SkeletonBar w={110} h={40} radius={12} />
+          <SkeletonBar w={112} h={50} radius={12} style={{ background: 'rgba(201,169,110,0.4)' }} />
+          <SkeletonBar w={124} h={50} radius={12} style={{ background: 'transparent', border: '1px solid rgba(201,169,110,0.5)' }} />
         </div>
       </div>
     </SkeletonStatus>

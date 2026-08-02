@@ -1,7 +1,11 @@
 import DGContentSkeleton from '@/components/dailygold/DGContentSkeleton';
 
 /**
- * The Suspense fallback for every destination in the group.
+ * The group-wide Suspense fallback — today only a safety net: every current
+ * destination (family, parent-observatory, passport, treasury) carries its
+ * own page-shaped loading.tsx, which takes precedence over this one. This
+ * generic frame is what a *future* route in the group gets for free until it
+ * grows a skeleton of its own.
  *
  * Next.js nests loading.tsx *inside* layout.tsx and around page.tsx, so this
  * replaces only what lives in the shell's <main>. The rail and the mobile tab
