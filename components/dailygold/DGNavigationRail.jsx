@@ -15,6 +15,7 @@
  * below 768px the rail is hidden entirely.
  */
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
@@ -51,25 +52,6 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
       return;
     }
     router.refresh();
-  };
-
-  /**
-   * Warm the destination before the press.
-   *
-   * These are buttons, not <Link>s, so nothing is prefetched for us. Every
-   * destination in the (dg) group is force-dynamic, and the router can only
-   * show app/(dg)/loading.tsx if it already holds that route's boundary — with
-   * a cold cache the press instead sits on the old page until the whole server
-   * render lands, which is the stall this is here to remove. Hover and focus,
-   * never mount: prefetching six dynamic routes on arrival would cost six
-   * server renders nobody asked for.
-   */
-  const warm = (path) => () => {
-    try {
-      router.prefetch(path);
-    } catch {
-      // A prefetch is an optimisation; it must never be why a press fails.
-    }
   };
 
   return (
@@ -177,20 +159,28 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
         </div>
       )}
 
-      {/* Global destinations */}
+      {/* Global destinations.
+
+          <Link>, not buttons: the rail sits in the viewport, so every
+          destination's partial route — down to its own loading.tsx boundary —
+          is prefetched on arrival. That boundary being warm is what lets a
+          press show the page-shaped skeleton (family's, treasury's) instead of
+          the generic group fallback. Default prefetch stops at the boundary
+          for dynamic routes, so this costs no full server renders. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: '1.5rem' }}>
         {destinations.map(item => {
           const active = isActive(item);
           return (
-            <button
+            <Link
               key={item.key}
+              href={item.path}
               className={`dg-rail-item${active ? ' dg-rail-active' : ''}`}
-              onClick={() => {
+              /* onNavigate, not onClick: it fires only for the client-side
+                 navigation this event describes — a cmd-click into a new tab
+                 is not this session going anywhere. */
+              onNavigate={() => {
                 track('nav_select', { contentId: item.path, label: item.label, source: 'rail' });
-                router.push(item.path);
               }}
-              onPointerEnter={warm(item.path)}
-              onFocus={warm(item.path)}
               aria-current={active ? 'page' : undefined}
               aria-label={item.label}
               title={item.label}
@@ -206,7 +196,7 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
                 {item.label}
               </span>
               {active && <span className="dg-rail-dot" aria-hidden="true" style={{ marginLeft: 'auto', width: 4, height: 4, borderRadius: '50%', background: theme.accentGold, flexShrink: 0 }} />}
-            </button>
+            </Link>
           );
         })}
       </div>
@@ -225,17 +215,15 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
             {DG_SHELF.map(item => {
               const active = isActive(item);
               return (
-                <button
+                <Link
                   key={item.key}
+                  href={item.path}
                   className={`dg-rail-item${active ? ' dg-rail-active' : ''}`}
                   /* The shelf is the child's own space, not a destination of the
                      app — its own event, from the same source. */
-                  onClick={() => {
+                  onNavigate={() => {
                     track('shelf_open', { contentId: item.path, label: item.label, source: 'rail' });
-                    router.push(item.path);
                   }}
-                  onPointerEnter={warm(item.path)}
-                  onFocus={warm(item.path)}
                   aria-current={active ? 'page' : undefined}
                   aria-label={item.label}
                   title={item.label}
@@ -251,7 +239,7 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
                     {item.label}
                   </span>
                   {active && <span className="dg-rail-dot" aria-hidden="true" style={{ marginLeft: 'auto', width: 4, height: 4, borderRadius: '50%', background: theme.accentGold, flexShrink: 0 }} />}
-                </button>
+                </Link>
               );
             })}
           </div>

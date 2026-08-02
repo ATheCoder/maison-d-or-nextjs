@@ -8,13 +8,13 @@
  * ≥768px by the shell stylesheet (`.dg-tabbar`), which also reserves bottom
  * space for it via `--dg-tabbar-h` (including the iOS safe-area inset).
  */
-import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import { dgDestinationsFor, DG_SHELF, DGIcon, isNavItemActive } from '@/components/dailygold/dgNavConfig';
 
 export default function DGMobileTabBar({ child = null }) {
-  const router = useRouter();
   const pathname = usePathname();
   const { theme } = useTheme();
   // No-ops on /passport and /treasury, which mount no provider.
@@ -43,18 +43,21 @@ export default function DGMobileTabBar({ child = null }) {
         boxShadow: '0 -4px 20px rgba(44,36,22,0.08)',
       }}
     >
+      {/* <Link>, not buttons, for the same reason as the rail: viewport
+          prefetch keeps each destination's own loading.tsx boundary warm, so a
+          tap gets that page's skeleton rather than the generic group fallback. */}
       {tabs.map(tab => {
         const active = isActive(tab);
         return (
-          <button
+          <Link
             key={tab.key}
-            onClick={() => {
+            href={tab.path}
+            onNavigate={() => {
               track(tab.event, { contentId: tab.path, label: tab.label, source: 'tabbar' });
-              router.push(tab.path);
             }}
             aria-current={active ? 'page' : undefined}
             style={{
-              flex: 1, minHeight: 48, border: 'none', background: 'transparent', cursor: 'pointer',
+              flex: 1, minHeight: 48, textDecoration: 'none', cursor: 'pointer',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               gap: 3, padding: '0.4rem 0.25rem', transition: 'all 0.2s ease',
             }}
@@ -77,7 +80,7 @@ export default function DGMobileTabBar({ child = null }) {
               width: 4, height: 4, borderRadius: '50%',
               background: active ? theme.accentGold : 'transparent',
             }} />
-          </button>
+          </Link>
         );
       })}
     </nav>

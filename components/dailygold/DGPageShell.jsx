@@ -61,6 +61,10 @@ export const NAV_SHELL_CSS = `
     cursor: pointer;
     text-align: left;
     transition: background 0.2s ease;
+    /* worn by <Link> (nav items) and <button> (identity block) alike */
+    text-decoration: none;
+    color: inherit;
+    box-sizing: border-box;
   }
   .dg-rail-item:hover { background: color-mix(in srgb, var(--dg-gold) 10%, transparent); }
   .dg-rail-active { background: color-mix(in srgb, var(--dg-gold) 14%, transparent); }
@@ -125,7 +129,7 @@ export const NAV_SHELL_CSS = `
      wraps; shrinking the type is what keeps every tab legible and one line. */
   @media (max-width: 380px) {
     .dg-tabbar { padding-left: 0.25rem; padding-right: 0.25rem; }
-    .dg-tabbar > button { padding-left: 0.1rem !important; padding-right: 0.1rem !important; }
+    .dg-tabbar > a { padding-left: 0.1rem !important; padding-right: 0.1rem !important; }
     .dg-tab-label { font-size: 0.6rem; letter-spacing: 0; }
   }
 
