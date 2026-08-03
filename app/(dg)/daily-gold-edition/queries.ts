@@ -1,9 +1,18 @@
-'use server';
+import 'server-only';
 /**
- * Server actions backing the Daily Gold Edition page.
+ * The day reads backing the Daily Gold Edition page.
  * These read editions from the local Postgres database via Drizzle and return
  * them in the snake_case shape the client components already expect (the same
  * shape Base44 used to return), so no consumer mapping has to change.
+ *
+ * Not a `'use server'` module, and deliberately so. Every export here is a
+ * read; there is not one mutation among them. As server actions they were nine
+ * unauthenticated POST endpoints that nothing needed — no client component
+ * imports this file, both callers are server components. The directive is also
+ * mutually exclusive with `'use cache'` (SWC: *"Conflicting directives
+ * "use server" and "use cache" found in the same file"*), and caching the
+ * day-keyed reads is the whole point of this module. `import 'server-only'` is
+ * what now keeps it off the client, which is all the directive was doing.
  */
 import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import { db } from '@/src/db';
@@ -127,16 +136,6 @@ function rowToRecord(row: DailyGoldEditionRow): EditionRecord {
     generated_at: row.generatedAt ? new Date(row.generatedAt).toISOString() : null,
     status: row.status,
   };
-}
-
-/** A single edition by its id (used by the storybook route). */
-export async function getEditionById(id: string): Promise<EditionRecord | null> {
-  const rows = await db
-    .select()
-    .from(dailyGoldEdition)
-    .where(eq(dailyGoldEdition.id, id))
-    .limit(1);
-  return rows[0] ? rowToRecord(rows[0]) : null;
 }
 
 /**

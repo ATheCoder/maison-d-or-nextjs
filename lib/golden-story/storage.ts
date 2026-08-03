@@ -1,6 +1,6 @@
 /**
  * R2 storage for editor-generated and uploaded story art — lifted from
- * app/(dg)/daily-gold-edition/actions.ts (getS3) so both surfaces share one client.
+ * app/(dg)/daily-gold-edition/queries.ts (getS3) so both surfaces share one client.
  * Images land under story-media/<slug>/<file>.webp (the prefix
  * upload-story-media.mjs already uses) as sharp-converted webp, served from
  * ${R2_DOMAIN}/<key>.

@@ -5,7 +5,7 @@ import { getSavedKeys } from '@/app/(dg)/treasury/actions';
 import { getTodayExplorationForActiveChild } from '@/app/analytics/actions';
 import { getActiveChildProfile } from '@/app/profiles/actions';
 import { getSession } from '@/lib/dal';
-import { getEditionByDate, getLatestEdition, getAvailableDates, getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate, getGreatestMomentsForDate } from './actions';
+import { getEditionByDate, getLatestEdition, getAvailableDates, getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate, getGreatestMomentsForDate } from './queries';
 
 // Editions live in the database and change over time, so render per-request.
 export const dynamic = 'force-dynamic';
