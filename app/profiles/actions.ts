@@ -13,7 +13,7 @@ import { and, eq } from 'drizzle-orm';
 import { verifyPassword } from 'better-auth/crypto';
 import { db } from '@/src/db';
 import { analyticsEvent, childProfile, session as sessionTable, user } from '@/src/db/schema';
-import { getActiveChild, requireGuardian } from '@/lib/dal';
+import { requireGuardian } from '@/lib/dal';
 import { verifyGuardianCredential } from '@/lib/guardian-credential';
 import { ageOnDay, MIN_CHILD_AGE } from '@/lib/child-birth-date';
 
@@ -37,28 +37,13 @@ export type PickerProfile = {
   hasPin: boolean;
 };
 
-/**
- * The active child in the shape the Daily Gold client components consume
- * (`child.id` / `child.name` / `child.age`), or null outside child mode.
- * Identity comes from the session — the page never asks for a profile id.
- */
-export type ActiveChildProfile = {
-  id: string;
-  name: string;
-  age: number;
-  avatar: string;
-};
-
-export async function getActiveChildProfile(): Promise<ActiveChildProfile | null> {
-  const child = await getActiveChild();
-  if (!child) return null;
-  return {
-    id: child.id,
-    name: child.displayName,
-    age: ageOf(child.birthDate),
-    avatar: child.avatar,
-  };
-}
+// `getActiveChildProfile` lived here: the active child in the shape the Daily
+// Gold client components consume. Nothing calls it now. The (dg) layout
+// resolves the reader once for the whole group and hands the same three fields
+// (id / name / avatar) down through ReaderContext, so no page re-reads the
+// profile per navigation — and an exported server action with no caller is an
+// unauthenticated POST endpoint nobody needs, which is reason enough for it to
+// go rather than sit here waiting to be rediscovered.
 
 export type EnterResult =
   | { ok: true }

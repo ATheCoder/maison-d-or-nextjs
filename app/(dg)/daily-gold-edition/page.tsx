@@ -1,10 +1,6 @@
 import { redirect } from 'next/navigation';
 import DailyGoldEditionPage from '@/components/dailygold/DailyGoldEditionPage';
 import SettleAddress from './SettleAddress';
-import { getSavedKeys } from '@/app/(dg)/treasury/actions';
-import { getTodayExplorationForActiveChild } from '@/app/analytics/actions';
-import { getActiveChildProfile } from '@/app/profiles/actions';
-import { getSession } from '@/lib/dal';
 import { getEditionByDate, getLatestEdition, getAvailableDates, getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate, getGreatestMomentsForDate } from './queries';
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
@@ -42,9 +38,8 @@ function formatDate(date: string): string {
 }
 
 // Everything on the page that is keyed by the day itself — refetched as a unit
-// when the bare route falls back to the last good day, while the reader-keyed
-// queries (saved keys, exploration, session, profile) are fetched once and
-// kept.
+// when the bare route falls back to the last good day. There is nothing else
+// left to keep: every read this page performs is now day-keyed.
 async function fetchDay(date: string) {
   const [edition, people, goodNews, onThisDay, greatestMoments] = await Promise.all([
     getEditionByDate(date),
@@ -95,40 +90,25 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
   // the server answers it the same way for a fresh visitor following a shared
   // link as for a reader pressing the wax seal.
   //
-  // The reader itself belongs to layout.tsx, which resolves the session's
-  // active child profile once for the chrome that names them (auth-plan §1) —
-  // never asserted by the client, and never re-resolved per page turn. What is
-  // fetched here is only what the reader may see of the day.
+  // ── Nothing about the reader is read here, and that is load-bearing ───────
   //
-  // The child's saved keys are fetched here too, in one query, so no heart on
-  // the page fetches its own fill state. `null` outside child mode, which is
-  // how the sections tell "saved nothing" from "no one to save for".
+  // The reader belongs to layout.tsx, which resolves the session, the active
+  // child and their saved keys once for the whole (dg) group (auth-plan §1) and
+  // holds them in ReaderContext. A layout is not re-rendered by a client-side
+  // navigation, so those reads happen once per hard load rather than once per
+  // page turn — where `React.cache` could never have helped, its memoisation
+  // being scoped to a single request.
   //
-  // `exploration` is the same story for the For Parents card: today's real
-  // activity roll-up, resolved from the session like everything else here, and
-  // `null` when there is no reader or the roll-up could not be read — the card
-  // then shows its own empty state rather than invented numbers. It is always
-  // *today's* activity, even when the URL asks for an archive day: the card
-  // reports what this child did, not what the paper on screen contains.
-  //
-  // `session` and `child` are the last two: this route is public, and who is
-  // holding the paper decides two things the day itself does not. With no
-  // session at all the reader is a stranger, which is worth saying plainly
-  // rather than leaving them tapping hearts that were never rendered
-  // (onboarding plan WP-D). With `?welcome=1` the reader has just been created
-  // by the /welcome wizard, and their paper opens with a flourish — the name
-  // comes from the session's own active child, never from the URL, so the
-  // parameter can announce nobody else's child.
-  const [requestedDay, dates, savedKeys, exploration, session, child] = await Promise.all([
+  // The consequence for this page is the point of it: every prop below is a
+  // function of the date alone, so the segment the router builds is identical
+  // for every reader on a given day. That is what makes it safe to prefetch and
+  // keep — a segment carrying one child's hearts is not a segment the client
+  // cache may hand back later. See DGNavigationRail for the link that relies
+  // on it, and ReaderContext for how the hearts stay truthful without it.
+  const [requestedDay, dates] = await Promise.all([
     fetchDay(date),
     getAvailableDates(todayStr),
-    getSavedKeys(),
-    getTodayExplorationForActiveChild(),
-    getSession(),
-    getActiveChildProfile(),
   ]);
-
-  const welcomeName = params.welcome === '1' && child ? child.name : null;
 
   // Arriving at the bare route on a day with nothing on it — before the
   // morning's edition is published, or on a day that was never authored — used
@@ -196,10 +176,7 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
         goodNews={day.goodNews}
         onThisDay={day.onThisDay}
         greatestMoments={day.greatestMoments}
-        savedKeys={savedKeys}
-        exploration={exploration}
-        signedOut={!session}
-        welcomeName={welcomeName}
+        welcome={params.welcome === '1'}
       />
     </>
   );

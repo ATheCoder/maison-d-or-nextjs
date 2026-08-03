@@ -158,7 +158,9 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
           is prefetched on arrival. That boundary being warm is what lets a
           press show the page-shaped skeleton (family's, treasury's) instead of
           the generic group fallback. Default prefetch stops at the boundary
-          for dynamic routes, so this costs no full server renders. */}
+          for dynamic routes, so this costs no full server renders — except for
+          the one destination that asks for the whole route (`prefetchFull` in
+          dgNavConfig, and the reason it may). */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: '1.5rem' }}>
         {destinations.map(item => {
           const active = isActive(item);
@@ -166,6 +168,7 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
             <Link
               key={item.key}
               href={item.path}
+              prefetch={item.prefetchFull ? true : undefined}
               className={`dg-rail-item${active ? ' dg-rail-active' : ''}`}
               /* onNavigate, not onClick: it fires only for the client-side
                  navigation this event describes — a cmd-click into a new tab

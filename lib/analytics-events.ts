@@ -56,9 +56,9 @@ export const ANALYTICS_SECTIONS = [
 export type AnalyticsSection = (typeof ANALYTICS_SECTIONS)[number];
 
 /**
- * Display names for the DGForParents chips. Deliberately the child's own words
- * for the page, not the internal ids — a parent reads "Good News", never
- * "good_news".
+ * Display names for the section chips a grown-up reads in the observatory.
+ * Deliberately the child's own words for the page, not the internal ids — a
+ * parent reads "Good News", never "good_news".
  */
 export const SECTION_LABELS: Record<AnalyticsSection, string> = {
   hero: 'Front Page',

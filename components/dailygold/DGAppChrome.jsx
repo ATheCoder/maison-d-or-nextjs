@@ -3,6 +3,7 @@ import React from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import DGPageShell from '@/components/dailygold/DGPageShell';
 import { DGInstrumentationProvider } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
+import { ReaderProvider } from '@/components/dailygold/ReaderContext';
 import { ThemeProvider } from '@/components/theme/ThemeContext';
 
 /**
@@ -41,6 +42,12 @@ import { ThemeProvider } from '@/components/theme/ThemeContext';
  * `useSearchParams` — a client component, unlike a server layout, does re-read
  * the query on navigation, so the stamp follows the reader from day to day
  * without the layout itself re-rendering.
+ *
+ * The same argument is why the reader lives here now (ReaderProvider): the
+ * identity and the saved keys are constant across the whole group, so resolving
+ * them per page meant re-reading the session and the saved_item rows on every
+ * crossing between the paper and the rooms — and left each page segment
+ * carrying one child's answers, which is a segment the router may not keep.
  */
 
 class DGErrorBoundary extends React.Component {
@@ -66,10 +73,12 @@ class DGErrorBoundary extends React.Component {
  *   viewer?: { name: string, role: 'admin' | 'guardian' } | null,
  *   initialTheme?: string | null,
  *   today: string,
+ *   savedKeys?: string[] | null,
+ *   signedOut?: boolean,
  *   children: import('react').ReactNode,
  * }} props
  */
-export default function DGAppChrome({ child = null, viewer = null, initialTheme = null, today, children }) {
+export default function DGAppChrome({ child = null, viewer = null, initialTheme = null, today, savedKeys = null, signedOut = false, children }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   // The reader's own page, as opposed to the rooms around it. Carries the
@@ -98,7 +107,11 @@ export default function DGAppChrome({ child = null, viewer = null, initialTheme 
           childId={child?.id ?? null}
           editionDate={editionDate}
         >
-          <DGPageShell child={child} viewer={viewer} paper={onPaper}>{children}</DGPageShell>
+          {/* Inside the keyed provider, so a profile switch remounts it and the
+              departing child's saved keys cannot outlive them. */}
+          <ReaderProvider child={child} signedOut={signedOut} savedKeys={savedKeys}>
+            <DGPageShell child={child} viewer={viewer} paper={onPaper}>{children}</DGPageShell>
+          </ReaderProvider>
         </DGInstrumentationProvider>
       </ThemeProvider>
     </DGErrorBoundary>

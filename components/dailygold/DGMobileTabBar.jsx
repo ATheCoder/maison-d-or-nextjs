@@ -52,6 +52,7 @@ export default function DGMobileTabBar({ child = null }) {
           <Link
             key={tab.key}
             href={tab.path}
+            prefetch={tab.prefetchFull ? true : undefined}
             onNavigate={() => {
               track(tab.event, { contentId: tab.path, label: tab.label, source: 'tabbar' });
             }}

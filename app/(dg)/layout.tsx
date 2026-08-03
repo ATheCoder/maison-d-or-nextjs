@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { getActiveChild, getSession } from '@/lib/dal';
+import { getSavedKeys } from '@/app/(dg)/treasury/actions';
 import DGAppChrome from '@/components/dailygold/DGAppChrome';
 import DGChromeFallback from '@/components/dailygold/DGChromeFallback';
 
@@ -63,9 +64,19 @@ import DGChromeFallback from '@/components/dailygold/DGChromeFallback';
 
 async function ChromeWithIdentity({ children }: { children: React.ReactNode }) {
   const child = await getActiveChild();
-  // Both accessors are React-cached, so this is the same session read the
-  // pages themselves perform — no second query.
+  // Both accessors are React-cached, so the pages below pay for neither a
+  // second time *within this request*. Between requests they would — React's
+  // memoisation is request-scoped — which is why the pages no longer call them
+  // at all and read the result out of ReaderProvider instead. A client
+  // navigation between rail destinations does not re-render this layout, so
+  // these three reads happen once per hard load rather than once per page turn.
   const session = await getSession();
+  // The child's saved keys, in one query, for every destination at once: the
+  // paper's hearts, the Treasury's unsave corners, the Passport. It rides the
+  // same React-cached `getActiveChild` above, so this costs one indexed select
+  // and no second session read. `null` outside child mode, which is how the
+  // sections tell "saved nothing" from "no one to save for".
+  const savedKeys = await getSavedKeys();
   // After the session read, never before: reading the clock ahead of any
   // request data is its own prerender error (next-prerender-current-time).
   // Here it is honest request-time work, because the reads above already are.
@@ -81,6 +92,11 @@ async function ChromeWithIdentity({ children }: { children: React.ReactNode }) {
       viewer={session ? { name: session.user.name, role: session.user.role === 'admin' ? 'admin' as const : 'guardian' as const } : null}
       initialTheme={child?.themePreference ?? null}
       today={today}
+      savedKeys={savedKeys}
+      // No session at all — a stranger reading the public paper. Worth saying
+      // plainly rather than leaving them tapping hearts that were never
+      // rendered (onboarding plan WP-D).
+      signedOut={!session}
     >
       {children}
     </DGAppChrome>

@@ -15,7 +15,16 @@
  */
 
 export const DG_DESTINATIONS = [
-  { key: 'today', label: 'Today', path: '/daily-gold-edition', icon: 'gold' },
+  // `prefetchFull` asks Link for the whole route rather than the default stop
+  // at the loading.tsx boundary, which is all a dynamic route otherwise gets.
+  // The paper alone earns it, and only since the reader moved to the layout
+  // (ReaderContext): a fully prefetched segment is kept in the client cache and
+  // handed back on the next visit, so this is what makes leaving for the
+  // Treasury and pressing Today again cost no server render at all. It would
+  // have been wrong before — the segment carried one child's hearts, and a kept
+  // copy of those is a copy that goes stale the moment they tap one. Now it
+  // carries only the day, which is the same answer for everyone.
+  { key: 'today', label: 'Today', path: '/daily-gold-edition', icon: 'gold', prefetchFull: true },
   // "Home" (/) is deliberately absent: it is the landing page, not an app
   // destination, so it earns no tab for anyone.
   //

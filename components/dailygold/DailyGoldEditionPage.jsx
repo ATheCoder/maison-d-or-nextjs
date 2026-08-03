@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import DGHero from '@/components/dailygold/DGHero';
 import DGBornToday from '@/components/dailygold/DGBornToday';
@@ -7,7 +7,6 @@ import DGGoodNews from '@/components/dailygold/DGGoodNews';
 import DGOnThisDay from '@/components/dailygold/DGOnThisDay';
 import DGDestination from '@/components/dailygold/DGDestination';
 import DGMoreToExplore from '@/components/dailygold/DGMoreToExplore';
-import DGForParents from '@/components/dailygold/DGForParents';
 import DGValuesStrip from '@/components/dailygold/DGValuesStrip';
 import DGGreatestMoments from '@/components/dailygold/DGGreatestMoments';
 import DGWaxSealNavigator from '@/components/dailygold/DGWaxSealNavigator';
@@ -17,6 +16,7 @@ import { useFlagEarn } from '@/components/dailygold/useFlagEarn';
 import { TrackedSection } from '@/components/dailygold/instrumentation/TrackedSection';
 import { SignupInviteProvider } from '@/components/dailygold/SignupInvite';
 import { SignedOutCta, WelcomeFlourish } from '@/components/dailygold/DGVisitorBanners';
+import { useReader } from '@/components/dailygold/ReaderContext';
 import { useTheme } from '@/components/theme/ThemeContext';
 
 /**
@@ -108,25 +108,9 @@ const PAGE_CSS = `
   }
 `;
 
-function DailyGoldDay({ date, today, edition: editionRecord, dates, people, goodNews, onThisDay, greatestMoments, savedKeys, exploration, signedOut, welcomeName }) {
+function DailyGoldDay({ date, today, edition: editionRecord, dates, people, goodNews, onThisDay, greatestMoments, savedSet, signedOut, welcomeName }) {
   const { theme } = useTheme();
   const router = useRouter();
-
-  // The whole page's saved state, answered once by the server. Sections look up
-  // `type:id` in it instead of each heart asking after itself. `null` — not an
-  // empty set — outside child mode, and a section with no set renders no hearts
-  // at all: an absent heart is honest where a heart that can't save is not.
-  //
-  // The signed-out visitor is the one exception, and for the same reason: for
-  // them an absent heart is *not* honest, because there is something to offer
-  // (an account). They get an empty set, so every heart renders unfilled, and
-  // TreasuryHeart turns the tap into an invitation rather than a save
-  // (SignupInvite). A signed-in grown-up outside child mode still gets null —
-  // they already have an account, so there is nothing to invite them to.
-  const savedSet = useMemo(
-    () => (savedKeys ? new Set(savedKeys) : signedOut ? new Set() : null),
-    [savedKeys, signedOut],
-  );
 
   // Every section is the server's answer for `date`, so the masthead, the
   // footer and the content can never disagree about which day this is.
@@ -242,10 +226,6 @@ function DailyGoldDay({ date, today, edition: editionRecord, dates, people, good
         <DGValuesStrip />
       </TrackedSection>
 
-      <TrackedSection id="for_parents">
-        <DGForParents edition={edition} exploration={exploration} />
-      </TrackedSection>
-
       <footer style={{
         padding: 'clamp(3rem, 6vw, 5rem) clamp(1.5rem, 5vw, 4rem)',
         textAlign: 'center',
@@ -274,29 +254,29 @@ function DailyGoldDay({ date, today, edition: editionRecord, dates, people, good
  * prop is the server's content for `date`, already filtered to what a reader
  * may see.
  *
- * The reader is not a prop here: the chrome resolves the active child profile
- * in the layout and owns every surface that names them (the rail, the identity
- * header, the switcher). What reaches this component is only what the reader
- * may *see* of the day.
+ * **Nothing about the reader is a prop.** The chrome resolves the active child
+ * once for the whole (dg) group and holds them in ReaderContext — identity, the
+ * saved keys behind every heart, and whether there is a session at all. That is
+ * what leaves this component's own props identical for every reader on a given
+ * date, which is what lets the router keep the page and hand it back on the
+ * next visit instead of asking the server to build it again (see
+ * ReaderContext for the full argument).
  *
- * `savedKeys` is the reader's answer for the hearts: the `type:id` keys they
- * have already saved, or null when there is no reader.
+ * `welcome` is the one visitor fact that still arrives from the server, because
+ * it is not about the reader but about the address: `?welcome=1` says the
+ * /welcome wizard has just created whoever is holding this paper. The *name* in
+ * the flourish still comes from the session's own active child by way of the
+ * context, so the parameter can announce nobody else's child.
  *
- * `exploration` is today's activity roll-up for the For Parents card — also
- * server-resolved, also null without a reader (or when the roll-up failed), in
- * which case that card renders its own empty state.
- *
- * `signedOut` and `welcomeName` are the two facts about the *visitor* the day
- * itself cannot supply: whether there is a session at all, and whether this is
- * the first paper of a reader the /welcome wizard has just created. Both are
- * decided on the server; neither is ever inferred here.
- *
- * @param {{ date?: string, today?: string, edition?: any, dates?: string[], people?: any[], goodNews?: any[], onThisDay?: any[], greatestMoments?: any[], savedKeys?: string[] | null, exploration?: any, signedOut?: boolean, welcomeName?: string | null }} props
+ * @param {{ date?: string, today?: string, edition?: any, dates?: string[], people?: any[], goodNews?: any[], onThisDay?: any[], greatestMoments?: any[], welcome?: boolean }} props
  */
-export default function DailyGoldEdition({ date, today, edition = null, dates = [], people = [], goodNews = [], onThisDay = [], greatestMoments = [], savedKeys = null, exploration = null, signedOut = false, welcomeName = null }) {
+export default function DailyGoldEdition({ date, today, edition = null, dates = [], people = [], goodNews = [], onThisDay = [], greatestMoments = [], welcome = false }) {
   // Defaulted here rather than in the signature so a caller that knows neither
   // date — the design-sync preview — still renders a coherent single day.
   const todayStr = today || new Date().toISOString().slice(0, 10);
+  // Inert outside the (dg) chrome, so the preview renders a readerless paper
+  // exactly as it did when these were unpassed props.
+  const { child, signedOut, savedSet } = useReader();
 
   return (
     // The provider is inert unless there is no session, so signed-in readers
@@ -312,10 +292,9 @@ export default function DailyGoldEdition({ date, today, edition = null, dates = 
         goodNews={goodNews}
         onThisDay={onThisDay}
         greatestMoments={greatestMoments}
-        savedKeys={savedKeys}
-        exploration={exploration}
+        savedSet={savedSet}
         signedOut={signedOut}
-        welcomeName={welcomeName}
+        welcomeName={welcome && child ? child.name : null}
       />
     </SignupInviteProvider>
   );

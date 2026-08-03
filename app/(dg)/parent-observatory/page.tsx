@@ -9,8 +9,10 @@ export const metadata: Metadata = {
 };
 
 /**
- * The observatory's front door — the target of "Open Parent View" on the
- * child's own page (components/dailygold/DGForParents.jsx:81).
+ * The observatory's front door — reached from the rail, and now the only place
+ * a grown-up reads a child's activity. It used to be the target of "Open Parent
+ * View" on the child's own page; that card is gone, because it was the last
+ * reader-keyed read on the paper and the paper had to stop having one.
  *
  * The observatory is always *one child's*, and here that child is the first
  * profile — rendered inline, not redirected into. The old redirect hop cost a

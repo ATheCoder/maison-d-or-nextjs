@@ -10,10 +10,12 @@ type TopContent = ObservatoryData['themes']['topContent'];
  * F3 · Curiosity themes, over the trailing 30 days.
  *
  * The one card that is an addition to the Ledger mock rather than a port of it:
- * the mock's main column holds only the summary and the bookshelf, but
- * DGForParents promises "Curiosity Themes" by name
- * (components/dailygold/DGForParents.jsx), and this surface exists to keep those
- * promises. It is built entirely from the mock's own vocabulary.
+ * the mock's main column holds only the summary and the bookshelf, but the
+ * paper's old For Parents card promised "Curiosity Themes" by name, and this
+ * surface exists to keep those promises. (That card is gone — it was the last
+ * reader-keyed read on the edition page, and removing it is what let the paper
+ * be cached per day rather than per child; the observatory is where a grown-up
+ * reads this now.) It is built entirely from the mock's own vocabulary.
  *
  * The expansion is a native <details>, so the full list ships with the page and
  * costs no client JavaScript — consistent with the no-new-API-routes rule.

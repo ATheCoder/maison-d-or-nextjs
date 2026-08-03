@@ -32,7 +32,6 @@ export { default as ChildSwitcherOverlay } from '@/components/dailygold/ChildSwi
 export { default as DailyGoldEdition } from '@/components/dailygold/DailyGoldEditionPage';
 export { default as DGBornToday } from '@/components/dailygold/DGBornToday';
 export { default as DGDestination } from '@/components/dailygold/DGDestination';
-export { default as DGForParents } from '@/components/dailygold/DGForParents';
 export { default as DGGoodNews } from '@/components/dailygold/DGGoodNews';
 export { default as DGGreatestMoments } from '@/components/dailygold/DGGreatestMoments';
 export { default as DGHero } from '@/components/dailygold/DGHero';

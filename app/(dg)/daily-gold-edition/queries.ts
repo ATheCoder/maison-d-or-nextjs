@@ -41,10 +41,13 @@ import 'server-only';
  *
  * Two rules that must hold:
  *
- *  - **Never cache a reader-keyed read.** getSavedKeys,
- *    getTodayExplorationForActiveChild, getSession and getActiveChildProfile
- *    live elsewhere and stay uncached forever. They read cookies; a cached copy
- *    is a data leak between families, not a performance win.
+ *  - **Never cache a reader-keyed read.** getSavedKeys, getSession and
+ *    getActiveChild read cookies; a cached copy is a data leak between
+ *    families, not a performance win. None of them is called from this route
+ *    any more — they belong to app/(dg)/layout.tsx, which resolves the reader
+ *    once for the whole group and holds them in ReaderContext. That is what
+ *    leaves every read on this page day-keyed and therefore cacheable, and the
+ *    page segment above them identical for every reader on a given date.
  *  - **The clock stays outside every cached scope.** getAvailableDates used to
  *    call `new Date()` itself; it now takes `today` as an argument. A clock read
  *    captured inside a `'use cache'` function becomes part of the cache key by

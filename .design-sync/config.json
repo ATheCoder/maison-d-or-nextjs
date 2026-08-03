@@ -43,7 +43,6 @@
     "DailyGoldEdition": "components/dailygold/DailyGoldEditionPage.jsx",
     "DGBornToday": "components/dailygold/DGBornToday.jsx",
     "DGDestination": "components/dailygold/DGDestination.jsx",
-    "DGForParents": "components/dailygold/DGForParents.jsx",
     "DGGoodNews": "components/dailygold/DGGoodNews.jsx",
     "DGGreatestMoments": "components/dailygold/DGGreatestMoments.jsx",
     "DGHero": "components/dailygold/DGHero.jsx",
