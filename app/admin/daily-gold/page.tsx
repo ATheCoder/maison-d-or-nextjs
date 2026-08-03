@@ -4,7 +4,6 @@ import DailyGoldDesk from '@/components/admin/DailyGoldDesk';
 import { findDuplicateEditions, getDeskCoverage, getWeekAhead } from './actions';
 
 export const metadata = { title: 'Daily Gold desk — Maison d\'Oré' };
-export const dynamic = 'force-dynamic';
 
 export default async function DailyGoldDeskPage() {
   await requireAdmin();

@@ -2,8 +2,6 @@ import type { Metadata } from 'next';
 import { requireFamily } from '@/lib/dal';
 import { ObservatoryLedger } from '@/components/observatory/ObservatoryLedger';
 
-export const dynamic = 'force-dynamic';
-
 export const metadata: Metadata = {
   title: 'The Parent Observatory',
   // A parent surface over a child's activity has no business in an index.

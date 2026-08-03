@@ -2,10 +2,6 @@ import TreasuryView from '@/components/treasury/TreasuryView';
 import { requireChildContext } from '@/lib/dal';
 import { getSavedItems } from './actions';
 
-// A child's treasury is private and cheap — render it per request rather than
-// caching (same reasoning as /passport, docs/flag-seal-spec.md R8.4/D4).
-export const dynamic = 'force-dynamic';
-
 export const metadata = { title: 'My Treasury' };
 
 export default async function TreasuryPage() {

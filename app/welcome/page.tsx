@@ -6,7 +6,6 @@ import { requireFamily } from '@/lib/dal';
 import WelcomeWizard from '@/components/welcome/WelcomeWizard';
 
 export const metadata = { title: 'Welcome — Maison d\'Oré' };
-export const dynamic = 'force-dynamic';
 
 /**
  * First run. A guardian with no readers yet has nothing to do anywhere else in

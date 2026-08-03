@@ -1,5 +1,7 @@
+import { Suspense } from 'react';
 import { getActiveChild, getSession } from '@/lib/dal';
 import DGAppChrome from '@/components/dailygold/DGAppChrome';
+import DGChromeFallback from '@/components/dailygold/DGChromeFallback';
 
 /**
  * The shared chrome for every rail destination: /daily-gold-edition, /family,
@@ -26,17 +28,29 @@ import DGAppChrome from '@/components/dailygold/DGAppChrome';
  * - no rebuild of the rail when a reader crosses between the paper and their
  *   own rooms.
  *
- * The reads are runtime data and this layout awaits them, so an entry
- * navigation into the group blocks until they land — the documented behaviour
- * without Cache Components (see the layout.js reference, "Interaction with
- * loading.js"). That is the status quo the other four destinations have always
- * had, it is two React-cached queries, and a profile switch — the one entry
- * that used to arrive on a purged router cache — is covered by the switch
- * curtain (ProfileSwitchCurtain) rather than by a skeleton underneath it.
+ * The reads are runtime data, so under Cache Components they cannot happen at
+ * the top of this file: a layout that awaits the session has no prerenderable
+ * shell, and Next raises `blocking-route` for the whole group. They live in
+ * ChromeWithIdentity instead, inside this layout's own Suspense boundary, with
+ * DGChromeFallback — the frame with nobody in it — as the shell every reader
+ * gets first. `loading.tsx` cannot cover a layout above it, which is why the
+ * boundary has to be here rather than in the five destinations.
  *
- * The reader's stored theme travels with them: `theme_preference` is read here
- * so every destination paints in the child's own palette from the first frame,
- * with no flash of the default and no client fetch.
+ * `children` sits inside that boundary, deliberately. The instrumentation
+ * provider is keyed on the reader (see DGAppChrome, and the buffer-flush
+ * argument for why), so a chrome that resolved its identity *after* mounting
+ * the content column would change that key and remount everything under it —
+ * the same destroy-and-rebuild, and the same replayed dgFadeIn, that merging
+ * the two layouts existed to end. One boundary above the content column costs
+ * one mount; pushing identity down to the rail alone would cost two.
+ *
+ * What that buys, and what it costs: an entry navigation now commits to a
+ * painted frame immediately instead of holding the whole response on the
+ * session read. The price is that the frame is theme-neutral — no prerendered
+ * shell can know the reader's palette — so a hard load paints neutral before
+ * it paints the child's colours. DGChromeFallback documents that choice; the
+ * fix, if it ever grates, is the pre-hydration script pattern with the theme
+ * mirrored into a plain cookie, not a change here.
  *
  * The reader is resolved once, here. `getActiveChild` is the non-redirecting,
  * React-cached accessor, so the pages that also need the child (/passport,
@@ -47,14 +61,14 @@ import DGAppChrome from '@/components/dailygold/DGAppChrome';
  * those pages asked for when they passed no child of their own.
  */
 
-// The chrome names an identity, which comes from the session.
-export const dynamic = 'force-dynamic';
-
-export default async function DGLayout({ children }: { children: React.ReactNode }) {
+async function ChromeWithIdentity({ children }: { children: React.ReactNode }) {
   const child = await getActiveChild();
   // Both accessors are React-cached, so this is the same session read the
   // pages themselves perform — no second query.
   const session = await getSession();
+  // After the session read, never before: reading the clock ahead of any
+  // request data is its own prerender error (next-prerender-current-time).
+  // Here it is honest request-time work, because the reads above already are.
   const today = new Date().toISOString().slice(0, 10);
 
   return (
@@ -70,5 +84,13 @@ export default async function DGLayout({ children }: { children: React.ReactNode
     >
       {children}
     </DGAppChrome>
+  );
+}
+
+export default function DGLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<DGChromeFallback />}>
+      <ChromeWithIdentity>{children}</ChromeWithIdentity>
+    </Suspense>
   );
 }

@@ -3,7 +3,6 @@ import { getSession } from '@/lib/dal';
 import InviteAcceptButton from '@/components/auth/InviteAcceptButton';
 
 export const metadata = { title: 'Family invite — Maison d\'Oré' };
-export const dynamic = 'force-dynamic';
 
 const shell: React.CSSProperties = {
   minHeight: '100vh',

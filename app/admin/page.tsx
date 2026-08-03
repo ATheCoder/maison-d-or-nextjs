@@ -3,7 +3,6 @@ import { requireAdmin } from '@/lib/dal';
 import SignOutButton from '@/components/auth/SignOutButton';
 
 export const metadata = { title: 'Admin — Maison d\'Oré' };
-export const dynamic = 'force-dynamic';
 
 // The four dead "arrives in phase 4" cards are gone: editions, good news, on
 // this day and greatest moments are all authored from the Daily Gold desk,

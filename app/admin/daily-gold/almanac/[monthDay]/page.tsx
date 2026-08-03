@@ -3,8 +3,6 @@ import { requireAdmin } from '@/lib/dal';
 import AlmanacEditor from '@/components/admin/AlmanacEditor';
 import { getAlmanacDay } from '../../almanacActions';
 
-export const dynamic = 'force-dynamic';
-
 export async function generateMetadata({ params }: { params: Promise<{ monthDay: string }> }) {
   const { monthDay } = await params;
   return { title: `${monthDay} — Almanac` };

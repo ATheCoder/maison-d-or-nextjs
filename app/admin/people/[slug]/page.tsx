@@ -4,8 +4,6 @@ import { getPersonForEditor, getStoryBrief, getPersonJobs } from '../actions';
 import { getSlotData } from '../imageActions';
 import PersonEditor from '@/components/admin/PersonEditor';
 
-export const dynamic = 'force-dynamic';
-
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   return { title: `Edit ${slug} — Maison d'Oré` };

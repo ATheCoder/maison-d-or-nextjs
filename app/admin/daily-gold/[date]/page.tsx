@@ -3,8 +3,6 @@ import { requireAdmin } from '@/lib/dal';
 import DayEditor from '@/components/admin/DayEditor';
 import { getDayForEditor } from '../dayActions';
 
-export const dynamic = 'force-dynamic';
-
 export async function generateMetadata({ params }: { params: Promise<{ date: string }> }) {
   const { date } = await params;
   return { title: `${date} — Daily Gold` };

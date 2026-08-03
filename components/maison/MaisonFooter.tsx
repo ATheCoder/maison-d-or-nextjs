@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import MMonogram from './MMonogram';
 import MaisonBrandName from './MaisonBrandName';
+import CopyrightYear from './CopyrightYear';
 
 const NAV_LINKS: [string, string][] = [
   ['/', 'Home'],
@@ -51,7 +52,7 @@ export default function MaisonFooter() {
           For people who want to feel more alive inside their own lives.
         </p>
         <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.65rem', color: 'var(--taupe)', marginTop: '0.75rem', opacity: 0.6, letterSpacing: '0.1em' }}>
-          © {new Date().getFullYear()} <MaisonBrandName />. All rights reserved.
+          © <CopyrightYear /> <MaisonBrandName />. All rights reserved.
         </p>
       </div>
     </footer>

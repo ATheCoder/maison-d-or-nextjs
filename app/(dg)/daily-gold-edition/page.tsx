@@ -7,9 +7,6 @@ import { getActiveChildProfile } from '@/app/profiles/actions';
 import { getSession } from '@/lib/dal';
 import { getEditionByDate, getLatestEdition, getAvailableDates, getPeopleForDate, getGoodNewsForDate, getOnThisDayForDate, getGreatestMomentsForDate } from './queries';
 
-// Editions live in the database and change over time, so render per-request.
-export const dynamic = 'force-dynamic';
-
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -62,8 +59,14 @@ async function fetchDay(date: string) {
 // A shared archive link should say which day it opens, both in the tab title
 // and wherever the link is unfurled.
 export async function generateMetadata({ searchParams }: { searchParams: SearchParams }) {
+  // `?date=` first, the clock second. Reading the current time before any
+  // request data is a prerender error under Cache Components
+  // (next-prerender-current-time) — the clock is only allowed once the render
+  // has already committed to being request-time work, which awaiting
+  // searchParams is exactly what does. The order is load-bearing, not stylistic.
+  const raw = (await searchParams).date;
   const todayStr = today();
-  const date = resolveDate((await searchParams).date, todayStr);
+  const date = resolveDate(raw, todayStr);
   const title = !date || date === todayStr
     ? 'Daily Gold Edition'
     : `Daily Gold Edition — ${formatDate(date)}`;
@@ -71,8 +74,11 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
 }
 
 export default async function Page({ searchParams }: { searchParams: SearchParams }) {
+  // searchParams before the clock — see generateMetadata above for why the
+  // order matters.
+  const params = await searchParams;
   const todayStr = today();
-  const date = resolveDate((await searchParams).date, todayStr);
+  const date = resolveDate(params.date, todayStr);
   if (date === null) redirect('/daily-gold-edition');
 
   // The page declares one date — the one in the URL — and every section shows
@@ -122,7 +128,6 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
     getActiveChildProfile(),
   ]);
 
-  const params = await searchParams;
   const welcomeName = params.welcome === '1' && child ? child.name : null;
 
   // Arriving at the bare route on a day with nothing on it — before the
