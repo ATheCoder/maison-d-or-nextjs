@@ -14,7 +14,7 @@
  * see, and retrieved good news arrives as proposals in their own column with a
  * link to the source — never as text that has quietly appeared in the form.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -203,6 +203,18 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
   const [preflight, setPreflight] = useState<Preflight | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ask, setAsk] = useState<'day' | 'news' | null>(null);
+
+  /**
+   * Close the Ask panel and the preflight sheet whenever this leaves the screen.
+   *
+   * Under Cache Components <Activity> hides a route instead of unmounting it,
+   * so an overlay left open comes back open on return. Neither is a place the admin was working; both are
+   * momentary. `ask` is also re-derived from a running job just below, so a
+   * generation still in flight reopens its own panel on return.
+   * The editor's drafts are deliberately left alone — surviving a navigation is
+   * what Activity is *for*; it is the transient furniture on top that has to go.
+   */
+  useLayoutEffect(() => () => { setAsk(null); setShowPreflight(false); }, []);
 
   const e = day.edition;
   const subject = useMemo(() => ({ kind: 'edition' as const, key: day.date }), [day.date]);

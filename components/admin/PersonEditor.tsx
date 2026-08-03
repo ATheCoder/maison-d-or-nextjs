@@ -14,7 +14,7 @@
  * character-sheet panels. Image slots (the cover-art card etc.) are still
  * placeholders until Phase 6.
  */
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import {
   DndContext, PointerSensor, KeyboardSensor, closestCenter,
@@ -857,6 +857,20 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   const [dragging, setDragging] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
   const [publishConfirm, setPublishConfirm] = useState(false);
+
+  /**
+   * Disarm the publish confirmation whenever the editor leaves the screen.
+   *
+   * Under Cache Components <Activity> hides a route instead of unmounting it,
+   * so `publishConfirm` survives navigating away and back — and an editor that
+   * returns already armed turns the next press of Publish into a publish, with
+   * the confirmation step silently spent. A confirmation the user cannot see
+   * themselves having given is not a confirmation.
+   *
+   * The draft itself is left alone on purpose: an admin's unsaved work
+   * surviving a navigation is what Activity is for.
+   */
+  useLayoutEffect(() => () => setPublishConfirm(false), []);
   const [pubPending, startPub] = useTransition();
   // Rail chapter reordering (dnd-kit): pointer-only, drag starts from the grip.
   const railSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));

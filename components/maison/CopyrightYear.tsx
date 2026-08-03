@@ -9,24 +9,24 @@
  * which otherwise reads nothing at all — was failing the build on a copyright
  * line.
  *
- * So the year is stamped into the bundle at build time (next.config.ts sets
- * NEXT_PUBLIC_BUILD_YEAR from the build clock, which runs outside any render
- * and is therefore not request data) and corrected on the client after
- * hydration. A deployment that runs across New Year's Eve serves last year's
- * digits for the few milliseconds before hydration and then fixes itself; it
- * never renders empty, so the line does not reflow.
+ * So the year has two snapshots. On the server it is the build clock, stamped
+ * into the bundle by next.config.ts, which runs at config load and is therefore
+ * not request data. On the client it is the real clock. A deployment left
+ * running across New Year's Eve serves last year's digits until hydration and
+ * then corrects itself; it never renders empty, so the line does not reflow.
+ *
+ * useSyncExternalStore rather than an effect: this is a value that differs
+ * between server and client, which is exactly what its two-snapshot shape is
+ * for. The same pattern reads the browser's time zone in WelcomeWizard.
  */
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
-const BUILD_YEAR = process.env.NEXT_PUBLIC_BUILD_YEAR ?? '';
+// Nothing to subscribe to — the year does not change under us within a session
+// in any way worth re-rendering for.
+const subscribeToNothing = () => () => {};
+const clientYear = () => String(new Date().getFullYear());
+const buildYear = () => process.env.NEXT_PUBLIC_BUILD_YEAR ?? '';
 
 export default function CopyrightYear() {
-  const [year, setYear] = useState(BUILD_YEAR);
-
-  useEffect(() => {
-    const actual = String(new Date().getFullYear());
-    if (actual !== year) setYear(actual);
-  }, [year]);
-
-  return <>{year}</>;
+  return <>{useSyncExternalStore(subscribeToNothing, clientYear, buildYear)}</>;
 }

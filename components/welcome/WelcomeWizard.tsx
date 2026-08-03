@@ -13,7 +13,7 @@
  * guess: an invited co-parent inherits a named household and starts at the
  * reader.
  */
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useLayoutEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
   createChildProfile,
   createInvite,
@@ -191,6 +191,27 @@ export default function WelcomeWizard({
   const [inviteEmail, setInviteEmail] = useState('');
   const [sentInvite, setSentInvite] = useState<{ url: string; email: string } | null>(null);
   const [copied, setCopied] = useState(false);
+
+  /**
+   * Send the wizard back to its first step whenever it leaves the screen.
+   *
+   * Under Cache Components <Activity> hides a route rather than unmounting it,
+   * so `stepIndex` survives navigating away and back — and a household that
+   * returns to /welcome would land mid-wizard, on a step whose earlier answers
+   * they can no longer see or check. Onboarding starts at the beginning.
+   *
+   * The typed answers are deliberately *not* cleared. Each step writes to the
+   * server as it is completed, and losing a half-entered child's name because
+   * someone glanced at another tab is the failure the Activity guidance warns
+   * about; walking forward again finds the fields as they were left. What goes
+   * is the position in the flow and the transient banners around it.
+   */
+  useLayoutEffect(() => () => {
+    setStepIndex(0);
+    setPending(false);
+    setError(null);
+    setCopied(false);
+  }, []);
 
   async function saveFamily() {
     if (pending) return;

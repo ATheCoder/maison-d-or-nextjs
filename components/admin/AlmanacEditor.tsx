@@ -16,7 +16,7 @@
  * source, and only Keep publishes it. A proposed moment parks above the ladder
  * rather than in it, so "6 of 10" never counts something nobody has read.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -190,6 +190,16 @@ export default function AlmanacEditor({ day }: { day: AlmanacDay }) {
   // ask for different things, and a panel opened on one has no business
   // appearing on the other.
   const [askOpenFor, setAskOpenFor] = useState<Tab | null>(null);
+
+  /**
+   * Close the Ask panel whenever this leaves the screen.
+   *
+   * Under Cache Components <Activity> hides a route instead of unmounting it,
+   * so an overlay left open comes back open on return. It is a momentary sheet, not a place the admin was working.
+   * The editor's drafts are deliberately left alone — surviving a navigation is
+   * what Activity is *for*; it is the transient furniture on top that has to go.
+   */
+  useLayoutEffect(() => () => { setAskOpenFor(null); }, []);
   const [jobs, setJobs] = useState<{ ask: AskJob | null; rewrites: RewriteJob[] }>({ ask: null, rewrites: [] });
 
   const loadJobs = useCallback(() => {

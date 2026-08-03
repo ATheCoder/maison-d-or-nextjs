@@ -10,7 +10,7 @@
  * fixing, and only then: `hasPin` comes back from the pass itself, so a guardian
  * who already has a PIN never sees any of this, and Skip is a real answer.
  */
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { passGrownUpGate } from '@/app/profiles/actions';
 import { setGuardianPin } from '@/app/(dg)/family/actions';
@@ -48,11 +48,43 @@ export default function GateForm({ next }: { next: string }) {
   const [newPin, setNewPin] = useState('');
   // The gate has been passed and the push to `next` is in flight. Raised only
   // after the credential comes back correct — a wrong PIN must not flash the
-  // study at someone who isn't going in — and never lowered: the form unmounts
-  // at the navigation commit and takes the curtain with it, handing the wait
-  // to the destination's own loading skeleton (same contract as ProfilePicker's
+  // study at someone who isn't going in — and lowered only by the reset below:
+  // the curtain is meant to live exactly as long as the navigation, and the
+  // form leaving the screen is what ends it (same contract as ProfilePicker's
   // sunrise).
   const [leaving, setLeaving] = useState(false);
+
+  /**
+   * Empty the gate whenever it leaves the screen.
+   *
+   * Under Cache Components a route is hidden by <Activity>, not unmounted, so
+   * every value above survives navigating away and coming back. For this form
+   * that is not a convenience, it is three separate defects:
+   *
+   *  - `credential` is a parent PIN or password. A gate that comes back with
+   *    it still in the field has left a credential sitting on a screen the
+   *    child can reach.
+   *  - `pinOffer` holds the plaintext password the guardian just proved, so
+   *    setGuardianPin can run without asking twice. It is meant to live for the
+   *    seconds between passing the gate and answering the offer, not for the
+   *    rest of the session.
+   *  - `leaving` and `pending` were written on the premise that this form
+   *    unmounts at the navigation commit. It no longer does, so a gate returned
+   *    to would come back with the study curtain drawn over it and Continue
+   *    disabled — permanently, because nothing lowers either flag.
+   *
+   * useLayoutEffect rather than useEffect: the cleanup runs synchronously
+   * before the component is hidden, so there is no frame in which the stale
+   * state is still on screen.
+   */
+  useLayoutEffect(() => () => {
+    setCredential('');
+    setNewPin('');
+    setPinOffer(null);
+    setError(null);
+    setPending(false);
+    setLeaving(false);
+  }, []);
 
   async function submit() {
     if (pending || !credential) return;

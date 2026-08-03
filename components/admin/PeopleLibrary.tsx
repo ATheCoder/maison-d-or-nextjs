@@ -11,7 +11,7 @@
  * Interactive bits only — the server page loads the data and re-renders it on
  * revalidation. Design mirrors the Remarkable Person Editor's house style.
  */
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -607,6 +607,18 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
   const [creating, setCreating] = useState(false);
   const [createSeed, setCreateSeed] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<PersonListItem | null>(null);
+
+  /**
+   * Close the create and delete dialogs whenever the library leaves the screen.
+   *
+   * Under Cache Components <Activity> hides a route instead of unmounting it.
+   * The delete dialog is the one that matters: it is guarded by typing the
+   * slug, and because the dialog only unmounts when `deleting` clears, a
+   * library returned to would come back with the dialog open and the
+   * confirmation already typed — one press from deleting a person, with the
+   * guard spent on a decision made before the admin left.
+   */
+  useLayoutEffect(() => () => { setCreating(false); setDeleting(null); }, []);
 
   const publishedCount = people.filter((p) => p.published).length;
   const draftCount = people.length - publishedCount;

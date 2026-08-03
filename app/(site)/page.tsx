@@ -11,7 +11,7 @@
  * fall back to their static editorial copy. The newsletter form works
  * locally; wire `subscribe` to a real endpoint when one exists.
  */
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import MMonogram from '@/components/maison/MMonogram';
@@ -35,12 +35,32 @@ const PRESS = ['VOGUE', 'BAZAAR', 'ELLE', 'Forbes', 'AD', 'The New York Times', 
 export default function MdoHome() {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+  // Only a *completed* subscription is cleared on the way out; a half-typed
+  // address is the visitor's work and Activity is right to keep it.
+  const shouldReset = useRef(false);
 
   const subscribe = () => {
     if (!email) return;
     // TODO: POST to a real waitlist endpoint once one exists.
     setSubscribed(true);
+    shouldReset.current = true;
   };
+
+  /**
+   * Clear the "Thank you for joining us" banner when the page leaves the
+   * screen.
+   *
+   * Under Cache Components <Activity> hides a route instead of unmounting it,
+   * so without this the form stays collapsed behind a thank-you from a visit
+   * that may have been several pages ago — and there is no way back to the
+   * field to subscribe a second address.
+   */
+  useLayoutEffect(() => () => {
+    if (!shouldReset.current) return;
+    shouldReset.current = false;
+    setSubscribed(false);
+    setEmail('');
+  }, []);
 
   const section: CSSProperties = { padding: 'clamp(4rem, 10vw, 8rem) 6vw' };
   const centred: CSSProperties = { textAlign: 'center' };

@@ -214,6 +214,18 @@ export default function DatePicker({
   );
 
   /**
+   * Shut the calendar whenever this leaves the screen.
+   *
+   * Under Cache Components <Activity> hides a route instead of unmounting it,
+   * so an open panel comes back open on a page the reader has just navigated
+   * to — and this one is a fixed-position overlay placed against a
+   * getBoundingClientRect taken before they left, so it comes back open *and*
+   * in the wrong place. The typed `text` is kept: that is the reader's answer,
+   * and preserving it is the point of Activity. Only the transient panel goes.
+   */
+  useLayoutEffect(() => () => setOpen(false), []);
+
+  /**
    * The last value this component handed out. Incoming `value` is only allowed
    * to rewrite the text box when it differs from that — otherwise every
    * keystroke that does not yet parse (and so reports '') would bounce back as

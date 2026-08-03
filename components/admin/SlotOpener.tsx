@@ -14,7 +14,7 @@
  * the modal, and finding the staged result waiting on the next open is the
  * behaviour, not a bug to paper over with a global poller.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import type { ImageSlot } from '@/lib/daily-gold/slots';
 import type { ImageSubject } from '@/app/admin/imageActions';
 import { getDgJobs } from '@/app/admin/daily-gold/aiActions';
@@ -38,6 +38,17 @@ export default function SlotOpener({
 }) {
   const [open, setOpen] = useState(false);
   const filled = Boolean(imageUrl?.trim());
+
+  /**
+   * Close the image modal whenever this leaves the screen.
+   *
+   * Under Cache Components <Activity> hides a route instead of unmounting it,
+   * so an overlay left open comes back open on return. A full-screen ImageModal reappearing over a day the admin has just
+   * navigated to is disorienting, and its polling would restart with it.
+   * The editor's drafts are deliberately left alone — surviving a navigation is
+   * what Activity is *for*; it is the transient furniture on top that has to go.
+   */
+  useLayoutEffect(() => () => { setOpen(false); }, []);
 
   // The Path-A render for *this* slot, polled only while the modal is open —
   // a render takes tens of seconds and the admin is looking straight at it.

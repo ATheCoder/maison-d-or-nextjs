@@ -5,7 +5,7 @@
  * the Parent tile heads to the family area — requireFamily routes it through
  * the grown-up gate when the session is in child mode.
  */
-import { useState, useTransition } from 'react';
+import { useLayoutEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   enterChildProfile,
@@ -107,12 +107,34 @@ export default function ProfilePicker({ profiles, userName, inChildMode = false 
   const [isPending, startTransition] = useTransition();
   const [entering, setEntering] = useState<PickerProfile | null>(null);
   // The parent tile's counterpart of `entering`: the push to /family is in
-  // flight. Never cleared — the picker unmounts at the navigation commit.
+  // flight. Cleared only when the picker leaves the screen (see below).
   const [toStudy, setToStudy] = useState(false);
 
   function resetModal() {
     setPinFor(null); setPin(''); setOverrideMode(false); setCredential(''); setError(null); setLocked(false);
   }
+
+  /**
+   * Empty the picker whenever it leaves the screen.
+   *
+   * Under Cache Components <Activity> hides a route instead of unmounting it,
+   * so everything above survives navigating away and back. Two problems, the
+   * same two the grown-up gate has (see GateForm, which carries the fuller
+   * explanation):
+   *
+   *  - `pin` and `credential` are a child's PIN and a guardian's password. A
+   *    picker that returns with either still typed has left a credential on a
+   *    screen anyone in the house can reach.
+   *  - `entering` and `toStudy` drive the curtains, and both were written as
+   *    "never cleared — the picker unmounts at the navigation commit". That
+   *    premise is gone: without this, coming back to /profiles shows a sunrise
+   *    over a picker nobody can press.
+   */
+  useLayoutEffect(() => () => {
+    resetModal();
+    setEntering(null);
+    setToStudy(false);
+  }, []);
 
   // Never follow the push with router.refresh(): refresh() re-fetches the
   // *current* route, so firing it alongside an in-flight push leaves the
