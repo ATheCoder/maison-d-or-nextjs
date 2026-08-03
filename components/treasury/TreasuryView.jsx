@@ -45,6 +45,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExter
 import TreasuryItemModal from '@/components/treasury/TreasuryItemModal';
 import { getSavedItemDetail } from '@/app/(dg)/treasury/actions';
 import { useTheme } from '@/components/theme/ThemeContext';
+import { useReader } from '@/components/dailygold/ReaderContext';
 import { MUSEUM_CSS } from '@/components/treasury/museumCss';
 import { ROMAN, ROOM_COMPONENTS, SECTIONS, Sun } from '@/components/treasury/museumRooms';
 
@@ -399,10 +400,31 @@ export default function TreasuryView({ items = [], childName }) {
   const owner = childName ? `${childName}'s` : 'Your';
   const ticketName = childName || 'You';
 
+  // What the museum actually hangs: the server's list with this session's own
+  // hearts laid over it. The two can disagree, because a tap and this page are
+  // separate round trips — on a slow connection the walk from the paper to here
+  // outruns the save, and `items` arrives without the last few treasures. The
+  // overlay closes that gap without making the child wait for a write they have
+  // already been shown the result of (see ReaderContext).
+  //
+  // Snapshotted on arrival rather than recomputed, and that is the point: a
+  // heart unsaved from its corner keeps its card on the wall for the rest of
+  // the visit, exactly as it did before any of this, instead of yanking it out
+  // from under the child's finger. The room is re-read when the server sends a
+  // genuinely new list — a hard load, or a refresh — which is the same
+  // adjust-during-render pattern the heart itself uses.
+  const { mergeSavedItems } = useReader();
+  const [shownItems, setShownItems] = useState(() => mergeSavedItems(items));
+  const [lastItems, setLastItems] = useState(items);
+  if (lastItems !== items) {
+    setLastItems(items);
+    setShownItems(mergeSavedItems(items));
+  }
+
   const groups = SECTIONS
     .map(section => ({
       ...section,
-      items: items.filter(item => section.types.includes(item.item_type)),
+      items: shownItems.filter(item => section.types.includes(item.item_type)),
     }))
     .filter(section => section.items.length > 0);
 
