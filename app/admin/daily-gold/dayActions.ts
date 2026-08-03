@@ -13,6 +13,7 @@
  */
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { invalidateEdition, invalidateGoodNews } from '@/lib/daily-gold-tags';
 import { db } from '@/src/db';
 import {
   dailyGoldEdition,
@@ -296,6 +297,9 @@ export async function saveEdition(date: string, patch: EditionPatch):
 
   if (!done.length) return { ok: false, error: 'This date has no edition row yet.' };
 
+  // Content of a day that already exists — the set of available days is
+  // unchanged, so no dg-dates.
+  invalidateEdition(date);
   revalidatePath('/admin/daily-gold');
   revalidatePath('/daily-gold-edition');
   return { ok: true, updatedAt: updatedAt.toISOString() };
@@ -337,6 +341,11 @@ export async function setEditionStatus(date: string, status: 'draft' | 'ready'):
   });
 
   if (!result) return { ok: false, error: 'This date has no edition row yet.' };
+  // The publish switch: it moves the edition in or out of the reader's view,
+  // takes the good-news column with it, and adds or removes the day from the
+  // navigator. All three tags.
+  invalidateEdition(date, { alsoDates: true });
+  invalidateGoodNews(date);
   revalidatePath('/admin/daily-gold');
   revalidatePath('/daily-gold-edition');
   return { ok: true };
@@ -376,6 +385,8 @@ export async function createNewsItem(date: string):
     })
     .returning({ id: goodNewsItem.id });
 
+  // No tag: the row is created unpublished (`published: false`) and
+  // getGoodNewsForDate only returns published rows.
   revalidatePath('/admin/daily-gold');
   return { ok: true, id: row.id };
 }
@@ -398,9 +409,12 @@ export async function saveNewsItem(id: number, patch: NewsPatch):
   if (!Object.keys(set).length) return { ok: false, error: 'No recognised fields to save.' };
 
   set.updatedAt = new Date();
-  const done = await db.update(goodNewsItem).set(set).where(eq(goodNewsItem.id, id)).returning({ id: goodNewsItem.id });
+  // The date comes back from the write because the cache tag is keyed by day
+  // and the caller only has the row id.
+  const done = await db.update(goodNewsItem).set(set).where(eq(goodNewsItem.id, id)).returning({ date: goodNewsItem.date });
   if (!done.length) return { ok: false, error: 'That story no longer exists.' };
 
+  invalidateGoodNews(done[0].date);
   revalidatePath('/admin/daily-gold');
   revalidatePath('/daily-gold-edition');
   return { ok: true };
@@ -417,8 +431,11 @@ export async function setNewsPublished(id: number, published: boolean): Promise<
     // rather than from Accept would go on reading as an unreviewed proposal.
     .set({ published, ...(published ? { reviewedAt: new Date() } : {}), updatedAt: new Date() })
     .where(eq(goodNewsItem.id, id))
-    .returning({ id: goodNewsItem.id });
+    .returning({ date: goodNewsItem.date });
   if (!done.length) return { ok: false, error: 'That story no longer exists.' };
+  // Good news is one of the three sources getAvailableDates counts, so
+  // publishing the first story on a day puts that day in the navigator.
+  invalidateGoodNews(done[0].date, { alsoDates: true });
   revalidatePath('/admin/daily-gold');
   revalidatePath('/daily-gold-edition');
   return { ok: true };
@@ -453,6 +470,9 @@ export async function deleteNewsItem(id: number): Promise<{ ok: boolean; error?:
       ));
   });
 
+  // Deleting the day's last published story can take the day out of the
+  // navigator, the same way publishing the first one put it there.
+  invalidateGoodNews(date, { alsoDates: true });
   revalidatePath('/admin/daily-gold');
   revalidatePath('/daily-gold-edition');
   return { ok: true };
@@ -504,6 +524,8 @@ export async function reorderNews(date: string, ids: number[]): Promise<{ ok: bo
     }
   });
 
+  // Order is what the reader sees; the set of days is untouched.
+  invalidateGoodNews(date);
   revalidatePath('/admin/daily-gold');
   revalidatePath('/daily-gold-edition');
   return { ok: true };
@@ -610,6 +632,7 @@ export async function prepareThisDate(date: string): Promise<{ ok: boolean; erro
     .insert(dailyGoldEdition)
     .values({ id: `dg-${date}`, editionDate: date, status: 'draft' })
     .onConflictDoNothing();
+  // A draft row, invisible to readers — no tag, as in prepareDate.
   revalidatePath('/admin/daily-gold');
   return { ok: true };
 }

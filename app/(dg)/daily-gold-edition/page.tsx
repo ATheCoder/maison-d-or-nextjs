@@ -121,7 +121,7 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
   // parameter can announce nobody else's child.
   const [requestedDay, dates, savedKeys, exploration, session, child] = await Promise.all([
     fetchDay(date),
-    getAvailableDates(),
+    getAvailableDates(todayStr),
     getSavedKeys(),
     getTodayExplorationForActiveChild(),
     getSession(),

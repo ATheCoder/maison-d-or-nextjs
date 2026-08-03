@@ -21,6 +21,7 @@
  */
 import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { invalidateAlmanac } from '@/lib/daily-gold-tags';
 import { db } from '@/src/db';
 import { greatestMoment, onThisDayEvent, remarkablePerson } from '@/src/db/schema';
 import { requireAdmin } from '@/lib/dal';
@@ -294,6 +295,11 @@ const yearOrNull = (v: unknown): number | null => {
 };
 
 const revalidate = (monthDay: string) => {
+  // The reader's On This Day and Greatest Moments are cached under one tag per
+  // month-day; both tables are authored on this screen, so every write here
+  // clears it. Every mutation in this file already funnels through this helper,
+  // which is why the tag work belongs here and not at fourteen call sites.
+  invalidateAlmanac(monthDay);
   revalidatePath(`/admin/daily-gold/almanac/${monthDay}`);
   revalidatePath('/admin/daily-gold');
   revalidatePath('/daily-gold-edition');

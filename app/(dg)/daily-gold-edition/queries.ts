@@ -13,7 +13,53 @@ import 'server-only';
  * "use server" and "use cache" found in the same file"*), and caching the
  * day-keyed reads is the whole point of this module. `import 'server-only'` is
  * what now keeps it off the client, which is all the directive was doing.
+ *
+ * ── What is cached here, and how it is keyed ──────────────────────────────
+ *
+ * Every read below answers the same question for every reader, so all of them
+ * are cached. They fall into three families, and the family decides the key:
+ *
+ *   Day-keyed      getEditionByDate, getGoodNewsForDate — one calendar day.
+ *                  Tagged `dg-edition:<date>` / `dg-goodnews:<date>`.
+ *   Month-day keyed getPeopleForDate, getOnThisDayForDate,
+ *                  getGreatestMomentsForDate — "what happened on this day
+ *                  across history". These take a full date for the caller's
+ *                  convenience but the *cache* must key on the month-day, or
+ *                  2026-03-14 and 2025-03-14 would compute the same rows into
+ *                  two entries and a single edit would leave one of them stale.
+ *                  So each is a thin wrapper around a cached inner function
+ *                  that takes the month-day. Tagged `dg-almanac:<MM-DD>`
+ *                  (`dg-people:<MM-DD>` for the Born Today gallery).
+ *   List reads     getAvailableDates, getLatestEdition — change whenever an
+ *                  edition is published. Tagged `dg-dates`.
+ *
+ * `cacheLife('max')` on the first two families is not optimism: an archive day
+ * is immutable, and the only thing that can change today's is an admin write,
+ * which invalidates the tag explicitly. The time bound is a backstop, not the
+ * mechanism. The list reads take `'hours'` because a publish moving the set of
+ * available days is the common case rather than the exception.
+ *
+ * Two rules that must hold:
+ *
+ *  - **Never cache a reader-keyed read.** getSavedKeys,
+ *    getTodayExplorationForActiveChild, getSession and getActiveChildProfile
+ *    live elsewhere and stay uncached forever. They read cookies; a cached copy
+ *    is a data leak between families, not a performance win.
+ *  - **The clock stays outside every cached scope.** getAvailableDates used to
+ *    call `new Date()` itself; it now takes `today` as an argument. A clock read
+ *    captured inside a `'use cache'` function becomes part of the cache key by
+ *    closure and can hang the build waiting for a value that cannot resolve
+ *    during prerender.
  */
+import { cacheLife, cacheTag } from 'next/cache';
+import {
+  DG_DATES_TAG,
+  dgAlmanacTag,
+  dgEditionTag,
+  dgGoodNewsTag,
+  dgPeopleTag,
+  personTag,
+} from '@/lib/daily-gold-tags';
 import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import { db } from '@/src/db';
 import {
@@ -151,6 +197,9 @@ function rowToRecord(row: DailyGoldEditionRow): EditionRecord {
  * the row this returns.
  */
 export async function getEditionByDate(date: string): Promise<EditionRecord | null> {
+  'use cache';
+  cacheLife('max');
+  cacheTag(dgEditionTag(date));
   const rows = await db
     .select()
     .from(dailyGoldEdition)
@@ -172,6 +221,11 @@ export async function getEditionByDate(date: string): Promise<EditionRecord | nu
  * nothing; putting another day's edition under today's masthead stays wrong.
  */
 export async function getLatestEdition(): Promise<EditionRecord | null> {
+  'use cache';
+  cacheLife('hours');
+  // Not `dg-edition:<date>` — which day is "latest" changes when *any* day is
+  // published, including one this entry has never seen.
+  cacheTag(DG_DATES_TAG);
   const rows = await db
     .select()
     .from(dailyGoldEdition)
@@ -181,10 +235,22 @@ export async function getLatestEdition(): Promise<EditionRecord | null> {
   return rows[0] ? rowToRecord(rows[0]) : null;
 }
 
-/** People born on an edition date's month-day — the Born Today gallery. */
+/**
+ * People born on an edition date's month-day — the Born Today gallery.
+ *
+ * The wrapper narrows the date to its month-day so the cache below is keyed by
+ * the thing the answer actually depends on; see the module docblock.
+ */
 export async function getPeopleForDate(date: string): Promise<PersonRecord[]> {
   const monthDay = date?.slice(5);
   if (!monthDay) return [];
+  return getPeopleForMonthDay(monthDay);
+}
+
+async function getPeopleForMonthDay(monthDay: string): Promise<PersonRecord[]> {
+  'use cache';
+  cacheLife('max');
+  cacheTag(dgPeopleTag(monthDay));
   const rows = await db
     .select()
     .from(remarkablePerson)
@@ -204,6 +270,13 @@ export async function getPeopleForDate(date: string): Promise<PersonRecord[]> {
  */
 export async function getGoodNewsForDate(date: string): Promise<GoodNewsRecord[]> {
   if (!date) return [];
+  return goodNewsForDate(date);
+}
+
+async function goodNewsForDate(date: string): Promise<GoodNewsRecord[]> {
+  'use cache';
+  cacheLife('max');
+  cacheTag(dgGoodNewsTag(date));
   const rows = await db
     .select()
     .from(goodNewsItem)
@@ -221,6 +294,13 @@ export async function getGoodNewsForDate(date: string): Promise<GoodNewsRecord[]
 export async function getOnThisDayForDate(date: string): Promise<OnThisDayRecord[]> {
   const monthDay = date?.slice(5);
   if (!monthDay) return [];
+  return onThisDayForMonthDay(monthDay);
+}
+
+async function onThisDayForMonthDay(monthDay: string): Promise<OnThisDayRecord[]> {
+  'use cache';
+  cacheLife('max');
+  cacheTag(dgAlmanacTag(monthDay));
   const rows = await db
     .select()
     .from(onThisDayEvent)
@@ -250,6 +330,15 @@ function momentToRecord(row: GreatestMomentRow) {
 export async function getGreatestMomentsForDate(date: string): Promise<GreatestMomentRecord[]> {
   const monthDay = date?.slice(5);
   if (!monthDay) return [];
+  return greatestMomentsForMonthDay(monthDay);
+}
+
+async function greatestMomentsForMonthDay(monthDay: string): Promise<GreatestMomentRecord[]> {
+  'use cache';
+  cacheLife('max');
+  // Shares the almanac tag with On This Day: both are authored on the same
+  // /admin/daily-gold/almanac/[monthDay] screen and saved by the same actions.
+  cacheTag(dgAlmanacTag(monthDay));
   const rows = await db
     .select()
     .from(greatestMoment)
@@ -260,6 +349,9 @@ export async function getGreatestMomentsForDate(date: string): Promise<GreatestM
 
 /** A single published person by slug — the public Golden Story page. */
 export async function getPersonBySlug(slug: string): Promise<PersonRecord | null> {
+  'use cache';
+  cacheLife('max');
+  cacheTag(personTag(slug));
   const rows = await db
     .select()
     .from(remarkablePerson)
@@ -300,9 +392,18 @@ function mostRecentOccurrence(monthDay: string, today: string): string | null {
  * `onThisDayEvent` and `greatestMoment` are excluded on purpose: they are keyed
  * per month-day, so counting them would eventually mark all 366 dates available
  * and the navigator would stop showing where the work is.
+ *
+ * `today` is an argument rather than a `new Date()` inside this function, and
+ * that is a cache requirement, not a style choice. A clock read inside a
+ * `'use cache'` scope is captured by closure into the cache key and can hang
+ * the build; passing it in makes the dependency explicit, gives each day its
+ * own entry, and lets the caller — which has already committed to request-time
+ * work by reading searchParams — own the clock.
  */
-export async function getAvailableDates(): Promise<string[]> {
-  const today = new Date().toISOString().slice(0, 10);
+export async function getAvailableDates(today: string): Promise<string[]> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag(DG_DATES_TAG);
   const [editionRows, newsRows, personRows] = await Promise.all([
     db
       .selectDistinct({ d: dailyGoldEdition.editionDate })

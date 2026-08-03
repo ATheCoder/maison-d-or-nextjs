@@ -5,9 +5,10 @@
  * inputs. Public draft-gating lives in the readers (getPersonBySlug, the Born
  * Today query); these admin readers/writers are unfiltered.
  */
-import { asc, eq, sql } from 'drizzle-orm';
+import { asc, eq, inArray, sql } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { invalidatePerson, monthDayOf } from '@/lib/daily-gold-tags';
 import { db } from '@/src/db';
 import {
   remarkablePerson,
@@ -161,8 +162,11 @@ export async function createPerson(input: { name?: string; slug?: string; overwr
     return { ok: false, error: 'The slug must be lowercase letters, numbers and dashes.' };
   }
 
+  // birthDate comes back too: overwriting an existing person unpublishes them
+  // and clears the date, which retires them from a Born Today gallery that has
+  // to be told.
   const existing = await db
-    .select({ name: remarkablePerson.name })
+    .select({ name: remarkablePerson.name, birthDate: remarkablePerson.birthDate })
     .from(remarkablePerson)
     .where(eq(remarkablePerson.slug, slug))
     .limit(1);
@@ -190,7 +194,10 @@ export async function createPerson(input: { name?: string; slug?: string; overwr
         })
         .where(eq(remarkablePerson.slug, slug));
     });
+    invalidatePerson(slug, [monthDayOf(existing[0].birthDate)]);
   } else {
+    // A fresh person is unpublished and has no birth date, so no reader query
+    // can see them yet — nothing to invalidate.
     await db.insert(remarkablePerson).values({ slug, name, published: false });
   }
 
@@ -208,7 +215,11 @@ export async function deletePerson(slug: string, confirmSlug: string):
   if (typeof slug !== 'string' || !slug) return { ok: false, error: 'Missing slug.' };
   if (confirmSlug !== slug) return { ok: false, error: 'The typed slug does not match.' };
 
-  await db.delete(remarkablePerson).where(eq(remarkablePerson.slug, slug));
+  const gone = await db
+    .delete(remarkablePerson)
+    .where(eq(remarkablePerson.slug, slug))
+    .returning({ birthDate: remarkablePerson.birthDate });
+  invalidatePerson(slug, [monthDayOf(gone[0]?.birthDate)]);
   revalidatePath('/admin/people');
   return { ok: true };
 }
@@ -319,6 +330,16 @@ export async function savePerson(slug: string, record: Partial<EditorPerson>):
   const death = typeof record?.death_date === 'string' && /^\d{4}(-\d{2}-\d{2})?$/.test(record.death_date)
     ? record.death_date : null;
 
+  // The birth date before this save. It decides which Born Today gallery the
+  // person is currently in, and the patch may be moving them out of it — clear
+  // the gallery they are leaving as well as the one they are joining, or the
+  // old one keeps showing them until its 30-day backstop expires.
+  const before = await db
+    .select({ birthDate: remarkablePerson.birthDate })
+    .from(remarkablePerson)
+    .where(eq(remarkablePerson.slug, slug))
+    .limit(1);
+
   const updatedAt = new Date();
   const result = await db
     .update(remarkablePerson)
@@ -351,6 +372,7 @@ export async function savePerson(slug: string, record: Partial<EditorPerson>):
   if (!result[0]) return { ok: false, error: 'This person no longer exists.' };
   // A priority (or any) edit changes the Born Today ordering — refresh the
   // public page's cache alongside the library.
+  invalidatePerson(slug, [monthDayOf(before[0]?.birthDate), monthDayOf(birth)]);
   revalidatePath('/admin/people');
   revalidatePath('/daily-gold-edition');
   return { ok: true, updated_at: updatedAt.toISOString() };
@@ -369,9 +391,12 @@ export async function setPublished(slug: string, published: boolean):
     .update(remarkablePerson)
     .set({ published: value, updatedAt: new Date() })
     .where(eq(remarkablePerson.slug, slug))
-    .returning({ slug: remarkablePerson.slug });
+    .returning({ birthDate: remarkablePerson.birthDate });
   if (!result[0]) return { ok: false, error: 'This person no longer exists.' };
 
+  // Publishing is what makes a person visible to the story page, to Born Today
+  // and to the navigator's day list at once.
+  invalidatePerson(slug, [monthDayOf(result[0].birthDate)]);
   revalidatePath('/admin/people');
   revalidatePath(`/stories/${slug}`);
   revalidatePath('/daily-gold-edition');
@@ -396,15 +421,27 @@ export async function reorderBornToday(slugsInOrder: string[]):
   if (new Set(slugs).size !== slugs.length) return { ok: false, error: 'Duplicate people in the order.' };
 
   const n = slugs.length;
-  await db.transaction(async (tx) => {
+  const moved = await db.transaction(async (tx) => {
     for (let i = 0; i < slugs.length; i++) {
       await tx
         .update(remarkablePerson)
         .set({ bornTodayPriority: n - i, updatedAt: new Date() })
         .where(eq(remarkablePerson.slug, slugs[i]));
     }
+    // Read the dates inside the transaction so the gallery being invalidated is
+    // the one that was actually reordered. In practice these all share a single
+    // month-day — that is the premise of the screen — but the tag work is driven
+    // by the rows rather than by that assumption.
+    return tx
+      .select({ birthDate: remarkablePerson.birthDate })
+      .from(remarkablePerson)
+      .where(inArray(remarkablePerson.slug, slugs));
   });
 
+  // Priority is only ever read by getPeopleForDate's ordering, so the person's
+  // own story page is untouched — but invalidatePerson wants a slug, and every
+  // slug here shares the gallery. One call per person keeps it honest.
+  for (const slug of slugs) invalidatePerson(slug, moved.map((m) => monthDayOf(m.birthDate)));
   revalidatePath('/admin/people');
   revalidatePath('/daily-gold-edition');
   return { ok: true };
