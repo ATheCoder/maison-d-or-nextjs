@@ -7,8 +7,7 @@
  */
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
-import { invalidatePerson, monthDayOf } from '@/lib/daily-gold-tags';
+import { monthDayOf, touchDesk, touchPerson } from '@/lib/daily-gold-tags';
 import { db } from '@/src/db';
 import {
   remarkablePerson,
@@ -194,11 +193,12 @@ export async function createPerson(input: { name?: string; slug?: string; overwr
         })
         .where(eq(remarkablePerson.slug, slug));
     });
-    invalidatePerson(slug, [monthDayOf(existing[0].birthDate)]);
+    touchPerson(slug, [monthDayOf(existing[0].birthDate)]);
   } else {
     // A fresh person is unpublished and has no birth date, so no reader query
-    // can see them yet — nothing to invalidate.
+    // can see them yet — the library alone.
     await db.insert(remarkablePerson).values({ slug, name, published: false });
+    touchDesk('/admin/people');
   }
 
   redirect(`/admin/people/${slug}`);
@@ -219,8 +219,7 @@ export async function deletePerson(slug: string, confirmSlug: string):
     .delete(remarkablePerson)
     .where(eq(remarkablePerson.slug, slug))
     .returning({ birthDate: remarkablePerson.birthDate });
-  invalidatePerson(slug, [monthDayOf(gone[0]?.birthDate)]);
-  revalidatePath('/admin/people');
+  touchPerson(slug, [monthDayOf(gone[0]?.birthDate)]);
   return { ok: true };
 }
 
@@ -372,9 +371,7 @@ export async function savePerson(slug: string, record: Partial<EditorPerson>):
   if (!result[0]) return { ok: false, error: 'This person no longer exists.' };
   // A priority (or any) edit changes the Born Today ordering — refresh the
   // public page's cache alongside the library.
-  invalidatePerson(slug, [monthDayOf(before[0]?.birthDate), monthDayOf(birth)]);
-  revalidatePath('/admin/people');
-  revalidatePath('/daily-gold-edition');
+  touchPerson(slug, [monthDayOf(before[0]?.birthDate), monthDayOf(birth)]);
   return { ok: true, updated_at: updatedAt.toISOString() };
 }
 
@@ -396,10 +393,7 @@ export async function setPublished(slug: string, published: boolean):
 
   // Publishing is what makes a person visible to the story page, to Born Today
   // and to the navigator's day list at once.
-  invalidatePerson(slug, [monthDayOf(result[0].birthDate)]);
-  revalidatePath('/admin/people');
-  revalidatePath(`/stories/${slug}`);
-  revalidatePath('/daily-gold-edition');
+  touchPerson(slug, [monthDayOf(result[0].birthDate)]);
   return { ok: true, published: value };
 }
 
@@ -439,11 +433,9 @@ export async function reorderBornToday(slugsInOrder: string[]):
   });
 
   // Priority is only ever read by getPeopleForDate's ordering, so the person's
-  // own story page is untouched — but invalidatePerson wants a slug, and every
+  // own story page is untouched — but touchPerson wants a slug, and every
   // slug here shares the gallery. One call per person keeps it honest.
-  for (const slug of slugs) invalidatePerson(slug, moved.map((m) => monthDayOf(m.birthDate)));
-  revalidatePath('/admin/people');
-  revalidatePath('/daily-gold-edition');
+  for (const slug of slugs) touchPerson(slug, moved.map((m) => monthDayOf(m.birthDate)));
   return { ok: true };
 }
 
@@ -569,6 +561,9 @@ export async function updateGoldenThread(slug: string, text: string):
     .update(storyBrief)
     .set({ brief: { ...brief, golden_thread: value }, updatedAt: new Date() })
     .where(eq(storyBrief.slug, slug));
+  // The golden thread lives on the brief, which no reader query reads — it is
+  // the writer's seed, not the story. The editor alone needs to see the change.
+  touchDesk(`/admin/people/${slug}`);
   return { ok: true };
 }
 

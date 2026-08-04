@@ -15,6 +15,7 @@ import {
   type DgAskRequested, type DgRewriteRequested,
 } from './client';
 import { inArray, sql } from 'drizzle-orm';
+import { touchEdition, touchMonthDay, touchPersonBySlug } from '@/lib/daily-gold-tags';
 import { db } from '@/src/db';
 import { analyticsEvent } from '@/src/db/schema';
 import { renderSlotToCanonical, renderSlotToStaging } from '@/lib/golden-story/imageStore';
@@ -54,6 +55,12 @@ export const renderImagesBatch = inngest.createFunction(
     }));
 
     await step.run('finish job', () => finishJob(jobId, { done: true }));
+    // The slots above wrote canonical URLs onto the person; the story page and
+    // the Born Today gallery are both holding the version without them.
+    await step.run('refresh reader caches', async () => {
+      await touchPersonBySlug(slug, { from: 'job' });
+      return null;
+    });
     return { done: true };
   },
 );
@@ -108,6 +115,12 @@ export const generateBrief = inngest.createFunction(
     try {
       const result = await step.run('write book', () => runBriefJob(slug, jobId));
       await step.run('finish job', () => finishJob(jobId, result));
+      // runBriefJob writes the brief's text straight onto the person — a
+      // published story's whole body can change here without any admin edit.
+      await step.run('refresh reader caches', async () => {
+        await touchPersonBySlug(slug, { from: 'job' });
+        return null;
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       await step.run('mark failed', () => failJob(jobId, message));
@@ -146,6 +159,33 @@ export const rewriteField = inngest.createFunction(
     return { done: true };
   },
 );
+
+/**
+ * Tell the reader's caches what a run just wrote.
+ *
+ * These functions are the writers nobody is watching: a batch renderer paints
+ * thirty slots and an ask drafts a whole day, straight into the four tables
+ * behind the reader's `use cache` entries — and until this existed, not one of
+ * them said so. A family kept the version from before the run for as long as
+ * `cacheLife('max')` would hold it, which is the same defect the admin desk
+ * had, minus the admin who would eventually notice.
+ *
+ * `from: 'job'` is load-bearing rather than decorative. An Inngest step runs
+ * inside a Route Handler, where `updateTag` throws (Next E872), so the tags are
+ * marked stale with `revalidateTag(tag, 'max')` instead: the next family to
+ * open the day is served the previous copy while the fresh one is fetched.
+ * Read-your-own-writes is the admin desk's requirement, not a background job's.
+ *
+ * Each call sits in its own `step.run` so it happens once per run rather than
+ * on every replay of the function body.
+ */
+const touchDgSubject = (subject: DgSlotRequested['subject']) => (subject.kind === 'edition'
+  // An ask writes the edition row and parks good-news candidates against the
+  // same date, so both tags go; `dates` because a draft day the ask filled can
+  // be published straight after, and a navigator that missed it is the failure
+  // that costs a family the day entirely.
+  ? touchEdition(subject.key, { news: true, dates: true, from: 'job' })
+  : touchMonthDay(subject.key, { from: 'job' }));
 
 // ── Daily Gold (Phase 8) ─────────────────────────────────────────────────────
 
@@ -194,6 +234,7 @@ export const renderDailyGoldImages = inngest.createFunction(
     const { subject, jobId, slotKeys } = event.data as DgImagesBatchRequested;
     await paintSlots(step, subject, jobId, slotKeys);
     await step.run('finish job', () => finishJob(jobId, { done: true }));
+    await step.run('refresh reader caches', () => { touchDgSubject(subject); return Promise.resolve(null); });
     return { done: true };
   },
 );
@@ -242,6 +283,7 @@ export const runDailyGoldAsk = inngest.createFunction(
     }
 
     await step.run('finish job', () => finishJob(jobId, outcome.result));
+    await step.run('refresh reader caches', () => { touchDgSubject(subject); return Promise.resolve(null); });
 
     // Repeated as the run's own output, so the dashboard's run list shows the
     // model calls without having to open the step.

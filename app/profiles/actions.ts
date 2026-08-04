@@ -8,7 +8,7 @@
  * profile id into the session, so a forged request cannot bypass a PIN.
  */
 import { randomUUID } from 'node:crypto';
-import { revalidatePath } from 'next/cache';
+import { refresh } from 'next/cache';
 import { and, eq } from 'drizzle-orm';
 import { verifyPassword } from 'better-auth/crypto';
 import { db } from '@/src/db';
@@ -75,15 +75,28 @@ async function setActiveProfile(sessionId: string, profileId: string | null) {
     .set({ activeChildProfileId: profileId, updatedAt: new Date() })
     .where(eq(sessionTable.id, sessionId));
   // Every layout that names an identity — the rail, the tab bar, the identity
-  // header — is now stale wherever the client router cache holds it, and the
-  // cache holds more than it looks like: the rail's <Link>s prefetch each
-  // destination's layout, so a push after this switch would otherwise commit
-  // chrome rendered for the *previous* identity (the stale-rail bug: enter a
-  // child from the observatory and land on the edition still wearing the
-  // parent's rail). Purging the whole client cache here is the documented
-  // remedy, and it belongs in this helper because there is no identity change
-  // that doesn't pass through it.
-  revalidatePath('/', 'layout');
+  // header — is now stale wherever the client holds it. The (dg) layout is the
+  // one that matters: it resolves the reader once for all five destinations and
+  // is *not* re-rendered by a client navigation between them, so switching
+  // profiles from inside the app and then moving to another room would keep the
+  // previous reader's rail (the stale-rail bug: enter a child from the
+  // observatory and land on the edition still wearing the parent's).
+  //
+  // `refresh()` is the remedy, and it belongs in this helper because there is
+  // no identity change that doesn't pass through it. It re-renders the current
+  // tree — the shared layout included — from the server, which is precisely
+  // what the stale rail needed, and it touches nothing else: Next records it as
+  // a dynamic-only revalidation, so no cache entry is expired.
+  //
+  // It replaces `revalidatePath('/', 'layout')`, which was aimed at the client
+  // router cache but is documented to invalidate *all* cached data — every one
+  // of the eight `use cache` entries in app/(dg)/daily-gold-edition/queries.ts,
+  // evicted on the most common interaction in the product. Nothing was lost by
+  // narrowing it: what a prefetch holds under Cache Components is the static
+  // shell, and this group's shell is DGChromeFallback — the frame with nobody
+  // in it. The identity is a dynamic hole, fetched fresh on every navigation,
+  // so there is no prefetched copy of the previous reader left to purge.
+  refresh();
 }
 
 /**

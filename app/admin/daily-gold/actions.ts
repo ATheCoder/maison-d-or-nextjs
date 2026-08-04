@@ -15,8 +15,7 @@
  */
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
-import { invalidateEdition } from '@/lib/daily-gold-tags';
+import { touchDesk, touchEdition } from '@/lib/daily-gold-tags';
 import { db } from '@/src/db';
 import {
   dailyGoldEdition,
@@ -388,9 +387,9 @@ export async function prepareDate(date: string): Promise<{ ok: false; error: str
       .insert(dailyGoldEdition)
       .values({ id: draftId(date), editionDate: date, status: 'draft' })
       .onConflictDoNothing();
-    // No cache tag: the row is a draft, and every reader query filters on
+    // Desk only: the row is a draft, and every reader query filters on
     // status = 'ready'. Nothing a family can see has changed yet.
-    revalidatePath('/admin/daily-gold');
+    touchDesk('/admin/daily-gold');
   }
   redirect(`/admin/daily-gold/${date}`);
 }
@@ -429,8 +428,8 @@ export async function prepareWeek(from?: string): Promise<PrepareWeekResult> {
     }
   });
 
-  // Drafts only, as in prepareDate — invisible to readers, so no tag.
-  revalidatePath('/admin/daily-gold');
+  // Drafts only, as in prepareDate — invisible to readers, so desk only.
+  touchDesk('/admin/daily-gold');
   return { ok: true, created, skipped };
 }
 
@@ -461,8 +460,6 @@ export async function deleteEditionRow(id: string): Promise<{ ok: boolean; error
   await db.delete(dailyGoldEdition).where(eq(dailyGoldEdition.id, id));
   // Which row the reader sees for this date may now be a different one, and if
   // the deleted row was the only 'ready' one the date leaves the navigator.
-  invalidateEdition(rows[0].date, { alsoDates: true });
-  revalidatePath('/admin/daily-gold');
-  revalidatePath('/daily-gold-edition');
+  touchEdition(rows[0].date, { dates: true });
   return { ok: true };
 }

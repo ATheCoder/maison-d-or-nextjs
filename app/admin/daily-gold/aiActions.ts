@@ -14,7 +14,7 @@
  * server actions are open HTTP endpoints, and these ones spend money.
  */
 import { and, asc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { touchDesk, touchEdition, touchMonthDay } from '@/lib/daily-gold-tags';
 import { db } from '@/src/db';
 import {
   dailyGoldEdition, goodNewsItem, greatestMoment, onThisDayEvent,
@@ -54,11 +54,24 @@ function okSubject(kind: 'edition' | 'month_day', key: unknown): key is string {
 const subjectOf = (s: DgSubject) =>
   (s.kind === 'edition' ? editionSubject(s.key) : monthDaySubject(s.key));
 
-function revalidateFor(s: DgSubject) {
-  if (s.kind === 'edition') revalidatePath(`/admin/daily-gold/${s.key}`);
-  else revalidatePath(`/admin/daily-gold/almanac/${s.key}`);
-  revalidatePath('/admin/daily-gold');
-  revalidatePath('/daily-gold-edition');
+/**
+ * Tell every cache what a verb in this file just wrote.
+ *
+ * This used to be four `revalidatePath` calls, which is the *router* cache and
+ * not the layer the reader's day is stored in: accepting a candidate published
+ * a story into `use cache` entries that went on serving the version without it
+ * for as long as `cacheLife('max')` would hold them. `touchEdition` and
+ * `touchMonthDay` fire the tags and those same paths together, which is the
+ * only reason that can't happen again (lib/daily-gold-tags.ts).
+ *
+ * An edition subject clears its column as well as its row (`news`) and the
+ * navigator (`dates`): accepting a good-news candidate publishes a story, and
+ * the first published story on a date is what puts the date in front of a
+ * family at all.
+ */
+function touchSubject(s: DgSubject) {
+  if (s.kind === 'edition') touchEdition(s.key, { news: true, dates: true });
+  else touchMonthDay(s.key);
 }
 
 // ── Polling ──────────────────────────────────────────────────────────────────
@@ -289,7 +302,7 @@ export async function acceptCandidate(kind: CandidateKind, id: number):
       return null;
     });
     if (result) return { ok: false, error: result };
-    await revalidateNewsFor(id);
+    await touchNewsFor(id);
     return { ok: true };
   }
 
@@ -317,7 +330,7 @@ export async function acceptCandidate(kind: CandidateKind, id: number):
       return null;
     });
     if (result) return { ok: false, error: result };
-    await revalidateMomentFor(id);
+    await touchMomentFor(id);
     return { ok: true };
   }
 
@@ -334,7 +347,7 @@ export async function acceptCandidate(kind: CandidateKind, id: number):
     .update(onThisDayEvent)
     .set({ maisonRewriteDone: true, reviewedAt: new Date(), updatedAt: new Date() })
     .where(eq(onThisDayEvent.id, id));
-  revalidateFor({ kind: 'month_day', key: rows[0].monthDay });
+  touchSubject({ kind: 'month_day', key: rows[0].monthDay });
   return { ok: true };
 }
 
@@ -374,7 +387,7 @@ export async function rejectCandidate(kind: CandidateKind, id: number):
           ));
       }
     });
-    revalidateFor({ kind: 'edition', key: date });
+    touchSubject({ kind: 'edition', key: date });
     return { ok: true };
   }
 
@@ -383,7 +396,7 @@ export async function rejectCandidate(kind: CandidateKind, id: number):
       .delete(greatestMoment).where(eq(greatestMoment.id, id))
       .returning({ monthDay: greatestMoment.monthDay });
     if (!rows[0]) return { ok: false, error: 'That moment no longer exists.' };
-    revalidateFor({ kind: 'month_day', key: rows[0].monthDay });
+    touchSubject({ kind: 'month_day', key: rows[0].monthDay });
     return { ok: true };
   }
 
@@ -391,7 +404,7 @@ export async function rejectCandidate(kind: CandidateKind, id: number):
     .delete(onThisDayEvent).where(eq(onThisDayEvent.id, id))
     .returning({ monthDay: onThisDayEvent.monthDay });
   if (!rows[0]) return { ok: false, error: 'That event no longer exists.' };
-  revalidateFor({ kind: 'month_day', key: rows[0].monthDay });
+  touchSubject({ kind: 'month_day', key: rows[0].monthDay });
   return { ok: true };
 }
 
@@ -411,7 +424,7 @@ export async function rejectAllCandidates(kind: CandidateKind, key: string):
         eq(goodNewsItem.published, false),
       ))
       .returning({ id: goodNewsItem.id });
-    revalidateFor({ kind: 'edition', key });
+    touchSubject({ kind: 'edition', key });
     return { ok: true, removed: rows.length };
   }
 
@@ -427,7 +440,7 @@ export async function rejectAllCandidates(kind: CandidateKind, key: string):
         eq(greatestMoment.published, false),
       ))
       .returning({ id: greatestMoment.id });
-    revalidateFor({ kind: 'month_day', key });
+    touchSubject({ kind: 'month_day', key });
     return { ok: true, removed: rows.length };
   }
 
@@ -440,20 +453,20 @@ export async function rejectAllCandidates(kind: CandidateKind, key: string):
       eq(onThisDayEvent.maisonRewriteDone, false),
     ))
     .returning({ id: onThisDayEvent.id });
-  revalidateFor({ kind: 'month_day', key });
+  touchSubject({ kind: 'month_day', key });
   return { ok: true, removed: rows.length };
 }
 
-// Revalidation needs the parent key, which a delete has already taken with it —
-// so these read it back before the row is touched.
-async function revalidateNewsFor(id: number) {
+// The tags are keyed by the parent — a date or a month-day — and an accept
+// holds only a row id, so these read the key back off the row.
+async function touchNewsFor(id: number) {
   const rows = await db.select({ date: goodNewsItem.date }).from(goodNewsItem).where(eq(goodNewsItem.id, id)).limit(1);
-  if (rows[0]) revalidateFor({ kind: 'edition', key: rows[0].date });
+  if (rows[0]) touchSubject({ kind: 'edition', key: rows[0].date });
 }
-async function revalidateMomentFor(id: number) {
+async function touchMomentFor(id: number) {
   const rows = await db
     .select({ monthDay: greatestMoment.monthDay }).from(greatestMoment).where(eq(greatestMoment.id, id)).limit(1);
-  if (rows[0]) revalidateFor({ kind: 'month_day', key: rows[0].monthDay });
+  if (rows[0]) touchSubject({ kind: 'month_day', key: rows[0].monthDay });
 }
 
 // ── Painting what an ask left empty ──────────────────────────────────────────
@@ -493,6 +506,10 @@ export async function paintMissing(subject: DgSubject): Promise<{ ok: boolean; c
 
   const res = await startDgBatch(subject, keys);
   if (!res.ok) return { ok: false, error: res.error };
-  revalidateFor(subject);
+  // Job rows only: the paintings are written by the Inngest run, which fires
+  // its own tags when they land (renderDailyGoldImages).
+  touchDesk(subject.kind === 'edition'
+    ? `/admin/daily-gold/${subject.key}`
+    : `/admin/daily-gold/almanac/${subject.key}`);
   return { ok: true, count: res.count };
 }

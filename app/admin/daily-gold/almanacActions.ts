@@ -20,8 +20,7 @@
  * transaction.
  */
 import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { invalidateAlmanac } from '@/lib/daily-gold-tags';
+import { touchMonthDay } from '@/lib/daily-gold-tags';
 import { db } from '@/src/db';
 import { greatestMoment, onThisDayEvent, remarkablePerson } from '@/src/db/schema';
 import { requireAdmin } from '@/lib/dal';
@@ -294,16 +293,12 @@ const yearOrNull = (v: unknown): number | null => {
   return n >= -4000 && n <= new Date().getUTCFullYear() + 1 ? n : null;
 };
 
-const revalidate = (monthDay: string) => {
-  // The reader's On This Day and Greatest Moments are cached under one tag per
-  // month-day; both tables are authored on this screen, so every write here
-  // clears it. Every mutation in this file already funnels through this helper,
-  // which is why the tag work belongs here and not at fourteen call sites.
-  invalidateAlmanac(monthDay);
-  revalidatePath(`/admin/daily-gold/almanac/${monthDay}`);
-  revalidatePath('/admin/daily-gold');
-  revalidatePath('/daily-gold-edition');
-};
+// The reader's On This Day and Greatest Moments are cached under one tag per
+// month-day, and both tables are authored on this screen — so every mutation
+// below ends in `touchMonthDay`, which clears that tag and refreshes the desk
+// in one call. This file is where that shape was first written; it now lives in
+// lib/daily-gold-tags, where the writers that had drifted away from it can
+// reach it too.
 
 // ── On This Day ──────────────────────────────────────────────────────────────
 
@@ -330,7 +325,7 @@ export async function createEvent(monthDay: string, year: number):
     })
     .returning({ id: onThisDayEvent.id });
 
-  revalidate(monthDay);
+  touchMonthDay(monthDay);
   return { ok: true, id: row.id };
 }
 
@@ -359,7 +354,7 @@ export async function saveEvent(id: number, patch: EventPatch): Promise<{ ok: bo
     .returning({ monthDay: onThisDayEvent.monthDay });
   if (!rows[0]) return { ok: false, error: 'That event no longer exists.' };
 
-  revalidate(rows[0].monthDay);
+  touchMonthDay(rows[0].monthDay);
   return { ok: true };
 }
 
@@ -389,7 +384,7 @@ export async function setEventPublished(id: number, published: boolean): Promise
     .returning({ monthDay: onThisDayEvent.monthDay });
   if (!rows[0]) return { ok: false, error: 'That event no longer exists.' };
 
-  revalidate(rows[0].monthDay);
+  touchMonthDay(rows[0].monthDay);
   return { ok: true };
 }
 
@@ -405,7 +400,7 @@ export async function deleteEvent(id: number): Promise<{ ok: boolean; error?: st
     .delete(onThisDayEvent).where(eq(onThisDayEvent.id, id))
     .returning({ monthDay: onThisDayEvent.monthDay });
   if (!rows[0]) return { ok: false, error: 'That event no longer exists.' };
-  revalidate(rows[0].monthDay);
+  touchMonthDay(rows[0].monthDay);
   return { ok: true };
 }
 
@@ -456,7 +451,7 @@ export async function reorderYear(monthDay: string, year: number, ids: number[])
     }
   });
 
-  revalidate(monthDay);
+  touchMonthDay(monthDay);
   return { ok: true };
 }
 
@@ -487,7 +482,7 @@ export async function createMoment(monthDay: string):
     })
     .returning({ id: greatestMoment.id });
 
-  revalidate(monthDay);
+  touchMonthDay(monthDay);
   return { ok: true, id: row.id, rank };
 }
 
@@ -515,7 +510,7 @@ export async function saveMoment(id: number, patch: MomentPatch): Promise<{ ok: 
     .returning({ monthDay: greatestMoment.monthDay });
   if (!rows[0]) return { ok: false, error: 'That moment no longer exists.' };
 
-  revalidate(rows[0].monthDay);
+  touchMonthDay(rows[0].monthDay);
   return { ok: true };
 }
 
@@ -541,7 +536,7 @@ export async function setMomentPublished(id: number, published: boolean): Promis
     .returning({ monthDay: greatestMoment.monthDay });
   if (!rows[0]) return { ok: false, error: 'That moment no longer exists.' };
 
-  revalidate(rows[0].monthDay);
+  touchMonthDay(rows[0].monthDay);
   return { ok: true };
 }
 
@@ -557,7 +552,7 @@ export async function deleteMoment(id: number): Promise<{ ok: boolean; error?: s
     .delete(greatestMoment).where(eq(greatestMoment.id, id))
     .returning({ monthDay: greatestMoment.monthDay });
   if (!rows[0]) return { ok: false, error: 'That moment no longer exists.' };
-  revalidate(rows[0].monthDay);
+  touchMonthDay(rows[0].monthDay);
   return { ok: true };
 }
 
@@ -603,6 +598,6 @@ export async function reorderMoments(monthDay: string, ids: number[]): Promise<{
     }
   });
 
-  revalidate(monthDay);
+  touchMonthDay(monthDay);
   return { ok: true };
 }

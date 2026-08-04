@@ -17,7 +17,7 @@
  * Every action starts with `requireAdmin()` and validates its own inputs:
  * server actions are open HTTP endpoints.
  */
-import { revalidatePath } from 'next/cache';
+import { touchDesk, touchEdition, touchMonthDay, touchPersonBySlug } from '@/lib/daily-gold-tags';
 import { requireAdmin } from '@/lib/dal';
 import { parseSlotKey } from '@/lib/daily-gold/slots';
 import {
@@ -55,12 +55,31 @@ function okSlotKey(subject: ImageSubject, slotKey: unknown): slotKey is string {
 /** Narrow a validated subject to the Daily Gold half. */
 const dg = (subject: ImageSubject): DgSubject => ({ kind: subject.kind as 'edition' | 'month_day', key: subject.key });
 
-function revalidateFor(subject: ImageSubject) {
-  revalidatePath('/daily-gold-edition');
-  if (subject.kind === 'person') revalidatePath(`/admin/people/${subject.key}`);
-  if (subject.kind === 'edition') revalidatePath(`/admin/daily-gold/${subject.key}`);
-  if (subject.kind === 'month_day') revalidatePath(`/admin/daily-gold/almanac/${subject.key}`);
-  revalidatePath('/admin/daily-gold');
+/** The admin screen a Daily Gold subject is edited on. */
+const dgPath = (subject: ImageSubject) => (subject.kind === 'edition'
+  ? `/admin/daily-gold/${subject.key}`
+  : `/admin/daily-gold/almanac/${subject.key}`);
+
+/**
+ * Tell every cache that a picture landed on this subject.
+ *
+ * A slot image is *read* content — `image_url` is on every record the reader
+ * builds, from the masthead to a Born Today portrait — so the four tables these
+ * verbs write are all behind `use cache`. This helper used to call
+ * `revalidatePath` alone, which refreshes the admin's router cache and leaves
+ * those entries holding the previous painting (or none) until their thirty-day
+ * backstop expires. The `touch*` calls do both layers at once.
+ *
+ * A person subject is resolved through `touchPersonBySlug` because the Born
+ * Today gallery is keyed by birth month-day rather than by slug: clearing
+ * `person:<slug>` and not the gallery's tag fixes the story page and leaves the
+ * portrait beside it stale. Neither `news` nor `dates` here — a picture cannot
+ * publish a story or add a day to the navigator.
+ */
+async function touchSubject(subject: ImageSubject) {
+  if (subject.kind === 'person') await touchPersonBySlug(subject.key);
+  else if (subject.kind === 'edition') touchEdition(subject.key, { news: true });
+  else touchMonthDay(subject.key);
 }
 
 // ── The verbs ────────────────────────────────────────────────────────────────
@@ -77,12 +96,20 @@ export async function saveSlotSceneFor(subject: ImageSubject, slotKey: string, s
   await requireAdmin();
   if (!okSubject(subject) || !okSlotKey(subject, slotKey)) return { ok: false, error: 'Bad request.' };
   const text = typeof scene === 'string' ? scene : '';
-  if (subject.kind === 'person') return saveScene(subject.key, slotKey, text);
+  // A person's scene lives on the brief, which no reader query reads; a Daily
+  // Gold one lives on the row the picture belongs to, and `image_scene` is not
+  // part of any reader record either. Neither needs a tag — but the modal that
+  // opens with the prompt does need the path.
+  if (subject.kind === 'person') {
+    const res = await saveScene(subject.key, slotKey, text);
+    if (res.ok) touchDesk(`/admin/people/${subject.key}`);
+    return res;
+  }
 
   if (!(await saveDgScene(dg(subject), slotKey, text))) {
     return { ok: false, error: 'That slot’s row no longer exists.' };
   }
-  revalidateFor(subject);
+  touchDesk(dgPath(subject));
   return { ok: true };
 }
 
@@ -101,9 +128,13 @@ export async function acceptSlotFor(subject: ImageSubject, jobId: number):
   Promise<{ ok: boolean; error?: string; file?: string; url?: string }> {
   await requireAdmin();
   if (!okSubject(subject) || !Number.isInteger(jobId)) return { ok: false, error: 'Bad request.' };
-  if (subject.kind === 'person') return acceptSlot(subject.key, jobId);
-  const res = await acceptDgSlot(dg(subject), jobId);
-  if (res.ok) revalidateFor(subject);
+  const res = subject.kind === 'person'
+    ? await acceptSlot(subject.key, jobId)
+    : await acceptDgSlot(dg(subject), jobId);
+  // Accepting is what writes the canonical URL onto the row — the one moment in
+  // Path A a reader can see. The person branch used to return here without
+  // invalidating anything at all.
+  if (res.ok) await touchSubject(subject);
   return res;
 }
 
@@ -139,13 +170,13 @@ export async function uploadSlotImageFor(form: FormData):
 
   if (subject.kind === 'person') {
     const res = await uploadSlot(subject.key, slotKey as string, buffer);
-    if (res.ok) revalidateFor(subject);
+    if (res.ok) await touchSubject(subject);
     return res;
   }
 
   try {
     const res = await uploadDgSlot(dg(subject), slotKey as string, buffer);
-    if (res.ok) revalidateFor(subject);
+    if (res.ok) await touchSubject(subject);
     return res;
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Upload failed.' };
@@ -169,6 +200,6 @@ export async function removeSlotImageFor(subject: ImageSubject, slotKey: string)
   if (!(await writeDgImageUrl(dg(subject), slotKey, null))) {
     return { ok: false, error: 'That slot’s row no longer exists.' };
   }
-  revalidateFor(subject);
+  await touchSubject(subject);
   return { ok: true };
 }
