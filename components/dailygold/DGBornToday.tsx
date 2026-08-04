@@ -32,16 +32,36 @@ import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
 import { resolvePerson } from '@/lib/countries';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import { formatDate, formatYear } from '@/lib/dates';
+import type { PersonRecord } from '@/app/(dg)/daily-gold-edition/queries';
+
+/** Where a volume stands: the three podium places, or the row behind. */
+type VolumeTier = 'lead' | 'featl' | 'featr' | 'shelf';
 
 // ── ONE VOLUME ON THE SHELF ───────────────────────────────────────────────────
-function BookVolume({ person, savedSet, editionDate, delay = '0s', tier = 'shelf' }) {
+function BookVolume({
+  person,
+  savedSet,
+  editionDate,
+  delay = '0s',
+  tier = 'shelf',
+}: {
+  person: PersonRecord;
+  savedSet?: Set<string> | null;
+  editionDate?: string;
+  /** CSS animation-delay for the entrance stagger. */
+  delay?: string;
+  tier?: VolumeTier;
+}) {
   const { theme } = useTheme();
   const { track } = useInstrumentation();
-  // personToRecord emits snake_case; resolvePerson prefers the explicit code
-  // and falls back to the nationality text (R4.1).
+  // personToRecord emits snake_case; resolvePerson prefers an explicit code and
+  // falls back to the nationality text (R4.1). It is passed no `nationality`
+  // here because a PersonRecord has none — remarkable_person keeps the
+  // nationality adjective in `country` (see PersonEditor's note on that column),
+  // and the field this used to read was a leftover from the Base44 shape that
+  // has been undefined since the Drizzle migration.
   const iso2 = resolvePerson({
     countryCode: person.country_code,
-    nationality: person.nationality,
     country: person.country,
   });
   const initials = person.name ? person.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
@@ -81,7 +101,7 @@ function BookVolume({ person, savedSet, editionDate, delay = '0s', tier = 'shelf
         <div className="dgbt-flag">
           <FlagSealMedallion
             countryCode={iso2}
-            countryName={person.nationality || person.country || ''}
+            countryName={person.country || ''}
             size="xs"
             earned={true}
             fallbackInitials={initials}
@@ -154,7 +174,7 @@ function BookVolume({ person, savedSet, editionDate, delay = '0s', tier = 'shelf
                 itemSubtitle={role}
                 itemImageUrl={imgUrl}
                 countryCode={iso2}
-                countryName={person.nationality || person.country}
+                countryName={person.country}
                 editionDate={editionDate}
                 initialSaved={savedSet.has(`person:${person.slug}`)}
                 size="sm"
@@ -172,15 +192,24 @@ function BookVolume({ person, savedSet, editionDate, delay = '0s', tier = 'shelf
 }
 
 // ── MAIN EXPORT ───────────────────────────────────────────────────────────────
-export default function DGBornToday({ people = [], savedSet = null, editionDate }) {
+export default function DGBornToday({
+  people = [],
+  savedSet = null,
+  editionDate,
+}: {
+  people?: PersonRecord[];
+  /** The reader's saved treasury keys, or null when there is no reader. */
+  savedSet?: Set<string> | null;
+  editionDate?: string;
+}) {
   const { theme } = useTheme();
-  const podiumRef = useRef(null);
+  const podiumRef = useRef<HTMLDivElement>(null);
 
   // The podium leans a few degrees toward the pointer. CSS custom properties
   // carry the normalized cursor position so the pose itself stays in CSS; the
   // .5s transform transition on the cells turns raw pointermove into a damped,
   // weighty follow rather than a 1:1 track.
-  const handleTilt = (e) => {
+  const handleTilt = (e: React.PointerEvent<HTMLDivElement>) => {
     const el = podiumRef.current;
     if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const r = el.getBoundingClientRect();
@@ -201,7 +230,7 @@ export default function DGBornToday({ people = [], savedSet = null, editionDate 
   const volumes = people.slice(0, 10);
   const featured = volumes.slice(0, 3);
   const shelf = volumes.slice(3);
-  const podiumTiers = ['lead', 'featl', 'featr'];
+  const podiumTiers: VolumeTier[] = ['lead', 'featl', 'featr'];
   const podiumDelays = ['0.05s', '0.24s', '0.34s'];
 
   return (

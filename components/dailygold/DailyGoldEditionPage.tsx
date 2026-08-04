@@ -18,6 +18,14 @@ import { SignupInviteProvider } from '@/components/dailygold/SignupInvite';
 import { SignedOutCta, WelcomeFlourish } from '@/components/dailygold/DGVisitorBanners';
 import { useReader } from '@/components/dailygold/ReaderContext';
 import { useTheme } from '@/components/theme/ThemeContext';
+import type { DestinationView } from '@/components/dailygold/DGDestination';
+import type {
+  EditionRecord,
+  GoodNewsRecord,
+  GreatestMomentRecord,
+  OnThisDayRecord,
+  PersonRecord,
+} from '@/app/(dg)/daily-gold-edition/queries';
 
 /**
  * PAGE — /daily-gold-edition
@@ -38,9 +46,27 @@ import { useTheme } from '@/components/theme/ThemeContext';
  * (navigation-redesign-spec §4/§7) is documented there and in NAV_SHELL_CSS.
  */
 
+/**
+ * The edition as the sections below read it: the flat `EditionRecord` columns
+ * regrouped into a destination, a pair of images and the day's quote. Nothing
+ * here reaches the server — it is `mapRecord`'s output and this component's
+ * private shape, except `destination`, which is DGDestination's own declared
+ * prop type so that the mapping is checked against the thing consuming it.
+ */
+type EditionView = {
+  id: string | null;
+  date: string | null;
+  destination_name?: string | null;
+  daily_quote?: string | null;
+  daily_quote_author?: string | null;
+  destination: DestinationView | null;
+  images: { destination?: string | null; hero?: string | null };
+  generated_at: string | null;
+};
+
 // Today has no edition row. An explicit absent state — never another day's
 // content, and never sample content dressed up as today's.
-const EMPTY_EDITION = {
+const EMPTY_EDITION: EditionView = {
   id: null,
   date: null,
   destination_name: null,
@@ -50,8 +76,8 @@ const EMPTY_EDITION = {
 };
 
 // Map a raw edition record (snake_case, as returned by the Drizzle-backed
-// server actions) into the view-model the child components consume.
-function mapRecord(record) {
+// day reads) into the view-model the child components consume.
+function mapRecord(record: EditionRecord) {
   // An edition row can exist with nothing authored in it yet. Only build a
   // destination when there is something to show, so the section can be absent
   // rather than rendering a shell of em-dashes.
@@ -60,7 +86,7 @@ function mapRecord(record) {
     record.taste_of_day || record.sound_of_day || record.nature_detail || record.tiny_phrase ||
     record.continent || record.child_life
   );
-  const edition = {
+  const edition: EditionView = {
     id: record.id,
     date: record.edition_date,
     destination_name: record.destination_country,
@@ -108,7 +134,35 @@ const PAGE_CSS = `
   }
 `;
 
-function DailyGoldDay({ date, today, edition: editionRecord, dates, people, goodNews, onThisDay, greatestMoments, savedSet, signedOut, welcomeName }) {
+type DayContent = {
+  date: string;
+  today: string;
+  edition: EditionRecord | null;
+  dates: string[];
+  people: PersonRecord[];
+  goodNews: GoodNewsRecord[];
+  onThisDay: OnThisDayRecord[];
+  greatestMoments: GreatestMomentRecord[];
+};
+
+function DailyGoldDay({
+  date,
+  today,
+  edition: editionRecord,
+  dates,
+  people,
+  goodNews,
+  onThisDay,
+  greatestMoments,
+  savedSet,
+  signedOut,
+  welcomeName,
+}: DayContent & {
+  savedSet: Set<string> | null;
+  signedOut: boolean;
+  /** The active child's name when `?welcome=1` brought them here, else null. */
+  welcomeName: string | null;
+}) {
   const { theme } = useTheme();
   const router = useRouter();
 
@@ -133,7 +187,7 @@ function DailyGoldDay({ date, today, edition: editionRecord, dates, people, good
   // bare URL so the paper of the moment has one plain, permanent address; every
   // earlier day carries its date, which is the link a reader can share.
   // `scroll: false` keeps the reader at the navigator they just pressed.
-  const handleDateChange = useCallback((next) => {
+  const handleDateChange = useCallback((next: string) => {
     if (!next || next === viewedDate) return;
     router.push(next === today ? '/daily-gold-edition' : `/daily-gold-edition?date=${next}`, { scroll: false });
   }, [router, viewedDate, today]);
@@ -268,9 +322,23 @@ function DailyGoldDay({ date, today, edition: editionRecord, dates, people, good
  * the flourish still comes from the session's own active child by way of the
  * context, so the parameter can announce nobody else's child.
  *
- * @param {{ date?: string, today?: string, edition?: any, dates?: string[], people?: any[], goodNews?: any[], onThisDay?: any[], greatestMoments?: any[], welcome?: boolean }} props
+ * Every content prop is typed as the query module's own record, so the shapes
+ * app/(dg)/daily-gold-edition/page.tsx builds are checked all the way down to
+ * the sections that render them — which they were not while this file was .jsx
+ * and every one of them arrived as `any`. The imports are type-only and erased;
+ * nothing of that `server-only` module ships to the client.
  */
-export default function DailyGoldEdition({ date, today, edition = null, dates = [], people = [], goodNews = [], onThisDay = [], greatestMoments = [], welcome = false }) {
+export default function DailyGoldEdition({
+  date,
+  today,
+  edition = null,
+  dates = [],
+  people = [],
+  goodNews = [],
+  onThisDay = [],
+  greatestMoments = [],
+  welcome = false,
+}: Partial<DayContent> & { welcome?: boolean }) {
   // Defaulted here rather than in the signature so a caller that knows neither
   // date — the design-sync preview — still renders a coherent single day.
   const todayStr = today || new Date().toISOString().slice(0, 10);

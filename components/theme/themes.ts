@@ -3,14 +3,64 @@
  * MAISON D'ORE ACADEMY THEME SYSTEM
  * Five switchable themes. Default: Light & Airy (warm, luminous, cream-champagne)
  * Reference: Official mood board (oil painting style, golden light, soft edges)
+ *
+ * The key list is not declared here. `THEMES` is a `Record<ThemeKey, Theme>`
+ * over lib/theme-keys.ts — the server-safe half of this system — so the two
+ * cannot drift: a palette this file forgets is a missing-property error, and one
+ * lib/theme-keys.ts has never heard of is an excess-property error. Same for the
+ * default, which is that module's `DEFAULT_THEME_KEY` re-exported under the name
+ * the client components already import.
+ *
+ * Adding a sixth theme is therefore: add its key to THEME_KEYS, then satisfy the
+ * compiler here — every field of `Theme`, the picker's `swatch` included.
  */
 
 import { FONTS, COLORS, RADIUS, SHADOWS } from '@/lib/maisonDesignSystem';
+import { DEFAULT_THEME_KEY, type ThemeKey } from '@/lib/theme-keys';
 
-export const THEMES = {
+export type { ThemeKey };
+
+/**
+ * One palette. Every field is consumed as an inline style value, which is why
+ * the radii are pre-formatted into CSS strings here rather than at each of the
+ * thirty-odd call sites.
+ */
+export type Theme = {
+  /** Shown in the theme picker's accessible label. */
+  name: string;
+  /**
+   * The picker's colour dot. It belongs to the palette rather than to a lookup
+   * table beside the picker so a new theme cannot ship without one: the map this
+   * replaced lived in DGHero and fell back to grey for any key it had not been
+   * told about.
+   */
+  swatch: string;
+  bgParchment: string;
+  bgPrimary: string;
+  bgSoft: string;
+  bgCard: string;
+  bgOverlay: string;
+  textHeadline: string;
+  textBody: string;
+  textMuted: string;
+  accentGold: string;
+  accentSage: string;
+  accentSecondary: string;
+  accentTertiary: string;
+  fontHeadline: string;
+  fontBody: string;
+  radius: string;
+  radiusSmall: string;
+  shadow: string;
+  shadowSoft: string;
+  shadowDeep: string;
+};
+
+export const THEMES: Record<ThemeKey, Theme> = {
   lightAiry: {
     // Light & Airy (Default) — Warm, cream, luminous
     name: 'Light & Airy',
+    swatch: '#E8D5B0',
     bgParchment: COLORS.champagne,
     bgPrimary: COLORS.parchment,
     bgSoft: COLORS.champagne,
@@ -34,6 +84,7 @@ export const THEMES = {
 
   coastalBlue: {
     name: 'Coastal Blue',
+    swatch: '#8AAEC8',
     bgParchment: '#EBF1F8',
     bgPrimary: '#F0F5FB',
     bgSoft: '#E8F1F8',
@@ -57,6 +108,7 @@ export const THEMES = {
 
   sageEarth: {
     name: 'Sage & Earth',
+    swatch: '#8FA88A',
     bgParchment: '#E9E5DC',
     bgPrimary: '#EFEFEA',
     bgSoft: '#E9E5DC',
@@ -80,6 +132,7 @@ export const THEMES = {
 
   blushGold: {
     name: 'Blush & Gold',
+    swatch: '#D4A898',
     bgParchment: '#F5ECEB',
     bgPrimary: '#FBF5F3',
     bgSoft: '#F7EEEA',
@@ -103,6 +156,7 @@ export const THEMES = {
 
   nightMode: {
     name: 'Night Mode',
+    swatch: '#2A3540',
     bgParchment: '#111C1E',
     bgPrimary: '#0D1819',
     bgSoft: '#141E21',
@@ -125,4 +179,4 @@ export const THEMES = {
   },
 };
 
-export const DEFAULT_THEME = 'lightAiry';
+export const DEFAULT_THEME = DEFAULT_THEME_KEY;

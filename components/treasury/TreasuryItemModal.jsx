@@ -1,3 +1,6 @@
+// @ts-nocheck — untyped .jsx from before checkJs was on; 34 errors to clear.
+// This line is the backlog entry (tsconfig.json explains the ratchet): fix the
+// file, delete the marker. Do not add one to a new file.
 'use client';
 /**
  * TreasuryItemModal — a saved treasure opened in place, instead of navigating

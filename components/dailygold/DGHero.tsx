@@ -1,13 +1,14 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
+import { THEME_KEYS } from '@/lib/theme-keys';
 
 // Only for the luminous title gradient — no light/dark gold tokens exist.
 const GOLD_LIGHT = '#D4BF8A';
 const GOLD_DARK = '#A8884A';
 
-function FloatingParticle({ style }) {
+function FloatingParticle({ style }: { style?: CSSProperties }) {
   const { theme } = useTheme();
   return (
     <div aria-hidden="true" style={{
@@ -27,20 +28,14 @@ function ThemeSwitcherSmall() {
   const pathname = usePathname();
   const { theme, currentTheme, switchTheme, allThemes } = useTheme();
   const [expanded, setExpanded] = useState(false);
-  const ref = useRef(null);
-
-  const themeColors = {
-    lightAiry: '#E8D5B0',
-    coastalBlue: '#8AAEC8',
-    sageEarth: '#8FA88A',
-    blushGold: '#D4A898',
-    nightMode: '#2A3540',
-  };
+  const ref = useRef<HTMLDivElement>(null);
 
   // Close on outside click
   useEffect(() => {
     if (!expanded) return;
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setExpanded(false); };
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setExpanded(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [expanded]);
@@ -57,7 +52,12 @@ function ThemeSwitcherSmall() {
       right: '1rem',
       zIndex: 1000,
     }}>
-      {/* Popover with five color swatches in a vertical column */}
+      {/* Popover with one colour swatch per palette, in a vertical column.
+          Driven off THEME_KEYS rather than Object.entries(allThemes) so `key`
+          arrives typed: the swatch below is then a plain property read with
+          nothing to fall back to. This replaced a hex map kept here in the
+          picker, which had no way to know about a palette added to themes.ts
+          and rendered it grey. */}
       {expanded && (
         <div style={{
           position: 'absolute',
@@ -71,11 +71,11 @@ function ThemeSwitcherSmall() {
           border: `1px solid ${theme.accentGold}20`,
           boxShadow: theme.shadow,
         }}>
-          {Object.entries(allThemes).map(([key, t]) => (
+          {THEME_KEYS.map((key) => (
             <button
               key={key}
               onClick={() => { switchTheme(key); setExpanded(false); }}
-              aria-label={`Switch to ${t?.name || key} theme`}
+              aria-label={`Switch to ${allThemes[key].name} theme`}
               aria-pressed={currentTheme === key}
               style={{
                 width: 44,
@@ -96,7 +96,7 @@ function ThemeSwitcherSmall() {
                 width: 20,
                 height: 20,
                 borderRadius: '50%',
-                background: themeColors[key] || '#ccc',
+                background: allThemes[key].swatch,
                 opacity: currentTheme === key ? 1 : 0.85,
                 boxShadow: currentTheme === key ? `0 0 0 2px ${theme.accentGold}66` : 'none',
               }} />
@@ -128,7 +128,7 @@ function ThemeSwitcherSmall() {
           width: 28,
           height: 28,
           borderRadius: '50%',
-          background: themeColors[currentTheme] || '#E8D5B0',
+          background: allThemes[currentTheme].swatch,
           border: `1.5px solid ${theme.accentGold}4D`,
           boxShadow: theme.shadowSoft,
           display: 'block',
@@ -140,14 +140,14 @@ function ThemeSwitcherSmall() {
 
 // Particle scatter, seeded by index so server and client render identically
 // (no hydration mismatch) and render stays pure — no client-only state needed.
-const seeded = (n) => {
+const seeded = (n: number) => {
   const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);
 };
 // Values are rounded to 2 decimals so the server-serialized CSS string and
 // the client's computed value are byte-identical (full-precision floats get
 // truncated differently during SSR, tripping hydration warnings).
-const r2 = (n) => Math.round(n * 100) / 100;
+const r2 = (n: number) => Math.round(n * 100) / 100;
 const PARTICLES = Array.from({ length: 15 }, (_, i) => ({
   left: `${r2(seeded(i) * 100)}%`,
   top: `${r2(seeded(i + 20) * 100)}%`,
@@ -158,7 +158,15 @@ const PARTICLES = Array.from({ length: 15 }, (_, i) => ({
   opacity: r2(0.15 + seeded(i + 100) * 0.3),
 }));
 
-export default function DGHero({ dateStr, heroImageUrl }) {
+export default function DGHero({
+  dateStr,
+  heroImageUrl,
+}: {
+  /** The viewed day, already formatted — the masthead never parses a date. */
+  dateStr: string;
+  /** `EditionRecord.hero_image_url`; absent days render without art. */
+  heroImageUrl?: string | null;
+}) {
   const { theme } = useTheme();
   // Derived directly: the page never borrows another day's imagery to fill a
   // gap, so when the viewed day has no hero the hero simply has no art.

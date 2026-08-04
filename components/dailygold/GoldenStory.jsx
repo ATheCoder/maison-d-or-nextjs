@@ -1,3 +1,6 @@
+// @ts-nocheck — untyped .jsx from before checkJs was on; 87 errors to clear.
+// This line is the backlog entry (tsconfig.json explains the ratchet): fix the
+// file, delete the marker. Do not add one to a new file.
 'use client';
 /**
  * GoldenStory — a children's illustrated biography rendered as an open

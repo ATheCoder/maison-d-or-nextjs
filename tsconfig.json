@@ -1,8 +1,33 @@
+// `checkJs`, plus .jsx in `include`, is the point of this file.
+//
+// Most of components/dailygold/ and components/treasury/ is untyped .jsx, and
+// until these two lines landed none of it was in the program at all: `tsc
+// --noEmit` passed while saying nothing about the highest-churn directory in
+// the repo. It now type-checks .jsx exactly as it does .tsx, which means a new
+// .jsx file is checked from the day it is written and no directory can be
+// opted out by accident.
+//
+// The legacy files that do not pass yet carry an explicit `@ts-nocheck` with a
+// reason on the line. That list IS the backlog — `git grep -l ts-nocheck` — and
+// the unit of work is deleting one line and fixing what it was hiding. A file
+// with no marker is checked, so debt cannot be added silently; it has to be
+// written down. Do not put a marker in a new file.
+//
+// A marker must sit at the very top, *above* `'use client'`: TypeScript reads
+// `@ts-nocheck` only out of a file's leading comment trivia, so one placed after
+// the directive is silently inert and the file stays checked. Comments before a
+// directive prologue are legal, and SWC keeps the directive.
+//
+// Line comments only. A block comment cannot survive here: the include globs
+// below contain `*/`, which closes one early — and never a "//" documentation
+// *key*, which tooling that strips line comments before JSON.parse mangles into
+// invalid JSON (see .design-sync/tsconfig.sync.json for what that cost).
 {
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
+    "checkJs": true,
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
@@ -27,9 +52,14 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
+    "**/*.jsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  // ds-bundle/ is design-sync build output — generated, gitignored, and carrying
+  // its own vendored copy of React. It was never in the program while `include`
+  // listed only .ts/.tsx; adding the .jsx glob swept it in, which is why it has
+  // to be named here.
+  "exclude": ["node_modules", "ds-bundle"]
 }

@@ -1,3 +1,6 @@
+// @ts-nocheck — untyped .jsx from before checkJs was on; 10 errors to clear.
+// This line is the backlog entry (tsconfig.json explains the ratchet): fix the
+// file, delete the marker. Do not add one to a new file.
 'use client';
 /**
  * FlagCollectionView — the /passport page body: a full-screen parchment wall

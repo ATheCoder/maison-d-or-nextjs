@@ -2,16 +2,21 @@
 /**
  * DGGreatestMoments — Column 3
  * Top 10 greatest events that ever happened on this calendar date, across all history.
+ *
+ * `moments` is `getGreatestMomentsForDate`'s return value, unmapped — the record
+ * type is imported from the query module rather than restated, so a column
+ * renamed in the query is a compile error here instead of an undefined at
+ * render. The import is type-only and erased: nothing of that `server-only`
+ * module reaches this client component or the design-sync bundle.
  */
 import { useState } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
 import DGModal from '@/components/dailygold/DGModal';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
+import type { GreatestMomentRecord } from '@/app/(dg)/daily-gold-edition/queries';
 
-function MomentModal({ item, onClose }) {
+function MomentModal({ item, onClose }: { item: GreatestMomentRecord; onClose: () => void }) {
   const { theme } = useTheme();
-
-  if (!item) return null;
 
   return (
     <DGModal
@@ -89,9 +94,18 @@ function MomentModal({ item, onClose }) {
   );
 }
 
-export default function DGGreatestMoments({ moments = [], savedSet = null, editionDate }) {
+export default function DGGreatestMoments({
+  moments = [],
+  savedSet = null,
+  editionDate,
+}: {
+  moments?: GreatestMomentRecord[];
+  /** The reader's saved treasury keys, or null when there is no reader. */
+  savedSet?: Set<string> | null;
+  editionDate?: string;
+}) {
   const { theme } = useTheme();
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState<GreatestMomentRecord | null>(null);
 
   const dateLabel = editionDate
     ? new Date(editionDate + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })

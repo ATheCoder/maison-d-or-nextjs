@@ -1,3 +1,6 @@
+// @ts-nocheck — untyped .jsx from before checkJs was on; 4 errors to clear.
+// This line is the backlog entry (tsconfig.json explains the ratchet): fix the
+// file, delete the marker. Do not add one to a new file.
 'use client';
 /**
  * FlagSealMedallion
@@ -17,6 +20,22 @@ import { useTheme } from '@/components/theme/ThemeContext';
 
 const SIZES = { xs: 24, sm: 36, md: 56, lg: 80 };
 
+/**
+ * Load-bearing: without it TS infers `onClick` and `fallbackInitials` — the two
+ * parameters with no default — as *required*, and every caller that renders a
+ * plain, non-interactive seal stops type-checking the moment it becomes .tsx.
+ * Both are genuinely optional; the body already branches on their absence.
+ *
+ * @param {{
+ *   countryCode: string | null,
+ *   countryName?: string | null,
+ *   size?: keyof typeof SIZES,
+ *   earned?: boolean,
+ *   onClick?: (() => void) | null,
+ *   showLabel?: boolean,
+ *   fallbackInitials?: string | null,
+ * }} props
+ */
 function FlagSealMedallion({ countryCode, countryName, size = 'sm', earned = true, onClick, showLabel = false, fallbackInitials }) {
   const { theme } = useTheme();
   const [imgFailed, setImgFailed] = useState(false);

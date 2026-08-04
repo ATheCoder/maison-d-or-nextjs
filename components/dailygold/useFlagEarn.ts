@@ -19,6 +19,17 @@ import { useSignupInvite } from '@/components/dailygold/SignupInvite';
 import { isValidIso2 } from '@/lib/countries';
 import type { FlagSource } from '@/lib/flag-seal-input';
 
+/**
+ * The `onFlagEarned` prop every earning section takes — this hook's `earn`,
+ * seen from the other side. Declared here so the three sections and the page
+ * that wires them together all agree with the implementation by construction.
+ */
+export type OnFlagEarned = (
+  countryName: string | null,
+  countryCode: string,
+  source: FlagSource,
+) => void;
+
 export type CelebrationItem = {
   id: number;
   countryCode: string;
@@ -43,7 +54,12 @@ export function useFlagEarn({ editionDate }: { editionDate?: string } = {}) {
     return () => { alive.current = false; };
   }, []);
 
-  const earn = useCallback((countryName: string, countryCode: string, source: FlagSource) => {
+  // `countryName` is nullable because every caller's is: the sections earn from
+  // `good_news_item.location` / `on_this_day_event.location` / an edition's
+  // `destination_country`, all nullable columns. The `|| ''` below was already
+  // handling it; the signature now says so, rather than making four newly-typed
+  // callers coerce a null the hook is happy to take.
+  const earn = useCallback((countryName: string | null, countryCode: string, source: FlagSource) => {
     const code = (countryCode || '').trim().toUpperCase();
     if (!isValidIso2(code)) return;            // no server call on junk (R7.22)
     if (attempted.current.has(code)) return;

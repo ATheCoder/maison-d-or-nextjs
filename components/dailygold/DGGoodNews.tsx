@@ -1,14 +1,23 @@
 'use client';
+/**
+ * DGGoodNews — the day's good news, lead story plus a list.
+ *
+ * `items` is `getGoodNewsForDate`'s return value, unmapped. The record type is
+ * imported from the query module rather than restated, so a column renamed
+ * there is a compile error here instead of an undefined at render. The import
+ * is type-only and erased: nothing of that `server-only` module reaches this
+ * client component or the design-sync bundle.
+ */
 import { useCallback, useRef, useState } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import DGModal from '@/components/dailygold/DGModal';
 import { resolveLocation } from '@/lib/countries';
+import type { GoodNewsRecord } from '@/app/(dg)/daily-gold-edition/queries';
+import type { OnFlagEarned } from '@/components/dailygold/useFlagEarn';
 
-function NewsModal({ item, onClose }) {
+function NewsModal({ item, onClose }: { item: GoodNewsRecord; onClose: () => void }) {
   const { theme } = useTheme();
-
-  if (!item) return null;
 
   return (
     <DGModal
@@ -67,17 +76,28 @@ function NewsModal({ item, onClose }) {
   );
 }
 
-export default function DGGoodNews({ items = [], onFlagEarned, savedSet = null, editionDate }) {
+export default function DGGoodNews({
+  items = [],
+  onFlagEarned,
+  savedSet = null,
+  editionDate,
+}: {
+  items?: GoodNewsRecord[];
+  onFlagEarned?: OnFlagEarned;
+  /** The reader's saved treasury keys, or null when there is no reader. */
+  savedSet?: Set<string> | null;
+  editionDate?: string;
+}) {
   const { theme } = useTheme();
-  const [selectedNews, setSelectedNews] = useState(null);
-  const earnedHere = useRef(new Set());
+  const [selectedNews, setSelectedNews] = useState<GoodNewsRecord | null>(null);
+  const earnedHere = useRef(new Set<string>());
 
   // Earning is a side effect of opening the story, never of the card sitting
   // in the list (spec R6.5/R6.7). `location` is mostly null in current data,
   // so the earn silently does nothing until the backfill lands — expected.
   // The open itself is reported by the modal, which is also the only thing that
   // knows when the story was closed again.
-  const openNews = useCallback((item) => {
+  const openNews = useCallback((item: GoodNewsRecord) => {
     setSelectedNews(item);
     const iso2 = resolveLocation(item.location);
     if (iso2 && !earnedHere.current.has(iso2)) {

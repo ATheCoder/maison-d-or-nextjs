@@ -1,3 +1,6 @@
+// @ts-nocheck — untyped .jsx from before checkJs was on; 9 errors to clear.
+// This line is the backlog entry (tsconfig.json explains the ratchet): fix the
+// file, delete the marker. Do not add one to a new file.
 'use client';
 /**
  * DGModal — the one modal shell for Daily Gold overlays.
@@ -38,7 +41,7 @@ const useDwellEffect = typeof window === 'undefined' ? useEffect : useLayoutEffe
  *   onClose: () => void,
  *   label: string,
  *   maxWidth?: number,
- *   tracking?: { contentType: string, contentId: string, label?: string, section?: string } | null,
+ *   tracking?: { contentType: string, contentId: string, label?: string | null, section?: string } | null,
  *   children: import('react').ReactNode,
  * }} props
  * `tracking` is opt-in: without it this is exactly the modal it was before, and

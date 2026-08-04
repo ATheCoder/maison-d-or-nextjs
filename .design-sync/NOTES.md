@@ -17,6 +17,17 @@
   ```
 - If presentational components are added/removed, update **both**
   `.design-sync/entry.jsx` and `componentSrcMap` in `.design-sync/config.json`.
+- `componentSrcMap` is the one place a component's **extension** is written down.
+  `entry.jsx` and `previews/*` import extensionless, and esbuild tries `.tsx`
+  before `.jsx`, so a .jsx → .tsx conversion needs no specifier changes anywhere
+  — only that map. Seven of the daily-gold components are `.tsx` for this reason
+  (the edition page and its sections; see `tsconfig.json` on `checkJs`).
+- Those seven take their prop types from `@/app/(dg)/daily-gold-edition/queries`,
+  which is `server-only` and has **no stub**. That is safe and must stay a
+  `import type { … } from` — esbuild's TS loader drops a type-only import
+  statement whole, before resolution, so the module is never reached. Written as
+  a value import, or as an inline `import { type X }`, it would resolve for real
+  and drag drizzle/pg into the bundle.
 
 ## Stubs — why they exist
 
@@ -30,6 +41,20 @@
 | `base44Client.ts` | `@/api/base44Client` | Keeps cards offline and deterministic; entity queries resolve empty. |
 | `daily-gold-edition-actions.ts` | `@/app/daily-gold-edition/actions` | Real module is a server action importing drizzle/pg/`server-only`. |
 | `profiles-actions.ts` | `@/app/profiles/actions` | Same. |
+
+⚠️ **The bundle build does not currently succeed**, and has not for a while —
+three server modules reached the barrel after this table was last updated and
+none of them has a stub:
+
+| Unstubbed | Reached from | Fails with |
+|---|---|---|
+| `@/app/theme/actions` | `components/theme/ThemeContext` (`setThemePreference`) | `Cannot read file "src/db": is a directory` |
+| `@/app/analytics/actions` | `instrumentation/DGInstrumentationProvider` (`recordEvents`) | `Could not resolve "node:crypto"` |
+| `@/lib/auth` | `lib/dal`, pulled in behind the two above | `Could not resolve "node:crypto"` |
+
+Three inert stubs plus three `paths` entries in `tsconfig.sync.json` is the fix.
+Verified as pre-existing: the same three errors reproduce on a clean checkout of
+the commit before the .tsx conversion, so nothing about that work caused them.
 
 ⚠️ **Never add a `"//"` documentation key to `tsconfig.sync.json`.** The
 converter's tsconfig reader strips `//` line comments before `JSON.parse`, which

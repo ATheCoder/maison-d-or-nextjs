@@ -111,5 +111,20 @@ target must have a reachable database at build time, not just at runtime.
   keep the homepage off the prerender. See `components/maison/CopyrightYear.tsx`.
 - **Route groups:** `app/(site)` is the public homepage, `app/(dg)` is the Daily Gold
   reading experience and its chrome, `app/admin` is the writing desk.
-- Most of `components/dailygold/` is `.jsx` and therefore **not type-checked** —
-  `tsconfig` covers `.ts`/`.tsx` only, with no `checkJs`.
+- **`.jsx` is type-checked too.** `tsconfig.json` sets `checkJs` and includes
+  `**/*.jsx`, so a new file in `components/dailygold/` or `components/treasury/`
+  is checked from the day it is written whichever extension it carries. The
+  legacy files that don't pass yet each carry a `@ts-nocheck` line saying so —
+  `git grep -l ts-nocheck` is the backlog, and clearing one file means deleting
+  its marker and fixing what it hid. A marker must sit **above** `'use client'`;
+  below it, TypeScript never sees it and the file is silently checked anyway.
+- The reader's boundary is typed end to end: `app/(dg)/daily-gold-edition/page.tsx`
+  → `DailyGoldEditionPage.tsx` → the six section components, all taking the record
+  types `queries.ts` exports. Those are type-only imports of a `server-only`
+  module, which is safe because the statement is erased — see
+  `.design-sync/NOTES.md` before making one a value import.
+- **Themes are one list, not two.** `components/theme/themes.ts` declares
+  `THEMES: Record<ThemeKey, Theme>` over `lib/theme-keys.ts` (the server-safe
+  half, which server actions read) and re-exports its default, so adding a
+  palette on one side without the other is a compile error. Everything a theme
+  needs lives on `Theme` — including the picker's `swatch`.

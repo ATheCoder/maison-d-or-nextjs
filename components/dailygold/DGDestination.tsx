@@ -1,22 +1,79 @@
 'use client';
+/**
+ * DGDestination — where in the world today's edition goes.
+ *
+ * Unlike its sibling sections this one does not take an `EditionRecord`: it
+ * takes the destination view-model DailyGoldEditionPage assembles out of the
+ * edition's flat columns. That shape is declared here, and imported from here by
+ * the page, because the component is the one that decides what it needs — the
+ * page's `mapRecord` is then checked against it rather than the other way round.
+ */
 import { useState } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
 import { resolveLocation } from '@/lib/countries';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import DGModal from '@/components/dailygold/DGModal';
+import type { Theme } from '@/components/theme/themes';
+import type { SavedItemType } from '@/lib/saved-item-input';
+import type { OnFlagEarned } from '@/components/dailygold/useFlagEarn';
+
+/**
+ * One of the four small cards below the hero. Taste, sound and nature carry a
+ * `name`; the phrase carries a `word` plus its translation and language. They
+ * share a type because the card that renders them is one component reading
+ * `name || word` — that union *is* what it consumes.
+ */
+export type DestinationDetail = {
+  name?: string | null;
+  word?: string | null;
+  translation?: string | null;
+  language?: string | null;
+};
+
+/** The edition's destination columns, assembled into what this section reads. */
+export type DestinationView = {
+  name: string | null;
+  continent: string | null;
+  atmosphere: string | null;
+  image_url: string | null;
+  taste_of_day: DestinationDetail | null;
+  sound_of_day: DestinationDetail | null;
+  nature_detail: DestinationDetail | null;
+  tiny_phrase: DestinationDetail | null;
+  child_life: { story: string } | null;
+};
+
+/** The four `DestinationView` fields DETAIL_CARDS may point at. */
+type DetailKey = 'taste_of_day' | 'sound_of_day' | 'nature_detail' | 'tiny_phrase';
 
 // `itemType` is the treasury enum each card saves under. The edition column it
 // reads and the type it saves as are separate things: the column can be
 // renamed without orphaning every save made under the old name.
-const DETAIL_CARDS = [
+const DETAIL_CARDS: { key: DetailKey; itemType: SavedItemType; label: string; emoji: string }[] = [
   { key: 'taste_of_day', itemType: 'taste', label: 'Taste of the Day', emoji: '🍵' },
   { key: 'sound_of_day', itemType: 'sound', label: 'Sound of the Day', emoji: '🎵' },
   { key: 'nature_detail', itemType: 'nature', label: 'Nature Detail', emoji: '🌿' },
   { key: 'tiny_phrase', itemType: 'phrase', label: 'Tiny Phrase', emoji: '✍️' },
 ];
 
-function DetailCard({ card, data, theme, savedSet, editionDate, iso2, countryName }) {
+function DetailCard({
+  card,
+  data,
+  theme,
+  savedSet,
+  editionDate,
+  iso2,
+  countryName,
+}: {
+  card: (typeof DETAIL_CARDS)[number];
+  data: DestinationView;
+  theme: Theme;
+  savedSet?: Set<string> | null;
+  editionDate?: string;
+  iso2: string | null;
+  countryName?: string | null;
+}) {
   const content = data?.[card.key];
   const title = content?.name || content?.word || '—';
   // tiny_phrase also carries a translation and the language it is in. Both are
@@ -71,7 +128,21 @@ function DetailCard({ card, data, theme, savedSet, editionDate, iso2, countryNam
   );
 }
 
-export default function DGDestination({ dest, imageUrl, onFlagEarned, savedSet = null, editionDate }) {
+export default function DGDestination({
+  dest,
+  imageUrl,
+  onFlagEarned,
+  savedSet = null,
+  editionDate,
+}: {
+  /** Null on a day whose edition authored no destination at all. */
+  dest?: DestinationView | null;
+  imageUrl?: string | null;
+  onFlagEarned?: OnFlagEarned;
+  /** The reader's saved treasury keys, or null when there is no reader. */
+  savedSet?: Set<string> | null;
+  editionDate?: string;
+}) {
   const { theme } = useTheme();
   const [modalOpen, setModalOpen] = useState(false);
   const [flagTriggered, setFlagTriggered] = useState(false);
@@ -79,6 +150,12 @@ export default function DGDestination({ dest, imageUrl, onFlagEarned, savedSet =
   if (!dest) return null;
 
   const iso2 = resolveLocation(dest.name);
+  const shortName = dest.name?.split(',')[0].trim() ?? null;
+  // The country code where there is one: it is the id the flag seals and the
+  // treasury already file this place under. A destination can be authored with
+  // taste, sound and atmosphere but no country named, and there is nothing
+  // better to call that one.
+  const destinationId = iso2 || dest.name || 'unnamed';
 
   // The hero is the door: opening the modal is the open worth reporting, and
   // the modal reports it itself (mount == open), so there is nothing to emit
@@ -88,7 +165,7 @@ export default function DGDestination({ dest, imageUrl, onFlagEarned, savedSet =
     // Trigger flag earn on first view
     if (!flagTriggered && iso2) {
       setFlagTriggered(true);
-      onFlagEarned?.(dest.name?.split(',')[0].trim(), iso2, 'destination');
+      onFlagEarned?.(shortName, iso2, 'destination');
     }
   };
 
@@ -113,7 +190,7 @@ export default function DGDestination({ dest, imageUrl, onFlagEarned, savedSet =
           }}
         >
           {heroImg ? (
-            <img src={heroImg} alt={dest.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            <img src={heroImg} alt={dest.name ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
           ) : (
             <div style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${theme.bgSoft} 0%, ${theme.bgPrimary} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span aria-hidden="true" style={{ fontSize: '3rem', opacity: 0.2 }}>🌍</span>
@@ -121,22 +198,25 @@ export default function DGDestination({ dest, imageUrl, onFlagEarned, savedSet =
           )}
           <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent 30%, ${theme.bgCard} 100%)` }} />
           <span style={{ position: 'absolute', bottom: '1rem', left: '1.25rem', right: '4rem', display: 'flex', alignItems: 'center', gap: 10 }}>
-            {iso2 && <FlagSealMedallion countryCode={iso2} countryName={dest.name?.split(',')[0]} size="md" earned />}
+            {iso2 && <FlagSealMedallion countryCode={iso2} countryName={shortName} size="md" earned />}
             <span style={{ fontFamily: theme.fontHeadline, fontSize: 'clamp(1.2rem, 3vw, 1.5rem)', fontWeight: 700, color: theme.textHeadline, lineHeight: 1.1 }}>
-              {dest.name?.split(',')[0]}
+              {shortName}
             </span>
           </span>
         </button>
-        {savedSet && (
+        {/* An unnamed destination has no stable id to file the save under, and
+            would land in the treasury as a blank card — the same rule the detail
+            cards apply to an unauthored slot. */}
+        {savedSet && dest.name && (
           <div style={{ position: 'absolute', bottom: '1rem', right: '1.25rem' }}>
             <TreasuryHeart
               itemType="destination"
               itemId={dest.name}
-              itemTitle={dest.name?.split(',')[0]}
+              itemTitle={shortName}
               itemSubtitle={dest.atmosphere?.split('.').slice(0, 1).join('.').trim() || 'Destination'}
               itemImageUrl={heroImg}
               countryCode={iso2}
-              countryName={dest.name?.split(',')[0]}
+              countryName={shortName}
               editionDate={editionDate}
               initialSaved={savedSet.has(`destination:${dest.name}`)}
               size="md"
@@ -164,18 +244,16 @@ export default function DGDestination({ dest, imageUrl, onFlagEarned, savedSet =
             label="Destination of the day"
             onClose={() => setModalOpen(false)}
             maxWidth={800}
-            /* The country code where there is one: it is the id the flag seals
-               and the treasury already file this place under. */
             tracking={{
               contentType: 'destination',
-              contentId: iso2 || dest.name,
+              contentId: destinationId,
               label: dest.name,
               section: 'destination',
             }}
           >
             <div style={{ position: 'relative', aspectRatio: '16 / 9', background: theme.bgSoft }}>
               {heroImg ? (
-                <img src={heroImg} alt={dest.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                <img src={heroImg} alt={dest.name ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               ) : (
                 <div style={{
                   width: '100%', height: '100%',
@@ -216,7 +294,7 @@ export default function DGDestination({ dest, imageUrl, onFlagEarned, savedSet =
         {/* Detail cards — fluid grid, collapses gracefully */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '0.5rem' }}>
           {DETAIL_CARDS.map(card => (
-            <DetailCard key={card.key} card={card} data={dest} theme={theme} savedSet={savedSet} editionDate={editionDate} iso2={iso2} countryName={dest.name?.split(',')[0]} />
+            <DetailCard key={card.key} card={card} data={dest} theme={theme} savedSet={savedSet} editionDate={editionDate} iso2={iso2} countryName={shortName} />
           ))}
         </div>
       </div>

@@ -1,13 +1,36 @@
 'use client';
+/**
+ * DGOnThisDay — the last twenty years of this calendar date, one year at a time.
+ *
+ * `events` is `getOnThisDayForDate`'s return value, unmapped. The record type is
+ * imported from the query module rather than restated, so a column renamed there
+ * is a compile error here instead of an undefined at render. The import is
+ * type-only and erased: nothing of that `server-only` module reaches this client
+ * component or the design-sync bundle.
+ */
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import { resolveLocation } from '@/lib/countries';
+import type { OnThisDayRecord } from '@/app/(dg)/daily-gold-edition/queries';
+import type { OnFlagEarned } from '@/components/dailygold/useFlagEarn';
+
+type YearDirection = 'back' | 'forward';
 
 // Small vintage wax seal for year navigation inside On This Day
-function YearSeal({ direction, disabled, onPress, pressing }) {
+function YearSeal({
+  direction,
+  disabled,
+  onPress,
+  pressing,
+}: {
+  direction: YearDirection;
+  disabled: boolean;
+  onPress: () => void;
+  pressing: boolean;
+}) {
   const { theme } = useTheme();
   const isBack = direction === 'back';
   const gold = disabled ? `${theme.accentGold}4D` : `${theme.accentGold}EB`;
@@ -61,10 +84,21 @@ function YearSeal({ direction, disabled, onPress, pressing }) {
   );
 }
 
-export default function DGOnThisDay({ events = [], onFlagEarned, savedSet = null, editionDate }) {
+export default function DGOnThisDay({
+  events = [],
+  onFlagEarned,
+  savedSet = null,
+  editionDate,
+}: {
+  events?: OnThisDayRecord[];
+  onFlagEarned?: OnFlagEarned;
+  /** The reader's saved treasury keys, or null when there is no reader. */
+  savedSet?: Set<string> | null;
+  editionDate?: string;
+}) {
   const { theme } = useTheme();
   const { track } = useInstrumentation();
-  const [pressingYear, setPressingYear] = useState(null); // 'back' | 'forward' | null
+  const [pressingYear, setPressingYear] = useState<YearDirection | null>(null);
 
   // Published events from the on_this_day_event table, grouped year → list in
   // position order. A year holds a list, not a slot: several events in one year
@@ -72,7 +106,7 @@ export default function DGOnThisDay({ events = [], onFlagEarned, savedSet = null
   // filtered on the publish gate; the headline/story guard is belt-and-braces
   // for a row that was published while still half-written.
   const byYear = useMemo(() => {
-    const m = {};
+    const m: Record<number, OnThisDayRecord[]> = {};
     for (const ev of events) {
       if (!ev?.headline || !ev.story) continue;
       (m[ev.year] ||= []).push(ev);
@@ -122,7 +156,7 @@ export default function DGOnThisDay({ events = [], onFlagEarned, savedSet = null
   // neighbouring year holds an event, dead when it is empty. The corpus is
   // sparse, so most neighbours are empty — this is what stops a press handing
   // the child the "nothing here yet" card. The band still bounds both ends.
-  const hasEventsIn = useCallback((year) => (byYear[year]?.length ?? 0) > 0, [byYear]);
+  const hasEventsIn = useCallback((year: number) => (byYear[year]?.length ?? 0) > 0, [byYear]);
   const canGoBack = currentYear - 1 >= MIN_YEAR && hasEventsIn(currentYear - 1);
   const canGoForward = currentYear + 1 <= MAX_YEAR && hasEventsIn(currentYear + 1);
 
@@ -131,7 +165,7 @@ export default function DGOnThisDay({ events = [], onFlagEarned, savedSet = null
   // is instantaneous: no dwell, and no close to match it. The label carries the
   // first headline of the year where there is one, so a parent's roll-up reads
   // "Apollo 11 lands" rather than "1969".
-  const trackYearOpen = useCallback((year) => {
+  const trackYearOpen = useCallback((year: number) => {
     track('content_open', {
       contentType: 'on_this_day',
       contentId: String(year),
@@ -173,7 +207,7 @@ export default function DGOnThisDay({ events = [], onFlagEarned, savedSet = null
       Math.abs(y - currentYear) < Math.abs(best - currentYear) ? y : best);
   }, [authoredYears, currentYear]);
 
-  const jumpToYear = useCallback((year) => {
+  const jumpToYear = useCallback((year: number) => {
     setCurrentYear(year);
     trackYearOpen(year);
   }, [trackYearOpen]);
@@ -183,7 +217,7 @@ export default function DGOnThisDay({ events = [], onFlagEarned, savedSet = null
   // Award a flag seal for each event location the child actually sees. Keyed by
   // year and position, because a year can hold several events in different
   // countries and each is its own collectible.
-  const earnedKeys = useRef(new Set());
+  const earnedKeys = useRef(new Set<string>());
   useEffect(() => {
     for (const ev of yearEvents) {
       const key = `${ev.year}:${ev.position ?? 0}`;

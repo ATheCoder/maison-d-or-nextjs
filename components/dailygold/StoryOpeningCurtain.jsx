@@ -1,3 +1,6 @@
+// @ts-nocheck — untyped .jsx from before checkJs was on; 1 error to clear.
+// This line is the backlog entry (tsconfig.json explains the ratchet): fix the
+// file, delete the marker. Do not add one to a new file.
 'use client';
 /**
  * StoryOpeningCurtain — raises <BookOpeningCurtain> for the pending window of a
@@ -21,6 +24,13 @@ import { createPortal } from 'react-dom';
 import { useLinkStatus } from 'next/link';
 import BookOpeningCurtain from '@/components/dailygold/BookOpeningCurtain';
 
+/**
+ * `imgUrl` needs saying out loud: TS infers a parameter's type from its default,
+ * so `= null` alone would type it as `null` and reject the one thing every
+ * caller passes — a portrait URL.
+ *
+ * @param {{ name: string | null, imgUrl?: string | null }} props
+ */
 export default function StoryOpeningCurtain({ name, imgUrl = null }) {
   const { pending } = useLinkStatus();
 
