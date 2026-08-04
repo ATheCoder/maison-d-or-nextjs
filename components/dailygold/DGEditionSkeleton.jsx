@@ -17,7 +17,7 @@
  * is coming, and mirrors it section for section in the real order: hero,
  * the wax-seal strip, the Born Today shelf, the three-card band, the
  * inspiration band, the destination card, More to Explore, the values strip,
- * For Parents, the footer. The geometry is copied from those components rather
+ * the footer. The geometry is copied from those components rather
  * than approximated, so when the real day lands nothing under the reader's eye
  * jumps or reflows — the ink simply arrives on paper already the right shape.
  *
@@ -400,42 +400,7 @@ export default function DGEditionSkeleton() {
         ))}
       </div>
 
-      {/* ── 9. FOR PARENTS ─────────────────────────────────────────────────
-          The two-column close: description with its four feature rows on the
-          left, the intelligence card on the right, over the section's gold
-          top rule. */}
-      <div aria-hidden="true" style={{
-        padding: '5rem clamp(1.5rem, 5vw, 4rem)',
-        borderTop: `1px solid ${theme.accentGold}40`,
-      }}>
-        <div style={{
-          maxWidth: 1200, margin: '0 auto',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))',
-          gap: '3rem',
-          alignItems: 'center',
-        }}>
-          <div>
-            <Bar w={160} h={12} style={{ marginBottom: '0.5rem' }} />
-            <Bar w="min(280px, 70%)" h="clamp(35px, 4.6vw, 48px)" style={{ marginBottom: '1rem' }} />
-            <Bar w="85%" h={15} style={{ marginBottom: '2.5rem' }} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {[0, 1, 2, 3].map(i => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <Bar w={36} h={36} radius="50%" style={{ flexShrink: 0 }} />
-                  <div style={{ flex: 1 }}>
-                    <Bar w={150} h={12} />
-                    <Bar w={200} h={10} style={{ marginTop: '0.4rem' }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <Bar h={320} radius={theme.radius} />
-        </div>
-      </div>
-
-      {/* ── 10. FOOTER ─────────────────────────────────────────────────────
+      {/* ── 9. FOOTER ──────────────────────────────────────────────────────
           The italic colophon quote over the rule–line–rule, held back at 0.6
           opacity: it is the quietest thing on the real page and it should not
           be the loudest thing on this one. */}

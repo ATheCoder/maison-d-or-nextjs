@@ -47,3 +47,11 @@ ds-bundle/
 .design-sync/.cache/
 .design-sync/learnings/
 .design-sync/node_modules
+
+# python bytecode (scripts/prepare-art.py, scripts/remove-bg.py)
+__pycache__/
+*.pyc
+
+# local scratch, not the app: a Base44 CSV export and a usage log
+/DailyGoldEdition_export.csv
+/claude-usage.md

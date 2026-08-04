@@ -30,7 +30,10 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Both the bare path and the wildcard: the observatory index and one child's
-  // page are separate routes, and only the second matches ':path*'.
-  matcher: ['/admin/:path*', '/family/:path*', '/profiles/:path*', '/gate', '/welcome', '/login', '/signup', '/forgot-password', '/reset-password', '/passport', '/treasury', '/parent-observatory', '/parent-observatory/:path*'],
+  // ':path*' matches zero segments as well as many, so '/x/:path*' already
+  // covers the bare '/x' — no path here needs both forms. The entries without
+  // a wildcard are the routes that have no children to cover; give one a child
+  // route and it needs the '/:path*' suffix, or the proxy silently stops
+  // running on it.
+  matcher: ['/admin/:path*', '/family/:path*', '/profiles/:path*', '/parent-observatory/:path*', '/gate', '/welcome', '/login', '/signup', '/forgot-password', '/reset-password', '/passport', '/treasury'],
 };

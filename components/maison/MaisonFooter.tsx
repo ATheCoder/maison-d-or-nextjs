@@ -3,15 +3,17 @@ import MMonogram from './MMonogram';
 import MaisonBrandName from './MaisonBrandName';
 import CopyrightYear from './CopyrightYear';
 
+// Routes that exist. The legacy footer also listed Journal, The Living
+// Almanac, Recipes, Academy, Wellness and Golden Escapes — all 404s here, the
+// same cut features the landing page stopped advertising. Add a row back when
+// its route ships. The last three sit behind the proxy's auth check, so a
+// signed-out visitor lands on /login?next=… rather than a dead end.
 const NAV_LINKS: [string, string][] = [
   ['/', 'Home'],
-  ['/journal', 'Journal'],
-  ['/almanac', 'The Living Almanac'],
-  ['/recipes', 'Recipes'],
-  ['/academy', 'Academy'],
-  ['/wellness', 'Wellness'],
-  ['/escapes', 'Golden Escapes'],
+  ['/daily-gold-edition', "Today's Edition"],
   ['/family', 'Family'],
+  ['/treasury', 'The Treasury'],
+  ['/passport', 'Passport'],
 ];
 
 export default function MaisonFooter() {

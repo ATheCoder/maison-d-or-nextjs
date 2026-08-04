@@ -927,6 +927,19 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   const sections = useMemo(() => deriveSections(draft), [draft]);
   const count = useMemo(() => spreadCount(draft), [draft]);
   const active = sections.find((s) => s.id === selectedId) ?? sections[0];
+
+  // Keep the preview on the selected section when an edit reshuffles the
+  // pagination underneath it — changing a chapter's page span, or adding /
+  // removing / reordering chapters, all shift spread indices. Adjusted during
+  // render rather than in an effect: React discards this pass and re-runs
+  // immediately, so the preview never paints the stale spread first, and the
+  // rest of the tree never renders twice against a page it is about to lose.
+  const activeSpread = active.spreadIndex;
+  const [lastSpread, setLastSpread] = useState(activeSpread);
+  if (activeSpread !== lastSpread) {
+    setLastSpread(activeSpread);
+    setPage(activeSpread);
+  }
   // Illustration summary for the rail panel + status board, from the slot model.
   const illus = useMemo(() => {
     const failedSlots = slotViews.filter((s) => s.status === 'failed');
@@ -943,12 +956,6 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   }, [slotViews, imagesJob?.state]);
   // Derived, always-valid current spread (clamped as the story grows/shrinks).
   const page = Math.max(0, Math.min(pageState, count - 1));
-
-  // Keep the preview on the selected section when an edit reshuffles the
-  // pagination underneath it — changing a chapter's page span, or adding /
-  // removing / reordering chapters, all shift spread indices.
-  const activeSpread = active.spreadIndex;
-  useEffect(() => { setPage(activeSpread); }, [activeSpread]);
 
   // An edit: update the draft and mark unsaved (in the event, not an effect).
   const edit = useCallback((action: DraftAction) => {
