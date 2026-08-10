@@ -69,7 +69,7 @@ export function isNavItemActive(item, pathname) {
 }
 
 export const DG_SHELF = [
-  { key: 'flags', label: 'My Flags', path: '/passport', icon: 'flag' },
+  { key: 'flags', label: 'The Living Atlas', path: '/passport', icon: 'flag' },
   // Labelled "Treasury", not "My Treasury": the mobile bar carries five tabs at
   // 0.7rem, and an eleventh character wraps the label at 320px. The page's own
   // title says "My Treasury".
