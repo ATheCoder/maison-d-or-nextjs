@@ -5,12 +5,18 @@
  * the same palette and the same three style objects, which is three chances
  * for them to drift apart.
  *
- * The vocabulary is the editorial one the rest of the house speaks (see
+ * The type is the editorial one the rest of the house speaks (see
  * app/(site)/page.tsx and the tokens at the top of globals.css): Playfair at
- * 300 with the letter-spacing left open, Lato at 300, gold hairlines, and
- * corners square to within 2px. What stood here before was Playfair at 600,
- * an 18px card and a 12px gold pill lettered in Lato 700 — the type and
- * geometry of a generic product sign-up, sitting on this house's photograph.
+ * 300 with the letter-spacing left open, Lato at 300, gold hairlines. What
+ * stood here before was Playfair at 600 lettered in Lato 700 — the type of a
+ * generic product sign-up, sitting on this house's photograph.
+ *
+ * The corners are the *guardian* geometry, not the editorial one: 18px card,
+ * 10px field, 12px button, the same radii the welcome wizard, the grown-up
+ * gate, the profile picker and FamilyManager all wear. A visitor crosses from
+ * /signup straight into /welcome, and near-square corners on this side of that
+ * door made the two rooms look like two different products. Keep the three
+ * radii in step with those surfaces rather than with the homepage.
  * Nothing about the layout changed; it is the same card at the same width.
  *
  * Colours are spelled out rather than read from var(--gold) and friends, the
@@ -53,16 +59,16 @@ export const shellStyle: CSSProperties = {
 };
 
 /**
- * The card, in the house's own card geometry: 2px corners, hairline border,
- * and the gold rule along the top that every editorial card on the homepage
- * wears. /signup layers a glass fill and a deeper shadow over this, because it
- * has a photograph to lift off; the rest keep it as it is.
+ * The card: the welcome wizard's 18px corners, a hairline border, and the gold
+ * rule along the top that every editorial card on the homepage wears. /signup
+ * layers a glass fill and a deeper shadow over this, because it has a
+ * photograph to lift off; the rest keep it as it is.
  */
 export const cardStyle: CSSProperties = {
   width: '100%',
   maxWidth: 400,
   background: 'rgba(255,250,242,0.86)',
-  borderRadius: 2,
+  borderRadius: 18,
   border: `1px solid ${C.border}`,
   borderTop: `1px solid ${C.gold}`,
   boxShadow: '0 2px 20px rgba(44,36,22,0.06)',

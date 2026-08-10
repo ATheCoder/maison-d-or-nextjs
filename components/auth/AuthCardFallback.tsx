@@ -14,7 +14,7 @@
  * So the geometry here is the shared one from authCardStyles (which AuthForm,
  * ForgotPasswordForm and ResetPasswordForm all dress themselves from): same
  * full-height centred shell, same 400px card with the gold rule along its top
- * and the near-square corners, same rhythm of eyebrow / title / hairline / two
+ * and the same corners, same rhythm of eyebrow / title / hairline / two
  * fields / button / footer link. The real form lands into the same shape the
  * placeholder was holding, so nothing jumps.
  *
@@ -33,12 +33,15 @@
 import { SkeletonBar, SkeletonStatus } from '@/components/maison/ParchmentSkeleton';
 import { shellStyle, cardStyle, eyebrowStyle, ruleStyle } from './authCardStyles';
 
-/** Label bar + field bar, at the spacing the real field groups use. */
+/**
+ * Label bar + field bar, at the spacing the real field groups use — and at the
+ * field's own 10px corner, so the form lands into the shape being held for it.
+ */
 function FieldGroup({ gap }: { gap: string }) {
   return (
     <div style={{ marginBottom: gap }}>
       <SkeletonBar w={80} h={8} radius={2} style={{ marginBottom: '0.45rem' }} />
-      <SkeletonBar h={42} radius={2} />
+      <SkeletonBar h={42} radius={10} />
     </div>
   );
 }
@@ -59,7 +62,7 @@ export default function AuthCardFallback() {
           <FieldGroup gap="1rem" />
           <FieldGroup gap="1.6rem" />
 
-          <SkeletonBar h={46} radius={2} style={{ background: 'rgba(201,169,110,0.4)' }} />
+          <SkeletonBar h={46} radius={12} style={{ background: 'rgba(201,169,110,0.4)' }} />
 
           <SkeletonBar w={140} h={9} radius={2} style={{ margin: '1.6rem auto 0' }} />
         </SkeletonStatus>
