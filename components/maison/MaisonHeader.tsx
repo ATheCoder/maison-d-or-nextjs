@@ -158,7 +158,7 @@ export default function MaisonHeader() {
         </Link>
 
         <Link
-          href="/login"
+          href="/signup"
           style={{
             padding: '8px 18px',
             border: '1px solid var(--brown)',
@@ -173,7 +173,7 @@ export default function MaisonHeader() {
           }}
           className="mdo-signin"
         >
-          Sign In
+          Sign Up
         </Link>
       </div>
     </header>

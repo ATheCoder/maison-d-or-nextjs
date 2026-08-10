@@ -7,37 +7,19 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
-
-const C = {
-  gold: '#C9A96E',
-  ivory: '#F5F0E7',
-  ink: '#241A0C',
-  brown: '#5C4A2A',
-  muted: '#8B7355',
-};
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '0.7rem 0.9rem',
-  borderRadius: 10,
-  border: `1px solid rgba(201,169,110,0.45)`,
-  background: '#FFFDF9',
-  fontFamily: 'Lato, sans-serif',
-  fontSize: '0.9rem',
-  color: C.ink,
-  outline: 'none',
-  boxSizing: 'border-box',
-};
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontFamily: 'Lato, sans-serif',
-  fontSize: '0.62rem',
-  letterSpacing: '0.18em',
-  textTransform: 'uppercase',
-  color: C.muted,
-  margin: '0 0 0.35rem',
-};
+import {
+  C,
+  cardStyle,
+  eyebrowStyle,
+  titleStyle,
+  flourishStyle,
+  leadStyle,
+  bodyStyle,
+  ruleStyle,
+  labelStyle,
+  errorStyle,
+  footerStyle,
+} from './authCardStyles';
 
 export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const router = useRouter();
@@ -104,7 +86,7 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
       // Ivory stays as the paint under the photo: it is what shows if the
       // image 404s, and it matches the wall closely enough that the failure
       // is invisible rather than a white flash.
-      background: C.ivory,
+      background: C.wall,
       // Vignette sits above the photo, settling the gilt frames at the edges
       // so they frame the card instead of pulling the eye outward.
       backgroundImage: "radial-gradient(ellipse at 50% 50%, transparent 45%, rgba(120,95,55,0.10) 100%), url('/auth/maison-drawing-room.webp')",
@@ -117,40 +99,45 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
       padding: '2rem 1rem',
     }}>
       <div style={{
-        width: '100%',
-        maxWidth: 400,
+        ...cardStyle,
         // The wall behind the card reads ~#F3E7D0; this composites brighter
         // than that, so the card lifts off the photo instead of dissolving
-        // into it. The shadow does the rest of the separating.
+        // into it. The shadow does the rest of the separating — deeper than
+        // the flat-ivory pages need, because here there is a room behind it.
         background: 'rgba(255,250,242,0.82)',
         backdropFilter: 'blur(10px) saturate(1.08)',
         WebkitBackdropFilter: 'blur(10px) saturate(1.08)',
-        borderRadius: 18,
         border: `1px solid rgba(201,169,110,0.42)`,
+        borderTop: `1px solid ${C.gold}`,
         boxShadow: '0 24px 60px rgba(92,72,38,0.20), 0 2px 10px rgba(92,72,38,0.08), inset 0 1px 0 rgba(255,255,255,0.55)',
-        padding: '2.5rem 2rem',
       }}>
-        <p style={{
-          fontFamily: 'Lato, sans-serif',
-          fontSize: '0.6rem',
-          letterSpacing: '0.3em',
-          textTransform: 'uppercase',
-          color: C.gold,
-          textAlign: 'center',
-          margin: '0 0 0.5rem',
-        }}>
-          Maison d&apos;Oré
-        </p>
+        {/* Signup opens the way the homepage hero does — the script greeting,
+            then the wordmark itself as the heading. Printing the eyebrow too
+            would put the name of the house on the card twice, so on this one
+            page the title stands in for it. Login, which is a return rather
+            than an arrival, keeps the ordinary eyebrow. */}
+        {isSignup ? (
+          <p style={flourishStyle}>Welcome to</p>
+        ) : (
+          <p style={eyebrowStyle}>Maison d&apos;Oré</p>
+        )}
         <h1 style={{
-          fontFamily: '"Playfair Display", Georgia, serif',
-          fontSize: '1.7rem',
-          fontWeight: 600,
-          color: C.ink,
-          textAlign: 'center',
-          margin: '0 0 1.75rem',
+          ...titleStyle,
+          // Signup carries a tagline underneath, so the heading closes up and
+          // the block as a whole keeps the same air above the form.
+          margin: isSignup ? '0 0 0.7rem' : '0 0 1.6rem',
         }}>
-          {isSignup ? 'Create your family account' : 'Welcome back'}
+          {isSignup ? <>Maison d&apos;Oré</> : 'Welcome back'}
         </h1>
+        {isSignup && (
+          <>
+            <p style={leadStyle}>For the things worth making time for.</p>
+            <p style={bodyStyle}>
+              Recipes, places, ideas and little rituals for making more of everyday life.
+            </p>
+          </>
+        )}
+        <hr style={ruleStyle} />
 
         <form onSubmit={handleSubmit}>
           {isSignup && (
@@ -163,7 +150,7 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
                 required
                 minLength={2}
                 autoComplete="name"
-                style={inputStyle}
+                className="mdo-auth-field"
               />
             </div>
           )}
@@ -176,10 +163,10 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
-              style={inputStyle}
+              className="mdo-auth-field"
             />
           </div>
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '1.6rem' }}>
             <label htmlFor="password" style={labelStyle}>Password</label>
             <input
               id="password"
@@ -189,71 +176,29 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
               required
               minLength={8}
               autoComplete={isSignup ? 'new-password' : 'current-password'}
-              style={inputStyle}
+              className="mdo-auth-field"
             />
             {!isSignup && (
               // Quiet on purpose: the way out for the one guardian who needs
               // it, not a second call to action competing with Log in.
-              <p style={{ margin: '0.5rem 0 0', textAlign: 'right' }}>
-                <a
-                  href="/forgot-password"
-                  style={{
-                    fontFamily: 'Lato, sans-serif',
-                    fontSize: '0.72rem',
-                    color: C.muted,
-                    textDecoration: 'underline',
-                  }}
-                >
-                  Forgot password?
-                </a>
+              <p style={{ margin: '0.55rem 0 0', textAlign: 'right' }}>
+                <a href="/forgot-password" className="mdo-auth-quiet">Forgot password?</a>
               </p>
             )}
           </div>
 
-          {error && (
-            <p style={{
-              fontFamily: 'Lato, sans-serif',
-              fontSize: '0.8rem',
-              color: '#A4442E',
-              margin: '0 0 1rem',
-            }}>
-              {error}
-            </p>
-          )}
+          {error && <p style={errorStyle}>{error}</p>}
 
-          <button
-            type="submit"
-            disabled={pending}
-            style={{
-              width: '100%',
-              padding: '0.8rem',
-              borderRadius: 12,
-              border: 'none',
-              background: pending ? 'rgba(201,169,110,0.5)' : C.gold,
-              color: '#FFF',
-              fontFamily: 'Lato, sans-serif',
-              fontSize: '0.85rem',
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              cursor: pending ? 'default' : 'pointer',
-            }}
-          >
-            {pending ? 'One moment…' : isSignup ? 'Sign up' : 'Log in'}
+          <button type="submit" disabled={pending} className="mdo-auth-submit">
+            {pending ? 'One moment…' : isSignup ? 'Create an account' : 'Log in'}
           </button>
         </form>
 
-        <p style={{
-          fontFamily: 'Lato, sans-serif',
-          fontSize: '0.8rem',
-          color: C.brown,
-          textAlign: 'center',
-          margin: '1.5rem 0 0',
-        }}>
+        <p style={footerStyle}>
           {isSignup ? (
-            <>Already have an account? <a href="/login" style={{ color: C.gold }}>Log in</a></>
+            <>Already part of Maison d&apos;Oré? <a href="/login" className="mdo-auth-link">Log in</a></>
           ) : (
-            <>New to Maison d&apos;Oré? <a href="/signup" style={{ color: C.gold }}>Create an account</a></>
+            <>New to Maison d&apos;Oré? <a href="/signup" className="mdo-auth-link">Create an account</a></>
           )}
         </p>
       </div>

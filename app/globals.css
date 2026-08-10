@@ -1,3 +1,9 @@
+/* INERT in the app — Turbopack drops external url() @imports, so this line has
+   never fetched anything (GoldenStory.jsx:748 documents the same discovery).
+   The app's fonts are loaded by the <link> in app/layout.tsx; keep the two in
+   step. It stays here because the design-sync preview compiler does honour it
+   (see .design-sync/.cache/globals.compiled.css), and previews are built from
+   this file alone. */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600&family=Lato:wght@300;400;700&family=Great+Vibes&family=Dancing+Script:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
@@ -520,4 +526,104 @@ h1, h2, h3, h4, h5, h6 {
   .mdo-dp-open,
   .mdo-dp-arrow,
   .mdo-dp-day { transition: none; }
+}
+
+/* ============================================================
+   AUTH CARD — /login, /signup, /forgot-password, /reset-password
+   The three controls on the signed-out pages whose look depends on
+   state: hover, focus, disabled, and Chrome's autofill. Everything
+   static about those pages is in components/auth/authCardStyles.ts;
+   only what an inline style cannot express lives here.
+
+   Palette is written out for the same reason as .mdo-dp above — the
+   Daily Gold themes repaint --gold, and the front door should not
+   change colour with them. These are the classic values.
+   ============================================================ */
+.mdo-auth-field {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #E8DDD0;
+  border-radius: 2px;
+  background: #FFFDF9;
+  color: #2C2416;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.mdo-auth-field:hover { border-color: rgba(201, 169, 110, 0.55); }
+.mdo-auth-field:focus {
+  border-color: #C9A96E;
+  box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.14);
+}
+/* Chrome paints an autofilled field pale blue, which on a warm ivory card is
+   the one colour nothing else on the page is. The inset shadow is the only way
+   to override it. */
+.mdo-auth-field:-webkit-autofill,
+.mdo-auth-field:-webkit-autofill:hover,
+.mdo-auth-field:-webkit-autofill:focus {
+  -webkit-text-fill-color: #2C2416;
+  -webkit-box-shadow: 0 0 0 40px #FFFDF9 inset;
+  caret-color: #2C2416;
+  font-family: var(--font-sans);
+}
+
+/* The house button (.mdo-btn) wearing its hover state at rest, because this is
+   the one thing being asked for on the page: white on gold, Lato 400, tracked
+   0.2em, square. Same reading as .mdo-dp-done. */
+.mdo-auth-submit {
+  width: 100%;
+  padding: 0.95rem 1.5rem;
+  border: 1px solid #C9A96E;
+  border-radius: 2px;
+  background: #C9A96E;
+  color: #FFF;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+.mdo-auth-submit:hover:not(:disabled) { background: #A8843F; border-color: #A8843F; }
+.mdo-auth-submit:disabled {
+  background: rgba(201, 169, 110, 0.45);
+  border-color: transparent;
+  cursor: default;
+}
+
+/* Gold, underlined by a hairline rather than by text-decoration, so the rule
+   sits clear of the descenders. */
+.mdo-auth-link {
+  color: #C9A96E;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(201, 169, 110, 0.45);
+  padding-bottom: 1px;
+  transition: color 0.25s ease, border-color 0.25s ease;
+}
+.mdo-auth-link:hover { color: #A8843F; border-color: #A8843F; }
+
+/* Quieter still: the way out for the one guardian who needs it. */
+.mdo-auth-quiet {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: #8B7355;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.25s ease;
+}
+.mdo-auth-quiet:hover { color: #C9A96E; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mdo-auth-field,
+  .mdo-auth-submit,
+  .mdo-auth-link,
+  .mdo-auth-quiet { transition: none; }
 }

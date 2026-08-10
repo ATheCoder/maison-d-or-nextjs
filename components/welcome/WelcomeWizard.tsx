@@ -297,11 +297,11 @@ export default function WelcomeWizard({
           <>
             <h1 style={heading}>Welcome, {guardianName.split(' ')[0]}</h1>
             <p style={lede}>
-              Let&apos;s set your house in order. Two small things, then the good part.
+              Just a couple of things before we begin.
             </p>
 
             <div style={{ marginBottom: '1.1rem' }}>
-              <label htmlFor="familyName" style={label}>Your family&apos;s name</label>
+              <label htmlFor="familyName" style={label}>What should we call your family?</label>
               <input
                 id="familyName"
                 value={nameDraft}
@@ -313,7 +313,7 @@ export default function WelcomeWizard({
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <label htmlFor="timezone" style={label}>Where your days begin</label>
+              <label htmlFor="timezone" style={label}>Where do your days begin?</label>
               <select
                 id="timezone"
                 value={zone}
@@ -325,12 +325,12 @@ export default function WelcomeWizard({
                 ))}
               </select>
               <p style={hint}>
-                Today&apos;s reading is counted in this zone. We guessed from your device — change it if we guessed wrong.
+                So your days begin at the right time. We&apos;ve chosen your time zone from your device, but you can change it anytime.
               </p>
             </div>
 
             <button onClick={saveFamily} disabled={pending} style={{ ...buttonGold, opacity: pending ? 0.6 : 1 }}>
-              {pending ? 'One moment…' : 'Continue'}
+              {pending ? 'One moment…' : `Let's begin`}
             </button>
           </>
         )}
@@ -339,11 +339,11 @@ export default function WelcomeWizard({
           <>
             <h1 style={heading}>Your first reader</h1>
             <p style={lede}>
-              Who is the paper for? You can add more readers any time.
+              Who are we making this for? You can add the rest of the family anytime.
             </p>
 
             <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor="childName" style={label}>Their name</label>
+              <label htmlFor="childName" style={label}>THEIR NAME</label>
               <input
                 id="childName"
                 value={childName}
@@ -356,7 +356,7 @@ export default function WelcomeWizard({
             </div>
 
             <div style={{ marginBottom: '1.2rem' }}>
-              <label htmlFor="birthDate" style={label}>The day they were born</label>
+              <label htmlFor="birthDate" style={label}>THEIR BIRTHDAY</label>
               <DatePicker
                 id="birthDate"
                 value={birthDate}
@@ -370,7 +370,7 @@ export default function WelcomeWizard({
               />
               <p id="birthDateHint" style={hint}>
                 {birthDate === ''
-                  ? 'It sets their reading level, and tells us when to wish them a happy birthday. Ages 5 to 17.'
+                  ? 'This helps us choose stories that feel right for their age and remember their birthday, of course.'
                   : born.ok
                     ? `${formatBirthDate(birthDate)} — that makes them ${ageOnDay(birthDate)}.`
                     : born.error}
@@ -449,21 +449,20 @@ export default function WelcomeWizard({
               background: pending || !readerReady ? 'rgba(201,169,110,0.5)' : C.gold,
               cursor: pending || !readerReady ? 'default' : 'pointer',
             }}>
-              {pending ? 'One moment…' : 'Continue'}
+              {pending ? 'Making it theirs… Just adding the finishing touches.' : 'CREATE THEIR READER'}
             </button>
           </>
         )}
 
         {step === 'invite' && (
           <>
-            <h1 style={heading}>Invite a co-parent</h1>
+            <h1 style={heading}>Share it with someone</h1>
             <p style={lede}>
-              A second grown-up sees the same readers, the same treasures, the same journey.
-              Entirely optional — you can do this later from your family page.
+              Invite someone you trust to be part of your family&apos;s Maison d&apos;Oré. They&apos;ll be able to see the children’s spaces and share the journey with you. You can always do this later.
             </p>
 
             <div style={{ marginBottom: '0.9rem' }}>
-              <label htmlFor="inviteEmail" style={label}>Their email</label>
+              <label htmlFor="inviteEmail" style={label}>THEIR EMAIL</label>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <input
                   id="inviteEmail"
@@ -483,7 +482,7 @@ export default function WelcomeWizard({
                     background: pending || !inviteEmail ? 'rgba(201,169,110,0.5)' : C.gold,
                   }}
                 >
-                  Send
+                  SEND INVITATION
                 </button>
               </div>
             </div>
@@ -497,8 +496,8 @@ export default function WelcomeWizard({
                 marginBottom: '1.1rem',
               }}>
                 <p style={{ fontSize: '0.78rem', color: C.brown, margin: '0 0 0.5rem' }}>
-                  Sent to <strong>{sentInvite.email}</strong>. You can share the link yourself too —
-                  it is shown only once and expires in 7 days:
+                  Invitation sent 🤍
+We&apos;ve sent it to <strong>{sentInvite.email}</strong>. You can also share their private invitation link below. It will be available here once and expires in 7 days.
                 </p>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <code style={{ fontSize: '0.7rem', color: C.ink, wordBreak: 'break-all', flex: 1 }}>{sentInvite.url}</code>
@@ -506,19 +505,19 @@ export default function WelcomeWizard({
                     onClick={async () => { await navigator.clipboard.writeText(sentInvite.url); setCopied(true); }}
                     style={{ ...buttonGold, width: 'auto', padding: '0.4rem 0.8rem', fontSize: '0.7rem' }}
                   >
-                    {copied ? 'Copied' : 'Copy'}
+                    {copied ? 'Copied' : 'COPY LINK'}
                   </button>
                 </div>
               </div>
             )}
 
             <button onClick={finish} disabled={pending} style={{ ...buttonGold, opacity: pending ? 0.6 : 1 }}>
-              {pending ? 'Opening the paper…' : sentInvite ? 'Finish' : 'Open today’s edition'}
+              {pending ? 'Opening the paper…' : sentInvite ? 'ENTER MAISON D’ORÉ' : 'SEE TODAY’S EDITION'}
             </button>
 
             {!sentInvite && (
               <p style={{ textAlign: 'center', margin: '1rem 0 0' }}>
-                <button onClick={finish} disabled={pending} style={quietLink}>Skip for now</button>
+                <button onClick={finish} disabled={pending} style={quietLink}>I&apos;ll do this later</button>
               </p>
             )}
           </>

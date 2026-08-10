@@ -11,11 +11,12 @@
  * as the form's JavaScript takes to arrive — which is exactly the moment a
  * visitor decides the site is broken.
  *
- * So the geometry here is copied from AuthForm (and matches ForgotPasswordForm
- * and ResetPasswordForm, which share it): same full-height centred shell, same
- * 400px card with the gold hairline and the 18px corners, same rhythm of
- * eyebrow / title / two fields / button / footer link. The real form lands into
- * the same shape the placeholder was holding, so nothing jumps.
+ * So the geometry here is the shared one from authCardStyles (which AuthForm,
+ * ForgotPasswordForm and ResetPasswordForm all dress themselves from): same
+ * full-height centred shell, same 400px card with the gold rule along its top
+ * and the near-square corners, same rhythm of eyebrow / title / hairline / two
+ * fields / button / footer link. The real form lands into the same shape the
+ * placeholder was holding, so nothing jumps.
  *
  * Two deliberate departures. The brand eyebrow is real text, not a bar: it is
  * static on every one of these pages, it costs nothing to render, and reading
@@ -30,18 +31,14 @@
  * here would ship a component whose entire job is to be replaced.
  */
 import { SkeletonBar, SkeletonStatus } from '@/components/maison/ParchmentSkeleton';
+import { shellStyle, cardStyle, eyebrowStyle, ruleStyle } from './authCardStyles';
 
-const C = {
-  gold: '#C9A96E',
-  ivory: '#F5F0E7',
-};
-
-/** Label bar + field bar, at the spacing AuthForm's own field groups use. */
+/** Label bar + field bar, at the spacing the real field groups use. */
 function FieldGroup({ gap }: { gap: string }) {
   return (
     <div style={{ marginBottom: gap }}>
-      <SkeletonBar w={90} h={9} style={{ marginBottom: '0.35rem' }} />
-      <SkeletonBar h={42} radius={10} />
+      <SkeletonBar w={80} h={8} radius={2} style={{ marginBottom: '0.45rem' }} />
+      <SkeletonBar h={42} radius={2} />
     </div>
   );
 }
@@ -50,48 +47,21 @@ export default function AuthCardFallback() {
   return (
     <div
       className="mdo-anim"
-      style={{
-        minHeight: '100vh',
-        background: C.ivory,
-        backgroundImage:
-          'radial-gradient(ellipse at 15% 25%, rgba(139,115,80,0.06) 0%, transparent 55%), radial-gradient(ellipse at 85% 75%, rgba(100,75,45,0.04) 0%, transparent 45%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem 1rem',
-        animation: 'mdoSkelFade 0.3s ease-out',
-      }}
+      style={{ ...shellStyle, animation: 'mdoSkelFade 0.3s ease-out' }}
     >
-      <div style={{
-        width: '100%',
-        maxWidth: 400,
-        background: 'rgba(255,248,238,0.85)',
-        borderRadius: 18,
-        border: `1px solid rgba(201,169,110,0.3)`,
-        boxShadow: '0 8px 40px rgba(100,80,40,0.12)',
-        padding: '2.5rem 2rem',
-      }}>
+      <div style={cardStyle}>
         <SkeletonStatus label="Loading">
-          <p style={{
-            fontFamily: 'Lato, sans-serif',
-            fontSize: '0.6rem',
-            letterSpacing: '0.3em',
-            textTransform: 'uppercase',
-            color: C.gold,
-            textAlign: 'center',
-            margin: '0 0 0.5rem',
-          }}>
-            Maison d&apos;Oré
-          </p>
+          <p style={eyebrowStyle}>Maison d&apos;Oré</p>
 
-          <SkeletonBar w="55%" h={24} style={{ margin: '0 auto 1.75rem' }} />
+          <SkeletonBar w="55%" h={22} radius={2} style={{ margin: '0 auto 1.6rem' }} />
+          <hr style={ruleStyle} />
 
           <FieldGroup gap="1rem" />
-          <FieldGroup gap="1.5rem" />
+          <FieldGroup gap="1.6rem" />
 
-          <SkeletonBar h={44} radius={12} style={{ background: 'rgba(201,169,110,0.4)' }} />
+          <SkeletonBar h={46} radius={2} style={{ background: 'rgba(201,169,110,0.4)' }} />
 
-          <SkeletonBar w={140} h={10} style={{ margin: '1.5rem auto 0' }} />
+          <SkeletonBar w={140} h={9} radius={2} style={{ margin: '1.6rem auto 0' }} />
         </SkeletonStatus>
       </div>
     </div>

@@ -10,8 +10,8 @@ export const AVATARS = {
   fox: { emoji: '🦊', bg: '#F3C4A4' },
   owl: { emoji: '🦉', bg: '#D8CBB8' },
   whale: { emoji: '🐋', bg: '#B8D4E0' },
-  rose: { emoji: '🌹', bg: '#F0C4C4' },
-  crown: { emoji: '👑', bg: '#EFE3B0' },
+  leaf: { emoji: '🍁', bg: '#DEAF97' },
+  wave: { emoji: '🌊', bg: '#AEC9E8' },
 } as const;
 
 export type AvatarKey = keyof typeof AVATARS;
