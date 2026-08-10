@@ -8,8 +8,9 @@ import { useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import {
-  C,
+  photoShellStyle,
   cardStyle,
+  glassCardStyle,
   eyebrowStyle,
   titleStyle,
   flourishStyle,
@@ -19,7 +20,7 @@ import {
   labelStyle,
   errorStyle,
   footerStyle,
-} from './authCardStyles';
+} from '@/components/maison/guardianSurface';
 
 export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const router = useRouter();
@@ -81,36 +82,8 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      // Ivory stays as the paint under the photo: it is what shows if the
-      // image 404s, and it matches the wall closely enough that the failure
-      // is invisible rather than a white flash.
-      background: C.wall,
-      // Vignette sits above the photo, settling the gilt frames at the edges
-      // so they frame the card instead of pulling the eye outward.
-      backgroundImage: "radial-gradient(ellipse at 50% 50%, transparent 45%, rgba(120,95,55,0.10) 100%), url('/auth/maison-drawing-room.webp')",
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '2rem 1rem',
-    }}>
-      <div style={{
-        ...cardStyle,
-        // The wall behind the card reads ~#F3E7D0; this composites brighter
-        // than that, so the card lifts off the photo instead of dissolving
-        // into it. The shadow does the rest of the separating — deeper than
-        // the flat-ivory pages need, because here there is a room behind it.
-        background: 'rgba(255,250,242,0.82)',
-        backdropFilter: 'blur(10px) saturate(1.08)',
-        WebkitBackdropFilter: 'blur(10px) saturate(1.08)',
-        border: `1px solid rgba(201,169,110,0.42)`,
-        borderTop: `1px solid ${C.gold}`,
-        boxShadow: '0 24px 60px rgba(92,72,38,0.20), 0 2px 10px rgba(92,72,38,0.08), inset 0 1px 0 rgba(255,255,255,0.55)',
-      }}>
+    <div style={photoShellStyle}>
+      <div style={{ ...cardStyle, ...glassCardStyle }}>
         {/* Signup opens the way the homepage hero does — the script greeting,
             then the wordmark itself as the heading. Printing the eyebrow too
             would put the name of the house on the card twice, so on this one
@@ -150,7 +123,7 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
                 required
                 minLength={2}
                 autoComplete="name"
-                className="mdo-auth-field"
+                className="mdo-guardian-field"
               />
             </div>
           )}
@@ -163,7 +136,7 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
-              className="mdo-auth-field"
+              className="mdo-guardian-field"
             />
           </div>
           <div style={{ marginBottom: '1.6rem' }}>
@@ -176,29 +149,29 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
               required
               minLength={8}
               autoComplete={isSignup ? 'new-password' : 'current-password'}
-              className="mdo-auth-field"
+              className="mdo-guardian-field"
             />
             {!isSignup && (
               // Quiet on purpose: the way out for the one guardian who needs
               // it, not a second call to action competing with Log in.
               <p style={{ margin: '0.55rem 0 0', textAlign: 'right' }}>
-                <a href="/forgot-password" className="mdo-auth-quiet">Forgot password?</a>
+                <a href="/forgot-password" className="mdo-guardian-quiet">Forgot password?</a>
               </p>
             )}
           </div>
 
           {error && <p style={errorStyle}>{error}</p>}
 
-          <button type="submit" disabled={pending} className="mdo-auth-submit">
+          <button type="submit" disabled={pending} className="mdo-guardian-submit">
             {pending ? 'One moment…' : isSignup ? 'Create an account' : 'Log in'}
           </button>
         </form>
 
         <p style={footerStyle}>
           {isSignup ? (
-            <>Already part of Maison d&apos;Oré? <a href="/login" className="mdo-auth-link">Log in</a></>
+            <>Already part of Maison d&apos;Oré? <a href="/login" className="mdo-guardian-link">Log in</a></>
           ) : (
-            <>New to Maison d&apos;Oré? <a href="/signup" className="mdo-auth-link">Create an account</a></>
+            <>New to Maison d&apos;Oré? <a href="/signup" className="mdo-guardian-link">Create an account</a></>
           )}
         </p>
       </div>

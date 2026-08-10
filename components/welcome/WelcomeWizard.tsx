@@ -12,6 +12,13 @@
  * Which steps exist is the server's decision (`askFamilyStep`), not a client
  * guess: an invited co-parent inherits a named household and starts at the
  * reader.
+ *
+ * Everything about how it looks comes from components/maison/guardianSurface
+ * and the `.mdo-guardian-*` classes — the same drawing-room photograph, glass
+ * card, field, button and palette the front door wears, because a visitor
+ * arrives here one click after /signup and the two should read as one room.
+ * What stays local is what is genuinely only here: the step dots, the emblem
+ * and colour grids, and the panels around the invitation.
  */
 import { useLayoutEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
@@ -26,14 +33,19 @@ import { ageOnDay, birthDateBounds, formatBirthDate, normalizeBirthDate } from '
 import { THEME_KEYS, type ThemeKey } from '@/lib/theme-keys';
 import { THEMES } from '@/components/theme/themes';
 import DatePicker from '@/components/ui/DatePicker';
-
-const C = {
-  gold: '#C9A96E',
-  ivory: '#F5F0E7',
-  ink: '#241A0C',
-  brown: '#5C4A2A',
-  muted: '#8B7355',
-};
+import {
+  C,
+  photoShellStyle,
+  wideCardStyle,
+  glassCardStyle,
+  eyebrowStyle,
+  titleStyle,
+  subtitleStyle,
+  labelStyle,
+  hintStyle,
+  noteStyle,
+  errorStyle,
+} from '@/components/maison/guardianSurface';
 
 /**
  * Every zone the runtime knows, with UTC guaranteed present — the same list
@@ -47,61 +59,12 @@ const TIME_ZONES: string[] = (() => {
   return Array.from(new Set(['UTC', ...supported]));
 })();
 
-const input: React.CSSProperties = {
-  width: '100%',
-  padding: '0.7rem 0.9rem',
-  borderRadius: 10,
-  border: '1px solid rgba(201,169,110,0.45)',
-  background: '#FFFDF9',
-  fontFamily: 'Lato, sans-serif',
-  fontSize: '0.9rem',
-  color: C.ink,
-  outline: 'none',
-  boxSizing: 'border-box',
-};
-
-const label: React.CSSProperties = {
-  display: 'block',
-  fontFamily: 'Lato, sans-serif',
-  fontSize: '0.62rem',
-  letterSpacing: '0.18em',
-  textTransform: 'uppercase',
-  color: C.muted,
-  margin: '0 0 0.35rem',
-};
-
-const buttonGold: React.CSSProperties = {
-  width: '100%',
-  padding: '0.8rem',
-  borderRadius: 12,
-  border: 'none',
-  background: C.gold,
-  color: '#FFF',
-  fontFamily: 'Lato, sans-serif',
-  fontSize: '0.85rem',
-  fontWeight: 700,
-  letterSpacing: '0.08em',
-  textTransform: 'uppercase',
-  cursor: 'pointer',
-};
-
-const quietLink: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  color: C.muted,
-  fontFamily: 'Lato, sans-serif',
-  fontSize: '0.78rem',
-  textDecoration: 'underline',
-  cursor: 'pointer',
-  padding: 0,
-};
-
-const errorLine: React.CSSProperties = {
-  fontFamily: 'Lato, sans-serif',
-  fontSize: '0.8rem',
-  color: '#A4442E',
-  margin: '0.9rem 0 0',
-};
+/**
+ * Every step opens with a heading and a line saying what the step is for, so
+ * the title closes up from its standalone spacing and the pair carries the air
+ * instead. /signup does the same thing for the same reason.
+ */
+const stepTitleStyle: React.CSSProperties = { ...titleStyle, margin: '0 0 0.6rem' };
 
 /**
  * The device's own zone, read through useSyncExternalStore so that the server
@@ -265,71 +228,52 @@ export default function WelcomeWizard({
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: C.ivory,
-      backgroundImage: 'radial-gradient(ellipse at 15% 25%, rgba(139,115,80,0.06) 0%, transparent 55%), radial-gradient(ellipse at 85% 75%, rgba(100,75,45,0.04) 0%, transparent 45%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '2rem 1rem',
-      fontFamily: 'Lato, sans-serif',
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: 480,
-        background: 'rgba(255,248,238,0.85)',
-        borderRadius: 18,
-        border: '1px solid rgba(201,169,110,0.3)',
-        boxShadow: '0 8px 40px rgba(100,80,40,0.12)',
-        padding: '2.5rem 2rem',
-      }}>
-        <p style={{
-          fontSize: '0.6rem', letterSpacing: '0.3em', textTransform: 'uppercase',
-          color: C.gold, textAlign: 'center', margin: '0 0 1.25rem',
-        }}>
-          Maison d&apos;Oré
-        </p>
+    <div style={{ ...photoShellStyle, fontFamily: 'var(--font-sans)' }}>
+      <div style={{ ...wideCardStyle, ...glassCardStyle }}>
+        <p style={{ ...eyebrowStyle, margin: '0 0 1.25rem' }}>Maison d&apos;Oré</p>
 
         <StepDots total={steps.length} current={stepIndex} />
 
         {step === 'family' && (
           <>
-            <h1 style={heading}>Welcome, {guardianName.split(' ')[0]}</h1>
-            <p style={lede}>
+            <h1 style={stepTitleStyle}>Welcome, {guardianName.split(' ')[0]}</h1>
+            <p style={subtitleStyle}>
               Just a couple of things before we begin.
             </p>
 
             <div style={{ marginBottom: '1.1rem' }}>
-              <label htmlFor="familyName" style={label}>What should we call your family?</label>
+              <label htmlFor="familyName" style={labelStyle}>What should we call your family?</label>
               <input
                 id="familyName"
                 value={nameDraft}
                 onChange={(e) => setNameDraft(e.target.value)}
                 maxLength={80}
-                style={input}
+                className="mdo-guardian-field"
                 autoFocus
               />
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <label htmlFor="timezone" style={label}>Where do your days begin?</label>
+              <label htmlFor="timezone" style={labelStyle}>Where do your days begin?</label>
               <select
                 id="timezone"
                 value={zone}
                 onChange={(e) => setZoneChoice(e.target.value)}
-                style={{ ...input, cursor: 'pointer' }}
+                className="mdo-guardian-field"
+                style={{ cursor: 'pointer' }}
               >
                 {TIME_ZONES.map((z) => (
                   <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>
                 ))}
               </select>
-              <p style={hint}>
+              <p style={hintStyle}>
                 So your days begin at the right time. We&apos;ve chosen your time zone from your device, but you can change it anytime.
               </p>
             </div>
 
-            <button onClick={saveFamily} disabled={pending} style={{ ...buttonGold, opacity: pending ? 0.6 : 1 }}>
+            {error && <p style={errorStyle}>{error}</p>}
+
+            <button onClick={saveFamily} disabled={pending} className="mdo-guardian-submit">
               {pending ? 'One moment…' : `Let's begin`}
             </button>
           </>
@@ -337,26 +281,26 @@ export default function WelcomeWizard({
 
         {step === 'reader' && (
           <>
-            <h1 style={heading}>Your first reader</h1>
-            <p style={lede}>
+            <h1 style={stepTitleStyle}>Your first reader</h1>
+            <p style={subtitleStyle}>
               Who are we making this for? You can add the rest of the family anytime.
             </p>
 
             <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor="childName" style={label}>THEIR NAME</label>
+              <label htmlFor="childName" style={labelStyle}>Their name</label>
               <input
                 id="childName"
                 value={childName}
                 onChange={(e) => setChildName(e.target.value)}
                 maxLength={40}
                 placeholder="Amélie"
-                style={input}
+                className="mdo-guardian-field"
                 autoFocus
               />
             </div>
 
             <div style={{ marginBottom: '1.2rem' }}>
-              <label htmlFor="birthDate" style={label}>THEIR BIRTHDAY</label>
+              <label htmlFor="birthDate" style={labelStyle}>Their birthday</label>
               <DatePicker
                 id="birthDate"
                 value={birthDate}
@@ -368,7 +312,7 @@ export default function WelcomeWizard({
                 aria-describedby="birthDateHint"
                 style={{ width: '100%', maxWidth: 240 }}
               />
-              <p id="birthDateHint" style={hint}>
+              <p id="birthDateHint" style={hintStyle}>
                 {birthDate === ''
                   ? 'This helps us choose stories that feel right for their age and remember their birthday, of course.'
                   : born.ok
@@ -378,7 +322,7 @@ export default function WelcomeWizard({
             </div>
 
             <div style={{ marginBottom: '1.2rem' }}>
-              <span style={label}>Their emblem</span>
+              <span style={labelStyle}>Their emblem</span>
               <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
                 {(Object.keys(AVATARS) as AvatarKey[]).map((k) => (
                   <button
@@ -400,7 +344,7 @@ export default function WelcomeWizard({
             </div>
 
             <div style={{ marginBottom: '1.3rem' }}>
-              <span style={label}>Their colours</span>
+              <span style={labelStyle}>Their colours</span>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {THEME_KEYS.map((k) => {
                   const t = THEMES[k];
@@ -425,7 +369,7 @@ export default function WelcomeWizard({
                           boxShadow: themeKey === k ? '0 2px 10px rgba(100,80,40,0.18)' : 'none',
                         }}
                       />
-                      <span style={{ fontSize: '0.58rem', color: themeKey === k ? C.brown : C.muted, maxWidth: 54, textAlign: 'center', lineHeight: 1.2 }}>
+                      <span style={{ fontSize: '0.58rem', color: themeKey === k ? C.umber : C.taupe, maxWidth: 54, textAlign: 'center', lineHeight: 1.2 }}>
                         {t?.name ?? k}
                       </span>
                     </button>
@@ -434,35 +378,28 @@ export default function WelcomeWizard({
               </div>
             </div>
 
-            <p style={{
-              fontSize: '0.76rem', color: C.brown, lineHeight: 1.6,
-              background: 'rgba(201,169,110,0.1)',
-              border: '1px dashed rgba(201,169,110,0.45)',
-              borderRadius: 10, padding: '0.75rem 0.9rem', margin: '0 0 1.3rem',
-            }}>
+            <p style={{ ...noteStyle, margin: '0 0 1.3rem' }}>
               Your child never has an account, an email, or a password — just a nickname and a
               reading history you control.
             </p>
 
-            <button onClick={saveChild} disabled={pending || !readerReady} style={{
-              ...buttonGold,
-              background: pending || !readerReady ? 'rgba(201,169,110,0.5)' : C.gold,
-              cursor: pending || !readerReady ? 'default' : 'pointer',
-            }}>
-              {pending ? 'Making it theirs… Just adding the finishing touches.' : 'CREATE THEIR READER'}
+            {error && <p style={errorStyle}>{error}</p>}
+
+            <button onClick={saveChild} disabled={pending || !readerReady} className="mdo-guardian-submit">
+              {pending ? 'Making it theirs… Just adding the finishing touches.' : 'Create their reader'}
             </button>
           </>
         )}
 
         {step === 'invite' && (
           <>
-            <h1 style={heading}>Share it with someone</h1>
-            <p style={lede}>
+            <h1 style={stepTitleStyle}>Share it with someone</h1>
+            <p style={subtitleStyle}>
               Invite someone you trust to be part of your family&apos;s Maison d&apos;Oré. They&apos;ll be able to see the children’s spaces and share the journey with you. You can always do this later.
             </p>
 
             <div style={{ marginBottom: '0.9rem' }}>
-              <label htmlFor="inviteEmail" style={label}>THEIR EMAIL</label>
+              <label htmlFor="inviteEmail" style={labelStyle}>Their email</label>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <input
                   id="inviteEmail"
@@ -470,85 +407,51 @@ export default function WelcomeWizard({
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   placeholder="their@email.com"
-                  style={{ ...input, flex: 1 }}
+                  className="mdo-guardian-field"
+                  style={{ flex: 1, minWidth: 0 }}
                 />
                 <button
                   onClick={sendInvite}
                   disabled={pending || !inviteEmail}
-                  style={{
-                    ...buttonGold,
-                    width: 'auto',
-                    padding: '0.7rem 1.1rem',
-                    background: pending || !inviteEmail ? 'rgba(201,169,110,0.5)' : C.gold,
-                  }}
+                  className="mdo-guardian-submit mdo-guardian-submit--inline"
                 >
-                  SEND INVITATION
+                  Send invitation
                 </button>
               </div>
             </div>
 
             {sentInvite && (
-              <div style={{
-                background: 'rgba(201,169,110,0.12)',
-                border: '1px dashed rgba(201,169,110,0.5)',
-                borderRadius: 10,
-                padding: '0.9rem 1rem',
-                marginBottom: '1.1rem',
-              }}>
-                <p style={{ fontSize: '0.78rem', color: C.brown, margin: '0 0 0.5rem' }}>
+              <div style={{ ...noteStyle, marginBottom: '1.1rem' }}>
+                <p style={{ margin: '0 0 0.5rem' }}>
                   Invitation sent 🤍
 We&apos;ve sent it to <strong>{sentInvite.email}</strong>. You can also share their private invitation link below. It will be available here once and expires in 7 days.
                 </p>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <code style={{ fontSize: '0.7rem', color: C.ink, wordBreak: 'break-all', flex: 1 }}>{sentInvite.url}</code>
+                  <code style={{ fontSize: '0.7rem', color: C.brown, wordBreak: 'break-all', flex: 1, minWidth: 0 }}>{sentInvite.url}</code>
                   <button
                     onClick={async () => { await navigator.clipboard.writeText(sentInvite.url); setCopied(true); }}
-                    style={{ ...buttonGold, width: 'auto', padding: '0.4rem 0.8rem', fontSize: '0.7rem' }}
+                    className="mdo-guardian-submit mdo-guardian-submit--compact"
                   >
-                    {copied ? 'Copied' : 'COPY LINK'}
+                    {copied ? 'Copied' : 'Copy link'}
                   </button>
                 </div>
               </div>
             )}
 
-            <button onClick={finish} disabled={pending} style={{ ...buttonGold, opacity: pending ? 0.6 : 1 }}>
-              {pending ? 'Opening the paper…' : sentInvite ? 'ENTER MAISON D’ORÉ' : 'SEE TODAY’S EDITION'}
+            {error && <p style={errorStyle}>{error}</p>}
+
+            <button onClick={finish} disabled={pending} className="mdo-guardian-submit">
+              {pending ? 'Opening the paper…' : sentInvite ? 'Enter Maison d’Oré' : 'See today’s edition'}
             </button>
 
             {!sentInvite && (
               <p style={{ textAlign: 'center', margin: '1rem 0 0' }}>
-                <button onClick={finish} disabled={pending} style={quietLink}>I&apos;ll do this later</button>
+                <button onClick={finish} disabled={pending} className="mdo-guardian-quiet">I&apos;ll do this later</button>
               </p>
             )}
           </>
         )}
-
-        {error && <p style={errorLine}>{error}</p>}
       </div>
     </div>
   );
 }
-
-const heading: React.CSSProperties = {
-  fontFamily: '"Playfair Display", Georgia, serif',
-  fontSize: '1.6rem',
-  fontWeight: 600,
-  color: C.ink,
-  textAlign: 'center',
-  margin: '0 0 0.6rem',
-};
-
-const lede: React.CSSProperties = {
-  fontSize: '0.85rem',
-  color: C.brown,
-  textAlign: 'center',
-  lineHeight: 1.6,
-  margin: '0 0 1.75rem',
-};
-
-const hint: React.CSSProperties = {
-  fontSize: '0.72rem',
-  color: C.muted,
-  lineHeight: 1.5,
-  margin: '0.45rem 0 0',
-};

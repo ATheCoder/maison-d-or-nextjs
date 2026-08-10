@@ -11,7 +11,7 @@
  * as the form's JavaScript takes to arrive — which is exactly the moment a
  * visitor decides the site is broken.
  *
- * So the geometry here is the shared one from authCardStyles (which AuthForm,
+ * So the geometry here is the shared one from guardianSurface (which AuthForm,
  * ForgotPasswordForm and ResetPasswordForm all dress themselves from): same
  * full-height centred shell, same 400px card with the gold rule along its top
  * and the same corners, same rhythm of eyebrow / title / hairline / two
@@ -31,17 +31,28 @@
  * here would ship a component whose entire job is to be replaced.
  */
 import { SkeletonBar, SkeletonStatus } from '@/components/maison/ParchmentSkeleton';
-import { shellStyle, cardStyle, eyebrowStyle, ruleStyle } from './authCardStyles';
+import {
+  shellStyle,
+  cardStyle,
+  eyebrowStyle,
+  ruleStyle,
+  FIELD_HEIGHT,
+  FIELD_RADIUS,
+  BUTTON_HEIGHT,
+  BUTTON_RADIUS,
+} from '@/components/maison/guardianSurface';
 
 /**
  * Label bar + field bar, at the spacing the real field groups use — and at the
- * field's own 10px corner, so the form lands into the shape being held for it.
+ * field's own corner and height, taken from guardianSurface rather than typed
+ * out here, so the form lands into the shape being held for it even after
+ * someone changes the field.
  */
 function FieldGroup({ gap }: { gap: string }) {
   return (
     <div style={{ marginBottom: gap }}>
       <SkeletonBar w={80} h={8} radius={2} style={{ marginBottom: '0.45rem' }} />
-      <SkeletonBar h={42} radius={10} />
+      <SkeletonBar h={FIELD_HEIGHT} radius={FIELD_RADIUS} />
     </div>
   );
 }
@@ -62,7 +73,7 @@ export default function AuthCardFallback() {
           <FieldGroup gap="1rem" />
           <FieldGroup gap="1.6rem" />
 
-          <SkeletonBar h={46} radius={12} style={{ background: 'rgba(201,169,110,0.4)' }} />
+          <SkeletonBar h={BUTTON_HEIGHT} radius={BUTTON_RADIUS} style={{ background: 'rgba(201,169,110,0.4)' }} />
 
           <SkeletonBar w={140} h={9} radius={2} style={{ margin: '1.6rem auto 0' }} />
         </SkeletonStatus>

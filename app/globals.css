@@ -529,17 +529,22 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================================================
-   AUTH CARD — /login, /signup, /forgot-password, /reset-password
-   The three controls on the signed-out pages whose look depends on
+   GUARDIAN CARD — /login, /signup, /forgot-password,
+   /reset-password, /welcome
+   The controls on the grown-up surfaces whose look depends on
    state: hover, focus, disabled, and Chrome's autofill. Everything
-   static about those pages is in components/auth/authCardStyles.ts;
-   only what an inline style cannot express lives here.
+   static about those pages is in
+   components/maison/guardianSurface.ts; only what an inline style
+   cannot express lives here.
+
+   Named -guardian- rather than -auth- because /welcome wears these
+   too, and it is the one page here nobody reaches signed out.
 
    Palette is written out for the same reason as .mdo-dp above — the
    Daily Gold themes repaint --gold, and the front door should not
    change colour with them. These are the classic values.
    ============================================================ */
-.mdo-auth-field {
+.mdo-guardian-field {
   width: 100%;
   box-sizing: border-box;
   padding: 0.75rem 0.9rem;
@@ -554,17 +559,17 @@ h1, h2, h3, h4, h5, h6 {
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.mdo-auth-field:hover { border-color: rgba(201, 169, 110, 0.55); }
-.mdo-auth-field:focus {
+.mdo-guardian-field:hover { border-color: rgba(201, 169, 110, 0.55); }
+.mdo-guardian-field:focus {
   border-color: #C9A96E;
   box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.14);
 }
 /* Chrome paints an autofilled field pale blue, which on a warm ivory card is
    the one colour nothing else on the page is. The inset shadow is the only way
    to override it. */
-.mdo-auth-field:-webkit-autofill,
-.mdo-auth-field:-webkit-autofill:hover,
-.mdo-auth-field:-webkit-autofill:focus {
+.mdo-guardian-field:-webkit-autofill,
+.mdo-guardian-field:-webkit-autofill:hover,
+.mdo-guardian-field:-webkit-autofill:focus {
   -webkit-text-fill-color: #2C2416;
   -webkit-box-shadow: 0 0 0 40px #FFFDF9 inset;
   caret-color: #2C2416;
@@ -575,7 +580,7 @@ h1, h2, h3, h4, h5, h6 {
    the one thing being asked for on the page: white on gold, Lato 400, tracked
    0.2em. Same reading as .mdo-dp-done, at the welcome wizard's 12px corner so
    the front door and the room behind it agree. */
-.mdo-auth-submit {
+.mdo-guardian-submit {
   width: 100%;
   padding: 0.95rem 1.5rem;
   border: 1px solid #C9A96E;
@@ -591,26 +596,55 @@ h1, h2, h3, h4, h5, h6 {
   cursor: pointer;
   transition: background 0.3s ease, border-color 0.3s ease;
 }
-.mdo-auth-submit:hover:not(:disabled) { background: #A8843F; border-color: #A8843F; }
-.mdo-auth-submit:disabled {
+.mdo-guardian-submit:hover:not(:disabled) { background: #A8843F; border-color: #A8843F; }
+.mdo-guardian-submit:disabled {
   background: rgba(201, 169, 110, 0.45);
   border-color: transparent;
   cursor: default;
 }
 
+/* The same button sitting beside a field rather than under one — /welcome's
+   "send invitation" next to the address it sends to. Shrinks to its label and
+   loses the full-width block; everything that makes it the house button stays.
+   The tracking has to come back off the right edge here, because unlike a
+   centred block label this one is measured against the field it sits next to. */
+.mdo-guardian-submit--inline {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 0.7rem 1.1rem;
+  text-indent: 0;
+}
+/* Smaller again: an action *inside* a panel, like copying the invitation link
+   out of the confirmation it just appeared in. */
+.mdo-guardian-submit--compact {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-indent: 0;
+}
+
 /* Gold, underlined by a hairline rather than by text-decoration, so the rule
    sits clear of the descenders. */
-.mdo-auth-link {
+.mdo-guardian-link {
   color: #C9A96E;
   text-decoration: none;
   border-bottom: 1px solid rgba(201, 169, 110, 0.45);
   padding-bottom: 1px;
   transition: color 0.25s ease, border-color 0.25s ease;
 }
-.mdo-auth-link:hover { color: #A8843F; border-color: #A8843F; }
+.mdo-guardian-link:hover { color: #A8843F; border-color: #A8843F; }
 
-/* Quieter still: the way out for the one guardian who needs it. */
-.mdo-auth-quiet {
+/* Quieter still: the way out for the one guardian who needs it — "forgot
+   password?" on /login, "I'll do this later" on /welcome. Worn by an <a> in one
+   place and a <button> in the other (skipping the invite step is an action, not
+   a destination), hence the button chrome reset: both must read as the same
+   piece of quiet text. */
+.mdo-guardian-quiet {
+  padding: 0;
+  border: none;
+  background: none;
   font-family: var(--font-sans);
   font-size: 0.7rem;
   font-weight: 300;
@@ -618,13 +652,15 @@ h1, h2, h3, h4, h5, h6 {
   color: #8B7355;
   text-decoration: underline;
   text-underline-offset: 3px;
+  cursor: pointer;
   transition: color 0.25s ease;
 }
-.mdo-auth-quiet:hover { color: #C9A96E; }
+.mdo-guardian-quiet:hover:not(:disabled) { color: #C9A96E; }
+.mdo-guardian-quiet:disabled { cursor: default; opacity: 0.6; }
 
 @media (prefers-reduced-motion: reduce) {
-  .mdo-auth-field,
-  .mdo-auth-submit,
-  .mdo-auth-link,
-  .mdo-auth-quiet { transition: none; }
+  .mdo-guardian-field,
+  .mdo-guardian-submit,
+  .mdo-guardian-link,
+  .mdo-guardian-quiet { transition: none; }
 }

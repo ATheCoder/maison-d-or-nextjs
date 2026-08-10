@@ -20,7 +20,7 @@ import {
   labelStyle,
   errorStyle,
   footerStyle,
-} from './authCardStyles';
+} from '@/components/maison/guardianSurface';
 
 export default function ResetPasswordForm() {
   const router = useRouter();
@@ -74,7 +74,7 @@ export default function ResetPasswordForm() {
               Reset links last an hour and work once. Ask for a fresh one and it will be with you in a moment.
             </p>
             <p style={{ ...footerStyle, margin: 0 }}>
-              <a href="/forgot-password" className="mdo-auth-link">Send a new link</a>
+              <a href="/forgot-password" className="mdo-guardian-link">Send a new link</a>
             </p>
           </>
         ) : done ? (
@@ -92,7 +92,7 @@ export default function ResetPasswordForm() {
                 minLength={8}
                 autoComplete="new-password"
                 autoFocus
-                className="mdo-auth-field"
+                className="mdo-guardian-field"
               />
             </div>
             <div style={{ marginBottom: '1.6rem' }}>
@@ -105,13 +105,13 @@ export default function ResetPasswordForm() {
                 required
                 minLength={8}
                 autoComplete="new-password"
-                className="mdo-auth-field"
+                className="mdo-guardian-field"
               />
             </div>
 
             {error && <p style={errorStyle}>{error}</p>}
 
-            <button type="submit" disabled={pending} className="mdo-auth-submit">
+            <button type="submit" disabled={pending} className="mdo-guardian-submit">
               {pending ? 'One moment…' : 'Save new password'}
             </button>
           </form>

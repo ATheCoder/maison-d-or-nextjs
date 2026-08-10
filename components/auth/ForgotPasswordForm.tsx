@@ -19,7 +19,7 @@ import {
   labelStyle,
   errorStyle,
   footerStyle,
-} from './authCardStyles';
+} from '@/components/maison/guardianSurface';
 
 export default function ForgotPasswordForm() {
   const [email, setEmail] = useState('');
@@ -63,7 +63,7 @@ export default function ForgotPasswordForm() {
               It expires in an hour.
             </p>
             <p style={{ ...footerStyle, margin: 0 }}>
-              <a href="/login" className="mdo-auth-link">Back to log in</a>
+              <a href="/login" className="mdo-guardian-link">Back to log in</a>
             </p>
           </>
         ) : (
@@ -83,19 +83,19 @@ export default function ForgotPasswordForm() {
                   required
                   autoComplete="email"
                   autoFocus
-                  className="mdo-auth-field"
+                  className="mdo-guardian-field"
                 />
               </div>
 
               {error && <p style={errorStyle}>{error}</p>}
 
-              <button type="submit" disabled={pending} className="mdo-auth-submit">
+              <button type="submit" disabled={pending} className="mdo-guardian-submit">
                 {pending ? 'One moment…' : 'Send the link'}
               </button>
             </form>
 
             <p style={footerStyle}>
-              Remembered it? <a href="/login" className="mdo-auth-link">Log in</a>
+              Remembered it? <a href="/login" className="mdo-guardian-link">Log in</a>
             </p>
           </>
         )}
