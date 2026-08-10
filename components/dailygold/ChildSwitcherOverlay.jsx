@@ -30,6 +30,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
+import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import { getProfilesForPicker, enterChildProfile, enterChildProfileAsGuardian, passGrownUpGate } from '@/app/profiles/actions';
 import { authClient } from '@/lib/auth-client';
 import { AVATARS } from '@/lib/avatars';
@@ -166,9 +167,9 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
     >
       <style>{`@keyframes dgSpin { to { transform: rotate(360deg); } }`}</style>
       <div style={{ padding: '0.65rem 1rem 0.4rem', borderBottom: `1px solid ${gold}26` }}>
-        <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.16em', textTransform: 'uppercase', color: theme.textMuted, margin: 0 }}>
+        <DGEyebrow tracking="wide" color={theme.textMuted}>
           {heading}
-        </p>
+        </DGEyebrow>
       </div>
       {showCredentialForm ? (
         <div style={{ padding: '0.85rem 1rem 1rem' }}>

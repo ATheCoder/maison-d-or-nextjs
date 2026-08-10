@@ -27,6 +27,16 @@ export { default as MMonogram } from '@/components/maison/MMonogram';
 export { default as TreasuryHeart } from '@/components/treasury/TreasuryHeart';
 export { default as TreasuryView } from '@/components/treasury/TreasuryView';
 
+// ── Daily Gold primitives ──
+// The three shapes the edition's sections are built out of. They are already in
+// the bundle by way of the sections that import them; they are named here so a
+// design agent can see the parts themselves — in particular DGEyebrow, whose
+// three-tier `tracking` scale replaced seven ad-hoc letter-spacings and is the
+// one thing a redesign must not quietly widen again.
+export { default as DGCard } from '@/components/dailygold/DGCard';
+export { default as DGHeroImage } from '@/components/dailygold/DGHeroImage';
+export { default as DGSectionHeader, DGEyebrow } from '@/components/dailygold/DGSectionHeader';
+
 // ── Daily Gold edition ──
 export { default as ChildSwitcherOverlay } from '@/components/dailygold/ChildSwitcherOverlay';
 export { default as DailyGoldEdition } from '@/components/dailygold/DailyGoldEditionPage';

@@ -3,6 +3,9 @@
 // file, delete the marker. Do not add one to a new file.
 'use client';
 import { useTheme } from '@/components/theme/ThemeContext';
+import DGCard from '@/components/dailygold/DGCard';
+import DGHeroImage from '@/components/dailygold/DGHeroImage';
+import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 
 // The real Daily Gold house style. Nothing here renders any more — it is kept
 // as the source of truth for lib/daily-gold/prompts.ts, which harvests it, and
@@ -49,38 +52,27 @@ function ExploreCard({ card, theme }) {
   const imgUrl = card.image_url;
 
   return (
-    <div
+    <DGCard
+      borderAlpha="24"
       style={{
         position: 'relative',
-        borderRadius: theme.radius,
         overflow: 'hidden',
         aspectRatio: '16 / 11',
-        border: `1px solid ${theme.accentGold}24`,
-        boxShadow: theme.shadowSoft,
       }}
     >
-      {imgUrl ? (
-        <img
-          src={imgUrl}
-          alt=""
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        />
-      ) : (
-        <div style={{
-          width: '100%', height: '100%',
-          background: `linear-gradient(135deg, ${theme.bgSoft} 0%, ${theme.bgPrimary} 100%)`,
-          position: 'relative',
-        }}>
+      {/* Scrim from 0%: this card's wash covers the whole painting, so the
+          label block at its foot reads without a caption plate. */}
+      <DGHeroImage
+        imageUrl={imgUrl}
+        aspectRatio="16 / 11"
+        scrimFrom={0}
+        fallback={
           <div style={{
             position: 'absolute', inset: 0,
             background: `radial-gradient(ellipse at 50% 30%, ${theme.accentGold}15 0%, transparent 70%)`,
           }} />
-        </div>
-      )}
-      <div style={{
-        position: 'absolute', inset: 0,
-        background: `linear-gradient(to bottom, transparent 0%, ${theme.bgCard} 100%)`,
-      }} />
+        }
+      />
 
       {/* Accent thread */}
       <div aria-hidden="true" style={{
@@ -90,12 +82,9 @@ function ExploreCard({ card, theme }) {
       }} />
 
       <div style={{ position: 'absolute', bottom: '1.5rem', left: '1.5rem', right: '1.5rem' }}>
-        <p style={{
-          fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.14em', textTransform: 'uppercase',
-          color: accent, margin: '0 0 0.4rem',
-        }}>
+        <DGEyebrow tracking="tight" color={accent} style={{ margin: '0 0 0.4rem' }}>
           Coming soon
-        </p>
+        </DGEyebrow>
         <h3 style={{ fontFamily: theme.fontHeadline, fontSize: '1.3rem', fontWeight: 600, color: theme.textHeadline, margin: '0 0 0.4rem', lineHeight: 1.2 }}>
           {card.label}
         </h3>
@@ -103,7 +92,7 @@ function ExploreCard({ card, theme }) {
           {card.description}
         </p>
       </div>
-    </div>
+    </DGCard>
   );
 }
 
@@ -112,9 +101,9 @@ export default function DGMoreToExplore() {
   return (
     <section style={{ padding: '5rem clamp(1.5rem, 5vw, 4rem)', background: `linear-gradient(to bottom, ${theme.bgPrimary}, ${theme.bgSoft})` }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: theme.accentGold, margin: '0 0 0.75rem', textAlign: 'center' }}>
+        <DGEyebrow tracking="wide" color={theme.accentGold} style={{ margin: '0 0 0.75rem', textAlign: 'center' }}>
           Coming soon to the journey
-        </p>
+        </DGEyebrow>
         <h2 style={{ fontFamily: theme.fontHeadline, fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', fontWeight: 600, color: theme.textHeadline, margin: '0 0 0.75rem', textAlign: 'center', lineHeight: 1.15 }}>
           More to Explore
         </h2>

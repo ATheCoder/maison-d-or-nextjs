@@ -21,6 +21,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
+import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import { dgDestinationsFor, DG_SHELF, DGIcon, isNavItemActive } from '@/components/dailygold/dgNavConfig';
 import ChildSwitcherOverlay from '@/components/dailygold/ChildSwitcherOverlay';
@@ -129,9 +130,9 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
               🗝️
             </span>
             <span className="dg-rail-label" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 }}>
-              <span style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', color: theme.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              <DGEyebrow as="span" tracking="tight" color={theme.textMuted}>
                 {viewer.role === 'admin' ? 'Admin' : 'Parent'}
-              </span>
+              </DGEyebrow>
               <span style={{
                 fontFamily: theme.fontHeadline, fontStyle: 'italic', fontWeight: 600,
                 fontSize: '0.95rem', color: theme.textHeadline,
@@ -203,12 +204,9 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
       {child && (
         <>
           <div aria-hidden="true" style={{ height: 1, background: `${theme.accentGold}26`, margin: '1.25rem 0.5rem' }} />
-          <p className="dg-rail-label" style={{
-            fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.2em',
-            textTransform: 'uppercase', color: theme.accentGold, margin: '0 0 0.5rem 0.9rem',
-          }}>
+          <DGEyebrow className="dg-rail-label" tracking="wide" color={theme.accentGold} style={{ margin: '0 0 0.5rem 0.9rem' }}>
             My World
-          </p>
+          </DGEyebrow>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {DG_SHELF.map(item => {
               const active = isActive(item);

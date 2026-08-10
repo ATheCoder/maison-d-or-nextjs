@@ -12,6 +12,9 @@
 import { useState } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
 import DGModal from '@/components/dailygold/DGModal';
+import DGCard from '@/components/dailygold/DGCard';
+import DGHeroImage from '@/components/dailygold/DGHeroImage';
+import DGSectionHeader, { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import type { GreatestMomentRecord } from '@/app/(dg)/daily-gold-edition/queries';
 
@@ -32,26 +35,17 @@ function MomentModal({ item, onClose }: { item: GreatestMomentRecord; onClose: (
         section: 'greatest_moments',
       }}
     >
-      {/* Hero image */}
-      <div style={{ position: 'relative', background: theme.bgSoft }}>
-        {item.image_url ? (
-          <img
-            src={item.image_url}
-            alt=""
-            style={{ display: 'block', width: '100%', aspectRatio: '16/10', objectFit: 'cover' }}
-          />
-        ) : (
-          <div style={{
-            width: '100%', aspectRatio: '16/10',
-            background: `linear-gradient(135deg, ${theme.bgSoft} 0%, ${theme.bgPrimary} 100%)`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <span aria-hidden="true" style={{ fontFamily: theme.fontHeadline, fontSize: '3rem', color: `${theme.accentGold}4D`, fontWeight: 700 }}>
-              {item.rank}
-            </span>
-          </div>
-        )}
-        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent 40%, ${theme.bgCard} 100%)` }} />
+      {/* Hero image — a picture-less moment shows its rank instead of a mark. */}
+      <DGHeroImage
+        imageUrl={item.image_url}
+        aspectRatio="16/10"
+        scrimFrom={40}
+        fallback={
+          <span aria-hidden="true" style={{ fontFamily: theme.fontHeadline, fontSize: '3rem', color: `${theme.accentGold}4D`, fontWeight: 700 }}>
+            {item.rank}
+          </span>
+        }
+      >
         {/* Rank badge */}
         <div style={{
           position: 'absolute', top: 14, left: 14,
@@ -64,16 +58,13 @@ function MomentModal({ item, onClose }: { item: GreatestMomentRecord; onClose: (
             {item.rank}
           </span>
         </div>
-      </div>
+      </DGHeroImage>
 
       {/* Content */}
       <div style={{ padding: '1.5rem 2rem 2rem' }}>
-        <p style={{
-          fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.2em',
-          textTransform: 'uppercase', color: theme.accentGold, margin: '0 0 0.5rem',
-        }}>
+        <DGEyebrow tracking="wide" color={theme.accentGold} style={{ margin: '0 0 0.5rem' }}>
           {item.year}
-        </p>
+        </DGEyebrow>
         <h2 style={{
           fontFamily: theme.fontHeadline,
           fontSize: 'clamp(1.3rem, 2.5vw, 1.8rem)',
@@ -114,24 +105,12 @@ export default function DGGreatestMoments({
   if (!moments.length) {
     return (
       <section style={{ background: 'transparent' }}>
-        <div style={{ marginBottom: '0.85rem' }}>
-          <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: theme.accentSage, margin: '0 0 0.35rem' }}>
-            Across all of history
-          </p>
-          <h2 style={{ fontFamily: theme.fontHeadline, fontSize: '1.4rem', fontWeight: 600, color: theme.textHeadline, margin: 0, lineHeight: 1.15 }}>
-            Greatest Moments
-          </h2>
-        </div>
-        <div style={{
-          background: theme.bgCard, borderRadius: theme.radiusSmall,
-          padding: '2rem 1.25rem', textAlign: 'center',
-          border: `1px solid ${theme.accentGold}25`,
-          boxShadow: theme.shadowSoft,
-        }}>
+        <DGSectionHeader eyebrow="Across all of history" title="Greatest Moments" />
+        <DGCard size="small" style={{ padding: '2rem 1.25rem', textAlign: 'center' }}>
           <p style={{ fontFamily: theme.fontBody, fontSize: '0.82rem', color: theme.textMuted, margin: 0 }}>
             Preparing the greatest moments…
           </p>
-        </div>
+        </DGCard>
       </section>
     );
   }
@@ -139,14 +118,7 @@ export default function DGGreatestMoments({
   return (
     <section style={{ background: 'transparent' }}>
       {/* Header */}
-      <div style={{ marginBottom: '0.85rem' }}>
-        <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: theme.accentSage, margin: '0 0 0.35rem' }}>
-          Across all of history
-        </p>
-        <h2 style={{ fontFamily: theme.fontHeadline, fontSize: '1.4rem', fontWeight: 600, color: theme.textHeadline, margin: 0, lineHeight: 1.15 }}>
-          Greatest Moments on {dateLabel}
-        </h2>
-      </div>
+      <DGSectionHeader eyebrow="Across all of history" title={`Greatest Moments on ${dateLabel}`} />
 
       {/* Ranked list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
@@ -155,7 +127,9 @@ export default function DGGreatestMoments({
              the right edge — with the row padded so the chevron steps aside
              rather than sitting under the tap target. */
           <div key={m.id ?? i} style={{ position: 'relative' }}>
-            <button
+            <DGCard
+              as="button"
+              size="small"
               type="button"
               onClick={() => setSelected(m)}
               style={{
@@ -163,13 +137,11 @@ export default function DGGreatestMoments({
                 width: '100%', textAlign: 'left', font: 'inherit',
                 padding: '0.7rem 0.9rem', minHeight: 44,
                 paddingRight: savedSet ? '3.1rem' : '0.9rem',
-                borderRadius: theme.radiusSmall,
                 cursor: 'pointer',
-                border: `1px solid ${theme.accentGold}25`,
-                background: theme.bgCard,
-                boxShadow: theme.shadowSoft,
                 transition: 'transform 0.15s ease, box-shadow 0.15s ease',
               }}
+              /* The lift is this row's own, not the shell's — DGCard only
+                 states the resting shadow it returns to. */
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = theme.shadow; }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = theme.shadowSoft; }}
             >
@@ -223,7 +195,7 @@ export default function DGGreatestMoments({
 
               {/* Chevron */}
               <span aria-hidden="true" style={{ color: `${theme.accentGold}80`, fontSize: '0.8rem', flexShrink: 0 }}>›</span>
-            </button>
+            </DGCard>
             {savedSet && (
               <div style={{ position: 'absolute', top: '50%', right: 2, transform: 'translateY(-50%)', zIndex: 10 }}>
                 <TreasuryHeart

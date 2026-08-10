@@ -14,6 +14,9 @@ import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
 import { resolveLocation } from '@/lib/countries';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import DGModal from '@/components/dailygold/DGModal';
+import DGCard from '@/components/dailygold/DGCard';
+import DGHeroImage from '@/components/dailygold/DGHeroImage';
+import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import type { Theme } from '@/components/theme/themes';
 import type { SavedItemType } from '@/lib/saved-item-input';
 import type { OnFlagEarned } from '@/components/dailygold/useFlagEarn';
@@ -113,9 +116,9 @@ function DetailCard({
         </div>
       )}
       <span aria-hidden="true" style={{ fontSize: '1.1rem' }}>{card.emoji}</span>
-      <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: theme.accentGold, margin: '0.3rem 0 0.2rem' }}>
+      <DGEyebrow tracking="tight" color={theme.accentGold} style={{ margin: '0.3rem 0 0.2rem' }}>
         {label}
-      </p>
+      </DGEyebrow>
       <p style={{ fontFamily: theme.fontHeadline, fontSize: '0.85rem', fontWeight: 600, color: theme.textHeadline, margin: 0, lineHeight: 1.3 }}>
         {title}
       </p>
@@ -172,7 +175,9 @@ export default function DGDestination({
   const heroImg = imageUrl;
 
   return (
-    <section style={{ background: theme.bgCard, borderRadius: theme.radius, border: `1px solid ${theme.accentGold}15`, overflow: 'hidden' }}>
+    /* The one card in the section set that wears no shadow — it is the page's
+       widest block and the soft shadow reads as a bruise at that width. */
+    <DGCard as="section" borderAlpha="15" style={{ overflow: 'hidden', boxShadow: 'none' }}>
       {/* Compact hero: the whole image is one button that opens the full story.
           The heart is its own button, so it sits beside the hero button,
           never inside it. */}
@@ -189,20 +194,19 @@ export default function DGDestination({
             position: 'relative',
           }}
         >
-          {heroImg ? (
-            <img src={heroImg} alt={dest.name ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-          ) : (
-            <div style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${theme.bgSoft} 0%, ${theme.bgPrimary} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span aria-hidden="true" style={{ fontSize: '3rem', opacity: 0.2 }}>🌍</span>
-            </div>
-          )}
-          <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent 30%, ${theme.bgCard} 100%)` }} />
-          <span style={{ position: 'absolute', bottom: '1rem', left: '1.25rem', right: '4rem', display: 'flex', alignItems: 'center', gap: 10 }}>
-            {iso2 && <FlagSealMedallion countryCode={iso2} countryName={shortName} size="md" earned />}
-            <span style={{ fontFamily: theme.fontHeadline, fontSize: 'clamp(1.2rem, 3vw, 1.5rem)', fontWeight: 700, color: theme.textHeadline, lineHeight: 1.1 }}>
-              {shortName}
+          <DGHeroImage
+            imageUrl={heroImg}
+            aspectRatio="16 / 9"
+            alt={dest.name ?? ''}
+            fallback={<span aria-hidden="true" style={{ fontSize: '3rem', opacity: 0.2 }}>🌍</span>}
+          >
+            <span style={{ position: 'absolute', bottom: '1rem', left: '1.25rem', right: '4rem', display: 'flex', alignItems: 'center', gap: 10 }}>
+              {iso2 && <FlagSealMedallion countryCode={iso2} countryName={shortName} size="md" earned />}
+              <span style={{ fontFamily: theme.fontHeadline, fontSize: 'clamp(1.2rem, 3vw, 1.5rem)', fontWeight: 700, color: theme.textHeadline, lineHeight: 1.1 }}>
+                {shortName}
+              </span>
             </span>
-          </span>
+          </DGHeroImage>
         </button>
         {/* An unnamed destination has no stable id to file the save under, and
             would land in the treasury as a blank card — the same rule the detail
@@ -227,9 +231,9 @@ export default function DGDestination({
 
       <div style={{ padding: '1rem 1.25rem 1.25rem' }}>
         {/* Section label */}
-        <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: theme.accentSage, margin: '0 0 0.5rem' }}>
+        <DGEyebrow tracking="wide" style={{ margin: '0 0 0.5rem' }}>
           Where in the World
-        </p>
+        </DGEyebrow>
 
         {/* Atmosphere */}
         {dest.atmosphere && (
@@ -251,27 +255,19 @@ export default function DGDestination({
               section: 'destination',
             }}
           >
-            <div style={{ position: 'relative', aspectRatio: '16 / 9', background: theme.bgSoft }}>
-              {heroImg ? (
-                <img src={heroImg} alt={dest.name ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-              ) : (
-                <div style={{
-                  width: '100%', height: '100%',
-                  background: `linear-gradient(135deg, ${theme.bgSoft} 0%, ${theme.bgPrimary} 100%)`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <span aria-hidden="true" style={{ fontSize: '5rem', opacity: 0.2 }}>🌍</span>
-                </div>
-              )}
-              <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent 60%, ${theme.bgCard} 100%)` }} />
-              <p style={{
+            <DGHeroImage
+              imageUrl={heroImg}
+              aspectRatio="16 / 9"
+              alt={dest.name ?? ''}
+              scrimFrom={60}
+              fallback={<span aria-hidden="true" style={{ fontSize: '5rem', opacity: 0.2 }}>🌍</span>}
+            >
+              <DGEyebrow tracking="wide" color={theme.accentGold} style={{
                 position: 'absolute', bottom: '1rem', left: 'clamp(1.25rem, 4vw, 2rem)', right: 'clamp(1.25rem, 4vw, 2rem)',
-                fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.18em', textTransform: 'uppercase',
-                color: theme.accentGold, margin: 0,
               }}>
                 {dest.continent && `${dest.continent} · `}{dest.name}
-              </p>
-            </div>
+              </DGEyebrow>
+            </DGHeroImage>
 
             <div style={{ padding: 'clamp(1.25rem, 4vw, 2.5rem)' }}>
               {dest.atmosphere && (
@@ -298,6 +294,6 @@ export default function DGDestination({
           ))}
         </div>
       </div>
-    </section>
+    </DGCard>
   );
 }

@@ -12,6 +12,9 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
+import DGCard from '@/components/dailygold/DGCard';
+import DGHeroImage from '@/components/dailygold/DGHeroImage';
+import DGSectionHeader, { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import { resolveLocation } from '@/lib/countries';
 import type { OnThisDayRecord } from '@/app/(dg)/daily-gold-edition/queries';
@@ -237,23 +240,10 @@ export default function DGOnThisDay({
     <section style={{ background: 'transparent', borderRadius: 0, overflow: 'visible' }}>
       <div style={{ padding: '0' }}>
         {/* Header — fixed height, matches sibling columns exactly */}
-        <div style={{ marginBottom: '0.85rem' }}>
-          <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: theme.accentSage, margin: '0 0 0.35rem' }}>
-            Travel through time
-          </p>
-          <h2 style={{ fontFamily: theme.fontHeadline, fontSize: '1.4rem', fontWeight: 600, color: theme.textHeadline, margin: 0, lineHeight: 1.15 }}>
-            On This Day
-          </h2>
-        </div>
+        <DGSectionHeader eyebrow="Travel through time" title="On This Day" />
 
         {/* Card — year nav INSIDE, below the year heading */}
-        <div style={{
-          background: theme.bgCard,
-          borderRadius: theme.radiusSmall,
-          overflow: 'hidden',
-          border: `1px solid ${theme.accentGold}25`,
-          boxShadow: theme.shadowSoft,
-        }}>
+        <DGCard size="small" style={{ overflow: 'hidden' }}>
           {/* Year display + arrows — all inside the card */}
           <div style={{ padding: '1rem 1.25rem 0.75rem', borderBottom: `1px solid ${theme.accentGold}1F` }}>
             <p style={{ fontFamily: theme.fontHeadline, fontSize: '1.6rem', fontWeight: 600, color: theme.textHeadline, margin: '0 0 0.1rem', lineHeight: 1, textAlign: 'center' }}>
@@ -312,10 +302,7 @@ export default function DGOnThisDay({
                   )}
 
                   {ev.image_url && (
-                    <div style={{ position: 'relative' }}>
-                      <img src={ev.image_url} alt="" style={{ display: 'block', width: '100%', aspectRatio: '16/10', objectFit: 'cover' }} />
-                      <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent 40%, ${theme.bgCard} 100%)` }} />
-                    </div>
+                    <DGHeroImage imageUrl={ev.image_url} aspectRatio="16/10" scrimFrom={40} />
                   )}
 
                   <div style={{
@@ -325,9 +312,9 @@ export default function DGOnThisDay({
                     {ev.location && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.6rem' }}>
                         {iso2 && <FlagSealMedallion countryCode={iso2} countryName={ev.location} size="xs" earned />}
-                        <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: theme.accentSage, margin: 0 }}>
+                        <DGEyebrow tracking="tight">
                           {ev.location}
-                        </p>
+                        </DGEyebrow>
                       </div>
                     )}
 
@@ -373,7 +360,7 @@ export default function DGOnThisDay({
               )}
             </div>
           )}
-        </div>
+        </DGCard>
       </div>
     </section>
   );

@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
+import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import { THEME_KEYS } from '@/lib/theme-keys';
 
 // Only for the luminous title gradient — no light/dark gold tokens exist.
@@ -342,9 +343,9 @@ export default function DGHero({
           justifyContent: 'center',
         }}>
           <div aria-hidden="true" style={{ height: 1, width: 32, background: `${theme.accentGold}40` }} />
-          <span style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: theme.accentGold }}>
+          <DGEyebrow as="span" tracking="wide" color={theme.accentGold}>
             Begin exploring
-          </span>
+          </DGEyebrow>
           <div aria-hidden="true" style={{ height: 1, width: 32, background: `${theme.accentGold}40` }} />
         </div>
       </div>

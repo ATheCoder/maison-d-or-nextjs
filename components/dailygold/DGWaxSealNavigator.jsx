@@ -9,6 +9,7 @@
  */
 import { useState, useCallback, useOptimistic, useTransition } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
+import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 
 // SVG seal face — vintage engraved arrow as the clear primary mark,
@@ -245,16 +246,9 @@ export default function DGWaxSealNavigator({ currentDate, onDateChange, availabl
             {formatDisplayDate(displayDate)}
           </p>
           {pending && (
-            <p style={{
-              fontFamily: theme.fontBody,
-              fontSize: '0.7rem',
-              color: theme.accentGold,
-              margin: '0.25rem 0 0',
-              letterSpacing: '0.15em',
-              textTransform: 'uppercase',
-            }}>
+            <DGEyebrow tracking="tight" color={theme.accentGold} style={{ margin: '0.25rem 0 0' }}>
               Loading edition…
-            </p>
+            </DGEyebrow>
           )}
         </div>
 
@@ -269,16 +263,9 @@ export default function DGWaxSealNavigator({ currentDate, onDateChange, availabl
             have only Golden Stories and no edition row. Hidden on a day that
             isn't in the list at all (today, before anything is authored). */}
         {allDates.length > 1 && currentIndex < allDates.length && (
-          <p style={{
-            fontFamily: theme.fontBody,
-            fontSize: '0.7rem',
-            color: theme.textMuted,
-            margin: '0.35rem 0 0',
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
-          }}>
+          <DGEyebrow tracking="wide" color={theme.textMuted} style={{ margin: '0.35rem 0 0' }}>
             Day {currentIndex + 1} of {allDates.length}
-          </p>
+          </DGEyebrow>
         )}
       </div>
 

@@ -20,6 +20,8 @@
 import Link from 'next/link';
 import { useTheme } from '@/components/theme/ThemeContext';
 import DGModal from '@/components/dailygold/DGModal';
+import DGHeroImage from '@/components/dailygold/DGHeroImage';
+import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import { TOKEN_META } from '@/components/treasury/tokenMeta';
 
 function formatEditionDate(value) {
@@ -60,30 +62,6 @@ function BodyMissing({ item, theme }) {
   );
 }
 
-function Hero({ imageUrl, aspectRatio, fallbackMark, theme, children }) {
-  return (
-    <div style={{ position: 'relative', background: theme.bgSoft }}>
-      {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt=""
-          style={{ display: 'block', width: '100%', aspectRatio, objectFit: 'cover' }}
-        />
-      ) : (
-        <div style={{
-          width: '100%', aspectRatio,
-          background: `linear-gradient(135deg, ${theme.bgSoft} 0%, ${theme.bgPrimary} 100%)`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <span aria-hidden="true" style={{ fontSize: '4rem', opacity: 0.2 }}>{fallbackMark}</span>
-        </div>
-      )}
-      <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent 30%, ${theme.bgCard} 100%)` }} />
-      {children}
-    </div>
-  );
-}
-
 /** "Kept from" line + the deliberate way back to the full day. */
 function KeepsakeFoot({ item, theme }) {
   const dateLabel = formatEditionDate(item.edition_date);
@@ -95,12 +73,9 @@ function KeepsakeFoot({ item, theme }) {
       marginTop: '1.75rem', paddingTop: '1rem',
       borderTop: `1px solid ${theme.accentGold}25`,
     }}>
-      <p style={{
-        fontFamily: theme.fontBody, fontSize: '0.62rem', letterSpacing: '0.14em',
-        textTransform: 'uppercase', color: theme.textMuted, margin: 0,
-      }}>
+      <DGEyebrow tracking="tight" color={theme.textMuted} style={{ fontSize: '0.62rem' }}>
         Kept from {dateLabel}
-      </p>
+      </DGEyebrow>
       <Link
         href={`/daily-gold-edition?date=${item.edition_date}`}
         style={{
@@ -121,15 +96,15 @@ function KeepsakeFoot({ item, theme }) {
 function NewsBody({ item, detail, loading, theme }) {
   return (
     <>
-      <Hero imageUrl={detail?.image_url ?? item.item_image_url} aspectRatio="16/9" fallbackMark="✨" theme={theme} />
+      <DGHeroImage imageUrl={detail?.image_url ?? item.item_image_url} aspectRatio="16/9" fallbackMark="✨" />
       <div style={{ padding: '1.5rem 2rem 2.5rem' }}>
         <h2 style={{ fontFamily: theme.fontHeadline, fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 700, color: theme.textHeadline, margin: '0 0 1rem', lineHeight: 1.2 }}>
           {detail?.headline ?? item.item_title}
         </h2>
         {(detail?.location ?? item.country_name) && (
-          <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: theme.accentSage, margin: '0 0 1.5rem' }}>
+          <DGEyebrow tracking="tight" style={{ margin: '0 0 1.5rem' }}>
             <span aria-hidden="true">📍</span> {detail?.location ?? item.country_name}
-          </p>
+          </DGEyebrow>
         )}
         <div style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.95rem', color: theme.textBody, lineHeight: 1.9 }}>
           {detail?.description
@@ -147,7 +122,7 @@ function MomentBody({ item, detail, loading, theme }) {
   const year = detail?.year ?? item.item_subtitle;
   return (
     <>
-      <Hero imageUrl={detail?.image_url ?? item.item_image_url} aspectRatio="16/10" fallbackMark="✦" theme={theme}>
+      <DGHeroImage imageUrl={detail?.image_url ?? item.item_image_url} aspectRatio="16/10" fallbackMark="✦">
         {detail?.rank != null && (
           <div style={{
             position: 'absolute', top: 14, left: 14,
@@ -161,15 +136,12 @@ function MomentBody({ item, detail, loading, theme }) {
             </span>
           </div>
         )}
-      </Hero>
+      </DGHeroImage>
       <div style={{ padding: '1.5rem 2rem 2rem' }}>
         {year && (
-          <p style={{
-            fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.2em',
-            textTransform: 'uppercase', color: theme.accentGold, margin: '0 0 0.5rem',
-          }}>
+          <DGEyebrow tracking="wide" color={theme.accentGold} style={{ margin: '0 0 0.5rem' }}>
             {year}{detail?.location ? ` · ${detail.location}` : ''}
-          </p>
+          </DGEyebrow>
         )}
         <h2 style={{
           fontFamily: theme.fontHeadline,
@@ -194,15 +166,13 @@ function MomentBody({ item, detail, loading, theme }) {
 function DestinationBody({ item, detail, loading, theme }) {
   return (
     <>
-      <Hero imageUrl={detail?.image_url ?? item.item_image_url} aspectRatio="16/9" fallbackMark="🌍" theme={theme}>
-        <p style={{
+      <DGHeroImage imageUrl={detail?.image_url ?? item.item_image_url} aspectRatio="16/9" fallbackMark="🌍">
+        <DGEyebrow tracking="wide" color={theme.accentGold} style={{
           position: 'absolute', bottom: '1rem', left: 'clamp(1.25rem, 4vw, 2rem)', right: 'clamp(1.25rem, 4vw, 2rem)',
-          fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.18em', textTransform: 'uppercase',
-          color: theme.accentGold, margin: 0,
         }}>
           {detail?.continent ? `${detail.continent} · ` : ''}{detail?.name ?? item.item_title}
-        </p>
-      </Hero>
+        </DGEyebrow>
+      </DGHeroImage>
       <div style={{ padding: 'clamp(1.25rem, 4vw, 2.5rem)' }}>
         {detail?.atmosphere && (
           <p style={{ fontFamily: theme.fontHeadline, fontStyle: 'italic', fontSize: '1.15rem', color: theme.textBody, lineHeight: 1.85, margin: '0 0 1.5rem', borderLeft: `3px solid ${theme.accentGold}40`, paddingLeft: '1rem' }}>
@@ -234,12 +204,9 @@ function TokenBody({ item, detail, loading, theme }) {
       }}>
         {meta.emoji}
       </div>
-      <p style={{
-        fontFamily: theme.fontBody, fontSize: '0.62rem', letterSpacing: '0.22em',
-        textTransform: 'uppercase', color: theme.accentGold, margin: '0 0 0.75rem',
-      }}>
+      <DGEyebrow tracking="wide" color={theme.accentGold} style={{ fontSize: '0.62rem', margin: '0 0 0.75rem' }}>
         {meta.label}{detail?.language ? ` · ${detail.language}` : ''}{item.country_name ? ` · ${item.country_name}` : ''}
-      </p>
+      </DGEyebrow>
       <h2 style={{
         fontFamily: theme.fontHeadline, fontStyle: 'italic',
         fontSize: 'clamp(1.3rem, 3vw, 1.7rem)', fontWeight: 600,

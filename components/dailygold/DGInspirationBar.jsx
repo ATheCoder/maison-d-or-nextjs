@@ -9,6 +9,7 @@
  * Wire to a `daily_quote` field on DailyGoldEdition when ready.
  */
 import { useTheme } from '@/components/theme/ThemeContext';
+import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 
 const QUOTES = [
   { text: "The more that you read, the more things you will know. The more that you learn, the more places you'll go.", author: "Dr. Seuss" },
@@ -52,17 +53,9 @@ export default function DGInspirationBar({ edition }) {
       {/* Heading cluster */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
         <div aria-hidden="true" style={{ width: 40, height: 1, background: `${theme.accentGold}80` }} />
-        <p style={{
-          fontFamily: theme.fontBody,
-          fontSize: '0.72rem',
-          letterSpacing: '0.24em',
-          textTransform: 'uppercase',
-          color: theme.accentGold,
-          margin: 0,
-          fontWeight: 500,
-        }}>
+        <DGEyebrow tracking="hero" color={theme.accentGold} style={{ fontSize: '0.72rem', fontWeight: 500 }}>
           Daily Dose of Inspiration
-        </p>
+        </DGEyebrow>
         <div aria-hidden="true" style={{ width: 40, height: 1, background: `${theme.accentGold}80` }} />
       </div>
 
@@ -94,17 +87,9 @@ export default function DGInspirationBar({ edition }) {
 
       {/* Attribution */}
       {quote.author && (
-        <p style={{
-          fontFamily: theme.fontBody,
-          fontSize: '0.72rem',
-          color: theme.accentGold,
-          margin: 0,
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-          fontWeight: 500,
-        }}>
+        <DGEyebrow tracking="tight" color={theme.accentGold} style={{ fontSize: '0.72rem', fontWeight: 500 }}>
           {quote.author}
-        </p>
+        </DGEyebrow>
       )}
     </div>
   );

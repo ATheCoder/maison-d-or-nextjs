@@ -12,6 +12,9 @@ import { useCallback, useRef, useState } from 'react';
 import { useTheme } from '@/components/theme/ThemeContext';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import DGModal from '@/components/dailygold/DGModal';
+import DGCard from '@/components/dailygold/DGCard';
+import DGHeroImage from '@/components/dailygold/DGHeroImage';
+import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import { resolveLocation } from '@/lib/countries';
 import type { GoodNewsRecord } from '@/app/(dg)/daily-gold-edition/queries';
 import type { OnFlagEarned } from '@/components/dailygold/useFlagEarn';
@@ -32,24 +35,7 @@ function NewsModal({ item, onClose }: { item: GoodNewsRecord; onClose: () => voi
       }}
     >
       {/* Hero image */}
-      <div style={{ position: 'relative', background: theme.bgSoft }}>
-        {item.image_url ? (
-          <img
-            src={item.image_url}
-            alt=""
-            style={{ display: 'block', width: '100%', aspectRatio: '16/9', objectFit: 'cover' }}
-          />
-        ) : (
-          <div style={{
-            width: '100%', aspectRatio: '16/9',
-            background: `linear-gradient(135deg, ${theme.bgSoft} 0%, ${theme.bgPrimary} 100%)`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <span aria-hidden="true" style={{ fontSize: '4rem', opacity: 0.2 }}>✨</span>
-          </div>
-        )}
-        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent 30%, ${theme.bgCard} 100%)` }} />
-      </div>
+      <DGHeroImage imageUrl={item.image_url} aspectRatio="16/9" fallbackMark="✨" />
 
       {/* Story content */}
       <div style={{ padding: '1.5rem 2rem 2.5rem' }}>
@@ -58,9 +44,9 @@ function NewsModal({ item, onClose }: { item: GoodNewsRecord; onClose: () => voi
         </h2>
 
         {item.location && (
-          <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: theme.accentSage, margin: '0 0 1.5rem' }}>
+          <DGEyebrow tracking="tight" style={{ margin: '0 0 1.5rem' }}>
             <span aria-hidden="true">📍</span> {item.location}
-          </p>
+          </DGEyebrow>
         )}
 
         <div style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.95rem', color: theme.textBody, lineHeight: 1.9 }}>
@@ -116,9 +102,11 @@ export default function DGGoodNews({
     <section style={{ background: 'transparent', borderRadius: 0, overflow: 'visible' }}>
       {/* Header */}
       <div style={{ padding: '0' }}>
-        <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: theme.accentSage, margin: '0 0 0.5rem' }}>
+        {/* Not DGSectionHeader: this section's heading is the page's lead, a
+            size up from the column sections, so only the eyebrow is shared. */}
+        <DGEyebrow tracking="hero" style={{ margin: '0 0 0.5rem' }}>
           Stories of hope, kindness and progress
-        </p>
+        </DGEyebrow>
         <h2 style={{ fontFamily: theme.fontHeadline, fontSize: '1.6rem', fontWeight: 600, color: theme.textHeadline, margin: '0 0 1.25rem', lineHeight: 1.15 }}>
           Good News of the Day
         </h2>
@@ -127,27 +115,18 @@ export default function DGGoodNews({
             sits beside the card button rather than inside it. */}
         {primary && (
           <div style={{ position: 'relative', marginBottom: '1rem' }}>
-            <button
+            <DGCard
+              as="button"
+              size="small"
               type="button"
               onClick={() => openNews(primary)}
               style={{
                 display: 'block', width: '100%', textAlign: 'left',
                 font: 'inherit', padding: 0, cursor: 'pointer',
-                borderRadius: theme.radiusSmall,
                 overflow: 'hidden',
-                border: `1px solid ${theme.accentGold}25`,
-                background: theme.bgCard,
-                boxShadow: theme.shadowSoft,
               }}
             >
-              <div style={{ position: 'relative' }}>
-                {primaryImg ? (
-                  <img src={primaryImg} alt="" style={{ display: 'block', width: '100%', aspectRatio: '16/10', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '100%', aspectRatio: '16/10', background: `linear-gradient(135deg, ${theme.bgSoft} 0%, ${theme.bgPrimary} 100%)` }} />
-                )}
-                <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent 30%, ${theme.bgCard} 100%)` }} />
-              </div>
+              <DGHeroImage imageUrl={primaryImg} aspectRatio="16/10" />
               <div style={{ padding: '1rem 1.25rem 1.25rem' }}>
                 <h3 style={{ fontFamily: theme.fontHeadline, fontSize: '1.05rem', fontWeight: 600, color: theme.textHeadline, margin: '0 0 0.5rem', lineHeight: 1.3, paddingRight: '2.5rem' }}>
                   {primary.headline}
@@ -156,7 +135,7 @@ export default function DGGoodNews({
                   {(primary.description || '').split('.').slice(0, 2).join('.').trim() + '.'}
                 </p>
               </div>
-            </button>
+            </DGCard>
             {savedSet && (
               <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
                 <TreasuryHeart
@@ -182,7 +161,9 @@ export default function DGGoodNews({
             right edge, with the text padded clear of the 44px tap target. */}
         {rest.slice(0, 9).map((item, i) => (
           <div key={item.id ?? i} style={{ position: 'relative', marginBottom: '0.4rem' }}>
-            <button
+            <DGCard
+              as="button"
+              size="small"
               type="button"
               onClick={() => openNews(item)}
               style={{
@@ -190,11 +171,7 @@ export default function DGGoodNews({
                 width: '100%', textAlign: 'left', font: 'inherit',
                 padding: '0.65rem 0.85rem', minHeight: 44,
                 paddingRight: savedSet ? '3.1rem' : '0.85rem',
-                borderRadius: theme.radiusSmall,
                 cursor: 'pointer',
-                border: `1px solid ${theme.accentGold}25`,
-                background: theme.bgCard,
-                boxShadow: theme.shadowSoft,
               }}
             >
               {/* Thumbnail */}
@@ -218,7 +195,7 @@ export default function DGGoodNews({
                   </p>
                 )}
               </div>
-            </button>
+            </DGCard>
             {savedSet && (
               <div style={{ position: 'absolute', top: '50%', right: 2, transform: 'translateY(-50%)', zIndex: 10 }}>
                 <TreasuryHeart
