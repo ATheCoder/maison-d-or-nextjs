@@ -217,6 +217,9 @@ export default function DGOnThisDay({
   // Award a flag seal for each event location the child actually sees. Keyed by
   // year and position, because a year can hold several events in different
   // countries and each is its own collectible.
+  //
+  // Currently inert: the edition page deliberately withholds `onFlagEarned`
+  // from this section, so nothing is earned here until that prop comes back.
   const earnedKeys = useRef(new Set<string>());
   useEffect(() => {
     for (const ev of yearEvents) {

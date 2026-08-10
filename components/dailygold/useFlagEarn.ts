@@ -68,8 +68,8 @@ export function useFlagEarn({ editionDate }: { editionDate?: string } = {}) {
     /**
      * A visitor with no session has no passport to earn into, so the action
      * would only answer `noop` — don't ask. Whether that silence is worth
-     * breaking depends on how the earn was triggered: good news and On This Day
-     * earn from a mount effect, and a toast that appears on its own the moment
+     * breaking depends on how the earn was triggered: good news earns from a
+     * mount effect, and a toast that appears on its own the moment
      * the page loads is an interruption, not an invitation. The destination
      * earns from a press (opening the country's story), which is a visitor
      * reaching for the thing an account would keep — that one gets answered.

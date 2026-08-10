@@ -249,8 +249,13 @@ function DailyGoldDay({
             <DGGoodNews items={goodNews} onFlagEarned={earn} savedSet={savedSet} editionDate={viewedDate} />
           </TrackedSection>
         )}
+        {/* On This Day does not award flag seals for now: its locations are
+            wherever history happened, not places the child was taken, so a
+            twenty-year band handed out flags faster than every other surface
+            combined. The section still keeps its earning code — re-enable by
+            passing `onFlagEarned={earn}` again. */}
         <TrackedSection id="on_this_day">
-          <DGOnThisDay events={onThisDay} onFlagEarned={earn} savedSet={savedSet} editionDate={viewedDate} />
+          <DGOnThisDay events={onThisDay} savedSet={savedSet} editionDate={viewedDate} />
         </TrackedSection>
         <TrackedSection id="greatest_moments">
           <DGGreatestMoments moments={greatestMoments} savedSet={savedSet} editionDate={viewedDate} />
