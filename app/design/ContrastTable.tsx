@@ -32,6 +32,7 @@ const TOKENS = [
   '--btn-primary-bg-hover',
   '--btn-ghost-fg-hover',
   '--btn-ghost-bg-hover',
+  '--heart-saved',
 ] as const;
 
 const PAIRS: { fg: string; bg: string; use: string; body: boolean; scopes: Scope[] }[] = [
@@ -48,6 +49,11 @@ const PAIRS: { fg: string; bg: string; use: string; body: boolean; scopes: Scope
   { fg: '--btn-primary-fg', bg: '--btn-primary-bg', use: 'Primary button, rest', body: true, scopes: SCOPES },
   { fg: '--btn-primary-fg-hover', bg: '--btn-primary-bg-hover', use: 'Primary button, hover', body: true, scopes: SCOPES },
   { fg: '--btn-ghost-fg-hover', bg: '--btn-ghost-bg-hover', use: 'Ghost button, hover', body: true, scopes: SCOPES },
+  // The heart is a glyph, not text: WCAG 1.4.11 non-text contrast — the 3.0
+  // column is the one that must pass. The bare variant sits straight on the
+  // page; the chip variant sits on the raised surface.
+  { fg: '--heart-saved', bg: '--surface-page', use: 'Saved heart, bare (non-text, 3.0 floor)', body: false, scopes: SCOPES },
+  { fg: '--heart-saved', bg: '--surface-raised', use: 'Saved heart on its chip (non-text, 3.0 floor)', body: false, scopes: SCOPES },
 ];
 
 function parseColor(value: string): Rgb | null {

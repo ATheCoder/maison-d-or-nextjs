@@ -1,5 +1,6 @@
 import Button from '@/components/ds/Button';
 import Eyebrow from '@/components/ds/Eyebrow';
+import HeartToggle from '@/components/ds/HeartToggle';
 import Quote from '@/components/ds/Quote';
 import Rule from '@/components/ds/Rule';
 import SectionSurface from '@/components/ds/SectionSurface';
@@ -41,6 +42,15 @@ function Specimen({ title }: { title: string }) {
         <Button variant="link" loading>
           Gathering wonder
         </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-4">
+        <HeartToggle aria-label="Save this story" />
+        <HeartToggle aria-label="Save this story" defaultPressed />
+        <HeartToggle variant="chip" aria-label="Save this story" />
+        <HeartToggle variant="chip" aria-label="Save this story" defaultPressed />
+        <HeartToggle aria-label="Save this story" disabled />
+        <HeartToggle variant="chip" aria-label="Save this story" disabled />
       </div>
 
       <div className="space-y-4">

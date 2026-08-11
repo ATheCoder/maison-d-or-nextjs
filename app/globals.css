@@ -105,6 +105,13 @@
      walnut drop on light grounds; the dark scopes repaint it as a
      candle-glow gold halo instead of a shadow (light radiates on dark). */
   --btn-hover-shadow: 0 4px 12px color-mix(in srgb, var(--palette-walnut) 30%, transparent);
+  /* §4 — the saved heart's sealing-wax color. Terracotta on parchment (the
+     Daily Gold mock's wax red, already in the raw palette); the dark scopes
+     brighten it to rose the same way ink brightens to ink-on-dark, because
+     terracotta only clears the 3:1 non-text floor on light grounds (measured
+     in the §5.6 table). Hearts stay in the warm-red family everywhere —
+     never gold, which already means "interactive accent". */
+  --heart-saved: var(--palette-terracotta);
 
   /* §2 — face stacks. --font-fraunces/--font-instrument-sans are set by
      next/font on <html> (app/layout.tsx); the var() fallbacks keep the
@@ -161,6 +168,7 @@
   --btn-ghost-bg-hover: var(--palette-gold-bright);
   --btn-ghost-fg-hover: var(--palette-espresso);
   --btn-hover-shadow: 0 0 24px color-mix(in srgb, var(--palette-gold-bright) 45%, transparent);
+  --heart-saved: var(--palette-rose);
 }
 
 [data-surface="navy"],
@@ -180,6 +188,7 @@
   --btn-ghost-bg-hover: var(--palette-gold-bright);
   --btn-ghost-fg-hover: var(--palette-navy);
   --btn-hover-shadow: 0 0 24px color-mix(in srgb, var(--palette-gold-bright) 45%, transparent);
+  --heart-saved: var(--palette-rose);
 }
 
 /* §6 — Tailwind mapping. `inline` is load-bearing: utilities must
@@ -505,6 +514,150 @@
   animation: btn-spin 1s linear infinite;
   @media (prefers-reduced-motion: reduce) {
     animation: btn-wink 1.6s ease-in-out infinite;
+  }
+}
+
+/* §4 — Heart save toggle. An outline heart in secondary ink that fills
+   with sealing wax (--heart-saved, surface-scoped) when pressed. Two
+   dressings: bare (the base utility — just the glyph on whatever ground
+   it sits on, still a 44px touch target) and heart-toggle-chip, which
+   adds the mock's circular raised chip. A circle, not a pill — §4's
+   no-pill rule governs labelled buttons; an icon toggle has no label to
+   stretch. Same asymmetric timing as btn-motion, but the lift is a
+   scale (a circle has no "up").
+
+   Saving BURSTS — the X/Twitter like move, gone festival: the heart
+   blooms in from scale 0 with an overshoot behind a brief ignition
+   flash, and twelve sparks scatter like fireworks. Each spark carries
+   its own inline stage directions (--spark-angle/-color/-reach/-size/
+   -delay, set by the component): a different accent-palette color per
+   particle, uneven angles and distances so nothing reads as a circle,
+   staggered launches, and a twinkle on the way out. All of it runs
+   together, none on unsave, and every burst piece rests at opacity 0
+   so nothing shows between toggles. The burst rides [data-burst],
+   which the component sets only after the first user toggle — keyed
+   to aria-pressed alone it would also fire once per already-saved
+   heart on every page load. */
+@keyframes heart-bloom {
+  0% { transform: scale(0); }
+  55% { transform: scale(1.3); }
+  75% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+@keyframes heart-flash {
+  0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
+@keyframes heart-spark {
+  0% { transform: rotate(var(--spark-angle)) translateY(-5px) scale(0); opacity: 0; }
+  10% { opacity: 1; transform: rotate(var(--spark-angle)) translateY(-9px) scale(1.1); }
+  45% { transform: rotate(var(--spark-angle)) translateY(var(--spark-reach)) scale(1); opacity: 1; }
+  58% { opacity: 0.35; } /* twinkle out… */
+  70% { opacity: 0.9; transform: rotate(var(--spark-angle)) translateY(calc(var(--spark-reach) - 3px)) scale(0.75); } /* …and back */
+  100% { transform: rotate(var(--spark-angle)) translateY(calc(var(--spark-reach) - 7px)) scale(0); opacity: 0; }
+}
+@utility heart-toggle {
+  position: relative; /* anchors the burst layer */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem; /* 44px — the touch-target floor */
+  height: 2.75rem;
+  border-radius: 50%; /* even bare: keeps the focus ring round */
+  color: var(--text-secondary);
+  transition-property: color, border-color, transform, box-shadow;
+  transition-duration: 400ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  & svg {
+    fill: transparent;
+    transform-origin: center;
+    transition: fill 200ms ease;
+  }
+  /* Burst layer: ignition flash (::before) + twelve sparks (<i>), all
+     centered, all invisible at rest. Each spark is styled entirely by
+     its inline custom properties. Selectors are kept ONE nesting level
+     deep on purpose: Tailwind v4's @utility silently drops rules
+     nested inside a descendant block (& .x { &::before }) while
+     compiling & .x::before fine. */
+  & .heart-burst {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  & .heart-burst::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--palette-gold-bright) 85%, transparent) 0%, transparent 70%);
+    /* Same vibrance treatment as the sparks; muted fallback above. */
+    background: radial-gradient(circle, oklch(from var(--palette-gold-bright) calc(l * 1.08) calc(c * 2) h / 0.85) 0%, transparent 70%);
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 0;
+  }
+  & .heart-burst i {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: var(--spark-size, 4px);
+    height: var(--spark-size, 4px);
+    margin: calc(var(--spark-size, 4px) / -2) 0 0 calc(var(--spark-size, 4px) / -2);
+    border-radius: 50%;
+    background-color: var(--spark-color, var(--accent));
+    /* Fireworks get to be loud: the heritage palette is deliberately
+       muted, so the burst re-saturates each spark's own palette color —
+       chroma ×2.4 with a small lightness lift — for the 900ms it lives.
+       Browsers without relative color keep the muted original above. */
+    background-color: oklch(from var(--spark-color, var(--accent)) calc(l * 1.12) calc(c * 2.4) h);
+    opacity: 0;
+  }
+  @media (hover: hover) {
+    &:hover {
+      transition-duration: 140ms;
+      color: var(--heart-saved);
+      transform: scale(1.08);
+    }
+  }
+  &:active {
+    transition-duration: 60ms;
+    transform: scale(0.9);
+  }
+  &[aria-pressed='true'] {
+    color: var(--heart-saved);
+    & svg { fill: currentColor; }
+  }
+  &[aria-pressed='true'][data-burst] svg { animation: heart-bloom 0.45s ease; }
+  &[aria-pressed='true'][data-burst] .heart-burst::before { animation: heart-flash 0.4s ease-out; }
+  &[aria-pressed='true'][data-burst] .heart-burst i {
+    animation: heart-spark 0.9s cubic-bezier(0.16, 1, 0.3, 1) var(--spark-delay, 0ms);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    & { transition-duration: 0s; }
+    &:hover,
+    &:active { transform: none; }
+    &[aria-pressed='true'][data-burst] svg,
+    &[aria-pressed='true'][data-burst] .heart-burst::before,
+    &[aria-pressed='true'][data-burst] .heart-burst i { animation: none; }
+  }
+}
+/* The chip dressing: the raised circle from the Daily Gold mock. Only
+   the chip carries the hover elevation — a shadow under a bare glyph
+   would read as a smudge on the page. */
+@utility heart-toggle-chip {
+  border: 1px solid var(--border-fine);
+  background-color: var(--surface-raised);
+  @media (hover: hover) {
+    &:hover {
+      border-color: color-mix(in srgb, var(--heart-saved) 55%, transparent);
+      box-shadow: var(--btn-hover-shadow);
+    }
+  }
+  &:active { box-shadow: none; }
+  &[aria-pressed='true'] {
+    border-color: color-mix(in srgb, var(--heart-saved) 55%, transparent);
   }
 }
 
