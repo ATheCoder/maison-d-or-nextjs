@@ -110,10 +110,10 @@ export default function ContrastTable() {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-left" style={{ minWidth: '40rem' }}>
+        <table className="w-full border-collapse text-left" style={{ minWidth: '46rem' }}>
           <thead>
             <tr className="border-b border-fine">
-              {['Pair', 'Use', 'Ratio', 'AA 4.5', 'AA-Large 3.0'].map((h) => (
+              {['Pair', 'Sample', 'Use', 'Ratio', 'AA 4.5', 'AA-Large 3.0'].map((h) => (
                 <th key={h} className="type-label-editorial py-2 pr-4 font-normal text-secondary">
                   {h}
                 </th>
@@ -123,7 +123,7 @@ export default function ContrastTable() {
           {SCOPES.map((scope) => (
             <tbody key={scope}>
               <tr>
-                <td colSpan={5} className="type-body-ui pt-6 pb-2 text-accent">
+                <td colSpan={6} className="type-body-ui pt-6 pb-2 text-accent">
                   {scope === 'light' ? 'Light (parchment)' : scope === 'dark' ? 'Dark (espresso)' : 'Navy'}
                 </td>
               </tr>
@@ -139,18 +139,20 @@ export default function ContrastTable() {
                 return (
                   <tr key={pair.fg + pair.bg} className="border-b border-fine">
                     <td className="type-body-ui py-2.5 pr-4 whitespace-nowrap">
-                      <span
-                        aria-hidden
-                        className="mr-2 inline-block h-3 w-3 rounded-sm border border-fine align-middle"
-                        style={{ backgroundColor: `var(${pair.bg})` }}
-                      >
-                        <span
-                          className="mx-auto mt-0.5 block h-1.5 w-1.5 rounded-sm"
-                          style={{ backgroundColor: `var(${pair.fg})` }}
-                        />
-                      </span>
                       <span className="text-primary">{pair.fg.slice(2)}</span>
                       <span className="text-faint"> / {pair.bg.slice(2)}</span>
+                    </td>
+                    <td className="py-2.5 pr-4">
+                      {/* Scoped wrapper so the vars resolve to this tbody's
+                          surface, not the page's — light needs no attribute. */}
+                      <span aria-hidden data-surface={scope === 'light' ? undefined : scope} className="inline-block">
+                        <span
+                          className="type-body-ui inline-flex h-8 min-w-14 items-center justify-center rounded-sm border border-fine px-3"
+                          style={{ backgroundColor: `var(${pair.bg})`, color: `var(${pair.fg})` }}
+                        >
+                          {pair.fg === '--heart-saved' ? '♥' : 'Aa'}
+                        </span>
+                      </span>
                     </td>
                     <td className="type-caption py-2.5 pr-4">{pair.use}</td>
                     <td className="type-body-ui py-2.5 pr-4 text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>
