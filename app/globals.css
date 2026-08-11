@@ -28,6 +28,486 @@
   --font-script: 'Great Vibes', cursive;
 }
 
+/* ============================================================
+   PHASE 1 DESIGN SYSTEM — docs/DesignSystemP1.md §1 + §6
+   Raw palette carries a --palette- prefix, deviating from the
+   spec's bare names, because the legacy block above already owns
+   --ivory and --gold with different values — and the Daily Gold
+   themes repaint --gold at runtime. Components never see raw
+   names anyway (§1.2): they consume only the semantic tokens
+   below, which follow the spec verbatim.
+   ============================================================ */
+:root {
+  /* raw palette — foundation */
+  --palette-ivory: #FAF3E3;
+  --palette-parchment: #F2E7D0;
+  --palette-sand: #E6D5B4;
+  --palette-walnut: #5E4327;
+  --palette-espresso: #2C1F16;
+  --palette-navy: #1B2A40;
+
+  /* raw palette — accents */
+  --palette-gold: #B4863C;
+  --palette-gold-bright: #D9B36A;
+  --palette-forest: #2F4A38;
+  --palette-sage: #93A188;
+  --palette-terracotta: #A6553E;
+  --palette-sea: #4E7488;
+  --palette-rose: #C0908F;
+  --palette-lavender: #A195AE;
+
+  /* raw palette — ink */
+  --palette-ink: #2B2118;
+  --palette-ink-muted: #6E5F4B;
+  --palette-ink-faint: #9A8B72;
+  --palette-ink-on-dark: #F4EBDA;
+  --palette-ink-on-dark-muted: #C8BBA2;
+
+  /* semantic — surfaces */
+  --surface-page: var(--palette-parchment);
+  --surface-raised: var(--palette-ivory);
+  --surface-tint: var(--palette-sand);
+  --surface-dark: var(--palette-espresso);
+  --surface-navy: var(--palette-navy);
+  --surface-wood: var(--palette-walnut);
+
+  /* semantic — text */
+  --text-primary: var(--palette-ink);
+  --text-secondary: var(--palette-ink-muted);
+  --text-faint: var(--palette-ink-faint);
+
+  /* semantic — accent */
+  --accent: var(--palette-gold);
+  --accent-strong: var(--palette-gold);
+
+  /* semantic — lines */
+  --border-fine: color-mix(in srgb, var(--palette-walnut) 25%, transparent);
+  --border-accent: color-mix(in srgb, var(--palette-gold) 55%, transparent);
+
+  /* semantic — interaction */
+  --focus-ring: var(--palette-gold);
+
+  /* §4 — Button coats. Same scoping story as every token above: the dark
+     blocks below repaint these, so one <Button> wears a different coat per
+     surface. Hover swaps BOTH coats (fill and ink) — the fill/ink pairs all
+     clear AA 4.5, measured live in the §5.6 table: gold+ink 4.8,
+     gold-bright+espresso 8.1, gold-bright+navy 7.3. Ghost's rest state needs
+     no tokens (text-primary over transparent + border-fine); only its hover
+     fill is named here — on dark grounds it fills with the primary's rest
+     coat, a deliberate ladder: transparent → gold-bright → ivory. */
+  --btn-primary-bg: var(--palette-espresso);
+  --btn-primary-fg: var(--palette-ink-on-dark);
+  --btn-primary-bg-hover: var(--palette-gold);
+  --btn-primary-fg-hover: var(--palette-ink);
+  --btn-ghost-bg-hover: var(--palette-espresso);
+  --btn-ghost-fg-hover: var(--palette-ink-on-dark);
+  /* Hover elevation, tuned against the Daily Gold buttons mock: a soft
+     walnut drop on light grounds; the dark scopes repaint it as a
+     candle-glow gold halo instead of a shadow (light radiates on dark). */
+  --btn-hover-shadow: 0 4px 12px color-mix(in srgb, var(--palette-walnut) 30%, transparent);
+
+  /* §2 — face stacks. --font-fraunces/--font-instrument-sans are set by
+     next/font on <html> (app/layout.tsx); the var() fallbacks keep the
+     .design-sync standalone compile (where next/font never runs) on the
+     legacy loaded faces. */
+  --face-display: var(--font-fraunces, 'Playfair Display', Georgia, serif);
+  --face-sans: var(--font-instrument-sans, 'Lato', system-ui, sans-serif);
+
+  /* §2.2 — type scale sizes (fluid via clamp) */
+  --type-display-hero: clamp(2.75rem, 6vw, 4.75rem);
+  --type-display-section: clamp(1.75rem, 3.5vw, 2.5rem);
+  --type-display-story: clamp(1.25rem, 2vw, 1.5rem);
+  --type-body: 1.0625rem;
+  --type-body-ui: 0.9375rem;
+  --type-label-editorial: 0.75rem;
+  --type-quote: clamp(1.25rem, 2vw, 1.625rem);
+  --type-caption: 0.8125rem;
+
+  /* §3.1 — paper grain. One tileable feTurbulence tile (~1 KB, budget is
+     30 KB) shared by .texture-paper and the section treatments. Strength and
+     blend are variables so the dark scopes below can repaint them the same way
+     they repaint color tokens — and so the §5 playground can toggle grain off
+     with a single `--grain-image: none`. The feComponentTransfer discrete
+     tables are load-bearing: raw fractalNoise averages to a near-uniform
+     mid-gray whose multiply/overlay effect at 5% is sub-1% everywhere — the
+     A/B toggle showed nothing. Gating alpha to the top ~40% of noise values
+     yields sparse distinct flecks that read at spec-range opacity. */
+  --grain-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='0 0 0 0.6 1'/%3E%3CfeFuncR type='discrete' tableValues='0 0.1 0.3 0.6 1'/%3E%3CfeFuncG type='discrete' tableValues='0 0.1 0.3 0.6 1'/%3E%3CfeFuncB type='discrete' tableValues='0 0.1 0.3 0.6 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)'/%3E%3C/svg%3E");
+  --grain-opacity: 0.06;
+  --grain-blend: multiply;
+}
+
+/* Dark editorial sections re-scope the same semantic names. The .section-*
+   classes (§3.2) share these blocks because CSS cannot set an attribute: the
+   spec's ".section-dark = data-surface + grain + vignette" is honoured by
+   letting the class re-scope the very same tokens. Grain reads less on dark,
+   so it comes up a step here. The spec's overlay blend is a departure tuned
+   in the §5 playground: overlay compresses to ~2% lift on espresso-dark
+   backdrops and never shows; screen lets the light flecks read as dust. */
+[data-surface="dark"],
+.section-dark {
+  --surface-page: var(--palette-espresso);
+  --surface-raised: color-mix(in srgb, var(--palette-espresso) 85%, var(--palette-ivory));
+  --text-primary: var(--palette-ink-on-dark);
+  --text-secondary: var(--palette-ink-on-dark-muted);
+  --accent: var(--palette-gold-bright);
+  --border-fine: color-mix(in srgb, var(--palette-gold-bright) 25%, transparent);
+  --grain-opacity: 0.09;
+  --grain-blend: screen;
+  --btn-primary-bg: var(--palette-gold-bright);
+  --btn-primary-fg: var(--palette-espresso);
+  --btn-primary-bg-hover: var(--palette-ivory);
+  --btn-primary-fg-hover: var(--palette-ink);
+  --btn-ghost-bg-hover: var(--palette-gold-bright);
+  --btn-ghost-fg-hover: var(--palette-espresso);
+  --btn-hover-shadow: 0 0 24px color-mix(in srgb, var(--palette-gold-bright) 45%, transparent);
+}
+
+[data-surface="navy"],
+.section-navy {
+  --surface-page: var(--palette-navy);
+  --surface-raised: color-mix(in srgb, var(--palette-navy) 85%, var(--palette-ivory));
+  --text-primary: var(--palette-ink-on-dark);
+  --text-secondary: var(--palette-ink-on-dark-muted);
+  --accent: var(--palette-gold-bright);
+  --border-fine: color-mix(in srgb, var(--palette-gold-bright) 25%, transparent);
+  --grain-opacity: 0.09;
+  --grain-blend: screen;
+  --btn-primary-bg: var(--palette-gold-bright);
+  --btn-primary-fg: var(--palette-navy);
+  --btn-primary-bg-hover: var(--palette-ivory);
+  --btn-primary-fg-hover: var(--palette-ink);
+  --btn-ghost-bg-hover: var(--palette-gold-bright);
+  --btn-ghost-fg-hover: var(--palette-navy);
+  --btn-hover-shadow: 0 0 24px color-mix(in srgb, var(--palette-gold-bright) 45%, transparent);
+}
+
+/* §6 — Tailwind mapping. `inline` is load-bearing: utilities must
+   reference the semantic vars at the element they style, so a
+   component inside [data-surface] picks up the re-scoped values.
+   A non-inline @theme would resolve the vars once at :root. */
+@theme inline {
+  --color-surface-page: var(--surface-page);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-tint: var(--surface-tint);
+  --color-surface-dark: var(--surface-dark);
+  --color-surface-navy: var(--surface-navy);
+  --color-surface-wood: var(--surface-wood);
+
+  --color-primary: var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-faint: var(--text-faint);
+
+  --color-accent-strong: var(--accent-strong);
+
+  --color-fine: var(--border-fine);
+  --color-focus-ring: var(--focus-ring);
+}
+
+/* --accent is deliberately NOT mapped as --color-accent: that would
+   generate a border-accent utility meaning full-strength gold, which
+   Tailwind emits after (and so over) any same-named @utility. Here
+   border-accent must be the 55% hairline of §1.2, so the accent
+   utilities are spelled out individually instead. Full-strength gold
+   borders (e.g. Button primary hover) use border-accent-strong. */
+@utility text-accent {
+  color: var(--accent);
+}
+@utility bg-accent {
+  background-color: var(--accent);
+}
+@utility border-accent {
+  border-color: var(--border-accent);
+}
+
+/* §2/§6 font mapping. Two cascade facts make this safe and correct:
+   (1) Tailwind still emits --font-sans in @layer theme (its default
+   theme defines it), but the legacy :root { --font-sans: 'Lato' }
+   above is UNLAYERED and unlayered beats layered — so var(--font-sans)
+   resolves to Lato everywhere and every existing page is untouched.
+   (2) `inline` is load-bearing because of (1): it makes the
+   font-sans/font-display utilities carry var(--face-*) directly
+   instead of var(--font-sans), which the legacy declaration shadows —
+   without it the font-sans utility would render Lato, not Instrument.
+   Only the *utilities* mean the new faces; the variables don't move. */
+@theme inline {
+  --font-display: var(--face-display);
+  --font-sans: var(--face-sans);
+}
+
+/* §2.2 type scale — one composite utility per token (size + face + weight
+   + leading in a single class, per the spec table). `type-` prefix keeps
+   clear of the text-* namespace: --text-primary is a §1 color, so a
+   text-display-hero utility would blur the color/size convention the
+   border-accent comment above already documents. */
+@utility type-display-hero {
+  font-family: var(--face-display);
+  font-size: var(--type-display-hero);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  /* opsz max per §2.2; inherited — don't nest body copy inside */
+  font-variation-settings: 'opsz' 144;
+}
+@utility type-display-section {
+  font-family: var(--face-display);
+  font-size: var(--type-display-section);
+  font-weight: 560;
+  line-height: 1.15;
+}
+@utility type-display-story {
+  font-family: var(--face-display);
+  font-size: var(--type-display-story);
+  font-weight: 540;
+  line-height: 1.25;
+}
+@utility type-body {
+  font-family: var(--face-sans);
+  font-size: var(--type-body);
+  font-weight: 400;
+  line-height: 1.65;
+}
+@utility type-body-ui {
+  font-family: var(--face-sans);
+  font-size: var(--type-body-ui);
+  font-weight: 450;
+  line-height: 1.5;
+}
+@utility type-label-editorial {
+  font-family: var(--face-sans);
+  font-size: var(--type-label-editorial);
+  font-weight: 560;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+@utility type-quote {
+  font-family: var(--face-display);
+  font-style: italic; /* §2.1: quotes are Fraunces Italic — no third font */
+  font-size: var(--type-quote);
+  font-weight: 460;
+  line-height: 1.45;
+}
+@utility type-caption {
+  font-family: var(--face-sans);
+  font-size: var(--type-caption);
+  font-weight: 400;
+  /* semantic var resolves at the element → correct inside [data-surface] */
+  color: var(--text-secondary);
+}
+
+/* ============================================================
+   §3 TEXTURE — docs/DesignSystemP1.md
+   All opt-in: nothing below applies until markup asks for it,
+   which is what keeps this phase visually inert (§7 checklist).
+   The spec's alternative of a body::before grain would repaint
+   every existing page — deferred to composition phases.
+   ============================================================ */
+
+/* §3.4 — radius tokens. Retunes Tailwind's rounded-sm/rounded-md too,
+   which is safe: no Tailwind radius utility is used anywhere in app/ or
+   components/ (radius here is all raw border-radius declarations), and
+   bare `rounded` compiles to a literal 0.25rem, untouched by this. */
+@theme {
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  /* Buttons wear this one (§4) — the roundness the house already speaks in
+     (.mdo-dp-field, .mdo-dp-day and the guardian fields are all 10px). */
+  --radius-lg: 10px;
+}
+
+/* §3.1 — grain overlay. `isolation` keeps the blend inside the panel
+   instead of compositing with whatever sits behind it. The pseudo is
+   positioned, so it paints over in-flow children — that is the point
+   (paper texture lies over the ink), and pointer-events lets clicks
+   through. Strength/blend arrive via --grain-* (re-scoped on dark). */
+@utility texture-paper {
+  position: relative;
+  isolation: isolate;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: var(--grain-image);
+    opacity: var(--grain-opacity);
+    mix-blend-mode: var(--grain-blend);
+    pointer-events: none;
+  }
+}
+
+/* §3.2 — dark section treatment. Token re-scoping lives up in the
+   [data-surface] blocks these classes are grafted onto; here is only
+   what the attribute alone doesn't do: paint the surface, grain it,
+   and cup it in a soft vignette. No box shadows between sections —
+   adjoining sections take a fine gold rule (border-accent) at
+   composition time, not here (baked in, two dark neighbours would
+   double it). Vertical padding is SectionSurface's job (§4). */
+.section-dark,
+.section-navy {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--surface-page);
+  color: var(--text-primary);
+}
+.section-dark::before,
+.section-navy::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--grain-image);
+  opacity: var(--grain-opacity);
+  mix-blend-mode: var(--grain-blend);
+  pointer-events: none;
+}
+.section-dark::after,
+.section-navy::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* transparent centre to ~6% black at the edges — depth, not drama */
+  background: radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / 0.06) 100%);
+  pointer-events: none;
+}
+
+/* §3.3 — letterpress. The spec forbids it on light surfaces (reads as
+   blur), so the shadow is gated on a dark scope rather than trusted to
+   discipline: the class is inert anywhere else. */
+@utility letterpress {
+  :is([data-surface='dark'], [data-surface='navy'], .section-dark, .section-navy) & {
+    text-shadow: 0 1px 0 rgb(0 0 0 / 0.35);
+  }
+}
+
+/* §3.4 — hairline rules. Border, not background, so they sit right on
+   an <hr> as well as a div. rule-accent carries the spec's eyebrow
+   width (2.5rem, never full-bleed); override at the call site if a
+   composition truly needs longer. */
+@utility rule-fine {
+  border: 0;
+  border-top: 1px solid var(--border-fine);
+}
+@utility rule-accent {
+  border: 0;
+  border-top: 1px solid var(--border-accent);
+  width: 2.5rem;
+}
+
+/* §4 — Button choreography. The coats live in the --btn-* tokens (§1,
+   surface-scoped); here is only the timing: hover arrives fast (140ms)
+   with a 1px lift, release settles softer (400ms — asymmetry is the
+   point: quick to answer, unhurried to let go), and the press drops the
+   lift near-instantly (60ms). The ease is the house curve
+   gold-ink-reveal and the date picker already use. :active repeats the
+   hover coat un-gated, so a touch tap still answers in color. */
+@utility btn-motion {
+  transition-property: background-color, color, border-color, transform, box-shadow;
+  transition-duration: 400ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  @media (hover: hover) {
+    &:hover {
+      transition-duration: 140ms;
+      transform: translateY(-1px);
+      box-shadow: var(--btn-hover-shadow);
+    }
+  }
+  /* The press settles BELOW the baseline (Daily Gold mock: "settles
+     down") and sheds the elevation — closer to the page, tighter to it. */
+  &:active {
+    transition-duration: 60ms;
+    transform: translateY(1px) scale(0.98);
+    box-shadow: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    & { transition-duration: 0s; }
+    &:hover,
+    &:active { transform: none; }
+  }
+}
+/* The primary's hover carries a sheen: a pale band that sweeps across the
+   face over 0.7s — the Daily Gold mock's gold-leaf-catching-light move,
+   rebuilt as an ::after so it rides ANY coat the tokens dress the button
+   in (the mock could bake it into one gold gradient; our fills change per
+   surface). Painting order is load-bearing: isolation + z-index -1 puts
+   the band above the fill but under the ink, and overflow clips it to the
+   radius. White at 35% reads as champagne on gold, vanishes on ivory —
+   where the fill itself is already the bright moment. */
+@utility btn-primary {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid transparent;
+  background-color: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    /* Stops 40/50/60 are load-bearing: with the 250%-wide tile, both end
+       positions (100% rest, 0% hovered) park the band fully off the face —
+       wider stops leave a bright sliver on one edge in the settled states. */
+    background-image: linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.35) 50%, transparent 60%);
+    background-size: 250% 100%;
+    background-position: 100% 0;
+    transition: background-position 0.7s ease;
+    pointer-events: none;
+  }
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--btn-primary-bg-hover);
+      color: var(--btn-primary-fg-hover);
+    }
+    &:hover::after {
+      background-position: 0% 0;
+    }
+  }
+  &:active {
+    background-color: var(--btn-primary-bg-hover);
+    color: var(--btn-primary-fg-hover);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &::after { background-image: none; transition: none; }
+  }
+}
+@utility btn-ghost {
+  border: 1px solid var(--border-fine);
+  background-color: transparent;
+  color: var(--text-primary);
+  @media (hover: hover) {
+    &:hover {
+      border-color: var(--border-accent);
+      background-color: var(--btn-ghost-bg-hover);
+      color: var(--btn-ghost-fg-hover);
+    }
+  }
+  &:active {
+    border-color: var(--border-accent);
+    background-color: var(--btn-ghost-bg-hover);
+    color: var(--btn-ghost-fg-hover);
+  }
+}
+
+/* §4 — Button loading. The Daily Gold mock's "star spins while gathering
+   wonder": a ✦ glyph on a 1s linear loop, inheriting the variant's ink so
+   it recolors with the coat on every surface. Rotation is the one motion
+   here that must not survive prefers-reduced-motion, so it degrades to a
+   slow opacity wink — still alive, nothing turning. */
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes btn-wink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@utility btn-spinner {
+  display: inline-block;
+  line-height: 1;
+  animation: btn-spin 1s linear infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: btn-wink 1.6s ease-in-out infinite;
+  }
+}
+
 html { scroll-behavior: smooth; }
 
 body {
