@@ -80,6 +80,7 @@ Writing rules (from the house specification):
 - Every story page is 40-70 words, never more than 75. Sentences of 6-9 words, never more than 12. One small idea per page, never two.
 - Break narratives into short stanzas with \\n and \\n\\n line breaks, like a picture book (see rhythm example below).
 - Vocabulary a 6-8 year old understands; explain any hard word naturally.
+- Never use dashes — no em dashes (—), en dashes (–) or hyphens used as punctuation — anywhere in story text. Use a comma, a period or a new sentence instead. (Hyphens inside real compound words like "twenty-three" are fine.)
 - Never lecture, never "you should". Invite wonder instead.
 - Pick one "golden thread" — a single defining human quality (Leonardo: curiosity; Curie: perseverance) — and let it quietly shape every page.
 - Emotional curve across the chapters: wonder → curiosity → challenge → hope → achievement.
@@ -259,7 +260,7 @@ export function rewriteField(brief: RewriteSeed, fieldPath: string, currentOverr
   const isScene = fieldPath.endsWith('scene') || fieldPath.endsWith('_scene');
   const guidance = isScene
     ? `This is an image SUBJECT scene: 1-2 sentences, concrete nouns, one emotional moment, era-authentic detail, NO style words, no text in the scene. If the protagonist appears as a child, start with the character sheet sentence VERBATIM.`
-    : `This is story text: 40-70 words (never over 75), short 6-9 word sentences, one small idea, broken into short stanzas with \\n and \\n\\n line breaks, vocabulary a 6-8 year old understands. Never lecture.`;
+    : `This is story text: 40-70 words (never over 75), short 6-9 word sentences, one small idea, broken into short stanzas with \\n and \\n\\n line breaks, vocabulary a 6-8 year old understands. Never lecture. Never use dashes as punctuation; use a comma, a period or a new sentence instead.`;
   return {
     system: WRITER_SYSTEM,
     user: `Golden thread: ${brief.golden_thread}
