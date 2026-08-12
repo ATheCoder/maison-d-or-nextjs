@@ -197,6 +197,9 @@
 .section-dark {
   --surface-page: var(--palette-espresso);
   --surface-raised: color-mix(in srgb, var(--palette-espresso) 85%, var(--palette-ivory));
+  /* tint makes sand's move, not ivory's — a step INTO the dark, for inset
+     washes and table rows, while raised lifts toward the light. */
+  --surface-tint: color-mix(in srgb, var(--palette-espresso) 85%, black);
   --text-primary: var(--palette-ink-on-dark);
   --text-secondary: var(--palette-ink-on-dark-muted);
   --text-faint: var(--palette-ink-on-dark-faint);
@@ -222,6 +225,7 @@
 .section-navy {
   --surface-page: var(--palette-navy);
   --surface-raised: color-mix(in srgb, var(--palette-navy) 85%, var(--palette-ivory));
+  --surface-tint: color-mix(in srgb, var(--palette-navy) 85%, black);
   --text-primary: var(--palette-ink-on-dark);
   --text-secondary: var(--palette-ink-on-dark-muted);
   --text-faint: var(--palette-ink-on-dark-faint);

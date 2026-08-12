@@ -64,9 +64,14 @@ const PAIRS: { fg: string; bg: string; use: string; floor: 4.5 | 3 | 0; scopes: 
   { fg: '--text-secondary', bg: '--surface-page', use: 'Secondary copy, captions', floor: 4.5, scopes: SCOPES },
   { fg: '--text-primary', bg: '--surface-raised', use: 'Body on raised cards', floor: 4.5, scopes: SCOPES },
   { fg: '--text-secondary', bg: '--surface-raised', use: 'Captions on raised cards', floor: 4.5, scopes: SCOPES },
-  { fg: '--text-primary', bg: '--surface-tint', use: 'Body on tinted panels, table rows', floor: 4.5, scopes: LIGHTS },
+  // Tint exists on every ground since the environments merged into the
+  // primitives stamps: the family wash in the atmospheres, sand on parchment,
+  // a step into the dark on the interludes — so body-on-tint is graded
+  // house-wide. Secondary-on-tint is still only composed on light grounds.
+  { fg: '--text-primary', bg: '--surface-tint', use: 'Body on tinted panels, table rows', floor: 4.5, scopes: SCOPES },
   { fg: '--text-secondary', bg: '--surface-tint', use: 'Captions on tinted panels', floor: 4.5, scopes: LIGHTS },
   { fg: '--text-faint', bg: '--surface-page', use: 'Metadata, disabled — never load-bearing', floor: 3, scopes: SCOPES },
+  { fg: '--text-faint', bg: '--surface-raised', use: 'Card captions — metadata on raised cards', floor: 3, scopes: SCOPES },
   { fg: '--accent-readable', bg: '--surface-page', use: 'Links, editorial labels, small functional text', floor: 4.5, scopes: SCOPES },
   { fg: '--accent-readable', bg: '--surface-tint', use: 'Links and labels on tinted panels', floor: 4.5, scopes: LIGHTS },
   { fg: '--accent', bg: '--surface-page', use: 'Rules, ornaments, display sizes — decorative only', floor: 0, scopes: SCOPES },

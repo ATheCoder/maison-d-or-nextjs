@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Eyebrow from '@/components/ds/Eyebrow';
 import Rule from '@/components/ds/Rule';
-import Atmospheres from './Atmospheres';
 import ContrastTable from './ContrastTable';
 import Foundations from './Foundations';
 import GrainToggle from './GrainToggle';
@@ -117,7 +116,7 @@ export default function DesignPage() {
       <Section
         number="05"
         title="Primitives"
-        lede="Eyebrow, Button, Field, TextLink, Rule, SectionSurface, Quote and the heart — every variant, stamped once per surface. Fields carry their error state with them: terracotta in every room, rose on the interludes. Sections butt with the fine rule; no shadows between them."
+        lede="Eyebrow, Button, Field, TextLink, Rule, SectionSurface, Quote and the heart — every variant, stamped once per surface, and every stamp a full environment: parchment, then sage for the garden, rose for the family, lavender for the evening, then the two cinematic interludes. One dominant atmospheric accent per section; gold keeps meaning action and errors keep their terracotta (rose on the interludes) in every room. Sections butt with the fine rule; no shadows between them."
         bleed
       >
         <PrimitivesShowcase />
@@ -125,15 +124,6 @@ export default function DesignPage() {
 
       <Section
         number="06"
-        title="Atmospheres"
-        lede="The soft families as environments, not labels — sage for the garden, rose for the family, lavender for the evening. One dominant atmospheric accent per section; gold keeps meaning action in every room."
-        bleed
-      >
-        <Atmospheres />
-      </Section>
-
-      <Section
-        number="07"
         title="Foundations"
         lede="Rules the primitives already obey, written down: the radius steps, the dress of a link, and the house timing — including what remains when a visitor asks for reduced motion. Radius values are read live from the stylesheet; the motion is demonstrated by the primitives themselves."
       >
@@ -141,7 +131,7 @@ export default function DesignPage() {
       </Section>
 
       <Section
-        number="08"
+        number="07"
         title="Contrast"
         lede="Every text/surface pair in use, measured in this browser against its own WCAG floor — 4.5:1 for body and functional text, 3:1 for metadata and non-text. Nothing ships below its floor."
       >
