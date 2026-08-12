@@ -4,13 +4,16 @@ import HeartToggle from '@/components/ds/HeartToggle';
 import Quote from '@/components/ds/Quote';
 import Rule from '@/components/ds/Rule';
 import SectionSurface from '@/components/ds/SectionSurface';
+import TextLink from '@/components/ds/TextLink';
 
 /**
- * §5.5 — all five primitives in all variants on all three surfaces. The same
- * specimen is stamped three times; only SectionSurface's surface prop changes.
- * SectionSurface itself is under test here too: its variants ARE the three
- * sections, butted with the fine gold rule (composition's job — shown on the
- * dark→navy seam, per the globals.css §3.2 note about not baking it in).
+ * §5.5 — all the primitives in all variants, stamped once per surface; only
+ * SectionSurface's surface prop changes. A sage stamp sits among them to
+ * prove the primitives on an atmosphere ground with zero extra logic (the
+ * full environments live in the Atmospheres section). SectionSurface itself
+ * is under test here too: its variants ARE the sections, butted with the
+ * fine gold rule (composition's job — shown on the dark→navy seam, per the
+ * globals.css §3.2 note about not baking it in).
  */
 function Specimen({ title }: { title: string }) {
   return (
@@ -60,6 +63,12 @@ function Specimen({ title }: { title: string }) {
         <Rule variant="accent" ornament={<span className="type-caption text-accent">❦</span>} />
       </div>
 
+      <p className="type-body max-w-[38rem] text-secondary">
+        Prose keeps its links underlined — like{' '}
+        <TextLink href="#">the almanac, page forty-one</TextLink> — so colour is
+        never the only thing marking the way through.
+      </p>
+
       <Quote attribution="A young explorer, aged seven">
         The house smelled of cedar and far-away rain.
       </Quote>
@@ -73,6 +82,9 @@ export default function PrimitivesShowcase() {
     <div>
       <SectionSurface>
         <Specimen title="On parchment" />
+      </SectionSurface>
+      <SectionSurface surface="sage" className="border-t border-fine">
+        <Specimen title="Out in the garden" />
       </SectionSurface>
       <SectionSurface surface="dark">
         <Specimen title="An espresso interlude" />

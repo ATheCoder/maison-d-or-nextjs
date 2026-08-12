@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Eyebrow from '@/components/ds/Eyebrow';
 import Rule from '@/components/ds/Rule';
+import Atmospheres from './Atmospheres';
 import ContrastTable from './ContrastTable';
 import GrainToggle from './GrainToggle';
 import PrimitivesShowcase from './PrimitivesShowcase';
@@ -71,9 +72,11 @@ export default function DesignPage() {
           The design system, laid on the table.
         </Heading>
         <p className="type-body mt-6 max-w-[38rem] text-secondary">
-          Tokens, typography, texture and the five base primitives — everything Phase 1
-          ships, on one page, on all three surfaces. Values are tuned by eye here first
-          (in globals.css), then adopted by the rooms in later phases.
+          Tokens, typography, texture and the base primitives — everything Phase 1
+          ships, on one page, on every surface: the warm light grounds the Maison
+          breathes through, the three soft atmospheres, and the two cinematic
+          interludes. Values are tuned by eye here first (in globals.css), then
+          adopted by the rooms in later phases.
         </p>
         <Rule ornament className="mt-12" />
       </header>
@@ -89,7 +92,7 @@ export default function DesignPage() {
       <Section
         number="02"
         title="Semantic tokens"
-        lede="The same markup three times; only data-surface changes. Text, accent and borders re-scope themselves — no per-component logic anywhere."
+        lede="The same markup once per surface; only data-surface changes. Text, accent and borders re-scope themselves — no per-component logic anywhere."
       >
         <SemanticTokens />
       </Section>
@@ -113,7 +116,7 @@ export default function DesignPage() {
       <Section
         number="05"
         title="Primitives"
-        lede="Eyebrow, Button, Rule, SectionSurface and Quote — every variant, stamped once per surface. Sections butt with the fine gold rule; no shadows between them."
+        lede="Eyebrow, Button, TextLink, Rule, SectionSurface, Quote and the heart — every variant, stamped once per surface. Sections butt with the fine rule; no shadows between them."
         bleed
       >
         <PrimitivesShowcase />
@@ -121,8 +124,17 @@ export default function DesignPage() {
 
       <Section
         number="06"
+        title="Atmospheres"
+        lede="The soft families as environments, not labels — sage for the garden, rose for the family, lavender for the evening. One dominant atmospheric accent per section; gold keeps meaning action in every room."
+        bleed
+      >
+        <Atmospheres />
+      </Section>
+
+      <Section
+        number="07"
         title="Contrast"
-        lede="Every text/surface pair in use, measured in this browser against WCAG AA. Body pairs must clear 4.5:1 before any value ships."
+        lede="Every text/surface pair in use, measured in this browser against its own WCAG floor — 4.5:1 for body and functional text, 3:1 for metadata and non-text. Nothing ships below its floor."
       >
         <ContrastTable />
       </Section>

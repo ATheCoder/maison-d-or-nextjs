@@ -10,21 +10,31 @@ import { useSyncExternalStore } from 'react';
  * the values get tuned by eye in globals.css, and a hardcoded copy would go
  * stale silently — and would put hex literals back into component code.
  */
-const GROUPS: { title: string; note: string; names: string[] }[] = [
+const GROUPS: { title: string; note: string; names: string[]; triads?: boolean }[] = [
   {
     title: 'Foundation',
-    note: 'Warm, aged, never sterile white.',
+    note: 'Warm, aged, never sterile white. The Maison breathes through the light surfaces; espresso and navy are cinematic interludes, never the dominant experience.',
     names: ['ivory', 'parchment', 'sand', 'walnut', 'espresso', 'navy'],
   },
   {
     title: 'Accents',
-    note: 'Gold leads; terracotta, rose and lavender are seasoning — max one per view.',
-    names: ['gold', 'gold-bright', 'forest', 'sage', 'terracotta', 'sea', 'rose', 'lavender'],
+    note: 'Gold means discovery, precious moments and important actions; gold-deep is its AA-readable ink for links and small labels. Forest, terracotta and sea season imagery and small details.',
+    names: ['gold', 'gold-bright', 'gold-deep', 'forest', 'terracotta', 'sea'],
+  },
+  {
+    title: 'Atmosphere families',
+    note: 'Sage (nature, the garden, grounding), rose (family, tenderness, memory) and lavender (imagination, evening, gentle mystery) as complete families — pale surface, main accent, deep readable tone. One dominant atmospheric accent per section; supporting colours may appear in imagery and very small details.',
+    names: [
+      'sage-pale', 'sage', 'sage-deep',
+      'rose-pale', 'rose', 'rose-deep',
+      'lavender-pale', 'lavender', 'lavender-deep',
+    ],
+    triads: true,
   },
   {
     title: 'Ink',
     note: 'Text is warm-dark, never pure black.',
-    names: ['ink', 'ink-muted', 'ink-faint', 'ink-on-dark', 'ink-on-dark-muted'],
+    names: ['ink', 'ink-muted', 'ink-faint', 'ink-on-dark', 'ink-on-dark-muted', 'ink-on-dark-faint'],
   },
 ];
 
@@ -56,7 +66,9 @@ export default function Swatches() {
         <div key={group.title}>
           <p className="type-body-ui text-primary">{group.title}</p>
           <p className="type-caption mt-1 mb-4">{group.note}</p>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+          {/* Triad groups hold three columns at every width, so each row
+              reads as one family: pale → accent → deep. */}
+          <div className={`grid gap-4 ${group.triads ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'}`}>
             {group.names.map((name) => (
               <div key={name}>
                 <div

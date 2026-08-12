@@ -12,10 +12,17 @@ import type { CSSProperties, ReactNode } from 'react';
  * job) and the fine gold rule between butting sections — baking that in
  * would double it between two dark neighbours (see globals.css §3.2 note).
  */
-type Surface = 'light' | 'dark' | 'navy';
+type Surface = 'light' | 'sage' | 'rose' | 'lavender' | 'dark' | 'navy';
 
+/* The atmosphere surfaces are light grounds: token re-scoping rides the
+   data-surface attribute alone (no .section-* class exists for them), grain
+   arrives via texture-paper at light strength, and there is no vignette —
+   that treatment belongs to the cinematic interludes only. */
 const SURFACE: Record<Surface, string> = {
   light: 'texture-paper bg-surface-page text-primary',
+  sage: 'texture-paper bg-surface-page text-primary',
+  rose: 'texture-paper bg-surface-page text-primary',
+  lavender: 'texture-paper bg-surface-page text-primary',
   dark: 'section-dark',
   navy: 'section-navy',
 };

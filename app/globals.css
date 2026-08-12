@@ -46,9 +46,12 @@
   --palette-espresso: #2C1F16;
   --palette-navy: #1B2A40;
 
-  /* raw palette — accents */
+  /* raw palette — accents. gold-deep is gold driven down to AA 4.5 on every
+     light surface including sand (4.72) — the readable tier bare gold (2.67
+     on parchment) cannot be for small text. */
   --palette-gold: #B4863C;
   --palette-gold-bright: #D9B36A;
+  --palette-gold-deep: #755522;
   --palette-forest: #2F4A38;
   --palette-sage: #93A188;
   --palette-terracotta: #A6553E;
@@ -56,12 +59,29 @@
   --palette-rose: #C0908F;
   --palette-lavender: #A195AE;
 
-  /* raw palette — ink */
+  /* raw palette — atmosphere families (PO rebalance, 2026-08-12). Sage, rose
+     and lavender each grew a pale surface tint and a dark accessible tone;
+     the mid accents above are untouched — the PO's proposed accent hexes
+     matched what was already here. Every deep tone clears AA 4.5 as small
+     text on its family's pale and tint surfaces (§5.6 measures them live). */
+  --palette-sage-pale: #E4E9DF;
+  --palette-sage-deep: #53634F;
+  --palette-rose-pale: #F1E3DF;
+  --palette-rose-deep: #79504F;
+  --palette-lavender-pale: #ECE6ED;
+  --palette-lavender-deep: #675B70;
+
+  /* raw palette — ink. Muted and faint were retuned darker in the PO
+     rebalance: muted must clear AA 4.5 on every light surface it captions
+     (it sat at 4.28 on sand), faint must clear the 3.0 metadata floor on the
+     same grounds (2.71 on parchment before). Faint never carries information
+     a visitor genuinely needs — 3.0 is its floor, not a license. */
   --palette-ink: #2B2118;
-  --palette-ink-muted: #6E5F4B;
-  --palette-ink-faint: #9A8B72;
+  --palette-ink-muted: #61533D;
+  --palette-ink-faint: #847457;
   --palette-ink-on-dark: #F4EBDA;
   --palette-ink-on-dark-muted: #C8BBA2;
+  --palette-ink-on-dark-faint: #A79878;
 
   /* semantic — surfaces */
   --surface-page: var(--palette-parchment);
@@ -76,16 +96,25 @@
   --text-secondary: var(--palette-ink-muted);
   --text-faint: var(--palette-ink-faint);
 
-  /* semantic — accent */
+  /* semantic — accent. Gold splits in two roles: --accent is atmospheric
+     gold for rules, ornaments and display sizes (decorative — it fails every
+     text floor on light grounds and must never carry meaning alone);
+     --accent-readable is what links, editorial labels and any other small
+     functional text wear. The dark scopes point it at gold-bright, which
+     clears 4.5 there anyway; the atmosphere scopes point it at the family's
+     deep tone. */
   --accent: var(--palette-gold);
+  --accent-readable: var(--palette-gold-deep);
   --accent-strong: var(--palette-gold);
 
   /* semantic — lines */
   --border-fine: color-mix(in srgb, var(--palette-walnut) 25%, transparent);
   --border-accent: color-mix(in srgb, var(--palette-gold) 55%, transparent);
 
-  /* semantic — interaction */
-  --focus-ring: var(--palette-gold);
+  /* semantic — interaction. The ring wears the readable gold, not bare gold:
+     a focus indicator is functional, and bare gold sits below even the 3.0
+     non-text floor on parchment. Dark scopes re-scope it to gold-bright. */
+  --focus-ring: var(--palette-gold-deep);
 
   /* §4 — Button coats. Same scoping story as every token above: the dark
      blocks below repaint these, so one <Button> wears a different coat per
@@ -157,7 +186,10 @@
   --surface-raised: color-mix(in srgb, var(--palette-espresso) 85%, var(--palette-ivory));
   --text-primary: var(--palette-ink-on-dark);
   --text-secondary: var(--palette-ink-on-dark-muted);
+  --text-faint: var(--palette-ink-on-dark-faint);
   --accent: var(--palette-gold-bright);
+  --accent-readable: var(--palette-gold-bright);
+  --focus-ring: var(--palette-gold-bright);
   --border-fine: color-mix(in srgb, var(--palette-gold-bright) 25%, transparent);
   --grain-opacity: 0.09;
   --grain-blend: screen;
@@ -177,7 +209,10 @@
   --surface-raised: color-mix(in srgb, var(--palette-navy) 85%, var(--palette-ivory));
   --text-primary: var(--palette-ink-on-dark);
   --text-secondary: var(--palette-ink-on-dark-muted);
+  --text-faint: var(--palette-ink-on-dark-faint);
   --accent: var(--palette-gold-bright);
+  --accent-readable: var(--palette-gold-bright);
+  --focus-ring: var(--palette-gold-bright);
   --border-fine: color-mix(in srgb, var(--palette-gold-bright) 25%, transparent);
   --grain-opacity: 0.09;
   --grain-blend: screen;
@@ -189,6 +224,51 @@
   --btn-ghost-fg-hover: var(--palette-navy);
   --btn-hover-shadow: 0 0 24px color-mix(in srgb, var(--palette-gold-bright) 45%, transparent);
   --heart-saved: var(--palette-rose);
+}
+
+/* Light atmospheric scopes — the PO rebalance's soft families as
+   environments (sage: nature and the garden; rose: family, memory,
+   belonging; lavender: imagination, evening, gentle mystery). Same
+   re-scoping contract as dark/navy, but these grounds stay light: text
+   keeps the warm ink stack, grain keeps light-surface strength, and no
+   vignette — so there are no .section-* classes here, SectionSurface
+   composes these from the attribute plus texture-paper alone. --accent
+   turns to the family's mid tone for rules and ornament; --accent-readable
+   and the focus ring to the family's deep tone (all clear AA 4.5 on the
+   family's pale and tint surfaces). Buttons keep the house coats: espresso
+   and gold mean "action" in every room. One dominant atmospheric accent
+   per section — supporting colours only in imagery and very small details. */
+[data-surface="sage"] {
+  --surface-page: var(--palette-sage-pale);
+  --surface-raised: color-mix(in srgb, var(--palette-sage-pale) 45%, var(--palette-ivory));
+  --surface-tint: color-mix(in srgb, var(--palette-sage-pale) 85%, var(--palette-sage));
+  --accent: var(--palette-sage);
+  --accent-readable: var(--palette-sage-deep);
+  --border-fine: color-mix(in srgb, var(--palette-sage-deep) 30%, transparent);
+  --border-accent: color-mix(in srgb, var(--palette-sage) 65%, transparent);
+  --focus-ring: var(--palette-sage-deep);
+}
+
+[data-surface="rose"] {
+  --surface-page: var(--palette-rose-pale);
+  --surface-raised: color-mix(in srgb, var(--palette-rose-pale) 45%, var(--palette-ivory));
+  --surface-tint: color-mix(in srgb, var(--palette-rose-pale) 85%, var(--palette-rose));
+  --accent: var(--palette-rose);
+  --accent-readable: var(--palette-rose-deep);
+  --border-fine: color-mix(in srgb, var(--palette-rose-deep) 30%, transparent);
+  --border-accent: color-mix(in srgb, var(--palette-rose) 65%, transparent);
+  --focus-ring: var(--palette-rose-deep);
+}
+
+[data-surface="lavender"] {
+  --surface-page: var(--palette-lavender-pale);
+  --surface-raised: color-mix(in srgb, var(--palette-lavender-pale) 45%, var(--palette-ivory));
+  --surface-tint: color-mix(in srgb, var(--palette-lavender-pale) 85%, var(--palette-lavender));
+  --accent: var(--palette-lavender);
+  --accent-readable: var(--palette-lavender-deep);
+  --border-fine: color-mix(in srgb, var(--palette-lavender-deep) 30%, transparent);
+  --border-accent: color-mix(in srgb, var(--palette-lavender) 65%, transparent);
+  --focus-ring: var(--palette-lavender-deep);
 }
 
 /* §6 — Tailwind mapping. `inline` is load-bearing: utilities must
@@ -221,6 +301,12 @@
    borders (e.g. Button primary hover) use border-accent-strong. */
 @utility text-accent {
   color: var(--accent);
+}
+/* The AA tier: links, editorial labels, any small functional text. On dark
+   grounds it resolves to gold-bright; in the atmosphere scopes, to the
+   family's deep tone. */
+@utility text-accent-readable {
+  color: var(--accent-readable);
 }
 @utility bg-accent {
   background-color: var(--accent);

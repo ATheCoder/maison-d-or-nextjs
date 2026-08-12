@@ -6,23 +6,43 @@ import { useEffect, useRef, useState } from 'react';
  * §5.6 — WCAG contrast for every text/surface pair in use, measured, not
  * asserted. Probe elements under each data-surface scope resolve the semantic
  * vars to real colors in the browser (getComputedStyle on a color property —
- * the only reliable route, since the raised surfaces are color-mix() values
- * a stylesheet reader can't do arithmetic on). §1.3 sets the floor: body
- * pairs must clear AA 4.5; labels/metadata are reported against AA-Large 3.0.
- * text-faint and accent are deliberately shown on the dark scopes too — the
- * scopes don't re-scope them, and the table should say so out loud rather
- * than hide the pairs a stray class would actually produce.
+ * the only reliable route, since the raised/tint surfaces are color-mix()
+ * values a stylesheet reader can't do arithmetic on).
+ *
+ * Every pair is graded against ITS OWN floor (the PO's correction — non-text
+ * was previously shown as failing a 4.5 bar it was never held to):
+ *   4.5 — body and all functional small text (AA);
+ *   3.0 — metadata (text-faint, which never carries load-bearing
+ *         information) and non-text glyphs (WCAG 1.4.11);
+ *   decorative — no floor, and therefore never allowed to carry meaning:
+ *         bare accent gold and the family mid-tones are rules, ornaments and
+ *         display sizes only. Functional small text wears accent-readable.
+ * Since the rebalance the dark scopes re-scope text-faint (ink-on-dark-faint)
+ * and accent-readable (gold-bright), so those rows now measure real tokens,
+ * not stray-class accidents.
  */
-type Scope = 'light' | 'dark' | 'navy';
+type Scope = 'light' | 'sage' | 'rose' | 'lavender' | 'dark' | 'navy';
 type Rgb = [number, number, number];
 
-const SCOPES: Scope[] = ['light', 'dark', 'navy'];
+const SCOPES: Scope[] = ['light', 'sage', 'rose', 'lavender', 'dark', 'navy'];
+const LIGHTS: Scope[] = ['light', 'sage', 'rose', 'lavender'];
+const TRIO: Scope[] = ['light', 'dark', 'navy'];
+
+const SCOPE_LABEL: Record<Scope, string> = {
+  light: 'Light (parchment)',
+  sage: 'Sage — the garden',
+  rose: 'Rose — the family',
+  lavender: 'Lavender — the evening',
+  dark: 'Dark (espresso)',
+  navy: 'Navy',
+};
 
 const TOKENS = [
   '--text-primary',
   '--text-secondary',
   '--text-faint',
   '--accent',
+  '--accent-readable',
   '--surface-page',
   '--surface-raised',
   '--surface-tint',
@@ -35,25 +55,29 @@ const TOKENS = [
   '--heart-saved',
 ] as const;
 
-const PAIRS: { fg: string; bg: string; use: string; body: boolean; scopes: Scope[] }[] = [
-  { fg: '--text-primary', bg: '--surface-page', use: 'Body copy', body: true, scopes: SCOPES },
-  { fg: '--text-secondary', bg: '--surface-page', use: 'Secondary copy, captions', body: true, scopes: SCOPES },
-  { fg: '--text-primary', bg: '--surface-raised', use: 'Body on raised cards', body: true, scopes: SCOPES },
-  { fg: '--text-secondary', bg: '--surface-raised', use: 'Captions on raised cards', body: true, scopes: SCOPES },
-  { fg: '--text-primary', bg: '--surface-tint', use: 'Body on tinted panels, table rows', body: true, scopes: ['light'] },
-  { fg: '--text-secondary', bg: '--surface-tint', use: 'Captions on tinted panels', body: true, scopes: ['light'] },
-  { fg: '--text-faint', bg: '--surface-page', use: 'Metadata, disabled', body: false, scopes: SCOPES },
-  { fg: '--accent', bg: '--surface-page', use: 'Editorial labels, links', body: false, scopes: SCOPES },
-  // Button coats are UI text and held to the same 4.5 floor. Ghost's rest
-  // state is the text-primary/surface-page row above; only the fills are new.
-  { fg: '--btn-primary-fg', bg: '--btn-primary-bg', use: 'Primary button, rest', body: true, scopes: SCOPES },
-  { fg: '--btn-primary-fg-hover', bg: '--btn-primary-bg-hover', use: 'Primary button, hover', body: true, scopes: SCOPES },
-  { fg: '--btn-ghost-fg-hover', bg: '--btn-ghost-bg-hover', use: 'Ghost button, hover', body: true, scopes: SCOPES },
-  // The heart is a glyph, not text: WCAG 1.4.11 non-text contrast — the 3.0
-  // column is the one that must pass. The bare variant sits straight on the
-  // page; the chip variant sits on the raised surface.
-  { fg: '--heart-saved', bg: '--surface-page', use: 'Saved heart, bare (non-text, 3.0 floor)', body: false, scopes: SCOPES },
-  { fg: '--heart-saved', bg: '--surface-raised', use: 'Saved heart on its chip (non-text, 3.0 floor)', body: false, scopes: SCOPES },
+// floor: 4.5 = body/functional text (AA), 3 = metadata & non-text (1.4.11),
+// 0 = decorative — exempt, and forbidden from carrying meaning.
+const PAIRS: { fg: string; bg: string; use: string; floor: 4.5 | 3 | 0; scopes: Scope[] }[] = [
+  { fg: '--text-primary', bg: '--surface-page', use: 'Body copy', floor: 4.5, scopes: SCOPES },
+  { fg: '--text-secondary', bg: '--surface-page', use: 'Secondary copy, captions', floor: 4.5, scopes: SCOPES },
+  { fg: '--text-primary', bg: '--surface-raised', use: 'Body on raised cards', floor: 4.5, scopes: SCOPES },
+  { fg: '--text-secondary', bg: '--surface-raised', use: 'Captions on raised cards', floor: 4.5, scopes: SCOPES },
+  { fg: '--text-primary', bg: '--surface-tint', use: 'Body on tinted panels, table rows', floor: 4.5, scopes: LIGHTS },
+  { fg: '--text-secondary', bg: '--surface-tint', use: 'Captions on tinted panels', floor: 4.5, scopes: LIGHTS },
+  { fg: '--text-faint', bg: '--surface-page', use: 'Metadata, disabled — never load-bearing', floor: 3, scopes: SCOPES },
+  { fg: '--accent-readable', bg: '--surface-page', use: 'Links, editorial labels, small functional text', floor: 4.5, scopes: SCOPES },
+  { fg: '--accent-readable', bg: '--surface-tint', use: 'Links and labels on tinted panels', floor: 4.5, scopes: LIGHTS },
+  { fg: '--accent', bg: '--surface-page', use: 'Rules, ornaments, display sizes — decorative only', floor: 0, scopes: SCOPES },
+  // Button coats are UI text and held to the 4.5 floor. The coats are house
+  // tokens the atmosphere scopes do not repaint, so the light row speaks for
+  // all four light grounds; ghost's rest state is text-primary/surface-page.
+  { fg: '--btn-primary-fg', bg: '--btn-primary-bg', use: 'Primary button, rest', floor: 4.5, scopes: TRIO },
+  { fg: '--btn-primary-fg-hover', bg: '--btn-primary-bg-hover', use: 'Primary button, hover', floor: 4.5, scopes: TRIO },
+  { fg: '--btn-ghost-fg-hover', bg: '--btn-ghost-bg-hover', use: 'Ghost button, hover', floor: 4.5, scopes: TRIO },
+  // The heart is a glyph, not text: WCAG 1.4.11 non-text contrast, 3.0 floor.
+  // The bare variant sits straight on the page; the chip on the raised surface.
+  { fg: '--heart-saved', bg: '--surface-page', use: 'Saved heart, bare (non-text)', floor: 3, scopes: SCOPES },
+  { fg: '--heart-saved', bg: '--surface-raised', use: 'Saved heart on its chip (non-text)', floor: 3, scopes: SCOPES },
 ];
 
 function parseColor(value: string): Rgb | null {
@@ -104,16 +128,16 @@ export default function ContrastTable() {
   return (
     <div>
       <div ref={probeRef} aria-hidden className="pointer-events-none invisible absolute">
-        <div data-scope="light" />
-        <div data-scope="dark" data-surface="dark" />
-        <div data-scope="navy" data-surface="navy" />
+        {SCOPES.map((scope) => (
+          <div key={scope} data-scope={scope} data-surface={scope === 'light' ? undefined : scope} />
+        ))}
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left" style={{ minWidth: '46rem' }}>
           <thead>
             <tr className="border-b border-fine">
-              {['Pair', 'Sample', 'Use', 'Ratio', 'AA 4.5', 'AA-Large 3.0'].map((h) => (
+              {['Pair', 'Sample', 'Use', 'Ratio', 'Floor', 'Verdict'].map((h) => (
                 <th key={h} className="type-label-editorial py-2 pr-4 font-normal text-secondary">
                   {h}
                 </th>
@@ -123,19 +147,18 @@ export default function ContrastTable() {
           {SCOPES.map((scope) => (
             <tbody key={scope}>
               <tr>
-                <td colSpan={6} className="type-body-ui pt-6 pb-2 text-accent">
-                  {scope === 'light' ? 'Light (parchment)' : scope === 'dark' ? 'Dark (espresso)' : 'Navy'}
+                <td colSpan={6} className="type-body-ui pt-6 pb-2 text-accent-readable">
+                  {SCOPE_LABEL[scope]}
                 </td>
               </tr>
               {PAIRS.filter((p) => p.scopes.includes(scope)).map((pair) => {
                 const fg = measured?.[scope]?.[pair.fg];
                 const bg = measured?.[scope]?.[pair.bg];
                 const r = fg && bg ? ratio(fg, bg) : null;
-                const aa = r != null ? r >= 4.5 : null;
-                const aaLarge = r != null ? r >= 3 : null;
-                // Body pairs are held to §1.3's AA floor: a failure there is
-                // loud (primary ink, 600); elsewhere it's information.
-                const failsFloor = pair.body && aa === false;
+                const pass = r != null && pair.floor > 0 ? r >= pair.floor : null;
+                // A failure against a pair's own floor is loud (primary ink,
+                // 600); decorative rows have no floor to fail.
+                const failsFloor = pass === false;
                 return (
                   <tr key={pair.fg + pair.bg} className="border-b border-fine">
                     <td className="type-body-ui py-2.5 pr-4 whitespace-nowrap">
@@ -158,13 +181,13 @@ export default function ContrastTable() {
                     <td className="type-body-ui py-2.5 pr-4 text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>
                       {r != null ? `${r.toFixed(2)} : 1` : '—'}
                     </td>
-                    <td
-                      className={`type-body-ui py-2.5 pr-4 ${failsFloor ? 'font-semibold text-primary' : 'text-secondary'}`}
-                    >
-                      {aa == null ? '—' : aa ? 'Pass ✓' : pair.body ? 'FAIL ✗' : 'Below ✗'}
+                    <td className="type-body-ui py-2.5 pr-4 text-secondary" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {pair.floor > 0 ? `${pair.floor.toFixed(1)} : 1` : '—'}
                     </td>
-                    <td className="type-body-ui py-2.5 text-secondary">
-                      {aaLarge == null ? '—' : aaLarge ? 'Pass ✓' : 'Below ✗'}
+                    <td
+                      className={`type-body-ui py-2.5 ${failsFloor ? 'font-semibold text-primary' : 'text-secondary'}`}
+                    >
+                      {pair.floor === 0 ? 'Decorative' : pass == null ? '—' : pass ? 'Pass ✓' : 'FAIL ✗'}
                     </td>
                   </tr>
                 );
@@ -174,9 +197,12 @@ export default function ContrastTable() {
         </table>
       </div>
       <p className="type-caption mt-4 max-w-[38rem]">
-        Body pairs must clear AA 4.5:1 (§1.3). text-faint and accent are held to AA-Large —
-        they never carry body copy — and are listed on the dark scopes because the scopes do
-        not re-scope them: what the table shows is what a stray class would render.
+        Each pair is graded against its own floor: 4.5:1 for body and all functional small
+        text, 3.0:1 for metadata and non-text glyphs (WCAG 1.4.11). text-faint never carries
+        information a visitor genuinely needs. Decorative rows — bare gold and the family
+        mid-tones — have no floor and may never carry meaning: anything functional at small
+        sizes wears accent-readable, and links are underlined so colour is never their only
+        marker.
       </p>
     </div>
   );

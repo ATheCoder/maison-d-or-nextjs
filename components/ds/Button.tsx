@@ -31,8 +31,10 @@ const BASE =
 const VARIANT: Record<ButtonVariant, string> = {
   primary: 'btn-motion btn-primary px-5 py-2.5',
   ghost: 'btn-motion btn-ghost px-5 py-2.5',
+  // Links are functional small text: accent-readable, never bare gold, and
+  // the underline is load-bearing — colour is never a link's only marker.
   link:
-    'text-accent underline underline-offset-3 transition-[color,text-decoration-thickness] duration-300 ' +
+    'text-accent-readable underline underline-offset-3 transition-[color,text-decoration-thickness] duration-300 ' +
     'hover:text-primary hover:decoration-2',
 };
 
