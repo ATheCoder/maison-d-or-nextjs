@@ -4,6 +4,7 @@ import Eyebrow from '@/components/ds/Eyebrow';
 import Rule from '@/components/ds/Rule';
 import Atmospheres from './Atmospheres';
 import ContrastTable from './ContrastTable';
+import Foundations from './Foundations';
 import GrainToggle from './GrainToggle';
 import PrimitivesShowcase from './PrimitivesShowcase';
 import SemanticTokens from './SemanticTokens';
@@ -133,6 +134,14 @@ export default function DesignPage() {
 
       <Section
         number="07"
+        title="Foundations"
+        lede="Rules the primitives already obey, written down: the radius steps, the dress of a link, and the house timing — including what remains when a visitor asks for reduced motion. Radius values are read live from the stylesheet; the motion is demonstrated by the primitives themselves."
+      >
+        <Foundations />
+      </Section>
+
+      <Section
+        number="08"
         title="Contrast"
         lede="Every text/surface pair in use, measured in this browser against its own WCAG floor — 4.5:1 for body and functional text, 3:1 for metadata and non-text. Nothing ships below its floor."
       >

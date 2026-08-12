@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes } from 'react';
 
 /**
  * Button — §4 base primitive (docs/DesignSystemP1.md). Three variants,
- * radius --radius-lg (10px — the roundness the date-picker fields and
+ * radius --radius-md (10px — the roundness the date-picker fields and
  * guardian card already speak in), no pill shapes.
  *
  * Coats and choreography live in globals.css (btn-motion / btn-primary /
@@ -24,7 +24,7 @@ import type { ButtonHTMLAttributes } from 'react';
 type ButtonVariant = 'primary' | 'ghost' | 'link';
 
 const BASE =
-  'type-body-ui inline-flex items-center justify-center gap-2.5 rounded-lg ' +
+  'type-body-ui inline-flex items-center justify-center gap-2.5 rounded-md ' +
   'focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-focus-ring ' +
   'disabled:pointer-events-none';
 

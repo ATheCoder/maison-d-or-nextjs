@@ -398,16 +398,19 @@
    every existing page — deferred to composition phases.
    ============================================================ */
 
-/* §3.4 — radius tokens. Retunes Tailwind's rounded-sm/rounded-md too,
-   which is safe: no Tailwind radius utility is used anywhere in app/ or
-   components/ (radius here is all raw border-radius declarations), and
-   bare `rounded` compiles to a literal 0.25rem, untouched by this. */
+/* §3.4 — radius tokens. Retunes Tailwind's rounded-sm/md/lg, which the
+   design-system components wear directly (chips, cards, buttons); bare
+   `rounded` compiles to a literal 0.25rem, untouched by this. The scale
+   was shifted up one step post-review: the original 3px micro-step read
+   as a rendering artifact, not a decision, and was dropped. */
 @theme {
-  --radius-sm: 3px;
-  --radius-md: 6px;
-  /* Buttons wear this one (§4) — the roundness the house already speaks in
+  --radius-sm: 6px;
+  /* Buttons, fields, cards (§4) — the roundness the house already speaks in
      (.mdo-dp-field, .mdo-dp-day and the guardian fields are all 10px). */
-  --radius-lg: 10px;
+  --radius-md: 10px;
+  /* Floating and hero panels — the date-picker popover's 16px. Nothing in
+     the Phase 1 primitives wears it yet. */
+  --radius-lg: 16px;
 }
 
 /* §3.1 — grain overlay. `isolation` keeps the blend inside the panel
