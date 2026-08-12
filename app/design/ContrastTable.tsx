@@ -53,6 +53,8 @@ const TOKENS = [
   '--btn-ghost-fg-hover',
   '--btn-ghost-bg-hover',
   '--heart-saved',
+  '--danger',
+  '--danger-readable',
 ] as const;
 
 // floor: 4.5 = body/functional text (AA), 3 = metadata & non-text (1.4.11),
@@ -78,6 +80,15 @@ const PAIRS: { fg: string; bg: string; use: string; floor: 4.5 | 3 | 0; scopes: 
   // The bare variant sits straight on the page; the chip on the raised surface.
   { fg: '--heart-saved', bg: '--surface-page', use: 'Saved heart, bare (non-text)', floor: 3, scopes: SCOPES },
   { fg: '--heart-saved', bg: '--surface-raised', use: 'Saved heart on its chip (non-text)', floor: 3, scopes: SCOPES },
+  // Errors are functional: the message under a field is small text held to
+  // 4.5 on the ground it sits on; the invalid border is non-text (1.4.11)
+  // against both the field's raised fill and the page behind it. The danger
+  // tokens are house-wide — the atmospheres do not repaint them (an error
+  // does not dress for the room) — so each scope row measures the one
+  // terracotta/rose pair against its own grounds.
+  { fg: '--danger-readable', bg: '--surface-page', use: 'Error message under a field', floor: 4.5, scopes: SCOPES },
+  { fg: '--danger', bg: '--surface-raised', use: 'Invalid field border on its fill (non-text)', floor: 3, scopes: SCOPES },
+  { fg: '--danger', bg: '--surface-page', use: 'Invalid field border on the page (non-text)', floor: 3, scopes: SCOPES },
 ];
 
 function parseColor(value: string): Rgb | null {

@@ -1,5 +1,6 @@
 import Button from '@/components/ds/Button';
 import Eyebrow from '@/components/ds/Eyebrow';
+import Field from '@/components/ds/Field';
 import HeartToggle from '@/components/ds/HeartToggle';
 import Quote from '@/components/ds/Quote';
 import Rule from '@/components/ds/Rule';
@@ -45,6 +46,26 @@ function Specimen({ title }: { title: string }) {
         <Button variant="link" loading>
           Gathering wonder
         </Button>
+      </div>
+
+      {/* The four field states: at rest with a hint, filled, in error, and
+          asleep. The error field is genuinely invalid (aria-invalid via the
+          error prop) — the danger border and message are the same terracotta
+          in every room, rose on the interludes. */}
+      <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+        <Field
+          label="Your name"
+          placeholder="Amélie, of the garden gate"
+          hint="As it should appear in the almanac."
+        />
+        <Field label="A favourite word" defaultValue="Wondersmith" />
+        <Field
+          label="Guardian's email"
+          type="email"
+          defaultValue="amelie@the-garden"
+          error="That address will not reach anyone — check it once more."
+        />
+        <Field label="The cellar door code" placeholder="Locked for the season" disabled />
       </div>
 
       <div className="flex flex-wrap items-center gap-4">

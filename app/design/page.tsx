@@ -117,7 +117,7 @@ export default function DesignPage() {
       <Section
         number="05"
         title="Primitives"
-        lede="Eyebrow, Button, TextLink, Rule, SectionSurface, Quote and the heart — every variant, stamped once per surface. Sections butt with the fine rule; no shadows between them."
+        lede="Eyebrow, Button, Field, TextLink, Rule, SectionSurface, Quote and the heart — every variant, stamped once per surface. Fields carry their error state with them: terracotta in every room, rose on the interludes. Sections butt with the fine rule; no shadows between them."
         bleed
       >
         <PrimitivesShowcase />
