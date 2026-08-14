@@ -38,16 +38,20 @@
    below, which follow the spec verbatim.
    ============================================================ */
 :root {
-  /* raw palette — foundation */
-  --palette-ivory: #FAF3E3;
-  --palette-parchment: #F2E7D0;
-  --palette-sand: #E6D5B4;
+  /* raw palette — foundation. Parchment lightened 2026-08-14 (was #F2E7D0);
+     ivory and sand moved with it — ivory because the old value sat at the new
+     page's exact luminance and raised surfaces stopped lifting, sand because
+     its yellow cast clashed with the new peachier ground. The ladder
+     ivory → parchment → sand still steps down in that order. */
+  --palette-ivory: #FFFBF4;
+  --palette-parchment: #FBF2E9;
+  --palette-sand: #EFE0D0;
   --palette-walnut: #5E4327;
   --palette-espresso: #2C1F16;
   --palette-navy: #1B2A40;
 
   /* raw palette — accents. gold-deep is gold driven down to AA 4.5 on every
-     light surface including sand (4.72) — the readable tier bare gold (2.67
+     light surface including sand (5.28) — the readable tier bare gold (2.96
      on parchment) cannot be for small text. */
   --palette-gold: #B4863C;
   --palette-gold-bright: #D9B36A;
@@ -56,7 +60,7 @@
   --palette-sage: #93A188;
   --palette-terracotta: #A6553E;
   /* terracotta driven down to AA 4.5 on every light surface including sand
-     (5.3) — the readable tier for error text, as gold-deep is for gold. */
+     (5.87) — the readable tier for error text, as gold-deep is for gold. */
   --palette-terracotta-deep: #8C3B24;
   --palette-sea: #4E7488;
   --palette-rose: #C0908F;
