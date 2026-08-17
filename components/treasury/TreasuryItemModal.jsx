@@ -18,7 +18,6 @@
  * at the foot, so the old navigation is still one deliberate tap away.
  */
 import Link from 'next/link';
-import { useTheme } from '@/components/theme/ThemeContext';
 import DGModal from '@/components/dailygold/DGModal';
 import DGHeroImage from '@/components/dailygold/DGHeroImage';
 import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
@@ -38,24 +37,24 @@ function Paragraphs({ text }) {
 }
 
 /** Shown under the headline while the story body is being looked up. */
-function BodyPending({ theme }) {
+function BodyPending() {
   return (
-    <p style={{ fontFamily: theme.fontBody, fontStyle: 'italic', fontSize: '0.85rem', color: theme.textMuted, margin: 0 }}>
+    <p style={{ fontFamily: 'var(--face-sans)', fontStyle: 'italic', fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
       Opening the treasure&hellip;
     </p>
   );
 }
 
 /** The gentle truth when the source is gone: the snapshot is the treasure. */
-function BodyMissing({ item, theme }) {
+function BodyMissing({ item }) {
   return (
     <>
       {item.item_subtitle && (
-        <p style={{ fontFamily: theme.fontHeadline, fontStyle: 'italic', fontSize: '1rem', color: theme.textBody, margin: '0 0 1rem', lineHeight: 1.7 }}>
+        <p style={{ fontFamily: 'var(--face-display)', fontStyle: 'italic', fontSize: '1rem', color: 'var(--text-primary)', margin: '0 0 1rem', lineHeight: 1.7 }}>
           {item.item_subtitle}
         </p>
       )}
-      <p style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.85rem', color: theme.textMuted, margin: 0, lineHeight: 1.8 }}>
+      <p style={{ fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.8 }}>
         This keepsake is yours from the day you saved it.
       </p>
     </>
@@ -63,7 +62,7 @@ function BodyMissing({ item, theme }) {
 }
 
 /** "Kept from" line + the deliberate way back to the full day. */
-function KeepsakeFoot({ item, theme }) {
+function KeepsakeFoot({ item }) {
   const dateLabel = formatEditionDate(item.edition_date);
   if (!dateLabel) return null;
   return (
@@ -71,9 +70,9 @@ function KeepsakeFoot({ item, theme }) {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       gap: '1rem', flexWrap: 'wrap',
       marginTop: '1.75rem', paddingTop: '1rem',
-      borderTop: `1px solid ${theme.accentGold}25`,
+      borderTop: '1px solid var(--border-fine)',
     }}>
-      <DGEyebrow tracking="tight" color={theme.textMuted} style={{ fontSize: '0.62rem' }}>
+      <DGEyebrow tracking="tight" color="var(--text-faint)" style={{ fontSize: '0.62rem' }}>
         Kept from {dateLabel}
       </DGEyebrow>
       <Link
@@ -81,8 +80,9 @@ function KeepsakeFoot({ item, theme }) {
         style={{
           display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
           minHeight: 44, padding: '0 1rem', borderRadius: 22,
-          background: `${theme.accentGold}26`, border: `1px solid ${theme.accentGold}40`,
-          fontFamily: theme.fontBody, fontSize: '0.75rem', color: theme.textBody,
+          background: 'color-mix(in srgb, var(--accent) 15%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
+          fontFamily: 'var(--face-sans)', fontSize: '0.75rem', color: 'var(--text-primary)',
           textDecoration: 'none',
         }}
       >
@@ -93,12 +93,12 @@ function KeepsakeFoot({ item, theme }) {
 }
 
 /** Good news: the reader's NewsModal — hero, headline, location, story. */
-function NewsBody({ item, detail, loading, theme }) {
+function NewsBody({ item, detail, loading }) {
   return (
     <>
       <DGHeroImage imageUrl={detail?.image_url ?? item.item_image_url} aspectRatio="16/9" fallbackMark="✨" />
       <div style={{ padding: '1.5rem 2rem 2.5rem' }}>
-        <h2 style={{ fontFamily: theme.fontHeadline, fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 700, color: theme.textHeadline, margin: '0 0 1rem', lineHeight: 1.2 }}>
+        <h2 style={{ fontFamily: 'var(--face-display)', fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 700, color: 'var(--accent)', margin: '0 0 1rem', lineHeight: 1.2 }}>
           {detail?.headline ?? item.item_title}
         </h2>
         {(detail?.location ?? item.country_name) && (
@@ -106,19 +106,19 @@ function NewsBody({ item, detail, loading, theme }) {
             <span aria-hidden="true">📍</span> {detail?.location ?? item.country_name}
           </DGEyebrow>
         )}
-        <div style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.95rem', color: theme.textBody, lineHeight: 1.9 }}>
+        <div style={{ fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.9 }}>
           {detail?.description
             ? <Paragraphs text={detail.description} />
-            : loading ? <BodyPending theme={theme} /> : <BodyMissing item={item} theme={theme} />}
+            : loading ? <BodyPending /> : <BodyMissing item={item} />}
         </div>
-        <KeepsakeFoot item={item} theme={theme} />
+        <KeepsakeFoot item={item} />
       </div>
     </>
   );
 }
 
 /** Moments (On This Day + Greatest): the reader's MomentModal. */
-function MomentBody({ item, detail, loading, theme }) {
+function MomentBody({ item, detail, loading }) {
   const year = detail?.year ?? item.item_subtitle;
   return (
     <>
@@ -127,11 +127,11 @@ function MomentBody({ item, detail, loading, theme }) {
           <div style={{
             position: 'absolute', top: 14, left: 14,
             width: 34, height: 34, borderRadius: '50%',
-            background: theme.accentGold,
-            boxShadow: theme.shadowSoft,
+            background: 'var(--accent)',
+            boxShadow: 'var(--shadow-card)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <span style={{ fontFamily: theme.fontBody, fontSize: '0.8rem', fontWeight: 700, color: theme.bgCard }}>
+            <span style={{ fontFamily: 'var(--face-sans)', fontSize: '0.8rem', fontWeight: 700, color: 'var(--surface-raised)' }}>
               {detail.rank}
             </span>
           </div>
@@ -139,35 +139,35 @@ function MomentBody({ item, detail, loading, theme }) {
       </DGHeroImage>
       <div style={{ padding: '1.5rem 2rem 2rem' }}>
         {year && (
-          <DGEyebrow tracking="wide" color={theme.accentGold} style={{ margin: '0 0 0.5rem' }}>
+          <DGEyebrow tracking="wide" color="var(--accent-readable)" style={{ margin: '0 0 0.5rem' }}>
             {year}{detail?.location ? ` · ${detail.location}` : ''}
           </DGEyebrow>
         )}
         <h2 style={{
-          fontFamily: theme.fontHeadline,
+          fontFamily: 'var(--face-display)',
           fontSize: 'clamp(1.3rem, 2.5vw, 1.8rem)',
-          fontWeight: 700, color: theme.textHeadline,
+          fontWeight: 700, color: 'var(--accent)',
           margin: '0 0 1.25rem', lineHeight: 1.25,
         }}>
           {detail?.headline ?? item.item_title}
         </h2>
-        <div style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.92rem', color: theme.textBody, lineHeight: 1.9 }}>
+        <div style={{ fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.92rem', color: 'var(--text-primary)', lineHeight: 1.9 }}>
           {detail?.story
             ? <Paragraphs text={detail.story} />
-            : loading ? <BodyPending theme={theme} /> : <BodyMissing item={item} theme={theme} />}
+            : loading ? <BodyPending /> : <BodyMissing item={item} />}
         </div>
-        <KeepsakeFoot item={item} theme={theme} />
+        <KeepsakeFoot item={item} />
       </div>
     </>
   );
 }
 
 /** Places: the reader's destination modal — atmosphere, then child life. */
-function DestinationBody({ item, detail, loading, theme }) {
+function DestinationBody({ item, detail, loading }) {
   return (
     <>
       <DGHeroImage imageUrl={detail?.image_url ?? item.item_image_url} aspectRatio="16/9" fallbackMark="🌍">
-        <DGEyebrow tracking="wide" color={theme.accentGold} style={{
+        <DGEyebrow tracking="wide" color="var(--accent-readable)" style={{
           position: 'absolute', bottom: '1rem', left: 'clamp(1.25rem, 4vw, 2rem)', right: 'clamp(1.25rem, 4vw, 2rem)',
         }}>
           {detail?.continent ? `${detail.continent} · ` : ''}{detail?.name ?? item.item_title}
@@ -175,58 +175,59 @@ function DestinationBody({ item, detail, loading, theme }) {
       </DGHeroImage>
       <div style={{ padding: 'clamp(1.25rem, 4vw, 2.5rem)' }}>
         {detail?.atmosphere && (
-          <p style={{ fontFamily: theme.fontHeadline, fontStyle: 'italic', fontSize: '1.15rem', color: theme.textBody, lineHeight: 1.85, margin: '0 0 1.5rem', borderLeft: `3px solid ${theme.accentGold}40`, paddingLeft: '1rem' }}>
+          <p style={{ fontFamily: 'var(--face-display)', fontStyle: 'italic', fontSize: '1.15rem', color: 'var(--text-primary)', lineHeight: 1.85, margin: '0 0 1.5rem', borderLeft: '3px solid color-mix(in srgb, var(--accent) 25%, transparent)', paddingLeft: '1rem' }}>
             {detail.atmosphere}
           </p>
         )}
-        <div style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.95rem', color: theme.textBody, lineHeight: 1.9 }}>
+        <div style={{ fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.9 }}>
           {detail?.story
             ? <Paragraphs text={detail.story} />
             : detail?.atmosphere
               ? null
-              : loading ? <BodyPending theme={theme} /> : <BodyMissing item={item} theme={theme} />}
+              : loading ? <BodyPending /> : <BodyMissing item={item} />}
         </div>
-        <KeepsakeFoot item={item} theme={theme} />
+        <KeepsakeFoot item={item} />
       </div>
     </>
   );
 }
 
 /** Little treasures: the token, writ large — plus a phrase's translation. */
-function TokenBody({ item, detail, loading, theme }) {
+function TokenBody({ item, detail, loading }) {
   const meta = TOKEN_META[item.item_type] ?? { emoji: '✦', label: 'Treasure' };
   return (
     <div style={{ padding: '2.5rem 2rem 2rem', textAlign: 'center' }}>
       <div aria-hidden="true" style={{
         width: 84, height: 84, borderRadius: '50%', margin: '0 auto 1.25rem',
-        background: `${theme.accentGold}1F`, border: `1px solid ${theme.accentGold}40`,
+        background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.4rem',
       }}>
         {meta.emoji}
       </div>
-      <DGEyebrow tracking="wide" color={theme.accentGold} style={{ fontSize: '0.62rem', margin: '0 0 0.75rem' }}>
+      <DGEyebrow tracking="wide" color="var(--accent-readable)" style={{ fontSize: '0.62rem', margin: '0 0 0.75rem' }}>
         {meta.label}{detail?.language ? ` · ${detail.language}` : ''}{item.country_name ? ` · ${item.country_name}` : ''}
       </DGEyebrow>
       <h2 style={{
-        fontFamily: theme.fontHeadline, fontStyle: 'italic',
+        fontFamily: 'var(--face-display)', fontStyle: 'italic',
         fontSize: 'clamp(1.3rem, 3vw, 1.7rem)', fontWeight: 600,
-        color: theme.textHeadline, margin: 0, lineHeight: 1.4,
+        color: 'var(--accent)', margin: 0, lineHeight: 1.4,
       }}>
         {item.item_title}
       </h2>
       {detail?.translation && (
         <p style={{
-          fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.95rem',
-          color: theme.textBody, margin: '0.9rem 0 0', lineHeight: 1.8,
+          fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.95rem',
+          color: 'var(--text-primary)', margin: '0.9rem 0 0', lineHeight: 1.8,
         }}>
           &ldquo;{detail.translation}&rdquo;
         </p>
       )}
       {!detail && loading && item.item_type === 'phrase' && (
-        <div style={{ marginTop: '0.9rem' }}><BodyPending theme={theme} /></div>
+        <div style={{ marginTop: '0.9rem' }}><BodyPending /></div>
       )}
       <div style={{ textAlign: 'left' }}>
-        <KeepsakeFoot item={item} theme={theme} />
+        <KeepsakeFoot item={item} />
       </div>
     </div>
   );
@@ -263,12 +264,11 @@ const LABELS = {
  * }} props
  */
 export default function TreasuryItemModal({ item, detail, loading, onClose }) {
-  const { theme } = useTheme();
   const Body = BODIES[item.item_type] ?? TokenBody;
   const wide = item.item_type === 'destination';
   return (
     <DGModal label={LABELS[item.item_type] ?? 'Treasure'} onClose={onClose} maxWidth={wide ? 800 : 720}>
-      <Body item={item} detail={detail} loading={loading} theme={theme} />
+      <Body item={item} detail={detail} loading={loading} />
     </DGModal>
   );
 }

@@ -33,9 +33,6 @@
  * rail destinations keeps the layout mounted, so the chrome never unresolves.
  */
 import { NAV_SHELL_CSS } from '@/components/dailygold/DGPageShell';
-import { THEMES, DEFAULT_THEME } from '@/components/theme/themes';
-
-const neutral = THEMES[DEFAULT_THEME];
 
 export default function DGChromeFallback() {
   return (
@@ -43,10 +40,10 @@ export default function DGChromeFallback() {
       className="dg-root"
       aria-busy="true"
       style={{
-        '--dg-gold': neutral.accentGold,
-        backgroundColor: neutral.bgPrimary,
-        fontFamily: neutral.fontBody,
-        color: neutral.textBody,
+        '--dg-gold': 'var(--accent)',
+        backgroundColor: 'var(--surface-page)',
+        fontFamily: 'var(--face-sans)',
+        color: 'var(--text-primary)',
       }}
     >
       <style>{NAV_SHELL_CSS}</style>

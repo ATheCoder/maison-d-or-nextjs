@@ -34,7 +34,6 @@
  * sentence. Every visible part below is `aria-hidden`, so a screen reader hears
  * "Preparing today's edition" once instead of a reading of forty grey blocks.
  */
-import { useTheme } from '@/components/theme/ThemeContext';
 import { Bar, SKELETON_CSS } from './DGContentSkeleton';
 
 // Motion that is this file's own. The shimmer on every Bar comes from
@@ -78,13 +77,13 @@ function GhostSeal() {
       height: 64,
       borderRadius: '50%',
       background: 'radial-gradient(circle at 35% 30%, #F0EAE0 0%, #E0D8CC 60%, #D4CBBC 100%)',
-      border: '2px solid rgba(201,169,110,0.2)',
+      border: '2px solid color-mix(in srgb, var(--palette-gold) 20%, transparent)',
       opacity: 0.35,
       flexShrink: 0,
     }}>
       <div style={{
         position: 'absolute', inset: 4, borderRadius: '50%',
-        border: '1px solid rgba(201,169,110,0.1)',
+        border: '1px solid color-mix(in srgb, var(--palette-gold) 10%, transparent)',
       }} />
     </div>
   );
@@ -113,9 +112,9 @@ function GhostVolume({ width, transform, delay, lead, style }) {
         {/* Gilt rules stamped into the board (.dgbt-gilt) */}
         <div style={{
           position: 'absolute', inset: 7, pointerEvents: 'none',
-          border: '1px solid rgba(226,199,140,0.34)',
+          border: '1px solid color-mix(in srgb, var(--palette-gold-bright) 34%, transparent)',
           borderRadius: '2px 7px 7px 2px',
-          boxShadow: 'inset 0 0 0 3px rgba(226,199,140,0.07)',
+          boxShadow: 'inset 0 0 0 3px color-mix(in srgb, var(--palette-gold-bright) 7%, transparent)',
         }} />
         <div className="dg-edskel-gleam" style={{ animationDelay: delay }} />
       </div>
@@ -133,11 +132,9 @@ function GhostVolume({ width, transform, delay, lead, style }) {
 }
 
 export default function DGEditionSkeleton() {
-  const { theme } = useTheme();
-
   // The hairline the section headers open and close with — the same rule at
   // two directions, as on the real page.
-  const goldRule = (dir) => `linear-gradient(to ${dir}, transparent, ${theme.accentGold}88)`;
+  const goldRule = (dir) => `linear-gradient(to ${dir}, transparent, color-mix(in srgb, var(--accent) 53%, transparent))`;
 
   return (
     // The same entrance the day itself plays (dgFadeIn, from NAV_SHELL_CSS), so
@@ -165,7 +162,7 @@ export default function DGEditionSkeleton() {
         <div style={{ maxWidth: 720, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           {/* Date pill: 0.6rem×2 padding + one 0.85rem uppercase line ≈ 44px,
               in the pill's own 40px radius and gold-tinted ring. */}
-          <Bar w="min(300px, 85%)" h={44} radius={40} style={{ border: `1px solid ${theme.accentGold}40`, marginBottom: '1.25rem' }} />
+          <Bar w="min(300px, 85%)" h={44} radius={40} style={{ border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)', marginBottom: '1.25rem' }} />
 
           {/* "Daily Gold" at clamp(2.5rem, 6vw, 4.5rem), lh 1.05 → 42–76px */}
           <Bar w="clamp(220px, 34vw, 380px)" h="clamp(44px, 6.3vw, 76px)" style={{ marginBottom: '0.75rem' }} />
@@ -179,9 +176,9 @@ export default function DGEditionSkeleton() {
 
           {/* "Begin exploring" — rule, word, rule */}
           <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ height: 1, width: 32, background: `${theme.accentGold}40` }} />
+            <div style={{ height: 1, width: 32, background: 'color-mix(in srgb, var(--accent) 25%, transparent)' }} />
             <Bar w={110} h={12} />
-            <div style={{ height: 1, width: 32, background: `${theme.accentGold}40` }} />
+            <div style={{ height: 1, width: 32, background: 'color-mix(in srgb, var(--accent) 25%, transparent)' }} />
           </div>
         </div>
       </div>
@@ -205,11 +202,11 @@ export default function DGEditionSkeleton() {
         justifyContent: 'center',
         gap: '1.25rem',
         padding: '1.75rem 1.5rem 1.5rem',
-        background: `linear-gradient(180deg, ${theme.bgSoft}00 0%, ${theme.bgSoft}59 20%, ${theme.bgSoft}E6 48%, ${theme.bgSoft}E6 72%, ${theme.bgSoft}00 100%)`,
+        background: 'linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--surface-tint) 35%, transparent) 20%, color-mix(in srgb, var(--surface-tint) 90%, transparent) 48%, color-mix(in srgb, var(--surface-tint) 90%, transparent) 72%, transparent 100%)',
       }}>
         <div style={{
           position: 'absolute', left: 0, right: 0, bottom: 0, height: 1,
-          background: `linear-gradient(to right, transparent, ${theme.accentGold}33 25%, ${theme.accentGold}33 75%, transparent)`,
+          background: 'linear-gradient(to right, transparent, color-mix(in srgb, var(--accent) 20%, transparent) 25%, color-mix(in srgb, var(--accent) 20%, transparent) 75%, transparent)',
           pointerEvents: 'none',
         }} />
 
@@ -225,7 +222,7 @@ export default function DGEditionSkeleton() {
           {/* Thin gold rule beneath the date, as on the navigator */}
           <div style={{
             width: '100%', height: 1, marginTop: '0.5rem',
-            background: `linear-gradient(to right, transparent, ${theme.accentGold}50, transparent)`,
+            background: 'linear-gradient(to right, transparent, color-mix(in srgb, var(--accent) 31%, transparent), transparent)',
           }} />
           {/* "Day N of M" — rendered on nearly every real day */}
           <Bar w={120} h={14} style={{ marginTop: '0.4rem' }} />
@@ -271,11 +268,11 @@ export default function DGEditionSkeleton() {
 
         {/* The section's closing rule and star, at its own 0.45 */}
         <div style={{ marginTop: '3rem', display: 'flex', alignItems: 'center', gap: 14, opacity: 0.45 }}>
-          <div style={{ flex: 1, height: 1, background: `linear-gradient(to right, transparent, ${theme.accentGold})` }} />
+          <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, transparent, var(--accent))' }} />
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-            <path d="M7 1 L8.5 5.5 L13 5.5 L9.5 8.5 L11 13 L7 10 L3 13 L4.5 8.5 L1 5.5 L5.5 5.5Z" fill={theme.accentGold} opacity="0.7" />
+            <path d="M7 1 L8.5 5.5 L13 5.5 L9.5 8.5 L11 13 L7 10 L3 13 L4.5 8.5 L1 5.5 L5.5 5.5Z" style={{ fill: 'var(--accent)' }} opacity="0.7" />
           </svg>
-          <div style={{ flex: 1, height: 1, background: `linear-gradient(to left, transparent, ${theme.accentGold})` }} />
+          <div style={{ flex: 1, height: 1, background: 'linear-gradient(to left, transparent, var(--accent))' }} />
         </div>
       </div>
 
@@ -302,9 +299,9 @@ export default function DGEditionSkeleton() {
             <div style={{
               marginTop: '1rem',
               padding: '1.25rem',
-              borderRadius: theme.radius,
-              background: theme.bgCard,
-              border: `1px solid ${theme.accentGold}1F`,
+              borderRadius: 'var(--radius-lg)',
+              background: 'var(--surface-raised)',
+              border: '1px solid color-mix(in srgb, var(--accent) 12%, transparent)',
             }}>
               <Bar h={90} radius={8} />
               <Bar w="85%" h={10} style={{ marginTop: '1rem' }} />
@@ -319,9 +316,9 @@ export default function DGEditionSkeleton() {
           hairlines, the rule-flanked eyebrow, the sub line, the big italic
           quote and its attribution — stacked on the band's own 0.75rem gap. */}
       <div aria-hidden="true" style={{
-        background: `linear-gradient(135deg, ${theme.accentGold}26 0%, ${theme.accentGold}14 50%, ${theme.accentGold}1F 100%)`,
-        borderTop: `1px solid ${theme.accentGold}40`,
-        borderBottom: `1px solid ${theme.accentGold}40`,
+        background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent) 0%, color-mix(in srgb, var(--accent) 8%, transparent) 50%, color-mix(in srgb, var(--accent) 12%, transparent) 100%)',
+        borderTop: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
+        borderBottom: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
         padding: '2rem clamp(1.5rem, 6vw, 5rem)',
         display: 'flex',
         flexDirection: 'column',
@@ -329,9 +326,9 @@ export default function DGEditionSkeleton() {
         gap: '0.75rem',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
-          <div style={{ width: 40, height: 1, background: `${theme.accentGold}80` }} />
+          <div style={{ width: 40, height: 1, background: 'color-mix(in srgb, var(--accent) 50%, transparent)' }} />
           <Bar w={170} h={13} />
-          <div style={{ width: 40, height: 1, background: `${theme.accentGold}80` }} />
+          <div style={{ width: 40, height: 1, background: 'color-mix(in srgb, var(--accent) 50%, transparent)' }} />
         </div>
         <Bar w={240} h={14} style={{ marginBottom: '0.5rem' }} />
         <Bar w="min(620px, 90%)" h={20} />
@@ -345,9 +342,9 @@ export default function DGEditionSkeleton() {
           the four-up detail grid on the card's own minmax(160px) tracks. */}
       <div aria-hidden="true" style={{ padding: '0.75rem clamp(1rem, 3vw, 2rem) 0.5rem' }}>
         <div style={{
-          background: theme.bgCard,
-          borderRadius: theme.radius,
-          border: `1px solid ${theme.accentGold}15`,
+          background: 'var(--surface-raised)',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid color-mix(in srgb, var(--accent) 8%, transparent)',
           overflow: 'hidden',
         }}>
           <Bar h="auto" radius={0} style={{ aspectRatio: '16 / 9' }} />
@@ -377,7 +374,7 @@ export default function DGEditionSkeleton() {
             gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
             gap: '1.5rem',
           }}>
-            {[0, 1, 2].map(i => <Bar key={i} h="auto" radius={theme.radius} style={{ aspectRatio: '16 / 11' }} />)}
+            {[0, 1, 2].map(i => <Bar key={i} h="auto" radius="var(--radius-lg)" style={{ aspectRatio: '16 / 11' }} />)}
           </div>
         </div>
       </div>
@@ -396,7 +393,7 @@ export default function DGEditionSkeleton() {
             {i < 4 && (
               <div style={{
                 width: 40, height: 1,
-                background: `linear-gradient(to right, transparent, ${theme.accentGold}40, transparent)`,
+                background: 'linear-gradient(to right, transparent, color-mix(in srgb, var(--accent) 25%, transparent), transparent)',
               }} />
             )}
           </div>
@@ -417,9 +414,9 @@ export default function DGEditionSkeleton() {
         <Bar w="min(480px, 85%)" h={22} />
         <Bar w="min(360px, 65%)" h={22} style={{ margin: '8px 0 1rem' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem' }}>
-          <div style={{ height: 1, width: 60, background: `${theme.accentGold}4D` }} />
+          <div style={{ height: 1, width: 60, background: 'color-mix(in srgb, var(--accent) 30%, transparent)' }} />
           <Bar w="min(320px, 70vw)" h={14} />
-          <div style={{ height: 1, width: 60, background: `${theme.accentGold}4D` }} />
+          <div style={{ height: 1, width: 60, background: 'color-mix(in srgb, var(--accent) 30%, transparent)' }} />
         </div>
       </div>
     </div>

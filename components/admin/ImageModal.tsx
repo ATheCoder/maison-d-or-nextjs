@@ -24,12 +24,12 @@ import {
 const CSS = `
 .imodal-scrim { position:fixed; inset:0; background:rgba(36,26,12,.5); display:flex; align-items:center; justify-content:center; padding:24px; z-index:80; }
 .imodal {
-  --ground:#f5f0e7; --line:rgba(201,169,110,.25); --line2:rgba(201,169,110,.45);
-  --ink:#241a0c; --brown:#5c4a2a; --brown2:#8b7355; --brown3:#a08a63;
-  --gold:#c9a96e; --gold-deep:#a8843f; --gold-soft:rgba(201,169,110,.14);
-  --green:#7d8a4e; --amber:#c08a2e; --red:#b5533a;
-  --serif:"Playfair Display",Georgia,serif; --sans:"Lato",system-ui,sans-serif;
-  --parch:#f5f0e7; --parch2:#ece2cd;
+  --ground:var(--surface-page); --line:var(--border-fine); --line2:var(--border-accent);
+  --ink:var(--text-primary); --brown:var(--text-secondary); --brown2:var(--text-faint); --brown3:var(--text-faint);
+  --gold:var(--accent); --gold-deep:var(--accent-readable); --gold-soft:color-mix(in srgb, var(--accent) 14%, transparent);
+  --green:#7d8a4e; --amber:#c08a2e; --red:var(--danger-readable);
+  --serif:var(--face-display); --sans:var(--face-sans);
+  --parch:var(--surface-page); --parch2:var(--surface-tint);
   background:var(--ground); border:1px solid var(--line2); border-radius:14px;
   box-shadow:0 30px 70px rgba(0,0,0,.38); overflow:hidden;
   width:min(900px,100%); max-height:92vh; display:flex; flex-direction:column;

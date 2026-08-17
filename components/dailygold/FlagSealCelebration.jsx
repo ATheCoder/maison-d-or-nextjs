@@ -9,7 +9,6 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import FlagSealMedallion from './FlagSealMedallion';
-import { useTheme } from '@/components/theme/ThemeContext';
 
 // Visually hidden but still announced by screen readers.
 const VISUALLY_HIDDEN = {
@@ -19,7 +18,6 @@ const VISUALLY_HIDDEN = {
 };
 
 export default function FlagSealCelebration({ countryCode, countryName, type = 'new', onDone }) {
-  const { theme } = useTheme();
   const [phase, setPhase] = useState('enter');
 
   // Keep the latest onDone without retriggering the timeline when the parent
@@ -55,16 +53,16 @@ export default function FlagSealCelebration({ countryCode, countryName, type = '
           <FlagSealMedallion countryCode={countryCode} countryName={countryName} size="md" earned />
           <div aria-hidden="true" style={{
             position: 'absolute', top: -8, right: -8,
-            background: theme.accentGold, color: '#fff',
+            background: 'var(--accent)', color: 'var(--palette-ink)',
             borderRadius: '50%', width: 24, height: 24,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: theme.fontBody, fontSize: 12, fontWeight: 700,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            fontFamily: 'var(--face-sans)', fontSize: 12, fontWeight: 700,
+            boxShadow: 'var(--shadow-card)',
           }}>+1</div>
         </div>
         <span aria-hidden="true" style={{
-          fontFamily: theme.fontHeadline,
-          fontSize: '1rem', color: theme.accentGold, fontStyle: 'italic',
+          fontFamily: 'var(--face-display)',
+          fontSize: '1rem', color: 'var(--accent-readable)', fontStyle: 'italic',
         }}>
           {countryName}
         </span>
@@ -92,7 +90,7 @@ export default function FlagSealCelebration({ countryCode, countryName, type = '
       <div aria-hidden="true" style={{
         position: 'absolute', inset: 0,
         background: [
-          `radial-gradient(ellipse at center, ${theme.accentGold}33 0%, transparent 60%)`,
+          'radial-gradient(ellipse at center, color-mix(in srgb, var(--accent) 20%, transparent) 0%, transparent 60%)',
           'radial-gradient(ellipse at center, rgba(24,18,8,0.74) 0%, rgba(24,18,8,0.52) 45%, rgba(24,18,8,0.18) 75%)',
         ].join(', '),
         backdropFilter: 'blur(4px)',
@@ -116,7 +114,7 @@ export default function FlagSealCelebration({ countryCode, countryName, type = '
         <div style={{ position: 'relative' }}>
           <div style={{
             position: 'absolute', inset: -16, borderRadius: '50%',
-            background: `radial-gradient(circle, ${theme.accentGold}73 0%, transparent 70%)`,
+            background: 'radial-gradient(circle, color-mix(in srgb, var(--accent) 45%, transparent) 0%, transparent 70%)',
             animation: visible ? 'flagGlow 1.4s ease-in-out infinite alternate' : 'none',
           }} />
           <FlagSealMedallion countryCode={countryCode} countryName={countryName} size="lg" earned />
@@ -124,16 +122,16 @@ export default function FlagSealCelebration({ countryCode, countryName, type = '
 
         <div style={{ textAlign: 'center' }}>
           <p style={{
-            fontFamily: theme.fontHeadline,
+            fontFamily: 'var(--face-display)',
             fontSize: 'clamp(1.2rem, 4vw, 1.7rem)',
-            fontWeight: 700, color: '#E9C666', margin: '0 0 6px',
-            textShadow: `0 2px 4px rgba(15,10,4,0.75), 0 0 24px ${theme.accentGold}99`,
+            fontWeight: 700, color: 'var(--palette-gold-bright)', margin: '0 0 6px',
+            textShadow: '0 2px 4px rgba(15,10,4,0.75), 0 0 24px color-mix(in srgb, var(--accent) 60%, transparent)',
           }}>
             You earned {countryName}!
           </p>
           <p style={{
-            fontFamily: theme.fontBody, fontSize: '0.72rem',
-            color: 'rgba(245,237,216,0.9)', margin: 0,
+            fontFamily: 'var(--face-sans)', fontSize: '0.72rem',
+            color: 'color-mix(in srgb, var(--palette-ink-on-dark) 90%, transparent)', margin: 0,
             letterSpacing: '0.14em', textTransform: 'uppercase',
             textShadow: '0 1px 3px rgba(15,10,4,0.6)',
           }}>

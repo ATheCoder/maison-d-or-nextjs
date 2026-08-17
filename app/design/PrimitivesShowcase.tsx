@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { THEME_KEYS, THEME_NAMES } from '@/lib/theme-keys';
 import Button from '@/components/ds/Button';
 import Eyebrow from '@/components/ds/Eyebrow';
 import Field from '@/components/ds/Field';
@@ -278,6 +279,51 @@ function Specimen({ story }: { story: Story }) {
   );
 }
 
+/* The seven page-wide themes, each chip re-scoped by its own data-theme
+   attribute — the same blocks the [data-surface] stories above exercise, plus
+   --theme-swatch, which is what the live pickers (wizard, edition switcher)
+   render their dots from. */
+function ThemeGallery() {
+  return (
+    <div className="mx-auto max-w-3xl space-y-8 px-6">
+      <Eyebrow>The seven themes · page-wide scopes</Eyebrow>
+      <p className="type-body max-w-[38rem] text-secondary">
+        A theme is one of the surface re-scopes applied to a whole page by{' '}
+        <code>data-theme</code> — parchment is the house default (the bare-root
+        tokens), and the other six share their declarations with the sections
+        above, so what is measured there is what ships here.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {THEME_KEYS.map((key) => (
+          <div
+            key={key}
+            data-theme={key}
+            className="rounded-md border border-fine bg-surface-page p-5"
+          >
+            <div className="flex items-center gap-3">
+              <span
+                aria-hidden
+                className="inline-block size-5 rounded-full border border-fine"
+                style={{ background: 'var(--theme-swatch)' }}
+              />
+              <p className="type-body-ui text-primary">{THEME_NAMES[key]}</p>
+            </div>
+            <div
+              className="mt-4 rounded-md bg-surface-raised p-4"
+              style={{ boxShadow: 'var(--shadow-card)' }}
+            >
+              <p className="type-caption text-accent-readable">{key}</p>
+              <p className="type-body-ui text-primary">The raised card</p>
+              <p className="type-caption text-faint">and its faint caption</p>
+            </div>
+            <Rule variant="accent" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function PrimitivesShowcase() {
   return (
     <div>
@@ -296,6 +342,9 @@ export default function PrimitivesShowcase() {
           <Specimen story={story} />
         </SectionSurface>
       ))}
+      <SectionSurface surface="light" className="border-t border-fine">
+        <ThemeGallery />
+      </SectionSurface>
     </div>
   );
 }

@@ -22,7 +22,6 @@
  * already lifted, leaves mid-loop — instead of playing the opening again.
  */
 import { useEffect } from 'react';
-import { useTheme } from '@/components/theme/ThemeContext';
 
 // Gold dust that rises out of the opening book. Fixed positions rather than
 // Math.random() so the server and client markup agree.
@@ -43,8 +42,6 @@ const DUST = [
 const OPENED_AT = 1.35;
 
 export default function BookOpeningCurtain({ name, imgUrl = null, resume = false }) {
-  const { theme } = useTheme();
-
   // Hold the page still behind the curtain. The curtain only exists while it
   // is blocking — the shelf unmounts it on navigation, the story page when the
   // art arrives — so the cleanup that restores the scroll always runs.
@@ -152,7 +149,7 @@ export default function BookOpeningCurtain({ name, imgUrl = null, resume = false
         .dgo-face-front { box-shadow: 0 22px 48px rgba(0,0,0,0.5); }
         .dgo-face-back {
           transform: rotateY(180deg);
-          box-shadow: inset 0 0 0 1px rgba(226,199,140,0.16);
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--palette-gold-bright) 16%, transparent);
           background:
             radial-gradient(ellipse 60% 50% at 40% 30%, rgba(90,64,38,0.55), transparent 60%),
             linear-gradient(150deg, #2E2015 0%, #1B1208 100%);
@@ -167,7 +164,7 @@ export default function BookOpeningCurtain({ name, imgUrl = null, resume = false
           display: flex; align-items: center; justify-content: center;
           font-family: Georgia, 'Times New Roman', serif;
           font-size: 3rem; letter-spacing: 0.08em;
-          color: rgba(226,199,140,0.55);
+          color: color-mix(in srgb, var(--palette-gold-bright) 55%, transparent);
         }
         .dgo-cover-wash {
           position: absolute; inset: 0;
@@ -177,7 +174,7 @@ export default function BookOpeningCurtain({ name, imgUrl = null, resume = false
         }
         .dgo-cover-frame {
           position: absolute; inset: 8px;
-          border: 1px solid rgba(226,199,140,0.4);
+          border: 1px solid color-mix(in srgb, var(--palette-gold-bright) 40%, transparent);
           border-radius: 2px 6px 6px 2px;
         }
         .dgo-cover-spine {
@@ -190,7 +187,7 @@ export default function BookOpeningCurtain({ name, imgUrl = null, resume = false
         .dgo-dust i {
           position: absolute; bottom: 8%;
           border-radius: 50%;
-          background: radial-gradient(circle, #F3DCA8, rgba(226,199,140,0));
+          background: radial-gradient(circle, color-mix(in srgb, var(--palette-gold-bright) 65%, var(--palette-ivory)), transparent);
           opacity: 0;
           animation-name: dgoDust;
           animation-timing-function: ease-out;
@@ -206,24 +203,24 @@ export default function BookOpeningCurtain({ name, imgUrl = null, resume = false
         .dgo-caption { text-align: center; display: grid; justify-items: center; gap: 0.6rem; }
         .dgo-eyebrow {
           margin: 0;
-          font-family: ${theme.fontBody};
+          font-family: var(--face-sans);
           font-size: 0.66rem; letter-spacing: 0.3em; text-transform: uppercase;
-          color: rgba(226,199,140,0.72);
+          color: color-mix(in srgb, var(--palette-gold-bright) 72%, transparent);
         }
         .dgo-name {
           margin: 0;
           font-size: clamp(1.2rem, 3.2vw, 1.7rem);
           font-weight: 700; letter-spacing: 0.02em;
-          color: #F4E4BE;
-          text-shadow: 0 2px 18px rgba(226,199,140,0.28);
+          color: color-mix(in srgb, var(--palette-gold-bright) 45%, var(--palette-ivory));
+          text-shadow: 0 2px 18px color-mix(in srgb, var(--palette-gold-bright) 28%, transparent);
         }
         .dgo-bar {
           width: min(210px, 55vw); height: 2px; border-radius: 2px;
-          background: rgba(226,199,140,0.16); overflow: hidden;
+          background: color-mix(in srgb, var(--palette-gold-bright) 16%, transparent); overflow: hidden;
         }
         .dgo-bar i {
           display: block; width: 42%; height: 100%;
-          background: linear-gradient(to right, transparent, #E2C78C, transparent);
+          background: linear-gradient(to right, transparent, var(--palette-gold-bright), transparent);
           animation: dgoShuttle 1.3s ease-in-out infinite;
         }
         @keyframes dgoShuttle {
@@ -292,7 +289,7 @@ export default function BookOpeningCurtain({ name, imgUrl = null, resume = false
 
         <div className="dgo-caption">
           <p className="dgo-eyebrow">Opening the story of</p>
-          <p className="dgo-name" style={{ fontFamily: theme.fontHeadline }}>{name}</p>
+          <p className="dgo-name" style={{ fontFamily: 'var(--face-display)' }}>{name}</p>
           <div className="dgo-bar"><i /></div>
         </div>
       </div>

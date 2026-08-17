@@ -23,12 +23,12 @@ import { flagEmoji } from '@/lib/countries';
 
 const CSS = `
 .dgd {
-  --ground:#f5f0e7; --panel-t:rgba(255,248,238,.82);
-  --line:rgba(201,169,110,.25); --line2:rgba(201,169,110,.45);
-  --ink:#241a0c; --brown:#5c4a2a; --brown2:#8b7355; --brown3:#a08a63;
-  --gold:#c9a96e; --gold-deep:#a8843f; --gold-soft:rgba(201,169,110,.14);
-  --green:#7d8a4e; --amber:#c08a2e; --red:#b5533a;
-  --serif:"Playfair Display",Georgia,serif; --sans:"Lato",system-ui,sans-serif;
+  --ground:var(--surface-page); --panel-t:color-mix(in srgb, var(--surface-raised) 82%, transparent);
+  --line:var(--border-fine); --line2:var(--border-accent);
+  --ink:var(--text-primary); --brown:var(--text-secondary); --brown2:var(--text-faint); --brown3:var(--text-faint);
+  --gold:var(--accent); --gold-deep:var(--accent-readable); --gold-soft:color-mix(in srgb, var(--accent) 14%, transparent);
+  --green:#7d8a4e; --amber:#c08a2e; --red:var(--danger-readable);
+  --serif:var(--face-display); --sans:var(--face-sans);
   --noise:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.05'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
   min-height:100vh; font-family:var(--sans); color:var(--ink); -webkit-font-smoothing:antialiased;
   background: var(--noise), radial-gradient(ellipse 120% 80% at 50% -10%, rgba(201,169,110,.10), transparent 55%), var(--ground);

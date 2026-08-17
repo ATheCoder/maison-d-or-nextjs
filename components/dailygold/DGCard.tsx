@@ -6,20 +6,15 @@
  * nobody could say whether that was a decision.
  *
  * It is only the *resting* shell. Hover, transform and the swap to
- * `theme.shadow` stay at the call site, in the same `style`/handler props the
+ * `--shadow-raised` stay at the call site, in the same `style`/handler props the
  * cards already carried — a card that lifts is doing something this component
  * has no business knowing about.
  *
  * `style` is merged last, so padding, layout, `overflow: hidden` and any
  * deliberate departure (the destination section carries no shadow) are the
  * call site's to state.
- *
- * `useTheme()` is called here rather than taking a `theme` prop: the hook falls
- * back to the default palette with no provider mounted, which is what lets the
- * design-sync previews render this standalone.
  */
 import { createElement, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
-import { useTheme } from '@/components/theme/ThemeContext';
 
 type DGCardProps = {
   children?: ReactNode;
@@ -43,16 +38,18 @@ export default function DGCard({
   style,
   ...rest
 }: DGCardProps) {
-  const { theme } = useTheme();
+  const borderColor = borderAlpha === '25'
+    ? 'var(--border-fine)'
+    : `color-mix(in srgb, var(--accent) ${Math.round((parseInt(borderAlpha, 16) / 255) * 100)}%, transparent)`;
   return createElement(
     as,
     {
       ...rest,
       style: {
-        background: theme.bgCard,
-        borderRadius: size === 'small' ? theme.radiusSmall : theme.radius,
-        border: `1px solid ${theme.accentGold}${borderAlpha}`,
-        boxShadow: theme.shadowSoft,
+        background: 'var(--surface-raised)',
+        borderRadius: size === 'small' ? 'var(--radius-md)' : 'var(--radius-lg)',
+        border: `1px solid ${borderColor}`,
+        boxShadow: 'var(--shadow-card)',
         ...style,
       },
     },

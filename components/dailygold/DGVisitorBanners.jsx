@@ -17,12 +17,10 @@
  * actually buys rather than shouting.
  */
 import { useState } from 'react';
-import { useTheme } from '@/components/theme/ThemeContext';
 import { SIGNUP_HREF, LOGIN_HREF } from '@/components/dailygold/SignupInvite';
 
 /** @param {{ name: string }} props */
 export function WelcomeFlourish({ name }) {
-  const { theme } = useTheme();
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return null;
 
@@ -34,8 +32,8 @@ export function WelcomeFlourish({ name }) {
       margin: '0 clamp(1rem, 3vw, 2rem)',
       padding: '1rem 1.15rem',
       borderRadius: 16,
-      background: `linear-gradient(135deg, ${theme.accentGold}22 0%, ${theme.accentGold}0D 100%)`,
-      border: `1px solid ${theme.accentGold}55`,
+      background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 13%, transparent) 0%, color-mix(in srgb, var(--accent) 5%, transparent) 100%)',
+      border: '1px solid var(--border-accent)',
       display: 'flex',
       alignItems: 'center',
       gap: '0.9rem',
@@ -44,15 +42,15 @@ export function WelcomeFlourish({ name }) {
       <span aria-hidden="true" style={{ fontSize: '1.5rem', lineHeight: 1 }}>✨</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{
-          fontFamily: theme.fontHeadline,
+          fontFamily: 'var(--face-display)',
           fontStyle: 'italic',
           fontSize: 'clamp(1rem, 2.2vw, 1.2rem)',
-          color: theme.textHeadline,
+          color: 'var(--accent-readable)',
           margin: '0 0 0.2rem',
         }}>
           {name}&rsquo;s first edition
         </p>
-        <p style={{ fontFamily: theme.fontBody, fontSize: '0.78rem', color: theme.textMuted, margin: 0, lineHeight: 1.5 }}>
+        <p style={{ fontFamily: 'var(--face-sans)', fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
           A new paper arrives every morning. Tap a heart to keep something, and the
           world&rsquo;s flags collect themselves as you read.
         </p>
@@ -63,7 +61,7 @@ export function WelcomeFlourish({ name }) {
         aria-label="Dismiss"
         style={{
           flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer',
-          color: theme.textMuted, fontSize: '1.1rem', lineHeight: 1, padding: '0.25rem',
+          color: 'var(--text-secondary)', fontSize: '1.1rem', lineHeight: 1, padding: '0.25rem',
         }}
       >
         ×
@@ -102,7 +100,7 @@ const CTA_CSS = `
       right: 0;
       border-bottom: none;
       border-top: 1px solid var(--cta-border);
-      box-shadow: 0 -4px 20px rgba(44, 36, 22, 0.08);
+      box-shadow: var(--shadow-bar);
       /* Signed out there is no tab bar below, so the bar sits on the screen's
          own edge and owes the home-indicator inset itself. */
       padding: 0.55rem 1rem calc(0.55rem + env(safe-area-inset-bottom, 0px));
@@ -124,26 +122,24 @@ const CTA_CSS = `
 `;
 
 export function SignedOutCta() {
-  const { theme } = useTheme();
-
   return (
     <>
       <style>{CTA_CSS}</style>
       <div
         className="dg-signedout-cta"
-        style={{ '--cta-bg': theme.bgCard, '--cta-border': `${theme.accentGold}44` }}
+        style={{ '--cta-bg': 'var(--surface-raised)', '--cta-border': 'color-mix(in srgb, var(--accent) 27%, transparent)' }}
       >
         <div className="dg-signedout-cta-sub" style={{ flex: '1 1 200px', minWidth: 0 }}>
           <p style={{
-            fontFamily: theme.fontHeadline,
+            fontFamily: 'var(--face-display)',
             fontSize: 'clamp(0.95rem, 2vw, 1.1rem)',
-            color: theme.textHeadline,
+            color: 'var(--accent-readable)',
             margin: 0,
           }}>
             Start your family&rsquo;s collection
           </p>
           <p style={{
-            fontFamily: theme.fontBody, fontSize: '0.75rem', color: theme.textMuted,
+            fontFamily: 'var(--face-sans)', fontSize: '0.75rem', color: 'var(--text-secondary)',
             margin: 0, lineHeight: 1.4,
           }}>
             Save treasures, earn flags, follow the reading journey.
@@ -154,11 +150,11 @@ export function SignedOutCta() {
           style={{
             flexShrink: 0,
             padding: '0.5rem 0.35rem',
-            fontFamily: theme.fontBody,
+            fontFamily: 'var(--face-sans)',
             fontSize: '0.75rem',
             fontWeight: 600,
             letterSpacing: '0.04em',
-            color: theme.textMuted,
+            color: 'var(--text-secondary)',
             textDecoration: 'none',
             whiteSpace: 'nowrap',
           }}
@@ -171,9 +167,9 @@ export function SignedOutCta() {
             flexShrink: 0,
             padding: '0.5rem 1.15rem',
             borderRadius: 10,
-            background: theme.accentGold,
-            color: '#FFF',
-            fontFamily: theme.fontBody,
+            background: 'var(--accent)',
+            color: 'var(--palette-ink)',
+            fontFamily: 'var(--face-sans)',
             fontSize: '0.75rem',
             fontWeight: 700,
             letterSpacing: '0.08em',

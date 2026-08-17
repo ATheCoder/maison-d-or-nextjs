@@ -13,13 +13,11 @@
  */
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import { dgDestinationsFor, DG_SHELF, DGIcon, isNavItemActive } from '@/components/dailygold/dgNavConfig';
 
 export default function DGMobileTabBar({ child = null }) {
   const pathname = usePathname();
-  const { theme } = useTheme();
   // No-ops on /passport and /treasury, which mount no provider.
   const { track } = useInstrumentation();
 
@@ -41,9 +39,9 @@ export default function DGMobileTabBar({ child = null }) {
       className="dg-tabbar"
       aria-label="Daily Gold navigation"
       style={{
-        background: theme.bgCard,
-        borderTop: `1px solid ${theme.accentGold}20`,
-        boxShadow: '0 -4px 20px rgba(44,36,22,0.08)',
+        background: 'var(--surface-raised)',
+        borderTop: '1px solid var(--border-fine)',
+        boxShadow: 'var(--shadow-bar)',
       }}
     >
       {/* <Link>, not buttons, for the same reason as the rail: viewport
@@ -66,15 +64,17 @@ export default function DGMobileTabBar({ child = null }) {
               gap: 3, padding: '0.4rem 0.25rem', transition: 'all 0.2s ease',
             }}
           >
-            <DGIcon name={tab.icon} size={22} color={active ? theme.accentGold : theme.textMuted} />
+            <span style={{ display: 'inline-flex', color: active ? 'var(--accent)' : 'var(--text-secondary)' }}>
+              <DGIcon name={tab.icon} size={22} />
+            </span>
             {/* Size and wrapping live in NAV_SHELL_CSS (.dg-tab-label), which
                 owns every breakpoint tier; only the palette-driven bits stay
                 inline. Six tabs do not fit at 0.7rem on a 320px phone. */}
             <span
               className="dg-tab-label"
               style={{
-                fontFamily: theme.fontBody,
-                color: active ? theme.accentGold : theme.textMuted,
+                fontFamily: 'var(--face-sans)',
+                color: active ? 'var(--accent-readable)' : 'var(--text-secondary)',
                 fontWeight: active ? 700 : 400,
               }}
             >
@@ -82,7 +82,7 @@ export default function DGMobileTabBar({ child = null }) {
             </span>
             <span aria-hidden="true" style={{
               width: 4, height: 4, borderRadius: '50%',
-              background: active ? theme.accentGold : 'transparent',
+              background: active ? 'var(--accent)' : 'transparent',
             }} />
           </Link>
         );

@@ -16,13 +16,8 @@
  * If a new label seems to want a fourth value, it wants one of these three.
  * Please do not reintroduce an ad-hoc `letterSpacing` at the call site — the
  * point of this module is that there is nowhere left for one to hide.
- *
- * `useTheme()` is called here rather than taking a `theme` prop: the hook falls
- * back to the default palette with no provider mounted, which is what lets the
- * design-sync previews render these standalone.
  */
 import type { CSSProperties, ReactNode } from 'react';
-import { useTheme } from '@/components/theme/ThemeContext';
 
 /** The only three letter-spacings the Daily Gold kicker has. */
 export type DGEyebrowTracking = 'tight' | 'wide' | 'hero';
@@ -49,23 +44,22 @@ export function DGEyebrow({
 }: {
   children?: ReactNode;
   tracking?: DGEyebrowTracking;
-  /** Defaults to `theme.accentSage`; gold and muted are the other two in use. */
+  /** Defaults to `var(--accent-readable)`; gold and muted are the other two in use. */
   color?: string;
   /** `span` for the kickers that sit inside a flex row rather than on their own. */
   as?: 'p' | 'span';
   className?: string;
   style?: CSSProperties;
 }) {
-  const { theme } = useTheme();
   return (
     <Tag
       className={className}
       style={{
-        fontFamily: theme.fontBody,
+        fontFamily: 'var(--face-sans)',
         fontSize: '0.7rem',
         letterSpacing: TRACKING[tracking],
         textTransform: 'uppercase',
-        color: color ?? theme.accentSage,
+        color: color ?? 'var(--accent-readable)',
         margin: 0,
         ...style,
       }}
@@ -89,17 +83,16 @@ export default function DGSectionHeader({
   eyebrow: ReactNode;
   title: ReactNode;
 }) {
-  const { theme } = useTheme();
   return (
     <div style={{ marginBottom: '0.85rem' }}>
       <DGEyebrow tracking="hero" style={{ margin: '0 0 0.35rem' }}>
         {eyebrow}
       </DGEyebrow>
       <h2 style={{
-        fontFamily: theme.fontHeadline,
+        fontFamily: 'var(--face-display)',
         fontSize: '1.4rem',
         fontWeight: 600,
-        color: theme.textHeadline,
+        color: 'var(--accent-readable)',
         margin: 0,
         lineHeight: 1.15,
       }}>

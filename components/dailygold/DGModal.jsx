@@ -23,7 +23,6 @@
  * account of how long the child had the content in front of them.
  */
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 
 /**
@@ -49,7 +48,6 @@ const useDwellEffect = typeof window === 'undefined' ? useEffect : useLayoutEffe
  * — keep costing nothing.
  */
 export default function DGModal({ onClose, label, maxWidth = 680, tracking = null, children }) {
-  const { theme } = useTheme();
   const { enabled, track, attention, subscribeAttention, registerFlushCollector } = useInstrumentation();
   const panelRef = useRef(null);
 
@@ -171,7 +169,7 @@ export default function DGModal({ onClose, label, maxWidth = 680, tracking = nul
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       style={{
         position: 'fixed', inset: 0, zIndex: 2000,
-        background: 'rgba(24,18,10,0.6)',
+        background: 'var(--surface-overlay)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
         display: 'grid', placeItems: 'center',
@@ -191,10 +189,10 @@ export default function DGModal({ onClose, label, maxWidth = 680, tracking = nul
           maxWidth,
           maxHeight: 'min(90vh, 56rem)',
           overflowY: 'auto',
-          background: theme.bgCard,
-          borderRadius: theme.radius,
-          border: `1px solid ${theme.accentGold}30`,
-          boxShadow: theme.shadowDeep,
+          background: 'var(--surface-raised)',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid color-mix(in srgb, var(--accent) 19%, transparent)',
+          boxShadow: 'var(--shadow-modal)',
           outline: 'none',
         }}
       >
@@ -208,9 +206,9 @@ export default function DGModal({ onClose, label, maxWidth = 680, tracking = nul
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: 44, height: 44, borderRadius: '50%',
               margin: '10px 10px 0 0',
-              border: `1px solid ${theme.accentGold}40`,
-              background: theme.bgOverlay,
-              color: theme.textBody,
+              border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
+              background: 'var(--surface-overlay)',
+              color: 'var(--text-primary)',
               cursor: 'pointer',
             }}
           >

@@ -3,20 +3,15 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
-import { THEME_KEYS } from '@/lib/theme-keys';
-
-// Only for the luminous title gradient — no light/dark gold tokens exist.
-const GOLD_LIGHT = '#D4BF8A';
-const GOLD_DARK = '#A8884A';
+import { THEME_KEYS, THEME_NAMES } from '@/lib/theme-keys';
 
 function FloatingParticle({ style }: { style?: CSSProperties }) {
-  const { theme } = useTheme();
   return (
     <div aria-hidden="true" style={{
       position: 'absolute',
       width: 4, height: 4,
       borderRadius: '50%',
-      background: theme.accentGold,
+      background: 'var(--accent)',
       opacity: 0.3,
       animation: 'dgFloat 12s ease-in-out infinite',
       filter: 'blur(1px)',
@@ -27,7 +22,7 @@ function FloatingParticle({ style }: { style?: CSSProperties }) {
 
 function ThemeSwitcherSmall() {
   const pathname = usePathname();
-  const { theme, currentTheme, switchTheme, allThemes } = useTheme();
+  const { themeKey, switchTheme } = useTheme();
   const [expanded, setExpanded] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -53,12 +48,11 @@ function ThemeSwitcherSmall() {
       right: '1rem',
       zIndex: 1000,
     }}>
-      {/* Popover with one colour swatch per palette, in a vertical column.
-          Driven off THEME_KEYS rather than Object.entries(allThemes) so `key`
-          arrives typed: the swatch below is then a plain property read with
-          nothing to fall back to. This replaced a hex map kept here in the
-          picker, which had no way to know about a palette added to themes.ts
-          and rendered it grey. */}
+      {/* Popover with one colour swatch per theme, in a vertical column.
+          Each dot carries data-theme={key}, so var(--theme-swatch) resolves
+          inside that key's own scope — the CSS block that defines a theme is
+          the only place its picker colour lives, and a theme added to
+          globals.css + THEME_KEYS shows up here already coloured. */}
       {expanded && (
         <div style={{
           position: 'absolute',
@@ -67,17 +61,18 @@ function ThemeSwitcherSmall() {
           display: 'flex',
           flexDirection: 'column',
           padding: '0.25rem',
-          background: theme.bgCard,
-          borderRadius: theme.radiusSmall,
-          border: `1px solid ${theme.accentGold}20`,
-          boxShadow: theme.shadow,
+          background: 'var(--surface-raised)',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border-fine)',
+          boxShadow: 'var(--shadow-raised)',
         }}>
           {THEME_KEYS.map((key) => (
             <button
               key={key}
               onClick={() => { switchTheme(key); setExpanded(false); }}
-              aria-label={`Switch to ${allThemes[key].name} theme`}
-              aria-pressed={currentTheme === key}
+              aria-label={`Switch to ${THEME_NAMES[key]} theme`}
+              aria-pressed={themeKey === key}
+              title={THEME_NAMES[key]}
               style={{
                 width: 44,
                 height: 44,
@@ -93,13 +88,13 @@ function ThemeSwitcherSmall() {
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
             >
-              <span aria-hidden="true" style={{
+              <span aria-hidden="true" data-theme={key} style={{
                 width: 20,
                 height: 20,
                 borderRadius: '50%',
-                background: allThemes[key].swatch,
-                opacity: currentTheme === key ? 1 : 0.85,
-                boxShadow: currentTheme === key ? `0 0 0 2px ${theme.accentGold}66` : 'none',
+                background: 'var(--theme-swatch)',
+                opacity: themeKey === key ? 1 : 0.85,
+                boxShadow: themeKey === key ? '0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent)' : 'none',
               }} />
             </button>
           ))}
@@ -125,13 +120,13 @@ function ThemeSwitcherSmall() {
         onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
         onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
       >
-        <span aria-hidden="true" style={{
+        <span aria-hidden="true" data-theme={themeKey} style={{
           width: 28,
           height: 28,
           borderRadius: '50%',
-          background: allThemes[currentTheme].swatch,
-          border: `1.5px solid ${theme.accentGold}4D`,
-          boxShadow: theme.shadowSoft,
+          background: 'var(--theme-swatch)',
+          border: '1.5px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+          boxShadow: 'var(--shadow-card)',
           display: 'block',
         }} />
       </button>
@@ -168,7 +163,6 @@ export default function DGHero({
   /** `EditionRecord.hero_image_url`; absent days render without art. */
   heroImageUrl?: string | null;
 }) {
-  const { theme } = useTheme();
   // Derived directly: the page never borrows another day's imagery to fill a
   // gap, so when the viewed day has no hero the hero simply has no art.
   const imgUrl = heroImageUrl || null;
@@ -241,8 +235,8 @@ export default function DGHero({
         <div style={{
           position: 'absolute', inset: 0,
           background: imgUrl
-            ? `linear-gradient(180deg, ${theme.bgPrimary}CC 0%, ${theme.bgPrimary}99 50%, ${theme.bgPrimary}D9 100%)`
-            : `linear-gradient(160deg, ${theme.bgPrimary}99 0%, ${theme.bgSoft}80 40%, ${theme.bgPrimary}99 100%)`,
+            ? 'linear-gradient(180deg, color-mix(in srgb, var(--surface-page) 80%, transparent) 0%, color-mix(in srgb, var(--surface-page) 60%, transparent) 50%, color-mix(in srgb, var(--surface-page) 85%, transparent) 100%)'
+            : 'linear-gradient(160deg, color-mix(in srgb, var(--surface-page) 60%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 50%, transparent) 40%, color-mix(in srgb, var(--surface-page) 60%, transparent) 100%)',
         }} />
       </div>
 
@@ -254,7 +248,7 @@ export default function DGHero({
         width: 'clamp(260px, 60vw, 500px)',
         height: 'clamp(180px, 42vw, 350px)',
         borderRadius: '50%',
-        background: `radial-gradient(ellipse, ${theme.accentGold}1F 0%, transparent 70%)`,
+        background: 'radial-gradient(ellipse, color-mix(in srgb, var(--accent) 12%, transparent) 0%, transparent 70%)',
         animation: 'dgGlow 8s ease-in-out infinite',
         pointerEvents: 'none',
         filter: 'blur(20px)',
@@ -270,21 +264,21 @@ export default function DGHero({
           display: 'inline-flex', alignItems: 'center', gap: '0.75rem',
           marginBottom: '1.25rem',
           padding: '0.6rem 1.6rem',
-          background: `${theme.bgCard}60`,
+          background: 'color-mix(in srgb, var(--surface-raised) 38%, transparent)',
           backdropFilter: 'blur(8px)',
-          border: `1px solid ${theme.accentGold}40`,
+          border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
           borderRadius: 40,
           animation: 'dgReveal 1s ease-out 0.2s backwards',
-          boxShadow: theme.shadowSoft,
+          boxShadow: 'var(--shadow-card)',
         }}>
-           <div aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: theme.accentGold }} />
+           <div aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)' }} />
            <span style={{
-             fontFamily: theme.fontBody,
+             fontFamily: 'var(--face-sans)',
              fontSize: '0.85rem',
              fontWeight: 400,
              letterSpacing: '0.18em',
              textTransform: 'uppercase',
-             color: theme.textBody,
+             color: 'var(--text-primary)',
            }}>
             {dateStr}
            </span>
@@ -292,28 +286,28 @@ export default function DGHero({
 
         {/* Main title - luminous gold gradient */}
         <h1 style={{
-          fontFamily: theme.fontHeadline,
+          fontFamily: 'var(--face-display)',
           fontSize: 'clamp(2.5rem, 6vw, 4.5rem)',
           fontWeight: 700,
           margin: '0 0 0.75rem',
           lineHeight: 1.05,
           letterSpacing: '-0.02em',
           animation: 'dgReveal 1.1s ease-out 0.4s backwards',
-          backgroundImage: `linear-gradient(135deg, ${GOLD_LIGHT} 0%, ${theme.accentGold} 50%, ${GOLD_DARK} 100%)`,
+          backgroundImage: 'linear-gradient(135deg, var(--palette-gold-bright) 0%, var(--accent) 50%, var(--palette-gold) 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
-          textShadow: `0 2px 20px ${theme.accentGold}4D`,
+          textShadow: '0 2px 20px color-mix(in srgb, var(--accent) 30%, transparent)',
         }}>
           Daily Gold
         </h1>
 
         {/* Subtitle */}
         <p style={{
-          fontFamily: theme.fontBody,
+          fontFamily: 'var(--face-sans)',
           fontSize: 'clamp(0.9rem, 1.8vw, 1.1rem)',
           fontWeight: 300,
-          color: theme.textBody,
+          color: 'var(--text-primary)',
           margin: '0 auto 1.25rem',
           maxWidth: 480,
           lineHeight: 1.6,
@@ -324,10 +318,10 @@ export default function DGHero({
 
         {/* Quote */}
         <p style={{
-          fontFamily: theme.fontHeadline,
+          fontFamily: 'var(--face-display)',
           fontStyle: 'italic',
           fontSize: 'clamp(0.95rem, 1.8vw, 1.1rem)',
-          color: theme.textMuted,
+          color: 'var(--text-secondary)',
           margin: 0,
           lineHeight: 1.7,
           animation: 'dgReveal 1.3s ease-out 0.8s backwards',
@@ -342,11 +336,11 @@ export default function DGHero({
           animation: 'dgReveal 1.4s ease-out 1.2s backwards',
           justifyContent: 'center',
         }}>
-          <div aria-hidden="true" style={{ height: 1, width: 32, background: `${theme.accentGold}40` }} />
-          <DGEyebrow as="span" tracking="wide" color={theme.accentGold}>
+          <div aria-hidden="true" style={{ height: 1, width: 32, background: 'color-mix(in srgb, var(--accent) 25%, transparent)' }} />
+          <DGEyebrow as="span" tracking="wide" color="var(--accent-readable)">
             Begin exploring
           </DGEyebrow>
-          <div aria-hidden="true" style={{ height: 1, width: 32, background: `${theme.accentGold}40` }} />
+          <div aria-hidden="true" style={{ height: 1, width: 32, background: 'color-mix(in srgb, var(--accent) 25%, transparent)' }} />
         </div>
       </div>
 
@@ -355,7 +349,7 @@ export default function DGHero({
           navigator to butt up against. */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0, height: 120,
-        background: `linear-gradient(to bottom, transparent 0%, ${theme.bgPrimary}80 65%, ${theme.bgPrimary}00 100%)`,
+        background: 'linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--surface-page) 50%, transparent) 65%, transparent 100%)',
         pointerEvents: 'none',
       }} />
 

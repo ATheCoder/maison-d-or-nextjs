@@ -30,8 +30,7 @@ import {
 import { finishWelcome } from '@/app/welcome/actions';
 import { AVATARS, type AvatarKey } from '@/lib/avatars';
 import { ageOnDay, birthDateBounds, formatBirthDate, normalizeBirthDate } from '@/lib/child-birth-date';
-import { THEME_KEYS, type ThemeKey } from '@/lib/theme-keys';
-import { THEMES } from '@/components/theme/themes';
+import { THEME_KEYS, THEME_NAMES, type ThemeKey } from '@/lib/theme-keys';
 import DatePicker from '@/components/ui/DatePicker';
 import {
   C,
@@ -346,35 +345,35 @@ export default function WelcomeWizard({
             <div style={{ marginBottom: '1.3rem' }}>
               <span style={labelStyle}>Their colours</span>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {THEME_KEYS.map((k) => {
-                  const t = THEMES[k];
-                  return (
-                    <button
-                      key={k}
-                      type="button"
-                      onClick={() => setThemeKey(k)}
-                      aria-pressed={themeKey === k}
-                      title={t?.name ?? k}
+                {THEME_KEYS.map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setThemeKey(k)}
+                    aria-pressed={themeKey === k}
+                    title={THEME_NAMES[k]}
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                    }}
+                  >
+                    {/* data-theme re-scopes the tokens on the chip itself, so the
+                        gradient previews the theme's actual ground and accent. */}
+                    <span
+                      aria-hidden="true"
+                      data-theme={k}
                       style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                        background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                        width: 44, height: 30, borderRadius: 8,
+                        background: 'linear-gradient(135deg, var(--surface-page) 0%, var(--surface-raised) 55%, var(--accent) 100%)',
+                        border: themeKey === k ? `2.5px solid ${C.gold}` : '2.5px solid rgba(201,169,110,0.25)',
+                        boxShadow: themeKey === k ? '0 2px 10px rgba(100,80,40,0.18)' : 'none',
                       }}
-                    >
-                      <span
-                        aria-hidden="true"
-                        style={{
-                          width: 44, height: 30, borderRadius: 8,
-                          background: `linear-gradient(135deg, ${t?.bgPrimary} 0%, ${t?.bgCard} 55%, ${t?.accentGold} 100%)`,
-                          border: themeKey === k ? `2.5px solid ${C.gold}` : '2.5px solid rgba(201,169,110,0.25)',
-                          boxShadow: themeKey === k ? '0 2px 10px rgba(100,80,40,0.18)' : 'none',
-                        }}
-                      />
-                      <span style={{ fontSize: '0.58rem', color: themeKey === k ? C.umber : C.taupe, maxWidth: 54, textAlign: 'center', lineHeight: 1.2 }}>
-                        {t?.name ?? k}
-                      </span>
-                    </button>
-                  );
-                })}
+                    />
+                    <span style={{ fontSize: '0.58rem', color: themeKey === k ? C.umber : C.taupe, maxWidth: 54, textAlign: 'center', lineHeight: 1.2 }}>
+                      {THEME_NAMES[k]}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
 

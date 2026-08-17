@@ -8,7 +8,6 @@
  * NOTE: Currently using a static rotating set of uplifting quotes.
  * Wire to a `daily_quote` field on DailyGoldEdition when ready.
  */
-import { useTheme } from '@/components/theme/ThemeContext';
 import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 
 const QUOTES = [
@@ -31,8 +30,6 @@ const DAY_OF_YEAR = Math.floor((Date.now() - new Date(new Date().getFullYear(), 
 const FALLBACK_QUOTE = QUOTES[DAY_OF_YEAR % QUOTES.length];
 
 export default function DGInspirationBar({ edition }) {
-  const { theme } = useTheme();
-
   // Pick a quote: the edition's own if authored, otherwise the daily rotation.
   const quote = edition?.daily_quote
     ? { text: edition.daily_quote, author: edition.daily_quote_author || '' }
@@ -40,9 +37,9 @@ export default function DGInspirationBar({ edition }) {
 
   return (
     <div style={{
-      background: `linear-gradient(135deg, ${theme.accentGold}26 0%, ${theme.accentGold}14 50%, ${theme.accentGold}1F 100%)`,
-      borderTop: `1px solid ${theme.accentGold}40`,
-      borderBottom: `1px solid ${theme.accentGold}40`,
+      background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent) 0%, color-mix(in srgb, var(--accent) 8%, transparent) 50%, color-mix(in srgb, var(--accent) 12%, transparent) 100%)',
+      borderTop: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
+      borderBottom: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
       padding: '2rem clamp(1.5rem, 6vw, 5rem)',
       display: 'flex',
       flexDirection: 'column',
@@ -52,17 +49,17 @@ export default function DGInspirationBar({ edition }) {
     }}>
       {/* Heading cluster */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
-        <div aria-hidden="true" style={{ width: 40, height: 1, background: `${theme.accentGold}80` }} />
-        <DGEyebrow tracking="hero" color={theme.accentGold} style={{ fontSize: '0.72rem', fontWeight: 500 }}>
+        <div aria-hidden="true" style={{ width: 40, height: 1, background: 'color-mix(in srgb, var(--accent) 50%, transparent)' }} />
+        <DGEyebrow tracking="hero" color="var(--accent-readable)" style={{ fontSize: '0.72rem', fontWeight: 500 }}>
           Daily Dose of Inspiration
         </DGEyebrow>
-        <div aria-hidden="true" style={{ width: 40, height: 1, background: `${theme.accentGold}80` }} />
+        <div aria-hidden="true" style={{ width: 40, height: 1, background: 'color-mix(in srgb, var(--accent) 50%, transparent)' }} />
       </div>
 
       <p style={{
-        fontFamily: theme.fontBody,
+        fontFamily: 'var(--face-sans)',
         fontSize: '0.78rem',
-        color: theme.textMuted,
+        color: 'var(--text-secondary)',
         margin: '0 0 0.5rem',
         letterSpacing: '0.05em',
       }}>
@@ -71,11 +68,11 @@ export default function DGInspirationBar({ edition }) {
 
       {/* Quote */}
       <blockquote style={{
-        fontFamily: theme.fontHeadline,
+        fontFamily: 'var(--face-display)',
         fontStyle: 'italic',
         fontSize: 'clamp(1.05rem, 2.2vw, 1.4rem)',
         fontWeight: 400,
-        color: theme.textHeadline,
+        color: 'var(--accent-readable)',
         lineHeight: 1.65,
         maxWidth: 680,
         margin: '0 auto',
@@ -87,7 +84,7 @@ export default function DGInspirationBar({ edition }) {
 
       {/* Attribution */}
       {quote.author && (
-        <DGEyebrow tracking="tight" color={theme.accentGold} style={{ fontSize: '0.72rem', fontWeight: 500 }}>
+        <DGEyebrow tracking="tight" color="var(--accent-readable)" style={{ fontSize: '0.72rem', fontWeight: 500 }}>
           {quote.author}
         </DGEyebrow>
       )}

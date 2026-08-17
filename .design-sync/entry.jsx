@@ -12,8 +12,10 @@
 // in .design-sync/config.json.
 
 // ── Theme (provider + hook; wraps every preview via cfg.provider) ──
+// No palette exports anymore: themes are [data-theme] scopes in globals.css,
+// and the hook carries only { themeKey, switchTheme }.
 export { ThemeProvider, useTheme } from '@/components/theme/ThemeContext';
-export { THEMES, DEFAULT_THEME } from '@/components/theme/themes';
+export { THEME_KEYS, THEME_NAMES, DEFAULT_THEME_KEY } from '@/lib/theme-keys';
 
 // ── Maison chrome ──
 export { default as MaisonBlendedImage } from '@/components/maison/MaisonBlendedImage';

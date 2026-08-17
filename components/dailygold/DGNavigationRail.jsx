@@ -20,7 +20,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useTheme } from '@/components/theme/ThemeContext';
 import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import { dgDestinationsFor, DG_SHELF, DGIcon, isNavItemActive } from '@/components/dailygold/dgNavConfig';
@@ -30,7 +29,6 @@ import { AVATARS } from '@/lib/avatars';
 
 export default function DGNavigationRail({ child = null, viewer = null }) {
   const pathname = usePathname();
-  const { theme } = useTheme();
   // The rail also hangs on /passport and /treasury, which mount no provider —
   // there this is the no-op API and nothing is recorded. No conditional needed.
   const { track } = useInstrumentation();
@@ -55,10 +53,10 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
       {/* Monogram */}
       <div aria-hidden="true" style={{
         width: 44, height: 44, borderRadius: '50%', alignSelf: 'center',
-        background: `linear-gradient(135deg, ${theme.accentGold}30 0%, ${theme.accentGold}10 100%)`,
-        border: `1px solid ${theme.accentGold}40`,
+        background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 19%, transparent) 0%, color-mix(in srgb, var(--accent) 6%, transparent) 100%)',
+        border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: theme.fontHeadline, fontSize: '1.15rem', color: theme.textHeadline,
+        fontFamily: 'var(--face-display)', fontSize: '1.15rem', color: 'var(--accent-readable)',
         flexShrink: 0,
       }}>
         M
@@ -76,26 +74,26 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
           >
             <span aria-hidden="true" style={{
               width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-              background: avatar.bg, border: `1.5px solid ${theme.accentGold}80`,
+              background: avatar.bg, border: '1.5px solid color-mix(in srgb, var(--accent) 50%, transparent)',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '1rem',
             }}>
               {avatar.emoji}
             </span>
             <span className="dg-rail-label" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 }}>
-              <span style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', color: theme.textMuted, letterSpacing: '0.08em' }}>
+              <span style={{ fontFamily: 'var(--face-sans)', fontSize: '0.7rem', color: 'var(--text-secondary)', letterSpacing: '0.08em' }}>
                 Hi,
               </span>
               <span style={{
-                fontFamily: theme.fontHeadline, fontStyle: 'italic', fontWeight: 600,
-                fontSize: '0.95rem', color: theme.textHeadline,
+                fontFamily: 'var(--face-display)', fontStyle: 'italic', fontWeight: 600,
+                fontSize: '0.95rem', color: 'var(--accent-readable)',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110,
               }}>
                 {child.name}
               </span>
             </span>
             <svg className="dg-rail-label" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ marginLeft: 'auto', flexShrink: 0 }}>
-              <path d="M2 3.5l3 3 3-3" stroke={theme.textMuted} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M2 3.5l3 3 3-3" style={{ stroke: 'var(--text-secondary)' }} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
           {showSwitcher && (
@@ -123,26 +121,26 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
           >
             <span aria-hidden="true" style={{
               width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-              background: '#E4DCCE', border: `1.5px solid ${theme.accentGold}80`,
+              background: 'var(--surface-tint)', border: '1.5px solid color-mix(in srgb, var(--accent) 50%, transparent)',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '1rem',
             }}>
               🗝️
             </span>
             <span className="dg-rail-label" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 }}>
-              <DGEyebrow as="span" tracking="tight" color={theme.textMuted}>
+              <DGEyebrow as="span" tracking="tight" color="var(--text-secondary)">
                 {viewer.role === 'admin' ? 'Admin' : 'Parent'}
               </DGEyebrow>
               <span style={{
-                fontFamily: theme.fontHeadline, fontStyle: 'italic', fontWeight: 600,
-                fontSize: '0.95rem', color: theme.textHeadline,
+                fontFamily: 'var(--face-display)', fontStyle: 'italic', fontWeight: 600,
+                fontSize: '0.95rem', color: 'var(--accent-readable)',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110,
               }}>
                 {viewer.name}
               </span>
             </span>
             <svg className="dg-rail-label" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ marginLeft: 'auto', flexShrink: 0 }}>
-              <path d="M2 3.5l3 3 3-3" stroke={theme.textMuted} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M2 3.5l3 3 3-3" style={{ stroke: 'var(--text-secondary)' }} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
           {showSwitcher && (
@@ -184,17 +182,17 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
               aria-label={item.label}
               title={item.label}
             >
-              <span style={{ display: 'inline-flex', flexShrink: 0 }}>
-                <DGIcon name={item.icon} size={20} color={active ? theme.accentGold : theme.textMuted} />
+              <span style={{ display: 'inline-flex', flexShrink: 0, color: active ? 'var(--accent)' : 'var(--text-secondary)' }}>
+                <DGIcon name={item.icon} size={20} />
               </span>
               <span className="dg-rail-label" style={{
-                fontFamily: theme.fontBody, fontSize: '0.8rem', letterSpacing: '0.06em',
-                color: active ? theme.textHeadline : theme.textMuted,
+                fontFamily: 'var(--face-sans)', fontSize: '0.8rem', letterSpacing: '0.06em',
+                color: active ? 'var(--accent-readable)' : 'var(--text-secondary)',
                 fontWeight: active ? 700 : 400,
               }}>
                 {item.label}
               </span>
-              {active && <span className="dg-rail-dot" aria-hidden="true" style={{ marginLeft: 'auto', width: 4, height: 4, borderRadius: '50%', background: theme.accentGold, flexShrink: 0 }} />}
+              {active && <span className="dg-rail-dot" aria-hidden="true" style={{ marginLeft: 'auto', width: 4, height: 4, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />}
             </Link>
           );
         })}
@@ -203,8 +201,8 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
       {/* My World — the child's own shelf, a peer of global nav */}
       {child && (
         <>
-          <div aria-hidden="true" style={{ height: 1, background: `${theme.accentGold}26`, margin: '1.25rem 0.5rem' }} />
-          <DGEyebrow className="dg-rail-label" tracking="wide" color={theme.accentGold} style={{ margin: '0 0 0.5rem 0.9rem' }}>
+          <div aria-hidden="true" style={{ height: 1, background: 'var(--border-fine)', margin: '1.25rem 0.5rem' }} />
+          <DGEyebrow className="dg-rail-label" tracking="wide" color="var(--accent-readable)" style={{ margin: '0 0 0.5rem 0.9rem' }}>
             My World
           </DGEyebrow>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -224,17 +222,17 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
                   aria-label={item.label}
                   title={item.label}
                 >
-                  <span style={{ display: 'inline-flex', flexShrink: 0 }}>
-                    <DGIcon name={item.icon} size={20} color={theme.accentGold} />
+                  <span style={{ display: 'inline-flex', flexShrink: 0, color: 'var(--accent)' }}>
+                    <DGIcon name={item.icon} size={20} />
                   </span>
                   <span className="dg-rail-label" style={{
-                    fontFamily: theme.fontBody, fontSize: '0.8rem', letterSpacing: '0.06em',
-                    color: active ? theme.textHeadline : theme.textBody,
+                    fontFamily: 'var(--face-sans)', fontSize: '0.8rem', letterSpacing: '0.06em',
+                    color: active ? 'var(--accent-readable)' : 'var(--text-primary)',
                     fontWeight: active ? 700 : 400,
                   }}>
                     {item.label}
                   </span>
-                  {active && <span className="dg-rail-dot" aria-hidden="true" style={{ marginLeft: 'auto', width: 4, height: 4, borderRadius: '50%', background: theme.accentGold, flexShrink: 0 }} />}
+                  {active && <span className="dg-rail-dot" aria-hidden="true" style={{ marginLeft: 'auto', width: 4, height: 4, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />}
                 </Link>
               );
             })}

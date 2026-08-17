@@ -22,7 +22,6 @@
 import DGNavigationRail from '@/components/dailygold/DGNavigationRail';
 import DGMobileTabBar from '@/components/dailygold/DGMobileTabBar';
 import DGIdentityHeader from '@/components/dailygold/DGIdentityHeader';
-import { useTheme } from '@/components/theme/ThemeContext';
 
 /**
  * The shared shell stylesheet. One place owns the responsive layout system:
@@ -163,20 +162,17 @@ export const NAV_SHELL_CSS = `
 `;
 
 /**
- * `paper` marks the edition reader. It carries the two look-and-feel
- * differences between the two shells this file replaces, preserved verbatim
- * rather than reconciled — merging the layouts was not the moment to change
- * what four pages look like. Both are one-line decisions whenever someone
- * wants to make them:
+ * `paper` marks the edition reader. It used to carry two look-and-feel
+ * differences between the two shells this file replaces; one remains:
  *
- * - The background gradients were the reader's alone. The other four rooms
- *   paint their own canvas over most of it (the museum, the passport's
- *   parchment, the Ledger), so turning them on everywhere would be a subtle
- *   change to backdrops nobody has asked to change.
  * - The identity header hung on the edition always, and elsewhere only for
  *   grown-ups. So /treasury and /passport in child mode still have no header;
  *   giving them the reader's switcher is the obvious unification, and just as
  *   obviously a UI decision rather than a refactor.
+ *
+ * (The reader's background gradients — a faint brown wash over the page
+ * ground — were dropped 2026-08-17 so the edition matches the flat
+ * --surface-page every other room paints.)
  *
  * @param {{
  *   child?: { id: string, name: string, avatar: string } | null,
@@ -186,20 +182,17 @@ export const NAV_SHELL_CSS = `
  * }} props
  */
 export default function DGPageShell({ child = null, viewer = null, paper = false, children }) {
-  const { theme } = useTheme();
-
   return (
     <div
       className="dg-root"
       style={{
-        '--dg-gold': theme.accentGold,
+        '--dg-gold': 'var(--accent)',
         // Signed out there is no tab bar, so the shell must not reserve room
         // for one — the signed-out CTA docks at the true bottom instead.
         ...(viewer ? null : { '--dg-tabbar-h': '0px' }),
-        backgroundColor: theme.bgPrimary,
-        ...(paper ? { backgroundImage: 'radial-gradient(ellipse at 15% 25%, rgba(139,115,80,0.06) 0%, transparent 55%), radial-gradient(ellipse at 85% 75%, rgba(100,75,45,0.04) 0%, transparent 45%)' } : null),
-        fontFamily: theme.fontBody,
-        color: theme.textBody,
+        backgroundColor: 'var(--surface-page)',
+        fontFamily: 'var(--face-sans)',
+        color: 'var(--text-primary)',
       }}
     >
       <style>{NAV_SHELL_CSS}</style>

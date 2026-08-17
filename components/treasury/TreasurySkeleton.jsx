@@ -21,7 +21,6 @@
  * they are derived from. `--dg-tabbar-h` and `--dg-gold` are the shell's and
  * are already ours.
  */
-import { useTheme } from '@/components/theme/ThemeContext';
 import { Bar, SKELETON_CSS } from '@/components/dailygold/DGContentSkeleton';
 
 // The .tv-col literals from museumCss.js — the entrance facade's fluting.
@@ -34,8 +33,6 @@ const COLUMN = {
 };
 
 export default function TreasurySkeleton() {
-  const { theme } = useTheme();
-
   return (
     <div
       role="status"
@@ -49,7 +46,7 @@ export default function TreasurySkeleton() {
         padding: '0.7rem',
         display: 'flex',
         overflow: 'hidden',
-        background: `radial-gradient(ellipse at 50% 0%, ${theme.bgCard} 0%, ${theme.bgSoft} 45%, ${theme.bgPrimary} 100%)`,
+        background: 'radial-gradient(ellipse at 50% 0%, var(--surface-raised) 0%, var(--surface-tint) 45%, var(--surface-page) 100%)',
       }}
     >
       <style>{SKELETON_CSS}</style>
@@ -68,10 +65,10 @@ export default function TreasurySkeleton() {
         <div style={{
           display: 'inline-flex', alignItems: 'center',
           padding: '0.35rem 1.6rem',
-          borderTop: `2px solid ${theme.accentGold}66`,
-          borderBottom: `2px solid ${theme.accentGold}66`,
+          borderTop: '2px solid color-mix(in srgb, var(--accent) 40%, transparent)',
+          borderBottom: '2px solid color-mix(in srgb, var(--accent) 40%, transparent)',
           fontFamily: 'Lato, sans-serif', fontSize: '0.6rem', letterSpacing: '0.42em',
-          textTransform: 'uppercase', color: theme.textMuted, marginBottom: '1rem',
+          textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '1rem',
         }}>
           Maison d&rsquo;Or
         </div>
@@ -94,9 +91,9 @@ export default function TreasurySkeleton() {
         <div style={{
           display: 'inline-block', marginTop: '1.2rem', padding: '0.5rem 1.3rem',
           rotate: '-2deg',
-          border: `1.5px dashed ${theme.accentGold}88`,
+          border: '1.5px dashed color-mix(in srgb, var(--accent) 53%, transparent)',
           borderRadius: 6,
-          background: theme.bgCard,
+          background: 'var(--surface-raised)',
         }}>
           <Bar w={110} h={13} style={{ margin: '0 auto' }} />
           <Bar w={180} h={16} style={{ margin: '5px auto 0' }} />
@@ -108,12 +105,12 @@ export default function TreasurySkeleton() {
             {[0, 1, 2, 3].map(i => (
               <span key={i} style={{
                 width: 7, height: 11, borderRadius: '50%',
-                background: `${theme.accentGold}77`,
+                background: 'color-mix(in srgb, var(--accent) 47%, transparent)',
                 transform: `translateX(${i % 2 ? 7 : -7}px) rotate(${i % 2 ? 8 : -8}deg)`,
               }} />
             ))}
           </div>
-          <Bar w="min(300px, 80%)" h={46} radius={23} style={{ background: `${theme.bgCard}B0`, border: `1.5px dashed ${theme.accentGold}66` }} />
+          <Bar w="min(300px, 80%)" h={46} radius={23} style={{ background: 'color-mix(in srgb, var(--surface-raised) 69%, transparent)', border: '1.5px dashed color-mix(in srgb, var(--accent) 40%, transparent)' }} />
         </div>
       </div>
     </div>

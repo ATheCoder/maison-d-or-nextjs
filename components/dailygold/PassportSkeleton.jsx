@@ -18,12 +18,9 @@
  * The divider is furniture — it says the same thing on every render — so it
  * is drawn real; the shimmer is reserved for what is genuinely unknown.
  */
-import { useTheme } from '@/components/theme/ThemeContext';
 import { Bar, SKELETON_CSS } from './DGContentSkeleton';
 
 export default function PassportSkeleton() {
-  const { theme } = useTheme();
-
   return (
     <div
       role="status"
@@ -44,7 +41,7 @@ export default function PassportSkeleton() {
         style={{
           width: '100%',
           minHeight: '100vh',
-          background: `radial-gradient(ellipse at 50% 0%, ${theme.bgCard} 0%, ${theme.bgSoft} 45%, ${theme.bgPrimary} 100%)`,
+          background: 'radial-gradient(ellipse at 50% 0%, var(--surface-raised) 0%, var(--surface-tint) 45%, var(--surface-page) 100%)',
           padding: '2rem 1.5rem 4rem',
         }}
       >
@@ -52,14 +49,14 @@ export default function PassportSkeleton() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
           <Bar w="min(300px, 70%)" h="clamp(31px, 4.8vw, 46px)" style={{ marginBottom: '0.4rem' }} />
           <Bar w="min(320px, 85%)" h={24} style={{ marginBottom: '0.6rem' }} />
-          <Bar w={190} h={30} radius={20} style={{ background: `${theme.accentGold}26`, border: `1px solid ${theme.accentGold}40` }} />
+          <Bar w={190} h={30} radius={20} style={{ background: 'color-mix(in srgb, var(--accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)' }} />
         </div>
 
         {/* Decorative divider — the page's own, drawn as itself */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-          <div style={{ flex: 1, height: 1, background: `${theme.accentGold}30` }} />
-          <span style={{ fontFamily: theme.fontHeadline, color: `${theme.accentGold}B0`, fontSize: '1.2rem' }}>✦</span>
-          <div style={{ flex: 1, height: 1, background: `${theme.accentGold}30` }} />
+          <div style={{ flex: 1, height: 1, background: 'color-mix(in srgb, var(--accent) 19%, transparent)' }} />
+          <span style={{ fontFamily: 'var(--face-display)', color: 'color-mix(in srgb, var(--accent) 69%, transparent)', fontSize: '1.2rem' }}>✦</span>
+          <div style={{ flex: 1, height: 1, background: 'color-mix(in srgb, var(--accent) 19%, transparent)' }} />
         </div>
 
         {/* The seal mosaic: 56px medallions with their captions */}

@@ -25,7 +25,6 @@
  */
 import { useRef } from 'react';
 import Link from 'next/link';
-import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import StoryOpeningCurtain from '@/components/dailygold/StoryOpeningCurtain';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
@@ -52,7 +51,6 @@ function BookVolume({
   delay?: string;
   tier?: VolumeTier;
 }) {
-  const { theme } = useTheme();
   const { track } = useInstrumentation();
   // personToRecord emits snake_case; resolvePerson prefers an explicit code and
   // falls back to the nationality text (R4.1). It is passed no `nationality`
@@ -81,8 +79,8 @@ function BookVolume({
       ) : (
         <div className="dgbt-empty" aria-hidden="true">
           <svg width="42" height="42" viewBox="0 0 48 48" fill="none">
-            <ellipse cx="24" cy="18" rx="10" ry="12" stroke={theme.accentGold} strokeWidth="1.2" />
-            <path d="M6 42 Q12 30 24 30 Q36 30 42 42" stroke={theme.accentGold} strokeWidth="1.2" fill="none" />
+            <ellipse cx="24" cy="18" rx="10" ry="12" style={{ stroke: 'var(--accent)' }} strokeWidth="1.2" />
+            <path d="M6 42 Q12 30 24 30 Q36 30 42 42" style={{ stroke: 'var(--accent)' }} strokeWidth="1.2" fill="none" />
           </svg>
         </div>
       )}
@@ -112,15 +110,15 @@ function BookVolume({
       {/* Foil-stamped caption */}
       <div className="dgbt-caption">
         <div className="dgbt-rule" aria-hidden="true" />
-        <h3 className="dgbt-name" style={{ fontFamily: theme.fontHeadline }}>{person.name}</h3>
+        <h3 className="dgbt-name" style={{ fontFamily: 'var(--face-display)' }}>{person.name}</h3>
         {role && (
-          <p className="dgbt-role" style={{ fontFamily: theme.fontHeadline }}>{role}</p>
+          <p className="dgbt-role" style={{ fontFamily: 'var(--face-display)' }}>{role}</p>
         )}
-        <p className="dgbt-dates" style={{ fontFamily: theme.fontBody }}>
+        <p className="dgbt-dates" style={{ fontFamily: 'var(--face-sans)' }}>
           {formatDate(person.birth_date)}
           {person.death_date ? ` to ${formatYear(person.death_date)}` : ''}
         </p>
-        <div className="dgbt-cta" style={{ fontFamily: theme.fontBody }}>
+        <div className="dgbt-cta" style={{ fontFamily: 'var(--face-sans)' }}>
           <span>Open the Story</span>
           <span aria-hidden="true">›</span>
         </div>
@@ -202,7 +200,6 @@ export default function DGBornToday({
   savedSet?: Set<string> | null;
   editionDate?: string;
 }) {
-  const { theme } = useTheme();
   const podiumRef = useRef<HTMLDivElement>(null);
 
   // The podium leans a few degrees toward the pointer. CSS custom properties
@@ -296,8 +293,8 @@ export default function DGBornToday({
             radial-gradient(ellipse 30% 46% at 50% 60%,
               rgba(255,238,200,0.5), transparent 70%),
             conic-gradient(from 0deg at 50% -14%,
-              transparent 148deg, ${theme.accentGold}14 168deg,
-              ${theme.accentGold}2E 180deg, ${theme.accentGold}14 192deg,
+              transparent 148deg, color-mix(in srgb, var(--accent) 8%, transparent) 168deg,
+              color-mix(in srgb, var(--accent) 18%, transparent) 180deg, color-mix(in srgb, var(--accent) 8%, transparent) 192deg,
               transparent 212deg);
           /* Soft top and bottom so the cone fades in below the heading
              instead of striping across it */
@@ -314,7 +311,7 @@ export default function DGBornToday({
         .dgbt-cell--lead .dgbt-stage::before {
           content: ''; position: absolute; inset: -16% -14% -4%;
           background: radial-gradient(ellipse at 50% 44%,
-            rgba(255,240,205,0.34) 0%, ${theme.accentGold}21 45%, transparent 72%);
+            rgba(255,240,205,0.34) 0%, color-mix(in srgb, var(--accent) 13%, transparent) 45%, transparent 72%);
           pointer-events: none;
         }
         .dgbt-cell--lead .dgbt-gleam {
@@ -336,7 +333,7 @@ export default function DGBornToday({
           background: radial-gradient(ellipse at 50% 0%, rgba(72,46,17,0.38), transparent 72%);
         }
         .dgbt-cell--lead .dgbt-ledge::after {
-          background: linear-gradient(to right, transparent, ${theme.accentGold}B3, transparent);
+          background: linear-gradient(to right, transparent, color-mix(in srgb, var(--accent) 70%, transparent), transparent);
         }
 
         /* Captions scale with the volume's standing */
@@ -375,7 +372,7 @@ export default function DGBornToday({
         .dgbt-stage::after {
           content: ''; position: absolute; inset: -14% -12% -2%; z-index: -1;
           background: radial-gradient(ellipse at 50% 46%,
-            rgba(255,240,205,0.30) 0%, ${theme.accentGold}1C 45%, transparent 72%);
+            rgba(255,240,205,0.30) 0%, color-mix(in srgb, var(--accent) 11%, transparent) 45%, transparent 72%);
           opacity: 0; transition: opacity 0.5s ease;
           pointer-events: none;
         }
@@ -453,7 +450,7 @@ export default function DGBornToday({
             inset 0 1px 0 rgba(255,238,205,0.10);
         }
         .dgbt-cover:focus-visible {
-          outline: 2px solid ${theme.accentGold};
+          outline: 2px solid var(--focus-ring);
           outline-offset: 3px;
         }
         .dgbt-cover-closed { cursor: default; }
@@ -486,9 +483,9 @@ export default function DGBornToday({
         /* Gilt rules stamped into the board */
         .dgbt-gilt {
           position: absolute; inset: 7px; pointer-events: none;
-          border: 1px solid rgba(226,199,140,0.34);
+          border: 1px solid color-mix(in srgb, var(--palette-gold-bright) 34%, transparent);
           border-radius: 2px 7px 7px 2px;
-          box-shadow: inset 0 0 0 3px rgba(226,199,140,0.07);
+          box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--palette-gold-bright) 7%, transparent);
         }
 
         /* Shaded fold at the binding, with two gilt bands */
@@ -500,7 +497,7 @@ export default function DGBornToday({
         }
         .dgbt-spine::before, .dgbt-spine::after {
           content: ''; position: absolute; top: 9px; bottom: 9px; width: 1px;
-          background: linear-gradient(to bottom, transparent, rgba(226,199,140,0.55) 16%, rgba(226,199,140,0.55) 84%, transparent);
+          background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--palette-gold-bright) 55%, transparent) 16%, color-mix(in srgb, var(--palette-gold-bright) 55%, transparent) 84%, transparent);
         }
         .dgbt-spine::before { left: 26%; }
         .dgbt-spine::after  { left: 40%; opacity: 0.4; }
@@ -547,7 +544,7 @@ export default function DGBornToday({
         }
         .dgbt-rule {
           height: 1px; margin-bottom: 0.45rem;
-          background: linear-gradient(to right, transparent, rgba(226,199,140,0.62), transparent);
+          background: linear-gradient(to right, transparent, color-mix(in srgb, var(--palette-gold-bright) 62%, transparent), transparent);
         }
         .dgbt-name {
           font-size: clamp(0.78rem, 1.05vw, 0.95rem);
@@ -560,7 +557,7 @@ export default function DGBornToday({
         .dgbt-role {
           font-style: italic;
           font-size: clamp(0.68rem, 0.82vw, 0.79rem);
-          color: #E2C78C;
+          color: var(--palette-gold-bright);
           margin: 0 0 0.35rem;
           line-height: 1.3; letter-spacing: 0.03em;
           text-shadow: 0 1px 4px rgba(0,0,0,0.5);
@@ -578,7 +575,7 @@ export default function DGBornToday({
           margin-top: 0.5rem;
           display: flex; align-items: center; gap: 5px;
           font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase;
-          color: #E2C78C;
+          color: var(--palette-gold-bright);
           opacity: 0; transform: translateY(5px);
           transition: opacity 0.28s ease, transform 0.28s ease;
         }
@@ -597,7 +594,7 @@ export default function DGBornToday({
         .dgbt-cell:hover .dgbt-ledge::before { left: 11%; right: 11%; opacity: 0.62; }
         .dgbt-ledge::after {
           content: ''; position: absolute; left: 0; right: 0; top: 12px; height: 1px;
-          background: linear-gradient(to right, transparent, ${theme.accentGold}59, transparent);
+          background: linear-gradient(to right, transparent, color-mix(in srgb, var(--accent) 35%, transparent), transparent);
         }
 
         /* Touch devices never fire hover, so the CTA would sit invisible forever */
@@ -665,28 +662,28 @@ export default function DGBornToday({
       {/* ── Section header ── */}
       <div style={{ marginBottom: '2.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '0.75rem' }}>
-          <div aria-hidden="true" style={{ height: 1, width: 36, background: `linear-gradient(to right, transparent, ${theme.accentGold}88)` }} />
+          <div aria-hidden="true" style={{ height: 1, width: 36, background: 'linear-gradient(to right, transparent, color-mix(in srgb, var(--accent) 53%, transparent))' }} />
           <p style={{
-            fontFamily: theme.fontBody, fontSize: '0.7rem',
+            fontFamily: 'var(--face-sans)', fontSize: '0.7rem',
             letterSpacing: '0.32em', textTransform: 'uppercase',
-            color: theme.accentSage, margin: 0,
+            color: 'var(--accent-readable)', margin: 0,
           }}>
             Extraordinary Lives
           </p>
-          <div aria-hidden="true" style={{ height: 1, flex: 1, background: `linear-gradient(to right, ${theme.accentGold}88, transparent)` }} />
+          <div aria-hidden="true" style={{ height: 1, flex: 1, background: 'linear-gradient(to right, color-mix(in srgb, var(--accent) 53%, transparent), transparent)' }} />
         </div>
         <h2 style={{
-          fontFamily: theme.fontHeadline,
+          fontFamily: 'var(--face-display)',
           fontSize: 'clamp(1.9rem, 3.5vw, 2.7rem)',
-          fontWeight: 700, color: theme.textBody,
+          fontWeight: 700, color: 'var(--text-primary)',
           margin: 0, lineHeight: 1.1, letterSpacing: '0.02em',
         }}>
           Born on This Day
         </h2>
         <p style={{
-          fontFamily: theme.fontHeadline,
+          fontFamily: 'var(--face-display)',
           fontStyle: 'italic', fontSize: '0.8rem',
-          color: theme.textMuted, margin: '0.4rem 0 0', letterSpacing: '0.03em',
+          color: 'var(--text-secondary)', margin: '0.4rem 0 0', letterSpacing: '0.03em',
         }}>
           {people.length > 1
             ? `${people.length} remarkable lives, bound and waiting on today's shelf`
@@ -742,11 +739,11 @@ export default function DGBornToday({
         display: 'flex', alignItems: 'center', gap: 14,
         opacity: 0.45,
       }}>
-        <div aria-hidden="true" style={{ flex: 1, height: 1, background: `linear-gradient(to right, transparent, ${theme.accentGold})` }} />
+        <div aria-hidden="true" style={{ flex: 1, height: 1, background: 'linear-gradient(to right, transparent, var(--accent))' }} />
         <svg aria-hidden="true" width="13" height="13" viewBox="0 0 14 14" fill="none">
-          <path d="M7 1 L8.5 5.5 L13 5.5 L9.5 8.5 L11 13 L7 10 L3 13 L4.5 8.5 L1 5.5 L5.5 5.5Z" fill={theme.accentGold} opacity="0.7"/>
+          <path d="M7 1 L8.5 5.5 L13 5.5 L9.5 8.5 L11 13 L7 10 L3 13 L4.5 8.5 L1 5.5 L5.5 5.5Z" style={{ fill: 'var(--accent)' }} opacity="0.7"/>
         </svg>
-        <div aria-hidden="true" style={{ flex: 1, height: 1, background: `linear-gradient(to left, transparent, ${theme.accentGold})` }} />
+        <div aria-hidden="true" style={{ flex: 1, height: 1, background: 'linear-gradient(to left, transparent, var(--accent))' }} />
       </div>
     </section>
   );

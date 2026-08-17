@@ -8,16 +8,21 @@
  * Press animation: stamp-down + page-turn rotateY flip to new date.
  */
 import { useState, useCallback, useOptimistic, useTransition } from 'react';
-import { useTheme } from '@/components/theme/ThemeContext';
 import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 
 // SVG seal face — vintage engraved arrow as the clear primary mark,
 // with a fine embossed ring frame and small corner flourishes.
 function SealFace({ direction, disabled }) {
-  const gold = disabled ? 'rgba(201,169,110,0.3)' : 'rgba(201,169,110,0.92)';
-  const goldFaint = disabled ? 'rgba(201,169,110,0.12)' : 'rgba(201,169,110,0.35)';
-  const goldMid = disabled ? 'rgba(201,169,110,0.2)' : 'rgba(201,169,110,0.55)';
+  const gold = disabled
+    ? 'color-mix(in srgb, var(--palette-gold) 30%, transparent)'
+    : 'color-mix(in srgb, var(--palette-gold) 92%, transparent)';
+  const goldFaint = disabled
+    ? 'color-mix(in srgb, var(--palette-gold) 12%, transparent)'
+    : 'color-mix(in srgb, var(--palette-gold) 35%, transparent)';
+  const goldMid = disabled
+    ? 'color-mix(in srgb, var(--palette-gold) 20%, transparent)'
+    : 'color-mix(in srgb, var(--palette-gold) 55%, transparent)';
 
   // back = left arrow, forward = right arrow
   const isBack = direction === 'back';
@@ -60,8 +65,8 @@ function SealFace({ direction, disabled }) {
 }
 
 function WaxSeal({ direction, disabled, onPress, pressing, ariaLabel }) {
-  const cream = '#FAF7F2';
-  const linen = '#EDE0CC';
+  const cream = 'var(--palette-ivory)';
+  const linen = 'var(--palette-sand)';
 
   return (
     <button
@@ -74,8 +79,8 @@ function WaxSeal({ direction, disabled, onPress, pressing, ariaLabel }) {
         borderRadius: '50%',
         background: disabled
           ? `radial-gradient(circle at 35% 30%, #F0EAE0 0%, #E0D8CC 60%, #D4CBBC 100%)`
-          : `radial-gradient(circle at 35% 30%, ${cream} 0%, ${linen} 55%, #D8CCBA 100%)`,
-        border: `2px solid ${disabled ? 'rgba(201,169,110,0.2)' : 'rgba(201,169,110,0.7)'}`,
+          : `radial-gradient(circle at 35% 30%, ${cream} 0%, ${linen} 55%, color-mix(in srgb, var(--palette-sand) 88%, var(--palette-walnut)) 100%)`,
+        border: `2px solid color-mix(in srgb, var(--palette-gold) ${disabled ? '20%' : '70%'}, transparent)`,
         boxShadow: disabled
           ? 'none'
           : pressing
@@ -98,7 +103,7 @@ function WaxSeal({ direction, disabled, onPress, pressing, ariaLabel }) {
         position: 'absolute',
         inset: 4,
         borderRadius: '50%',
-        border: `1px solid rgba(201,169,110,${disabled ? '0.1' : '0.4'})`,
+        border: `1px solid color-mix(in srgb, var(--palette-gold) ${disabled ? '10%' : '40%'}, transparent)`,
         pointerEvents: 'none',
       }} />
       {/* Seal face SVG */}
@@ -122,7 +127,6 @@ function indexForDate(dates, date) {
  * arrives back as a prop once the new day has rendered.
  */
 export default function DGWaxSealNavigator({ currentDate, onDateChange, availableDates = [] }) {
-  const { theme } = useTheme();
   const { track } = useInstrumentation();
   const [pressing, setPressing] = useState(null); // 'back' | 'forward' | null
   const [flipping, setFlipping] = useState(false);
@@ -201,7 +205,7 @@ export default function DGWaxSealNavigator({ currentDate, onDateChange, availabl
       // fully transparent `bgSoft` (the same hue at zero alpha, so no grey
       // halo) lets the strip lift off the page instead of cutting into it.
       // Every stop is theme-token derived, so it holds for all five themes.
-      background: `linear-gradient(180deg, ${theme.bgSoft}00 0%, ${theme.bgSoft}59 20%, ${theme.bgSoft}E6 48%, ${theme.bgSoft}E6 72%, ${theme.bgSoft}00 100%)`,
+      background: 'linear-gradient(180deg, color-mix(in srgb, var(--surface-tint) 0%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 35%, transparent) 20%, color-mix(in srgb, var(--surface-tint) 90%, transparent) 48%, color-mix(in srgb, var(--surface-tint) 90%, transparent) 72%, color-mix(in srgb, var(--surface-tint) 0%, transparent) 100%)',
     }}>
       {/* Divider rule — a gradient hairline that fades at both ends, rather
           than a full-width border that would re-introduce a hard edge. */}
@@ -209,7 +213,7 @@ export default function DGWaxSealNavigator({ currentDate, onDateChange, availabl
         position: 'absolute',
         left: 0, right: 0, bottom: 0,
         height: 1,
-        background: `linear-gradient(to right, transparent, ${theme.accentGold}33 25%, ${theme.accentGold}33 75%, transparent)`,
+        background: 'linear-gradient(to right, transparent, color-mix(in srgb, var(--accent) 20%, transparent) 25%, color-mix(in srgb, var(--accent) 20%, transparent) 75%, transparent)',
         pointerEvents: 'none',
       }} />
       {/* Back seal */}
@@ -234,11 +238,11 @@ export default function DGWaxSealNavigator({ currentDate, onDateChange, availabl
           transformStyle: 'preserve-3d',
         }}>
           <p style={{
-            fontFamily: theme.fontHeadline,
+            fontFamily: 'var(--face-display)',
             fontStyle: 'italic',
             fontWeight: 400,
             fontSize: 'clamp(0.9rem, 2vw, 1.1rem)',
-            color: theme.textBody,
+            color: 'var(--text-primary)',
             margin: 0,
             letterSpacing: '0.03em',
             lineHeight: 1.3,
@@ -246,7 +250,7 @@ export default function DGWaxSealNavigator({ currentDate, onDateChange, availabl
             {formatDisplayDate(displayDate)}
           </p>
           {pending && (
-            <DGEyebrow tracking="tight" color={theme.accentGold} style={{ margin: '0.25rem 0 0' }}>
+            <DGEyebrow tracking="tight" color="var(--accent-readable)" style={{ margin: '0.25rem 0 0' }}>
               Loading edition…
             </DGEyebrow>
           )}
@@ -255,7 +259,7 @@ export default function DGWaxSealNavigator({ currentDate, onDateChange, availabl
         {/* Thin gold rule beneath date */}
         <div aria-hidden="true" style={{
           height: 1,
-          background: `linear-gradient(to right, transparent, ${theme.accentGold}50, transparent)`,
+          background: 'linear-gradient(to right, transparent, color-mix(in srgb, var(--accent) 31%, transparent), transparent)',
           marginTop: '0.5rem',
         }} />
 
@@ -263,7 +267,7 @@ export default function DGWaxSealNavigator({ currentDate, onDateChange, availabl
             have only Golden Stories and no edition row. Hidden on a day that
             isn't in the list at all (today, before anything is authored). */}
         {allDates.length > 1 && currentIndex < allDates.length && (
-          <DGEyebrow tracking="wide" color={theme.textMuted} style={{ margin: '0.35rem 0 0' }}>
+          <DGEyebrow tracking="wide" color="var(--text-secondary)" style={{ margin: '0.35rem 0 0' }}>
             Day {currentIndex + 1} of {allDates.length}
           </DGEyebrow>
         )}

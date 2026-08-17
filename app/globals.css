@@ -105,6 +105,10 @@
   --surface-dark: var(--palette-espresso);
   --surface-navy: var(--palette-navy);
   --surface-wood: var(--palette-walnut);
+  /* Modal scrims and frosted headers. Derived from --surface-page rather than
+     declared per scope: var() resolves at the consuming element, so the veil
+     follows whichever theme/surface it sits in for free. */
+  --surface-overlay: color-mix(in srgb, var(--surface-page) 93%, transparent);
 
   /* semantic — text */
   --text-primary: var(--palette-ink);
@@ -167,6 +171,23 @@
      never gold, which already means "interactive accent". */
   --heart-saved: var(--palette-terracotta);
 
+  /* semantic — elevation. Plain vars, NOT @theme: Tailwind owns the
+     --shadow-* utility namespace and mapping these there would collide with
+     shadow-sm/md/lg. Consumed as var() in inline styles (like
+     --btn-hover-shadow above). Walnut-tinted on light grounds; the dark
+     scopes repaint them black-based below. */
+  --shadow-card: 0 2px 8px color-mix(in srgb, var(--palette-walnut) 10%, transparent);
+  --shadow-raised: 0 4px 16px color-mix(in srgb, var(--palette-walnut) 14%, transparent);
+  --shadow-modal: 0 12px 32px color-mix(in srgb, var(--palette-walnut) 22%, transparent);
+  /* Bars docked to the viewport's bottom edge cast upward. */
+  --shadow-bar: 0 -4px 20px color-mix(in srgb, var(--palette-walnut) 10%, transparent);
+
+  /* The theme picker's dot for the theme this scope belongs to — every
+     [data-theme] block re-points it at its family's mid tone, so a picker
+     renders `<span data-theme={key} style="background: var(--theme-swatch)">`
+     without any JS color map. Root value = parchment's gold. */
+  --theme-swatch: var(--palette-gold);
+
   /* §2 — face stacks. --font-fraunces/--font-instrument-sans are set by
      next/font on <html> (app/layout.tsx); the var() fallbacks keep the
      .design-sync standalone compile (where next/font never runs) on the
@@ -204,8 +225,12 @@
    letting the class re-scope the very same tokens. Grain reads less on dark,
    so it comes up a step here. The spec's overlay blend is a departure tuned
    in the §5 playground: overlay compresses to ~2% lift on espresso-dark
-   backdrops and never shows; screen lets the light flecks read as dust. */
+   backdrops and never shows; screen lets the light flecks read as dust.
+   The [data-theme] selectors share these very blocks too: a THEME is the same
+   re-scope applied page-wide (set by ThemeProvider / the admin layout), so
+   sharing the declaration makes theme/surface drift impossible. */
 [data-surface="dark"],
+[data-theme="dark"],
 .section-dark {
   --surface-page: var(--palette-espresso);
   --surface-raised: color-mix(in srgb, var(--palette-espresso) 85%, var(--palette-ivory));
@@ -231,9 +256,17 @@
   --heart-saved: var(--palette-rose);
   --danger: var(--palette-rose);
   --danger-readable: var(--palette-rose);
+  /* Elevation flips from tinted drop to black depth (shadows barely read on
+     dark unless they go truly dark). */
+  --shadow-card: 0 2px 8px color-mix(in srgb, black 20%, transparent);
+  --shadow-raised: 0 4px 16px color-mix(in srgb, black 30%, transparent);
+  --shadow-modal: 0 12px 32px color-mix(in srgb, black 40%, transparent);
+  --shadow-bar: 0 -4px 20px color-mix(in srgb, black 25%, transparent);
+  --theme-swatch: var(--palette-espresso);
 }
 
 [data-surface="navy"],
+[data-theme="navy"],
 .section-navy {
   --surface-page: var(--palette-navy);
   --surface-raised: color-mix(in srgb, var(--palette-navy) 85%, var(--palette-ivory));
@@ -257,6 +290,11 @@
   --heart-saved: var(--palette-rose);
   --danger: var(--palette-rose);
   --danger-readable: var(--palette-rose);
+  --shadow-card: 0 2px 8px color-mix(in srgb, black 20%, transparent);
+  --shadow-raised: 0 4px 16px color-mix(in srgb, black 30%, transparent);
+  --shadow-modal: 0 12px 32px color-mix(in srgb, black 40%, transparent);
+  --shadow-bar: 0 -4px 20px color-mix(in srgb, black 25%, transparent);
+  --theme-swatch: var(--palette-navy);
 }
 
 /* Light atmospheric scopes — the PO rebalance's soft families as
@@ -272,7 +310,44 @@
    family's pale and tint surfaces). Buttons keep the house coats: espresso
    and gold mean "action" in every room. One dominant atmospheric accent
    per section — supporting colours only in imagery and very small details. */
-[data-surface="sage"] {
+
+/* House-default resets for the light atmospheres. On a light page these
+   declarations are no-ops (they restate the :root values), but nested inside
+   a dark/navy THEME they are load-bearing: without them a pale sage aside on
+   a dark page would inherit ink-on-dark text, gold-bright button coats and
+   screen-blend grain onto a light ground. The family blocks below override
+   only their family-specific tokens on top of this. */
+[data-surface="sage"],
+[data-surface="rose"],
+[data-surface="lavender"],
+[data-surface="periwinkle"],
+[data-theme="sage"],
+[data-theme="rose"],
+[data-theme="lavender"],
+[data-theme="periwinkle"] {
+  --text-primary: var(--palette-ink);
+  --text-secondary: var(--palette-ink-muted);
+  --text-faint: var(--palette-ink-faint);
+  --btn-primary-bg: var(--palette-espresso);
+  --btn-primary-fg: var(--palette-ink-on-dark);
+  --btn-primary-bg-hover: var(--palette-gold);
+  --btn-primary-fg-hover: var(--palette-ink);
+  --btn-ghost-bg-hover: var(--palette-espresso);
+  --btn-ghost-fg-hover: var(--palette-ink-on-dark);
+  --btn-hover-shadow: 0 4px 12px color-mix(in srgb, var(--palette-walnut) 30%, transparent);
+  --danger: var(--palette-terracotta);
+  --danger-readable: var(--palette-terracotta-deep);
+  --heart-saved: var(--palette-terracotta);
+  --grain-opacity: 0.06;
+  --grain-blend: multiply;
+  --shadow-card: 0 2px 8px color-mix(in srgb, var(--palette-walnut) 10%, transparent);
+  --shadow-raised: 0 4px 16px color-mix(in srgb, var(--palette-walnut) 14%, transparent);
+  --shadow-modal: 0 12px 32px color-mix(in srgb, var(--palette-walnut) 22%, transparent);
+  --shadow-bar: 0 -4px 20px color-mix(in srgb, var(--palette-walnut) 10%, transparent);
+}
+
+[data-surface="sage"],
+[data-theme="sage"] {
   --surface-page: var(--palette-sage-pale);
   --surface-raised: color-mix(in srgb, var(--palette-sage-pale) 45%, var(--palette-ivory));
   --surface-tint: color-mix(in srgb, var(--palette-sage-pale) 85%, var(--palette-sage));
@@ -281,9 +356,11 @@
   --border-fine: color-mix(in srgb, var(--palette-sage-deep) 30%, transparent);
   --border-accent: color-mix(in srgb, var(--palette-sage) 65%, transparent);
   --focus-ring: var(--palette-sage-deep);
+  --theme-swatch: var(--palette-sage);
 }
 
-[data-surface="rose"] {
+[data-surface="rose"],
+[data-theme="rose"] {
   --surface-page: var(--palette-rose-pale);
   --surface-raised: color-mix(in srgb, var(--palette-rose-pale) 45%, var(--palette-ivory));
   --surface-tint: color-mix(in srgb, var(--palette-rose-pale) 85%, var(--palette-rose));
@@ -292,9 +369,11 @@
   --border-fine: color-mix(in srgb, var(--palette-rose-deep) 30%, transparent);
   --border-accent: color-mix(in srgb, var(--palette-rose) 65%, transparent);
   --focus-ring: var(--palette-rose-deep);
+  --theme-swatch: var(--palette-rose);
 }
 
-[data-surface="lavender"] {
+[data-surface="lavender"],
+[data-theme="lavender"] {
   --surface-page: var(--palette-lavender-pale);
   --surface-raised: color-mix(in srgb, var(--palette-lavender-pale) 45%, var(--palette-ivory));
   --surface-tint: color-mix(in srgb, var(--palette-lavender-pale) 85%, var(--palette-lavender));
@@ -303,9 +382,11 @@
   --border-fine: color-mix(in srgb, var(--palette-lavender-deep) 30%, transparent);
   --border-accent: color-mix(in srgb, var(--palette-lavender) 65%, transparent);
   --focus-ring: var(--palette-lavender-deep);
+  --theme-swatch: var(--palette-lavender);
 }
 
-[data-surface="periwinkle"] {
+[data-surface="periwinkle"],
+[data-theme="periwinkle"] {
   --surface-page: var(--palette-periwinkle-pale);
   --surface-raised: color-mix(in srgb, var(--palette-periwinkle-pale) 45%, var(--palette-ivory));
   --surface-tint: color-mix(in srgb, var(--palette-periwinkle-pale) 85%, var(--palette-periwinkle));
@@ -314,6 +395,22 @@
   --border-fine: color-mix(in srgb, var(--palette-periwinkle-deep) 30%, transparent);
   --border-accent: color-mix(in srgb, var(--palette-periwinkle) 65%, transparent);
   --focus-ring: var(--palette-periwinkle-deep);
+  --theme-swatch: var(--palette-periwinkle);
+}
+
+/* Page-wide themes. `parchment` is the default — the :root values ARE the
+   parchment theme, so its block exists only as an addressable marker (the
+   picker's swatch spans and the admin layout set data-theme="parchment"
+   explicitly). The other six themes live in the shared scope blocks above.
+   ThemeProvider mirrors the active key onto <html> post-hydration; the body
+   rule keeps the overscroll/behind-the-page area in the theme's ground on
+   dark and navy. */
+[data-theme="parchment"] {
+  /* intentionally empty: root defaults */
+}
+
+html[data-theme] body {
+  background: var(--surface-page);
 }
 
 /* §6 — Tailwind mapping. `inline` is load-bearing: utilities must

@@ -44,12 +44,12 @@ import {
 
 const CSS = `
 .alm {
-  --ground:#f5f0e7; --panel-t:rgba(255,248,238,.82);
-  --line:rgba(201,169,110,.25); --line2:rgba(201,169,110,.45);
-  --ink:#241a0c; --brown:#5c4a2a; --brown2:#8b7355; --brown3:#a08a63;
-  --gold:#c9a96e; --gold-deep:#a8843f; --gold-soft:rgba(201,169,110,.14);
-  --green:#7d8a4e; --amber:#c08a2e; --red:#b5533a;
-  --serif:"Playfair Display",Georgia,serif; --sans:"Lato",system-ui,sans-serif;
+  --ground:var(--surface-page); --panel-t:color-mix(in srgb, var(--surface-raised) 82%, transparent);
+  --line:var(--border-fine); --line2:var(--border-accent);
+  --ink:var(--text-primary); --brown:var(--text-secondary); --brown2:var(--text-faint); --brown3:var(--text-faint);
+  --gold:var(--accent); --gold-deep:var(--accent-readable); --gold-soft:color-mix(in srgb, var(--accent) 14%, transparent);
+  --green:#7d8a4e; --amber:#c08a2e; --red:var(--danger-readable);
+  --serif:var(--face-display); --sans:var(--face-sans);
   min-height:100vh; font-family:var(--sans); color:var(--ink); background:var(--ground);
   display:flex; flex-direction:column; -webkit-font-smoothing:antialiased;
 }

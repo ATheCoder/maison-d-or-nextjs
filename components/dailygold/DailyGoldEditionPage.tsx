@@ -17,7 +17,6 @@ import { TrackedSection } from '@/components/dailygold/instrumentation/TrackedSe
 import { SignupInviteProvider } from '@/components/dailygold/SignupInvite';
 import { SignedOutCta, WelcomeFlourish } from '@/components/dailygold/DGVisitorBanners';
 import { useReader } from '@/components/dailygold/ReaderContext';
-import { useTheme } from '@/components/theme/ThemeContext';
 import type { DestinationView } from '@/components/dailygold/DGDestination';
 import type {
   EditionRecord,
@@ -163,7 +162,6 @@ function DailyGoldDay({
   /** The active child's name when `?welcome=1` brought them here, else null. */
   welcomeName: string | null;
 }) {
-  const { theme } = useTheme();
   const router = useRouter();
 
   // Every section is the server's answer for `date`, so the masthead, the
@@ -290,18 +288,18 @@ function DailyGoldDay({
         textAlign: 'center',
       }}>
         <p style={{
-          fontFamily: theme.fontHeadline, fontStyle: 'italic',
+          fontFamily: 'var(--face-display)', fontStyle: 'italic',
           fontSize: 'clamp(1.1rem, 2.5vw, 1.6rem)', fontWeight: 300,
-          color: theme.textMuted, margin: '0 auto 1rem', maxWidth: 600, lineHeight: 1.8,
+          color: 'var(--text-secondary)', margin: '0 auto 1rem', maxWidth: 600, lineHeight: 1.8,
         }}>
           &ldquo;The more we learn about the world, the more we learn about ourselves.&rdquo;
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center', marginTop: '1.5rem' }}>
-          <div aria-hidden="true" style={{ height: 1, width: 60, background: `${theme.accentGold}4D` }} />
-          <span style={{ fontFamily: theme.fontHeadline, fontSize: '0.85rem', color: theme.textMuted, letterSpacing: '0.1em' }}>
+          <div aria-hidden="true" style={{ height: 1, width: 60, background: 'color-mix(in srgb, var(--accent) 30%, transparent)' }} />
+          <span style={{ fontFamily: 'var(--face-display)', fontSize: '0.85rem', color: 'var(--text-faint)', letterSpacing: '0.1em' }}>
             Daily Gold · {dateLabel}
           </span>
-          <div aria-hidden="true" style={{ height: 1, width: 60, background: `${theme.accentGold}4D` }} />
+          <div aria-hidden="true" style={{ height: 1, width: 60, background: 'color-mix(in srgb, var(--accent) 30%, transparent)' }} />
         </div>
       </footer>
     </div>

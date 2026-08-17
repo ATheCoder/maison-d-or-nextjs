@@ -9,7 +9,6 @@
  * page's `mapRecord` is then checked against it rather than the other way round.
  */
 import { useState } from 'react';
-import { useTheme } from '@/components/theme/ThemeContext';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
 import { resolveLocation } from '@/lib/countries';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
@@ -17,7 +16,6 @@ import DGModal from '@/components/dailygold/DGModal';
 import DGCard from '@/components/dailygold/DGCard';
 import DGHeroImage from '@/components/dailygold/DGHeroImage';
 import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
-import type { Theme } from '@/components/theme/themes';
 import type { SavedItemType } from '@/lib/saved-item-input';
 import type { OnFlagEarned } from '@/components/dailygold/useFlagEarn';
 
@@ -63,7 +61,6 @@ const DETAIL_CARDS: { key: DetailKey; itemType: SavedItemType; label: string; em
 function DetailCard({
   card,
   data,
-  theme,
   savedSet,
   editionDate,
   iso2,
@@ -71,7 +68,6 @@ function DetailCard({
 }: {
   card: (typeof DETAIL_CARDS)[number];
   data: DestinationView;
-  theme: Theme;
   savedSet?: Set<string> | null;
   editionDate?: string;
   iso2: string | null;
@@ -92,9 +88,9 @@ function DetailCard({
     <div
       style={{
         padding: '0.75rem',
-        borderRadius: theme.radiusSmall,
-        background: theme.bgSoft,
-        border: `1px solid ${theme.accentGold}12`,
+        borderRadius: 'var(--radius-md)',
+        background: 'var(--surface-tint)',
+        border: '1px solid var(--border-fine)',
         position: 'relative',
       }}
     >
@@ -116,14 +112,14 @@ function DetailCard({
         </div>
       )}
       <span aria-hidden="true" style={{ fontSize: '1.1rem' }}>{card.emoji}</span>
-      <DGEyebrow tracking="tight" color={theme.accentGold} style={{ margin: '0.3rem 0 0.2rem' }}>
+      <DGEyebrow tracking="tight" color="var(--accent-readable)" style={{ margin: '0.3rem 0 0.2rem' }}>
         {label}
       </DGEyebrow>
-      <p style={{ fontFamily: theme.fontHeadline, fontSize: '0.85rem', fontWeight: 600, color: theme.textHeadline, margin: 0, lineHeight: 1.3 }}>
+      <p style={{ fontFamily: 'var(--face-display)', fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-readable)', margin: 0, lineHeight: 1.3 }}>
         {title}
       </p>
       {subtitle && (
-        <p style={{ fontFamily: theme.fontHeadline, fontStyle: 'italic', fontSize: '0.72rem', color: theme.textMuted, margin: '0.2rem 0 0', lineHeight: 1.35 }}>
+        <p style={{ fontFamily: 'var(--face-display)', fontStyle: 'italic', fontSize: '0.72rem', color: 'var(--text-secondary)', margin: '0.2rem 0 0', lineHeight: 1.35 }}>
           {subtitle}
         </p>
       )}
@@ -146,7 +142,6 @@ export default function DGDestination({
   savedSet?: Set<string> | null;
   editionDate?: string;
 }) {
-  const { theme } = useTheme();
   const [modalOpen, setModalOpen] = useState(false);
   const [flagTriggered, setFlagTriggered] = useState(false);
 
@@ -202,7 +197,7 @@ export default function DGDestination({
           >
             <span style={{ position: 'absolute', bottom: '1rem', left: '1.25rem', right: '4rem', display: 'flex', alignItems: 'center', gap: 10 }}>
               {iso2 && <FlagSealMedallion countryCode={iso2} countryName={shortName} size="md" earned />}
-              <span style={{ fontFamily: theme.fontHeadline, fontSize: 'clamp(1.2rem, 3vw, 1.5rem)', fontWeight: 700, color: theme.textHeadline, lineHeight: 1.1 }}>
+              <span style={{ fontFamily: 'var(--face-display)', fontSize: 'clamp(1.2rem, 3vw, 1.5rem)', fontWeight: 700, color: 'var(--accent-readable)', lineHeight: 1.1 }}>
                 {shortName}
               </span>
             </span>
@@ -237,7 +232,7 @@ export default function DGDestination({
 
         {/* Atmosphere */}
         {dest.atmosphere && (
-          <p style={{ fontFamily: theme.fontHeadline, fontStyle: 'italic', fontSize: '0.9rem', color: theme.textBody, margin: '0 0 1rem', lineHeight: 1.7 }}>
+          <p style={{ fontFamily: 'var(--face-display)', fontStyle: 'italic', fontSize: '0.9rem', color: 'var(--text-primary)', margin: '0 0 1rem', lineHeight: 1.7 }}>
             {dest.atmosphere.split('.').slice(0, 2).join('.') + '.'}
           </p>
         )}
@@ -262,7 +257,7 @@ export default function DGDestination({
               scrimFrom={60}
               fallback={<span aria-hidden="true" style={{ fontSize: '5rem', opacity: 0.2 }}>🌍</span>}
             >
-              <DGEyebrow tracking="wide" color={theme.accentGold} style={{
+              <DGEyebrow tracking="wide" color="var(--accent-readable)" style={{
                 position: 'absolute', bottom: '1rem', left: 'clamp(1.25rem, 4vw, 2rem)', right: 'clamp(1.25rem, 4vw, 2rem)',
               }}>
                 {dest.continent && `${dest.continent} · `}{dest.name}
@@ -271,13 +266,13 @@ export default function DGDestination({
 
             <div style={{ padding: 'clamp(1.25rem, 4vw, 2.5rem)' }}>
               {dest.atmosphere && (
-                <p style={{ fontFamily: theme.fontHeadline, fontStyle: 'italic', fontSize: '1.15rem', color: theme.textBody, lineHeight: 1.85, margin: '0 0 1.5rem', borderLeft: `3px solid ${theme.accentGold}40`, paddingLeft: '1rem' }}>
+                <p style={{ fontFamily: 'var(--face-display)', fontStyle: 'italic', fontSize: '1.15rem', color: 'var(--text-primary)', lineHeight: 1.85, margin: '0 0 1.5rem', borderLeft: '3px solid color-mix(in srgb, var(--accent) 25%, transparent)', paddingLeft: '1rem' }}>
                   {dest.atmosphere}
                 </p>
               )}
 
               {dest.child_life?.story && (
-                <div style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.95rem', color: theme.textBody, lineHeight: 1.9 }}>
+                <div style={{ fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.9 }}>
                   {dest.child_life.story.split('\n\n').map((para, i) => (
                     <p key={i} style={{ margin: '0 0 1rem' }}>{para}</p>
                   ))}
@@ -290,7 +285,7 @@ export default function DGDestination({
         {/* Detail cards — fluid grid, collapses gracefully */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '0.5rem' }}>
           {DETAIL_CARDS.map(card => (
-            <DetailCard key={card.key} card={card} data={dest} theme={theme} savedSet={savedSet} editionDate={editionDate} iso2={iso2} countryName={shortName} />
+            <DetailCard key={card.key} card={card} data={dest} savedSet={savedSet} editionDate={editionDate} iso2={iso2} countryName={shortName} />
           ))}
         </div>
       </div>

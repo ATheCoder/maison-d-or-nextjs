@@ -22,7 +22,6 @@
  * behave exactly as they did.
  */
 import { createContext, useContext, useMemo, useState } from 'react';
-import { useTheme } from '@/components/theme/ThemeContext';
 
 const SignupInviteContext = createContext(null);
 
@@ -47,7 +46,6 @@ const MESSAGES = {
 };
 
 function InviteToast({ message, onClose }) {
-  const { theme } = useTheme();
   return (
     <div
       role="status"
@@ -65,16 +63,16 @@ function InviteToast({ message, onClose }) {
         gap: '0.9rem',
         padding: '0.85rem 1rem',
         borderRadius: 14,
-        background: theme.bgCard,
-        border: `1px solid ${theme.accentGold}55`,
-        boxShadow: '0 10px 34px rgba(60,45,20,0.22)',
+        background: 'var(--surface-raised)',
+        border: '1px solid var(--border-accent)',
+        boxShadow: 'var(--shadow-modal)',
         animation: 'dgFadeIn 0.3s ease-out',
       }}
     >
       <span style={{
-        fontFamily: theme.fontBody,
+        fontFamily: 'var(--face-sans)',
         fontSize: '0.8rem',
-        color: theme.textBody,
+        color: 'var(--text-primary)',
         lineHeight: 1.5,
         flex: 1,
       }}>
@@ -86,9 +84,9 @@ function InviteToast({ message, onClose }) {
           flexShrink: 0,
           padding: '0.5rem 0.9rem',
           borderRadius: 10,
-          background: theme.accentGold,
-          color: '#FFF',
-          fontFamily: theme.fontBody,
+          background: 'var(--accent)',
+          color: 'var(--palette-ink)',
+          fontFamily: 'var(--face-sans)',
           fontSize: '0.7rem',
           fontWeight: 700,
           letterSpacing: '0.08em',
@@ -105,7 +103,7 @@ function InviteToast({ message, onClose }) {
         aria-label="Dismiss"
         style={{
           flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer',
-          color: theme.textMuted, fontSize: '1rem', lineHeight: 1, padding: '0.2rem',
+          color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1, padding: '0.2rem',
         }}
       >
         ×

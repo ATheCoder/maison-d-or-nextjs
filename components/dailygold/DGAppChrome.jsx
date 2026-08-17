@@ -59,9 +59,9 @@ class DGErrorBoundary extends React.Component {
   static getDerivedStateFromError(error) { return { error }; }
   render() {
     if (this.state.error) return (
-      <div role="alert" style={{ padding: 40, background: '#F5F0E7', minHeight: '100vh' }}>
-        <h2 style={{ color: '#C46D46' }}>Daily Gold Error</h2>
-        <pre style={{ fontSize: 12, color: '#4A3B2A', whiteSpace: 'pre-wrap' }}>
+      <div role="alert" style={{ padding: 40, background: 'var(--surface-page)', minHeight: '100vh' }}>
+        <h2 style={{ color: 'var(--danger-readable)' }}>Daily Gold Error</h2>
+        <pre style={{ fontSize: 12, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
           {this.state.error?.toString()}
         </pre>
       </div>

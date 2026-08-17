@@ -9,7 +9,6 @@
  * client component or the design-sync bundle.
  */
 import { useCallback, useRef, useState } from 'react';
-import { useTheme } from '@/components/theme/ThemeContext';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import DGModal from '@/components/dailygold/DGModal';
 import DGCard from '@/components/dailygold/DGCard';
@@ -20,8 +19,6 @@ import type { GoodNewsRecord } from '@/app/(dg)/daily-gold-edition/queries';
 import type { OnFlagEarned } from '@/components/dailygold/useFlagEarn';
 
 function NewsModal({ item, onClose }: { item: GoodNewsRecord; onClose: () => void }) {
-  const { theme } = useTheme();
-
   return (
     <DGModal
       label="Good news story"
@@ -39,7 +36,7 @@ function NewsModal({ item, onClose }: { item: GoodNewsRecord; onClose: () => voi
 
       {/* Story content */}
       <div style={{ padding: '1.5rem 2rem 2.5rem' }}>
-        <h2 style={{ fontFamily: theme.fontHeadline, fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 700, color: theme.textHeadline, margin: '0 0 1rem', lineHeight: 1.2 }}>
+        <h2 style={{ fontFamily: 'var(--face-display)', fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 700, color: 'var(--accent)', margin: '0 0 1rem', lineHeight: 1.2 }}>
           {item.headline}
         </h2>
 
@@ -49,9 +46,9 @@ function NewsModal({ item, onClose }: { item: GoodNewsRecord; onClose: () => voi
           </DGEyebrow>
         )}
 
-        <div style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.95rem', color: theme.textBody, lineHeight: 1.9 }}>
+        <div style={{ fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.9 }}>
           {(() => {
-            if (!item.description) return <p style={{ color: theme.textMuted, margin: 0 }}>Story content coming soon...</p>;
+            if (!item.description) return <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Story content coming soon...</p>;
             return item.description.split('\n\n').map((para, i) => (
               <p key={i} style={{ margin: '0 0 1rem' }}>{para}</p>
             ));
@@ -74,7 +71,6 @@ export default function DGGoodNews({
   savedSet?: Set<string> | null;
   editionDate?: string;
 }) {
-  const { theme } = useTheme();
   const [selectedNews, setSelectedNews] = useState<GoodNewsRecord | null>(null);
   const earnedHere = useRef(new Set<string>());
 
@@ -107,7 +103,7 @@ export default function DGGoodNews({
         <DGEyebrow tracking="hero" style={{ margin: '0 0 0.5rem' }}>
           Stories of hope, kindness and progress
         </DGEyebrow>
-        <h2 style={{ fontFamily: theme.fontHeadline, fontSize: '1.6rem', fontWeight: 600, color: theme.textHeadline, margin: '0 0 1.25rem', lineHeight: 1.15 }}>
+        <h2 style={{ fontFamily: 'var(--face-display)', fontSize: '1.6rem', fontWeight: 600, color: 'var(--accent)', margin: '0 0 1.25rem', lineHeight: 1.15 }}>
           Good News of the Day
         </h2>
 
@@ -128,10 +124,10 @@ export default function DGGoodNews({
             >
               <DGHeroImage imageUrl={primaryImg} aspectRatio="16/10" />
               <div style={{ padding: '1rem 1.25rem 1.25rem' }}>
-                <h3 style={{ fontFamily: theme.fontHeadline, fontSize: '1.05rem', fontWeight: 600, color: theme.textHeadline, margin: '0 0 0.5rem', lineHeight: 1.3, paddingRight: '2.5rem' }}>
+                <h3 style={{ fontFamily: 'var(--face-display)', fontSize: '1.05rem', fontWeight: 600, color: 'var(--accent-readable)', margin: '0 0 0.5rem', lineHeight: 1.3, paddingRight: '2.5rem' }}>
                   {primary.headline}
                 </h3>
-                <p style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.82rem', color: theme.textBody, margin: 0, lineHeight: 1.7 }}>
+                <p style={{ fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.82rem', color: 'var(--text-primary)', margin: 0, lineHeight: 1.7 }}>
                   {(primary.description || '').split('.').slice(0, 2).join('.').trim() + '.'}
                 </p>
               </div>
@@ -177,7 +173,7 @@ export default function DGGoodNews({
               {/* Thumbnail */}
               <div style={{
                 width: 52, height: 52, borderRadius: 8, flexShrink: 0, overflow: 'hidden',
-                background: item.image_url ? undefined : `${theme.accentGold}2E`,
+                background: item.image_url ? undefined : 'color-mix(in srgb, var(--accent) 18%, transparent)',
               }}>
                 {item.image_url
                   ? <img src={item.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -186,11 +182,11 @@ export default function DGGoodNews({
               </div>
               {/* Text */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontFamily: theme.fontBody, fontSize: '0.8rem', fontWeight: 500, color: theme.textHeadline, margin: '0 0 0.2rem', lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                <p style={{ fontFamily: 'var(--face-sans)', fontSize: '0.8rem', fontWeight: 500, color: 'var(--accent-readable)', margin: '0 0 0.2rem', lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                   {item.headline}
                 </p>
                 {item.description && (
-                  <p style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.72rem', color: theme.textBody, margin: 0, lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
+                  <p style={{ fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.72rem', color: 'var(--text-primary)', margin: 0, lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
                     {item.description.split('.')[0].trim() + '.'}
                   </p>
                 )}

@@ -9,7 +9,6 @@
  * component or the design-sync bundle.
  */
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
 import DGCard from '@/components/dailygold/DGCard';
@@ -34,11 +33,10 @@ function YearSeal({
   onPress: () => void;
   pressing: boolean;
 }) {
-  const { theme } = useTheme();
   const isBack = direction === 'back';
-  const gold = disabled ? `${theme.accentGold}4D` : `${theme.accentGold}EB`;
-  const goldMid = disabled ? `${theme.accentGold}33` : `${theme.accentGold}8C`;
-  const goldFaint = disabled ? `${theme.accentGold}1F` : `${theme.accentGold}4D`;
+  const gold = disabled ? 'color-mix(in srgb, var(--accent) 30%, transparent)' : 'color-mix(in srgb, var(--accent) 92%, transparent)';
+  const goldMid = disabled ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'color-mix(in srgb, var(--accent) 55%, transparent)';
+  const goldFaint = disabled ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'color-mix(in srgb, var(--accent) 30%, transparent)';
 
   return (
     <button
@@ -48,13 +46,13 @@ function YearSeal({
       aria-label={isBack ? 'Travel to an earlier year' : 'Travel to a later year'}
       style={{
         width: 44, height: 44, borderRadius: '50%', padding: 0,
-        background: `radial-gradient(circle at 35% 30%, ${theme.bgCard} 0%, ${theme.bgSoft} 55%, ${theme.bgPrimary} 100%)`,
-        border: `2px solid ${theme.accentGold}${disabled ? '33' : 'A6'}`,
+        background: 'radial-gradient(circle at 35% 30%, var(--surface-raised) 0%, var(--surface-tint) 55%, var(--surface-page) 100%)',
+        border: `2px solid ${disabled ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'color-mix(in srgb, var(--accent) 65%, transparent)'}`,
         boxShadow: disabled
           ? 'none'
           : pressing
-            ? `inset 0 2px 4px ${theme.accentGold}26`
-            : `${theme.shadowSoft}, inset 0 1px 0 ${theme.accentGold}26`,
+            ? 'inset 0 2px 4px color-mix(in srgb, var(--accent) 15%, transparent)'
+            : 'var(--shadow-card), inset 0 1px 0 color-mix(in srgb, var(--accent) 15%, transparent)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.45 : 1,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -64,22 +62,22 @@ function YearSeal({
       }}
     >
       {/* Inner emboss ring */}
-      <div style={{ position: 'absolute', inset: 3, borderRadius: '50%', border: `1px solid ${theme.accentGold}${disabled ? '1A' : '59'}`, pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', inset: 3, borderRadius: '50%', border: `1px solid ${disabled ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'color-mix(in srgb, var(--accent) 35%, transparent)'}`, pointerEvents: 'none' }} />
       {/* Arrow SVG */}
       <svg viewBox="0 0 40 40" width="26" height="26" aria-hidden="true" style={{ display: 'block' }}>
-        <circle cx="20" cy="20" r="17" fill="none" stroke={goldMid} strokeWidth="0.9" />
-        <circle cx="20" cy="20" r="13" fill="none" stroke={goldFaint} strokeWidth="0.5" />
+        <circle cx="20" cy="20" r="17" fill="none" style={{ stroke: goldMid }} strokeWidth="0.9" />
+        <circle cx="20" cy="20" r="13" fill="none" style={{ stroke: goldFaint }} strokeWidth="0.5" />
         {isBack ? (
           <g transform="translate(20,20)">
-            <line x1="6" y1="0" x2="-4" y2="0" stroke={gold} strokeWidth="1.7" strokeLinecap="round" />
-            <polyline points="0,-4 -5,0 0,4" fill="none" stroke={gold} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-            <line x1="6" y1="-2" x2="6" y2="2" stroke={gold} strokeWidth="0.9" strokeLinecap="round" />
+            <line x1="6" y1="0" x2="-4" y2="0" style={{ stroke: gold }} strokeWidth="1.7" strokeLinecap="round" />
+            <polyline points="0,-4 -5,0 0,4" fill="none" style={{ stroke: gold }} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+            <line x1="6" y1="-2" x2="6" y2="2" style={{ stroke: gold }} strokeWidth="0.9" strokeLinecap="round" />
           </g>
         ) : (
           <g transform="translate(20,20)">
-            <line x1="-6" y1="0" x2="4" y2="0" stroke={gold} strokeWidth="1.7" strokeLinecap="round" />
-            <polyline points="0,-4 5,0 0,4" fill="none" stroke={gold} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-            <line x1="-6" y1="-2" x2="-6" y2="2" stroke={gold} strokeWidth="0.9" strokeLinecap="round" />
+            <line x1="-6" y1="0" x2="4" y2="0" style={{ stroke: gold }} strokeWidth="1.7" strokeLinecap="round" />
+            <polyline points="0,-4 5,0 0,4" fill="none" style={{ stroke: gold }} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+            <line x1="-6" y1="-2" x2="-6" y2="2" style={{ stroke: gold }} strokeWidth="0.9" strokeLinecap="round" />
           </g>
         )}
       </svg>
@@ -99,7 +97,6 @@ export default function DGOnThisDay({
   savedSet?: Set<string> | null;
   editionDate?: string;
 }) {
-  const { theme } = useTheme();
   const { track } = useInstrumentation();
   const [pressingYear, setPressingYear] = useState<YearDirection | null>(null);
 
@@ -245,11 +242,11 @@ export default function DGOnThisDay({
         {/* Card — year nav INSIDE, below the year heading */}
         <DGCard size="small" style={{ overflow: 'hidden' }}>
           {/* Year display + arrows — all inside the card */}
-          <div style={{ padding: '1rem 1.25rem 0.75rem', borderBottom: `1px solid ${theme.accentGold}1F` }}>
-            <p style={{ fontFamily: theme.fontHeadline, fontSize: '1.6rem', fontWeight: 600, color: theme.textHeadline, margin: '0 0 0.1rem', lineHeight: 1, textAlign: 'center' }}>
+          <div style={{ padding: '1rem 1.25rem 0.75rem', borderBottom: '1px solid var(--border-fine)' }}>
+            <p style={{ fontFamily: 'var(--face-display)', fontSize: '1.6rem', fontWeight: 600, color: 'var(--accent)', margin: '0 0 0.1rem', lineHeight: 1, textAlign: 'center' }}>
               {currentYear}
             </p>
-            <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', color: theme.textMuted, margin: '0 0 0.75rem', textAlign: 'center' }}>
+            <p style={{ fontFamily: 'var(--face-sans)', fontSize: '0.7rem', color: 'var(--text-faint)', margin: '0 0 0.75rem', textAlign: 'center' }}>
               {currentYear === MAX_YEAR ? 'Most recent year' : `${MAX_YEAR - currentYear} years ago`}
             </p>
             {/* Arrows below the year */}
@@ -278,7 +275,7 @@ export default function DGOnThisDay({
                   key={ev.id ?? `${ev.year}:${ev.position ?? i}`}
                   style={{
                     position: 'relative',
-                    ...(i > 0 ? { borderTop: `1px solid ${theme.accentGold}1F` } : null),
+                    ...(i > 0 ? { borderTop: '1px solid var(--border-fine)' } : null),
                   }}
                 >
                   {/* Treasury heart — top-right of the event block. When the
@@ -318,11 +315,11 @@ export default function DGOnThisDay({
                       </div>
                     )}
 
-                    <h3 style={{ fontFamily: theme.fontHeadline, fontSize: '1.1rem', fontWeight: 600, color: theme.textHeadline, margin: '0 0 0.6rem', lineHeight: 1.3 }}>
+                    <h3 style={{ fontFamily: 'var(--face-display)', fontSize: '1.1rem', fontWeight: 600, color: 'var(--accent-readable)', margin: '0 0 0.6rem', lineHeight: 1.3 }}>
                       {ev.headline}
                     </h3>
 
-                    <p style={{ fontFamily: theme.fontBody, fontWeight: 300, fontSize: '0.82rem', color: theme.textBody, margin: 0, lineHeight: 1.75 }}>
+                    <p style={{ fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.82rem', color: 'var(--text-primary)', margin: 0, lineHeight: 1.75 }}>
                       {ev.story}
                     </p>
                   </div>
@@ -333,7 +330,7 @@ export default function DGOnThisDay({
             /* An unauthored year is a designed state, not a gap. Offer the
                nearest year that has something rather than an apology. */
             <div style={{ padding: '2rem 1.25rem', textAlign: 'center' }}>
-              <p style={{ fontFamily: theme.fontBody, fontSize: '0.82rem', color: theme.textMuted, margin: 0, lineHeight: 1.7 }}>
+              <p style={{ fontFamily: 'var(--face-sans)', fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.7 }}>
                 Nothing from {currentYear} yet.
               </p>
               {nearestAuthoredYear != null && (
@@ -345,13 +342,13 @@ export default function DGOnThisDay({
                     padding: '0.5rem 1.1rem',
                     minHeight: 44,
                     borderRadius: 999,
-                    border: `1px solid ${theme.accentGold}55`,
-                    background: theme.bgCard,
-                    boxShadow: theme.shadowSoft,
-                    fontFamily: theme.fontBody,
+                    border: '1px solid var(--border-accent)',
+                    background: 'var(--surface-raised)',
+                    boxShadow: 'var(--shadow-card)',
+                    fontFamily: 'var(--face-sans)',
                     fontSize: '0.72rem',
                     letterSpacing: '0.08em',
-                    color: theme.textHeadline,
+                    color: 'var(--accent-readable)',
                     cursor: 'pointer',
                   }}
                 >

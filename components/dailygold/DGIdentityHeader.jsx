@@ -18,7 +18,6 @@
  */
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTheme } from '@/components/theme/ThemeContext';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import { DG_SHELF, DGIcon } from '@/components/dailygold/dgNavConfig';
 import ChildSwitcherOverlay from '@/components/dailygold/ChildSwitcherOverlay';
@@ -27,7 +26,6 @@ import { AVATARS } from '@/lib/avatars';
 
 export default function DGIdentityHeader({ child = null, viewer = null }) {
   const router = useRouter();
-  const { theme } = useTheme();
   const { track } = useInstrumentation();
   const [showSwitcher, setShowSwitcher] = useState(false);
   // Same landing rule as the rail — it lives in useProfileSwitch, along with
@@ -35,7 +33,7 @@ export default function DGIdentityHeader({ child = null, viewer = null }) {
   const { switching, handleSwitched: landSwitch } = useProfileSwitch(!!child);
 
   if (!child && !viewer) return null;
-  const avatar = child ? (AVATARS[child.avatar] || AVATARS.sun) : { emoji: '🗝️', bg: '#E4DCCE' };
+  const avatar = child ? (AVATARS[child.avatar] || AVATARS.sun) : { emoji: '🗝️', bg: 'var(--surface-tint)' };
 
   const handleSwitched = (kind, profile) => {
     setShowSwitcher(false);
@@ -46,8 +44,8 @@ export default function DGIdentityHeader({ child = null, viewer = null }) {
     <div
       className="dg-idheader"
       style={{
-        background: theme.bgOverlay,
-        borderBottom: `1px solid ${theme.accentGold}26`,
+        background: 'var(--surface-overlay)',
+        borderBottom: '1px solid var(--border-fine)',
       }}
     >
       <SwitchCurtain switching={switching} />
@@ -68,22 +66,22 @@ export default function DGIdentityHeader({ child = null, viewer = null }) {
         >
           <span aria-hidden="true" style={{
             width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-            background: avatar.bg, border: `1.5px solid ${theme.accentGold}80`,
+            background: avatar.bg, border: '1.5px solid color-mix(in srgb, var(--accent) 50%, transparent)',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '0.9rem',
           }}>
             {avatar.emoji}
           </span>
           <span style={{
-            fontFamily: theme.fontHeadline, fontStyle: 'italic', fontSize: '0.95rem',
-            color: theme.textMuted, whiteSpace: 'nowrap',
+            fontFamily: 'var(--face-display)', fontStyle: 'italic', fontSize: '0.95rem',
+            color: 'var(--text-secondary)', whiteSpace: 'nowrap',
             overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
           }}>
             {child ? 'Hi, ' : `${viewer.role === 'admin' ? 'Admin' : 'Parent'} · `}
-            <span style={{ fontWeight: 600, color: theme.textHeadline }}>{child ? child.name : viewer.name}</span>
+            <span style={{ fontWeight: 600, color: 'var(--accent-readable)' }}>{child ? child.name : viewer.name}</span>
           </span>
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-            <path d="M2 3.5l3 3 3-3" stroke={theme.textMuted} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M2 3.5l3 3 3-3" style={{ stroke: 'var(--text-secondary)' }} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
         {showSwitcher && (
@@ -110,15 +108,17 @@ export default function DGIdentityHeader({ child = null, viewer = null }) {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               minHeight: 44, padding: '0.35rem 0.85rem', flexShrink: 0,
-              background: `${theme.accentGold}14`,
-              border: `1px solid ${theme.accentGold}59`,
+              background: 'color-mix(in srgb, var(--accent) 8%, transparent)',
+              border: '1px solid var(--border-accent)',
               borderRadius: 999, cursor: 'pointer',
             }}
           >
-            <DGIcon name={item.icon} size={15} color={theme.accentGold} />
+            <span style={{ display: 'inline-flex', color: 'var(--accent)' }}>
+              <DGIcon name={item.icon} size={15} />
+            </span>
             <span style={{
-              fontFamily: theme.fontBody, fontSize: '0.75rem', letterSpacing: '0.06em',
-              color: theme.textBody, whiteSpace: 'nowrap',
+              fontFamily: 'var(--face-sans)', fontSize: '0.75rem', letterSpacing: '0.06em',
+              color: 'var(--text-primary)', whiteSpace: 'nowrap',
             }}>
               {item.label}
             </span>

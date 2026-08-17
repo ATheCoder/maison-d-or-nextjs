@@ -20,7 +20,6 @@ import { useState } from 'react';
 import FlagSealMedallion from './FlagSealMedallion';
 import DGModal from './DGModal';
 import { COUNTRIES } from '@/lib/countries';
-import { useTheme } from '@/components/theme/ThemeContext';
 import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 
 /**
@@ -31,18 +30,17 @@ import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
  * }} props
  */
 export default function FlagCollectionView({ seals = [], earnedCount = 0, totalCountries = COUNTRIES.length }) {
-  const { theme } = useTheme();
   const [selectedSeal, setSelectedSeal] = useState(null);
 
   const earnedMap = Object.fromEntries(seals.map(s => [s.country_code, s]));
 
   const badgeStyle = {
     display: 'inline-block',
-    background: `${theme.accentGold}26`,
-    border: `1px solid ${theme.accentGold}40`,
+    background: 'color-mix(in srgb, var(--accent) 15%, transparent)',
+    border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
     borderRadius: 20, padding: '4px 16px',
-    fontFamily: theme.fontBody, fontSize: '0.72rem',
-    color: theme.textMuted, letterSpacing: '0.12em', textTransform: 'uppercase',
+    fontFamily: 'var(--face-sans)', fontSize: '0.72rem',
+    color: 'var(--text-secondary)', letterSpacing: '0.12em', textTransform: 'uppercase',
   };
 
   return (
@@ -60,7 +58,7 @@ export default function FlagCollectionView({ seals = [], earnedCount = 0, totalC
         style={{
           width: '100%',
           minHeight: '100vh',
-          background: `radial-gradient(ellipse at 50% 0%, ${theme.bgCard} 0%, ${theme.bgSoft} 45%, ${theme.bgPrimary} 100%)`,
+          background: 'radial-gradient(ellipse at 50% 0%, var(--surface-raised) 0%, var(--surface-tint) 45%, var(--surface-page) 100%)',
           padding: '2rem 1.5rem 4rem',
           position: 'relative',
         }}
@@ -68,15 +66,15 @@ export default function FlagCollectionView({ seals = [], earnedCount = 0, totalC
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h1 style={{
-            fontFamily: theme.fontHeadline,
+            fontFamily: 'var(--face-display)',
             fontSize: 'clamp(1.6rem, 4vw, 2.4rem)',
-            fontWeight: 700, color: theme.textHeadline, margin: '0 0 0.4rem',
+            fontWeight: 700, color: 'var(--accent)', margin: '0 0 0.4rem',
           }}>
             My Flag Collection
           </h1>
           <p style={{
-            fontFamily: theme.fontBody,
-            fontSize: '1rem', color: theme.textMuted, margin: '0 0 0.6rem',
+            fontFamily: 'var(--face-sans)',
+            fontSize: '1rem', color: 'var(--text-secondary)', margin: '0 0 0.6rem',
             fontStyle: 'italic',
           }}>
             {earnedCount === 0
@@ -97,9 +95,9 @@ export default function FlagCollectionView({ seals = [], earnedCount = 0, totalC
 
         {/* Decorative divider */}
         <div aria-hidden="true" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-          <div style={{ flex: 1, height: 1, background: `${theme.accentGold}30` }} />
-          <span style={{ fontFamily: theme.fontHeadline, color: `${theme.accentGold}B0`, fontSize: '1.2rem' }}>✦</span>
-          <div style={{ flex: 1, height: 1, background: `${theme.accentGold}30` }} />
+          <div style={{ flex: 1, height: 1, background: 'color-mix(in srgb, var(--accent) 19%, transparent)' }} />
+          <span style={{ fontFamily: 'var(--face-display)', color: 'color-mix(in srgb, var(--accent) 69%, transparent)', fontSize: '1.2rem' }}>✦</span>
+          <div style={{ flex: 1, height: 1, background: 'color-mix(in srgb, var(--accent) 19%, transparent)' }} />
         </div>
 
         {/* Seal grid */}
@@ -149,15 +147,15 @@ export default function FlagCollectionView({ seals = [], earnedCount = 0, totalC
             </div>
             <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center', marginBottom: '1rem' }}>
               <div>
-                <DGEyebrow tracking="tight" color={theme.textMuted} style={{ margin: '0 0 2px' }}>Seen on</DGEyebrow>
+                <DGEyebrow tracking="tight" color="var(--text-secondary)" style={{ margin: '0 0 2px' }}>Seen on</DGEyebrow>
                 {/* timesEarned counts distinct edition days, not raw triggers */}
-                <p style={{ fontFamily: theme.fontHeadline, fontSize: '1.1rem', color: theme.textBody, margin: 0 }}>
+                <p style={{ fontFamily: 'var(--face-display)', fontSize: '1.1rem', color: 'var(--text-primary)', margin: 0 }}>
                   {selectedSeal.times_earned} {selectedSeal.times_earned === 1 ? 'day' : 'days'}
                 </p>
               </div>
               <div>
-                <DGEyebrow tracking="tight" color={theme.textMuted} style={{ margin: '0 0 2px' }}>First collected</DGEyebrow>
-                <p style={{ fontFamily: theme.fontHeadline, fontSize: '1.1rem', color: theme.textBody, margin: 0 }}>
+                <DGEyebrow tracking="tight" color="var(--text-secondary)" style={{ margin: '0 0 2px' }}>First collected</DGEyebrow>
+                <p style={{ fontFamily: 'var(--face-display)', fontSize: '1.1rem', color: 'var(--text-primary)', margin: 0 }}>
                   {selectedSeal.first_earned_date ? new Date(`${selectedSeal.first_earned_date}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                 </p>
               </div>
@@ -166,9 +164,9 @@ export default function FlagCollectionView({ seals = [], earnedCount = 0, totalC
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                 {[...new Set(selectedSeal.sources)].map(src => (
                   <span key={src} style={{
-                    background: `${theme.accentGold}26`, border: `1px solid ${theme.accentGold}40`,
+                    background: 'color-mix(in srgb, var(--accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
                     borderRadius: 12, padding: '2px 10px',
-                    fontFamily: theme.fontBody, fontSize: '0.7rem', color: theme.textMuted,
+                    fontFamily: 'var(--face-sans)', fontSize: '0.7rem', color: 'var(--text-secondary)',
                     letterSpacing: '0.1em', textTransform: 'uppercase',
                   }}>
                     {src.replaceAll('_', ' ')}

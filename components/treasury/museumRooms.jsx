@@ -99,18 +99,18 @@ export function chronological(items) {
 /* ── Ornaments ─────────────────────────────────────────────────────────── */
 
 /** Eight-rayed sun, the Maison's little astronomical flourish. */
-export function Sun({ theme, size = 20 }) {
+export function Sun({ size = 20 }) {
   const rad = (deg) => (deg * Math.PI) / 180;
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-      <circle cx="12" cy="12" r="5.5" stroke={theme.accentGold} strokeWidth="1.3" />
-      <circle cx="12" cy="12" r="2.5" fill={theme.accentGold} />
+      <circle cx="12" cy="12" r="5.5" strokeWidth="1.3" style={{ stroke: 'var(--accent)' }} />
+      <circle cx="12" cy="12" r="2.5" style={{ fill: 'var(--accent)' }} />
       {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
         <line
           key={a}
           x1={12 + 8 * Math.cos(rad(a))} y1={12 + 8 * Math.sin(rad(a))}
           x2={12 + 10.5 * Math.cos(rad(a))} y2={12 + 10.5 * Math.sin(rad(a))}
-          stroke={theme.accentGold} strokeWidth="1.1"
+          strokeWidth="1.1" style={{ stroke: 'var(--accent)' }}
         />
       ))}
     </svg>

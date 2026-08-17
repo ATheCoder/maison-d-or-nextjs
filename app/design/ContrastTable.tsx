@@ -20,6 +20,11 @@ import { useEffect, useRef, useState } from 'react';
  * Since the rebalance the dark scopes re-scope text-faint (ink-on-dark-faint)
  * and accent-readable (gold-bright), so those rows now measure real tokens,
  * not stray-class accidents.
+ *
+ * The page-wide themes need no rows of their own: each [data-theme] selector
+ * shares its declaration block with the [data-surface] scope measured here
+ * (parchment = the bare :root), so these measurements ARE the theme
+ * measurements by construction.
  */
 type Scope = 'light' | 'sage' | 'rose' | 'lavender' | 'periwinkle' | 'dark' | 'navy';
 type Rgb = [number, number, number];

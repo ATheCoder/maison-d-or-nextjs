@@ -16,7 +16,6 @@
  * A missing/failed image falls back to the initials treatment.
  */
 import React, { useState } from 'react';
-import { useTheme } from '@/components/theme/ThemeContext';
 
 const SIZES = { xs: 24, sm: 36, md: 56, lg: 80 };
 
@@ -37,7 +36,6 @@ const SIZES = { xs: 24, sm: 36, md: 56, lg: 80 };
  * }} props
  */
 function FlagSealMedallion({ countryCode, countryName, size = 'sm', earned = true, onClick, showLabel = false, fallbackInitials }) {
-  const { theme } = useTheme();
   const [imgFailed, setImgFailed] = useState(false);
   const px = SIZES[size] || SIZES.sm;
   const code = (countryCode || '').toUpperCase();
@@ -63,9 +61,9 @@ function FlagSealMedallion({ countryCode, countryName, size = 'sm', earned = tru
         background: earned
           ? 'radial-gradient(circle at 35% 30%, #FDF6E8 0%, #EFE0BE 55%, #D8C89A 100%)'
           : 'radial-gradient(circle at 35% 30%, #E8E4DC 0%, #D4D0C8 55%, #C4C0B8 100%)',
-        border: `${borderW}px solid ${earned ? 'rgba(201,169,110,0.9)' : 'rgba(180,170,155,0.4)'}`,
+        border: `${borderW}px solid ${earned ? 'color-mix(in srgb, var(--palette-gold) 90%, transparent)' : 'rgba(180,170,155,0.4)'}`,
         boxShadow: earned
-          ? `0 ${Math.round(px*0.04)}px ${Math.round(px*0.18)}px rgba(100,80,40,0.22), inset 0 1px 0 rgba(255,255,255,0.7), 0 0 ${Math.round(px*0.12)}px rgba(201,169,110,0.25)`
+          ? `0 ${Math.round(px*0.04)}px ${Math.round(px*0.18)}px rgba(100,80,40,0.22), inset 0 1px 0 rgba(255,255,255,0.7), 0 0 ${Math.round(px*0.12)}px color-mix(in srgb, var(--palette-gold) 25%, transparent)`
           : `0 1px ${Math.round(px*0.1)}px rgba(0,0,0,0.08)`,
         filter: earned ? 'none' : 'grayscale(1) opacity(0.38)',
         transition: 'transform 0.15s ease, box-shadow 0.15s ease',
@@ -75,7 +73,7 @@ function FlagSealMedallion({ countryCode, countryName, size = 'sm', earned = tru
           position: 'absolute',
           inset: Math.round(px * 0.09),
           borderRadius: '50%',
-          border: `1px solid ${earned ? 'rgba(230,200,140,0.55)' : 'rgba(200,190,175,0.2)'}`,
+          border: `1px solid ${earned ? 'color-mix(in srgb, var(--palette-gold-bright) 55%, transparent)' : 'rgba(200,190,175,0.2)'}`,
           pointerEvents: 'none', zIndex: 2,
         }} />
         {/* Highlight */}
@@ -112,9 +110,9 @@ function FlagSealMedallion({ countryCode, countryName, size = 'sm', earned = tru
             position: 'absolute', inset: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: fallbackFontSize,
-            fontFamily: theme.fontHeadline,
+            fontFamily: 'var(--face-display)',
             fontWeight: 600,
-            color: 'rgba(140,100,40,0.85)',
+            color: 'color-mix(in srgb, var(--palette-gold-deep) 85%, transparent)',
             lineHeight: 1,
             zIndex: 1,
             userSelect: 'none',
@@ -126,9 +124,9 @@ function FlagSealMedallion({ countryCode, countryName, size = 'sm', earned = tru
 
       {showLabel && countryName && (
         <span style={{
-          fontFamily: theme.fontHeadline,
+          fontFamily: 'var(--face-display)',
           fontSize: Math.max(10, Math.round(px * 0.19)),
-          color: earned ? theme.textBody : theme.textMuted,
+          color: earned ? 'var(--text-primary)' : 'var(--text-secondary)',
           textAlign: 'center',
           lineHeight: 1.2,
           maxWidth: px * 1.5,

@@ -29,16 +29,14 @@
  * curtain over the wait.
  */
 import { useState, useEffect, useRef } from 'react';
-import { useTheme } from '@/components/theme/ThemeContext';
 import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import { getProfilesForPicker, enterChildProfile, enterChildProfileAsGuardian, passGrownUpGate } from '@/app/profiles/actions';
 import { authClient } from '@/lib/auth-client';
 import { AVATARS } from '@/lib/avatars';
 
-const ERROR_RED = '#B4553C';
+const ERROR_RED = 'var(--danger-readable)';
 
 export default function ChildSwitcherOverlay({ currentChildId = null, viewer = null, onSwitched, onClose, align = 'left' }) {
-  const { theme } = useTheme();
   const isAdminViewer = viewer?.role === 'admin';
   const [children, setChildren] = useState([]);
   // Admins have no family, so there is nothing to load for them.
@@ -127,7 +125,6 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
     };
   }, [onClose]);
 
-  const gold = theme.accentGold;
   const showCredentialForm = pinFor != null || parentGate;
 
   const heading = pinFor
@@ -143,9 +140,9 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
     display: 'flex', alignItems: 'center', gap: 10,
     width: '100%', padding: '0.6rem 1rem', minHeight: 48,
     background: 'transparent', border: 'none', cursor: 'pointer',
-    borderTop: `1px solid ${gold}26`,
-    fontFamily: theme.fontBody, fontSize: '0.8rem', letterSpacing: '0.04em',
-    color: theme.textBody, textAlign: 'left',
+    borderTop: '1px solid var(--border-fine)',
+    fontFamily: 'var(--face-sans)', fontSize: '0.8rem', letterSpacing: '0.04em',
+    color: 'var(--text-primary)', textAlign: 'left',
   };
 
   return (
@@ -156,18 +153,18 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
       style={{
         position: 'absolute', top: 'calc(100% + 8px)', zIndex: 1100,
         ...(align === 'right' ? { right: 0 } : { left: 0 }),
-        background: theme.bgCard,
-        border: `1px solid ${gold}4D`,
+        background: 'var(--surface-raised)',
+        border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
         borderRadius: 14,
-        boxShadow: theme.shadowDeep,
+        boxShadow: 'var(--shadow-modal)',
         minWidth: 220,
         maxWidth: 'min(320px, calc(100vw - 2rem))',
         overflow: 'hidden',
       }}
     >
       <style>{`@keyframes dgSpin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{ padding: '0.65rem 1rem 0.4rem', borderBottom: `1px solid ${gold}26` }}>
-        <DGEyebrow tracking="wide" color={theme.textMuted}>
+      <div style={{ padding: '0.65rem 1rem 0.4rem', borderBottom: '1px solid var(--border-fine)' }}>
+        <DGEyebrow tracking="wide" color="var(--text-secondary)">
           {heading}
         </DGEyebrow>
       </div>
@@ -185,15 +182,15 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
             onKeyDown={e => { if (e.key === 'Enter') submitCredential(); if (e.key === 'Escape') { e.stopPropagation(); closeCredentialForm(); } }}
             style={{
               width: '100%', padding: '0.6rem 0.65rem',
-              fontFamily: theme.fontBody, fontSize: '0.9rem',
+              fontFamily: 'var(--face-sans)', fontSize: '0.9rem',
               letterSpacing: guardianCredential ? 'normal' : '0.3em', textAlign: guardianCredential ? 'left' : 'center',
-              color: theme.textBody, background: theme.bgCard,
-              border: `1px solid ${gold}66`, borderRadius: 8,
+              color: 'var(--text-primary)', background: 'var(--surface-raised)',
+              border: '1px solid color-mix(in srgb, var(--accent) 40%, transparent)', borderRadius: 8,
               outline: 'none', boxSizing: 'border-box',
             }}
           />
           {error && (
-            <p role="alert" style={{ fontFamily: theme.fontBody, fontSize: '0.72rem', color: ERROR_RED, margin: '0.45rem 0 0' }}>
+            <p role="alert" style={{ fontFamily: 'var(--face-sans)', fontSize: '0.72rem', color: ERROR_RED, margin: '0.45rem 0 0' }}>
               {error}
             </p>
           )}
@@ -203,8 +200,8 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
               disabled={pending || pin.length < (guardianCredential ? 1 : 4)}
               style={{
                 flex: 1, padding: '0.6rem', borderRadius: 8, cursor: 'pointer', minHeight: 40,
-                fontFamily: theme.fontBody, fontSize: '0.75rem', letterSpacing: '0.08em',
-                color: theme.bgCard, background: gold, border: 'none',
+                fontFamily: 'var(--face-sans)', fontSize: '0.75rem', letterSpacing: '0.08em',
+                color: 'var(--surface-raised)', background: 'var(--accent)', border: 'none',
                 opacity: pending || pin.length < (guardianCredential ? 1 : 4) ? 0.5 : 1,
               }}
             >
@@ -214,8 +211,8 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
               onClick={closeCredentialForm}
               style={{
                 padding: '0.6rem 0.8rem', borderRadius: 8, cursor: 'pointer', minHeight: 40,
-                fontFamily: theme.fontBody, fontSize: '0.75rem',
-                color: theme.textMuted, background: 'transparent', border: `1px solid ${gold}4D`,
+                fontFamily: 'var(--face-sans)', fontSize: '0.75rem',
+                color: 'var(--text-secondary)', background: 'transparent', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
               }}
             >
               Back
@@ -226,7 +223,7 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
               onClick={() => { setAsGuardian(true); setPin(''); setError(null); }}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer', padding: '0.6rem 0 0',
-                fontFamily: theme.fontBody, fontSize: '0.7rem', color: theme.textMuted,
+                fontFamily: 'var(--face-sans)', fontSize: '0.7rem', color: 'var(--text-secondary)',
                 textDecoration: 'underline', display: 'block',
               }}
             >
@@ -236,7 +233,7 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
         </div>
       ) : loading ? (
         <div style={{ padding: '1rem', textAlign: 'center' }} role="status" aria-label="Loading readers">
-          <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${gold}40`, borderTopColor: gold, animation: 'dgSpin 0.7s linear infinite', margin: '0 auto' }} />
+          <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid color-mix(in srgb, var(--accent) 25%, transparent)', borderTopColor: 'var(--accent)', animation: 'dgSpin 0.7s linear infinite', margin: '0 auto' }} />
         </div>
       ) : (
         <>
@@ -253,12 +250,12 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   width: '100%', padding: '0.6rem 1rem', minHeight: 48,
-                  background: isCurrent ? `${gold}1A` : 'transparent',
+                  background: isCurrent ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent',
                   border: 'none', cursor: 'pointer',
-                  borderBottom: `1px solid ${gold}14`,
+                  borderBottom: '1px solid var(--border-fine)',
                   transition: 'background 0.15s ease',
                 }}
-                onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = `${gold}0F`; }}
+                onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 6%, transparent)'; }}
                 onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background = 'transparent'; }}
               >
                 <div aria-hidden="true" style={{
@@ -266,22 +263,22 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
                   background: avatar.bg, flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: '0.9rem',
-                  border: `1.5px solid ${gold}${isCurrent ? 'B3' : '4D'}`,
+                  border: `1.5px solid color-mix(in srgb, var(--accent) ${isCurrent ? '70%' : '30%'}, transparent)`,
                 }}>
                   {avatar.emoji}
                 </div>
                 <div style={{ textAlign: 'left' }}>
-                  <p style={{ fontFamily: theme.fontHeadline, fontSize: '0.85rem', fontWeight: isCurrent ? 700 : 400, color: theme.textBody, margin: 0 }}>
+                  <p style={{ fontFamily: 'var(--face-display)', fontSize: '0.85rem', fontWeight: isCurrent ? 700 : 400, color: 'var(--text-primary)', margin: 0 }}>
                     {kid.displayName}
                   </p>
                   {kid.age > 0 && (
-                    <p style={{ fontFamily: theme.fontBody, fontSize: '0.7rem', color: theme.textMuted, margin: 0 }}>
+                    <p style={{ fontFamily: 'var(--face-sans)', fontSize: '0.7rem', color: 'var(--text-faint)', margin: 0 }}>
                       Age {kid.age}
                     </p>
                   )}
                 </div>
                 {isCurrent ? (
-                  <div aria-hidden="true" style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%', background: gold, flexShrink: 0 }} />
+                  <div aria-hidden="true" style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
                 ) : kid.hasPin ? (
                   <span style={{ marginLeft: 'auto', fontSize: '0.7rem', opacity: 0.55 }} role="img" aria-label="PIN protected">🔒</span>
                 ) : null}
@@ -289,7 +286,7 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
             );
           })}
           {error && (
-            <p role="alert" style={{ fontFamily: theme.fontBody, fontSize: '0.72rem', color: ERROR_RED, margin: 0, padding: '0.5rem 1rem' }}>
+            <p role="alert" style={{ fontFamily: 'var(--face-sans)', fontSize: '0.72rem', color: ERROR_RED, margin: 0, padding: '0.5rem 1rem' }}>
               {error}
             </p>
           )}
@@ -302,9 +299,9 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
             >
               <span aria-hidden="true" style={{
                 width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-                background: '#E4DCCE',
+                background: 'var(--surface-tint)',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '0.9rem', border: `1.5px solid ${gold}4D`,
+                fontSize: '0.9rem', border: '1.5px solid color-mix(in srgb, var(--accent) 30%, transparent)',
               }}>
                 🗝️
               </span>
@@ -317,7 +314,7 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
               role="menuitem"
               onClick={signOut}
               disabled={pending}
-              style={{ ...actionRowStyle, color: theme.textMuted }}
+              style={{ ...actionRowStyle, color: 'var(--text-secondary)' }}
             >
               {pending ? 'Signing out…' : 'Sign out'}
             </button>

@@ -14,13 +14,8 @@
  * headline sits close under the picture, `60` for the destination modal's tall
  * hero. It is per-site by design and each value is the one that site already
  * had.
- *
- * `useTheme()` is called here rather than taking a `theme` prop: the hook falls
- * back to the default palette with no provider mounted, which is what lets the
- * design-sync previews render this standalone.
  */
 import type { ReactNode } from 'react';
-import { useTheme } from '@/components/theme/ThemeContext';
 
 export default function DGHeroImage({
   imageUrl,
@@ -45,9 +40,8 @@ export default function DGHeroImage({
   /** Absolutely-positioned overlays: rank badges, caption lines. */
   children?: ReactNode;
 }) {
-  const { theme } = useTheme();
   return (
-    <div style={{ position: 'relative', background: theme.bgSoft }}>
+    <div style={{ position: 'relative', background: 'var(--surface-tint)' }}>
       {imageUrl ? (
         <img
           src={imageUrl}
@@ -57,7 +51,7 @@ export default function DGHeroImage({
       ) : (
         <div style={{
           width: '100%', aspectRatio,
-          background: `linear-gradient(135deg, ${theme.bgSoft} 0%, ${theme.bgPrimary} 100%)`,
+          background: 'linear-gradient(135deg, var(--surface-tint) 0%, var(--surface-page) 100%)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           {fallback ?? (fallbackMark
@@ -65,7 +59,7 @@ export default function DGHeroImage({
             : null)}
         </div>
       )}
-      <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent ${scrimFrom}%, ${theme.bgCard} 100%)` }} />
+      <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent ${scrimFrom}%, var(--surface-raised) 100%)` }} />
       {children}
     </div>
   );

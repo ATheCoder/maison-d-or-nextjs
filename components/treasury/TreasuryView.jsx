@@ -47,7 +47,6 @@ import Link from 'next/link';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import TreasuryItemModal from '@/components/treasury/TreasuryItemModal';
 import { getSavedItemDetail } from '@/app/(dg)/treasury/actions';
-import { useTheme } from '@/components/theme/ThemeContext';
 import { useReader } from '@/components/dailygold/ReaderContext';
 import { MUSEUM_CSS } from '@/components/treasury/museumCss';
 import { ROMAN, ROOM_COMPONENTS, SECTIONS, Sun } from '@/components/treasury/museumRooms';
@@ -285,7 +284,7 @@ function RoomDoors({ index, backLabel, forwardLabel, onGo }) {
 
 /* ── Slide 0: the entrance hall ────────────────────────────────────────── */
 
-function EntranceHall({ theme, owner, ticketName, total, firstRoom, onGo }) {
+function EntranceHall({ owner, ticketName, total, firstRoom, onGo }) {
   return (
     <div className="tv-stage tv-entr">
       <div className="tv-entab">Maison d&rsquo;Or</div>
@@ -293,9 +292,9 @@ function EntranceHall({ theme, owner, ticketName, total, firstRoom, onGo }) {
         <div className="tv-col" aria-hidden="true" />
         <div style={{ alignSelf: 'center' }}>
           <div className="tv-hdr">
-            <span className="tv-sunspin"><Sun theme={theme} /></span>
+            <span className="tv-sunspin"><Sun /></span>
             <h1>My Treasury</h1>
-            <span className="tv-sunspin tv-sunspin-rev"><Sun theme={theme} /></span>
+            <span className="tv-sunspin tv-sunspin-rev"><Sun /></span>
           </div>
           <p className="tv-sub">{owner} personal museum</p>
         </div>
@@ -321,7 +320,7 @@ function EntranceHall({ theme, owner, ticketName, total, firstRoom, onGo }) {
 
 /* ── Last slide: the rotunda ───────────────────────────────────────────── */
 
-function Rotunda({ theme, ticketName, total, index, backLabel, onGo }) {
+function Rotunda({ ticketName, total, index, backLabel, onGo }) {
   return (
     <div className="tv-stage tv-rot">
       <div className="tv-ring">
@@ -332,9 +331,9 @@ function Rotunda({ theme, ticketName, total, index, backLabel, onGo }) {
       <div className="tv-afterring">
         <p className="tv-curated">Curated by {ticketName}</p>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', margin: '0.9rem 0 0' }}>
-          <Sun theme={theme} size={16} />
+          <Sun size={16} />
           <p className="tv-close">Every treasure tells a story</p>
-          <Sun theme={theme} size={16} />
+          <Sun size={16} />
         </div>
         <div className="tv-roomnav">
           <div className="tv-navrow">
@@ -399,7 +398,6 @@ function EmptyTreasury({ owner }) {
  * }} props
  */
 export default function TreasuryView({ items = [], childName }) {
-  const { theme } = useTheme();
   const owner = childName ? `${childName}'s` : 'Your';
   const ticketName = childName || 'You';
 
@@ -690,39 +688,38 @@ export default function TreasuryView({ items = [], childName }) {
 
   /* ── Render ────────────────────────────────────────────────────────── */
 
-  const gold = theme.accentGold;
   const vars = {
-    '--tv-gold': gold,
-    '--tv-gold-08': `${gold}08`,
-    '--tv-gold-0e': `${gold}0E`,
-    '--tv-gold-14': `${gold}14`,
-    '--tv-gold-1f': `${gold}1F`,
-    '--tv-gold-22': `${gold}22`,
-    '--tv-gold-25': `${gold}25`,
-    '--tv-gold-30': `${gold}30`,
-    '--tv-gold-33': `${gold}33`,
-    '--tv-gold-3d': `${gold}3D`,
-    '--tv-gold-40': `${gold}40`,
-    '--tv-gold-44': `${gold}44`,
-    '--tv-gold-4a': `${gold}4A`,
-    '--tv-gold-55': `${gold}55`,
-    '--tv-gold-66': `${gold}66`,
-    '--tv-gold-77': `${gold}77`,
-    '--tv-gold-88': `${gold}88`,
-    '--tv-gold-99': `${gold}99`,
-    '--tv-bg': theme.bgPrimary,
-    '--tv-soft': theme.bgSoft,
-    '--tv-card': theme.bgCard,
-    '--tv-card-b0': `${theme.bgCard}B0`,
-    '--tv-headline': theme.textHeadline,
-    '--tv-body': theme.textBody,
-    '--tv-muted': theme.textMuted,
-    '--tv-fontH': theme.fontHeadline,
-    '--tv-fontB': theme.fontBody,
-    '--tv-radius-sm': theme.radiusSmall,
-    '--tv-shadow': theme.shadow,
-    '--tv-shadowSoft': theme.shadowSoft,
-    '--tv-shadowDeep': theme.shadowDeep,
+    '--tv-gold': 'var(--accent)',
+    '--tv-gold-08': 'color-mix(in srgb, var(--accent) 3%, transparent)',
+    '--tv-gold-0e': 'color-mix(in srgb, var(--accent) 5%, transparent)',
+    '--tv-gold-14': 'color-mix(in srgb, var(--accent) 8%, transparent)',
+    '--tv-gold-1f': 'color-mix(in srgb, var(--accent) 12%, transparent)',
+    '--tv-gold-22': 'color-mix(in srgb, var(--accent) 13%, transparent)',
+    '--tv-gold-25': 'color-mix(in srgb, var(--accent) 15%, transparent)',
+    '--tv-gold-30': 'color-mix(in srgb, var(--accent) 19%, transparent)',
+    '--tv-gold-33': 'color-mix(in srgb, var(--accent) 20%, transparent)',
+    '--tv-gold-3d': 'color-mix(in srgb, var(--accent) 24%, transparent)',
+    '--tv-gold-40': 'color-mix(in srgb, var(--accent) 25%, transparent)',
+    '--tv-gold-44': 'color-mix(in srgb, var(--accent) 27%, transparent)',
+    '--tv-gold-4a': 'color-mix(in srgb, var(--accent) 29%, transparent)',
+    '--tv-gold-55': 'color-mix(in srgb, var(--accent) 33%, transparent)',
+    '--tv-gold-66': 'color-mix(in srgb, var(--accent) 40%, transparent)',
+    '--tv-gold-77': 'color-mix(in srgb, var(--accent) 47%, transparent)',
+    '--tv-gold-88': 'color-mix(in srgb, var(--accent) 53%, transparent)',
+    '--tv-gold-99': 'color-mix(in srgb, var(--accent) 60%, transparent)',
+    '--tv-bg': 'var(--surface-page)',
+    '--tv-soft': 'var(--surface-tint)',
+    '--tv-card': 'var(--surface-raised)',
+    '--tv-card-b0': 'color-mix(in srgb, var(--surface-raised) 69%, transparent)',
+    '--tv-headline': 'var(--accent-readable)',
+    '--tv-body': 'var(--text-primary)',
+    '--tv-muted': 'var(--text-secondary)',
+    '--tv-fontH': 'var(--face-display)',
+    '--tv-fontB': 'var(--face-sans)',
+    '--tv-radius-sm': 'var(--radius-md)',
+    '--tv-shadow': 'var(--shadow-raised)',
+    '--tv-shadowSoft': 'var(--shadow-card)',
+    '--tv-shadowDeep': 'var(--shadow-modal)',
   };
 
   const slide = (key, index, children) => (
@@ -754,7 +751,6 @@ export default function TreasuryView({ items = [], childName }) {
           >
             {slide('entrance', 0, (
               <EntranceHall
-                theme={theme}
                 owner={owner}
                 ticketName={ticketName}
                 total={items.length}
@@ -789,7 +785,6 @@ export default function TreasuryView({ items = [], childName }) {
 
             {slide('rotunda', rotundaIndex, (
               <Rotunda
-                theme={theme}
                 ticketName={ticketName}
                 total={items.length}
                 index={rotundaIndex}

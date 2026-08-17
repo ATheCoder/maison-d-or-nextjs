@@ -22,8 +22,6 @@
  * own `prefers-reduced-motion` block already flattens it to a still frame —
  * nothing extra to declare here (see NAV_SHELL_CSS in DGPageShell).
  */
-import { useTheme } from '@/components/theme/ThemeContext';
-
 export const SKELETON_CSS = `
   .dg-skel {
     position: relative;
@@ -53,8 +51,6 @@ export function Bar({ w = '100%', h = 14, radius = 10, style }) {
 }
 
 export default function DGContentSkeleton() {
-  const { theme } = useTheme();
-
   return (
     // role="status" + a single sr-only sentence: a screen reader hears "Loading"
     // once, not a reading of every placeholder bar below it.
@@ -72,7 +68,7 @@ export default function DGContentSkeleton() {
       <Bar w="min(100%, 520px)" h={34} style={{ marginTop: '1rem' }} />
       <div aria-hidden="true" style={{
         height: 1, margin: '1.5rem 0',
-        background: `${theme.accentGold}26`,
+        background: 'color-mix(in srgb, var(--accent) 15%, transparent)',
       }} />
 
       {/* The band: three cards on wide screens, collapsing exactly as .dg-band does */}
@@ -85,9 +81,9 @@ export default function DGContentSkeleton() {
         {[0, 1, 2].map(i => (
           <div key={i} style={{
             padding: '1.25rem',
-            borderRadius: theme.radius,
-            background: theme.bgCard,
-            border: `1px solid ${theme.accentGold}1F`,
+            borderRadius: 'var(--radius-lg)',
+            background: 'var(--surface-raised)',
+            border: '1px solid color-mix(in srgb, var(--accent) 12%, transparent)',
           }}>
             <Bar w="60%" h={12} />
             <Bar h={120} radius={8} style={{ marginTop: '1rem' }} />
