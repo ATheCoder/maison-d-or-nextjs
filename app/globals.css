@@ -850,6 +850,7 @@ html[data-theme] body {
   width: 2.75rem; /* 44px — the touch-target floor */
   height: 2.75rem;
   border-radius: 50%; /* even bare: keeps the focus ring round */
+  cursor: pointer; /* v4 preflight leaves buttons at `default` */
   color: var(--text-secondary);
   transition-property: color, border-color, transform, box-shadow;
   transition-duration: 400ms;

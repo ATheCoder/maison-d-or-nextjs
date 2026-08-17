@@ -294,7 +294,6 @@ export default function DGOnThisDay({
                         countryName={ev.location}
                         editionDate={editionDate}
                         initialSaved={savedSet.has(`on_this_day:${ev.id}`)}
-                        size="sm"
                       />
                     </div>
                   )}

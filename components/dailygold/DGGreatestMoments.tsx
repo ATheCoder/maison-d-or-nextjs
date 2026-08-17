@@ -187,7 +187,6 @@ export default function DGGreatestMoments({
                   itemImageUrl={m.image_url}
                   editionDate={editionDate}
                   initialSaved={savedSet.has(`greatest_moment:${m.id}`)}
-                  size="sm"
                 />
               </div>
             )}

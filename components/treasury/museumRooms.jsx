@@ -247,7 +247,6 @@ export function HeartCorner({ item, style }) {
           countryName={item.country_name}
           editionDate={item.edition_date}
           initialSaved
-          size="sm"
         />
       </span>
     </div>

@@ -107,7 +107,6 @@ function DetailCard({
             countryName={countryName}
             editionDate={editionDate}
             initialSaved={savedSet.has(`${card.itemType}:${title}`)}
-            size="sm"
           />
         </div>
       )}
@@ -218,7 +217,6 @@ export default function DGDestination({
               countryName={shortName}
               editionDate={editionDate}
               initialSaved={savedSet.has(`destination:${dest.name}`)}
-              size="md"
             />
           </div>
         )}

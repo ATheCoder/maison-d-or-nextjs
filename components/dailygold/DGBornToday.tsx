@@ -175,7 +175,6 @@ function BookVolume({
                 countryName={person.country}
                 editionDate={editionDate}
                 initialSaved={savedSet.has(`person:${person.slug}`)}
-                size="sm"
                 onImage
               />
             </div>

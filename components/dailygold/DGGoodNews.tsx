@@ -140,7 +140,6 @@ export default function DGGoodNews({
                   countryName={primary.location}
                   editionDate={editionDate}
                   initialSaved={savedSet.has(`news:${primary.id}`)}
-                  size="sm"
                 />
               </div>
             )}
@@ -200,7 +199,6 @@ export default function DGGoodNews({
                   countryName={item.location}
                   editionDate={editionDate}
                   initialSaved={savedSet.has(`news:${item.id}`)}
-                  size="sm"
                 />
               </div>
             )}
