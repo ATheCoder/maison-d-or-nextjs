@@ -74,7 +74,7 @@ export default function DesignPage() {
         <p className="type-body mt-6 max-w-[38rem] text-secondary">
           Tokens, typography, texture and the base primitives — everything Phase 1
           ships, on one page, on every surface: the warm light grounds the Maison
-          breathes through, the three soft atmospheres, and the two cinematic
+          breathes through, the four soft atmospheres, and the two cinematic
           interludes. Values are tuned by eye here first (in globals.css), then
           adopted by the rooms in later phases.
         </p>
@@ -116,7 +116,7 @@ export default function DesignPage() {
       <Section
         number="05"
         title="Primitives"
-        lede="Eyebrow, Button, Field, TextLink, Rule, SectionSurface, Quote and the heart — every variant, stamped once per surface, and every stamp a full environment: parchment, then sage for the garden, rose for the family, lavender for the evening, then the two cinematic interludes. One dominant atmospheric accent per section; gold keeps meaning action and errors keep their terracotta (rose on the interludes) in every room. Sections butt with the fine rule; no shadows between them."
+        lede="Eyebrow, Button, Field, TextLink, Rule, SectionSurface, Quote and the heart — every variant, stamped once per surface, and every stamp a full environment: parchment, then sage for the garden, rose for the family, lavender for the evening, periwinkle for the sky, then the two cinematic interludes. One dominant atmospheric accent per section; gold keeps meaning action and errors keep their terracotta (rose on the interludes) in every room. Sections butt with the fine rule; no shadows between them."
         bleed
       >
         <PrimitivesShowcase />

@@ -4,7 +4,7 @@ import Rule from '@/components/ds/Rule';
  * §5.2 — the semantic token set rendered once per surface scope, side by
  * side. Every column is the SAME markup: only the wrapping data-surface
  * differs, which is the whole §1.2 architecture demonstrated — children
- * restyle with zero per-component logic. Ordered light-first: the four warm
+ * restyle with zero per-component logic. Ordered light-first: the five warm
  * light grounds lead, the cinematic interludes close.
  */
 const SCOPES = [
@@ -12,6 +12,7 @@ const SCOPES = [
   { key: 'sage', label: 'Sage — the garden', className: 'texture-paper bg-surface-page' },
   { key: 'rose', label: 'Rose — the family', className: 'texture-paper bg-surface-page' },
   { key: 'lavender', label: 'Lavender — the evening', className: 'texture-paper bg-surface-page' },
+  { key: 'periwinkle', label: 'Periwinkle — the sky', className: 'texture-paper bg-surface-page' },
   { key: 'dark', label: 'Dark (espresso)', className: 'section-dark' },
   { key: 'navy', label: 'Navy', className: 'section-navy' },
 ] as const;

@@ -23,11 +23,12 @@ const GROUPS: { title: string; note: string; names: string[]; triads?: boolean }
   },
   {
     title: 'Atmosphere families',
-    note: 'Sage (nature, the garden, grounding), rose (family, tenderness, memory) and lavender (imagination, evening, gentle mystery) as complete families — pale surface, main accent, deep readable tone. One dominant atmospheric accent per section; supporting colours may appear in imagery and very small details.',
+    note: 'Sage (nature, the garden, grounding), rose (family, tenderness, memory), lavender (imagination, evening, gentle mystery) and periwinkle (the sky, weather, open curiosity) as complete families — pale surface, main accent, deep readable tone. One dominant atmospheric accent per section; supporting colours may appear in imagery and very small details.',
     names: [
       'sage-pale', 'sage', 'sage-deep',
       'rose-pale', 'rose', 'rose-deep',
       'lavender-pale', 'lavender', 'lavender-deep',
+      'periwinkle-pale', 'periwinkle', 'periwinkle-deep',
     ],
     triads: true,
   },

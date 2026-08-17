@@ -21,11 +21,11 @@ import { useEffect, useRef, useState } from 'react';
  * and accent-readable (gold-bright), so those rows now measure real tokens,
  * not stray-class accidents.
  */
-type Scope = 'light' | 'sage' | 'rose' | 'lavender' | 'dark' | 'navy';
+type Scope = 'light' | 'sage' | 'rose' | 'lavender' | 'periwinkle' | 'dark' | 'navy';
 type Rgb = [number, number, number];
 
-const SCOPES: Scope[] = ['light', 'sage', 'rose', 'lavender', 'dark', 'navy'];
-const LIGHTS: Scope[] = ['light', 'sage', 'rose', 'lavender'];
+const SCOPES: Scope[] = ['light', 'sage', 'rose', 'lavender', 'periwinkle', 'dark', 'navy'];
+const LIGHTS: Scope[] = ['light', 'sage', 'rose', 'lavender', 'periwinkle'];
 const TRIO: Scope[] = ['light', 'dark', 'navy'];
 
 const SCOPE_LABEL: Record<Scope, string> = {
@@ -33,6 +33,7 @@ const SCOPE_LABEL: Record<Scope, string> = {
   sage: 'Sage — the garden',
   rose: 'Rose — the family',
   lavender: 'Lavender — the evening',
+  periwinkle: 'Periwinkle — the sky',
   dark: 'Dark (espresso)',
   navy: 'Navy',
 };
@@ -77,7 +78,7 @@ const PAIRS: { fg: string; bg: string; use: string; floor: 4.5 | 3 | 0; scopes: 
   { fg: '--accent', bg: '--surface-page', use: 'Rules, ornaments, display sizes — decorative only', floor: 0, scopes: SCOPES },
   // Button coats are UI text and held to the 4.5 floor. The coats are house
   // tokens the atmosphere scopes do not repaint, so the light row speaks for
-  // all four light grounds; ghost's rest state is text-primary/surface-page.
+  // all five light grounds; ghost's rest state is text-primary/surface-page.
   { fg: '--btn-primary-fg', bg: '--btn-primary-bg', use: 'Primary button, rest', floor: 4.5, scopes: TRIO },
   { fg: '--btn-primary-fg-hover', bg: '--btn-primary-bg-hover', use: 'Primary button, hover', floor: 4.5, scopes: TRIO },
   { fg: '--btn-ghost-fg-hover', bg: '--btn-ghost-bg-hover', use: 'Ghost button, hover', floor: 4.5, scopes: TRIO },

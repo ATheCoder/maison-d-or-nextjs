@@ -66,6 +66,12 @@
   --palette-rose: #C0908F;
   --palette-lavender: #A195AE;
 
+  /* Periwinkle joined the families 2026-08-17: #8687C6 was the given color,
+     and like the PO's earlier proposals it lands at the mid-accent tier, so
+     pale and deep are derived from its hue (239°) the same way the other
+     families were built. */
+  --palette-periwinkle: #8687C6;
+
   /* raw palette — atmosphere families (PO rebalance, 2026-08-12). Sage, rose
      and lavender each grew a pale surface tint and a dark accessible tone;
      the mid accents above are untouched — the PO's proposed accent hexes
@@ -77,6 +83,8 @@
   --palette-rose-deep: #79504F;
   --palette-lavender-pale: #ECE6ED;
   --palette-lavender-deep: #675B70;
+  --palette-periwinkle-pale: #E4E5F1;
+  --palette-periwinkle-deep: #4F5089;
 
   /* raw palette — ink. Muted and faint were retuned darker in the PO
      rebalance: muted must clear AA 4.5 on every light surface it captions
@@ -253,7 +261,8 @@
 
 /* Light atmospheric scopes — the PO rebalance's soft families as
    environments (sage: nature and the garden; rose: family, memory,
-   belonging; lavender: imagination, evening, gentle mystery). Same
+   belonging; lavender: imagination, evening, gentle mystery;
+   periwinkle: the sky, weather, open curiosity). Same
    re-scoping contract as dark/navy, but these grounds stay light: text
    keeps the warm ink stack, grain keeps light-surface strength, and no
    vignette — so there are no .section-* classes here, SectionSurface
@@ -294,6 +303,17 @@
   --border-fine: color-mix(in srgb, var(--palette-lavender-deep) 30%, transparent);
   --border-accent: color-mix(in srgb, var(--palette-lavender) 65%, transparent);
   --focus-ring: var(--palette-lavender-deep);
+}
+
+[data-surface="periwinkle"] {
+  --surface-page: var(--palette-periwinkle-pale);
+  --surface-raised: color-mix(in srgb, var(--palette-periwinkle-pale) 45%, var(--palette-ivory));
+  --surface-tint: color-mix(in srgb, var(--palette-periwinkle-pale) 85%, var(--palette-periwinkle));
+  --accent: var(--palette-periwinkle);
+  --accent-readable: var(--palette-periwinkle-deep);
+  --border-fine: color-mix(in srgb, var(--palette-periwinkle-deep) 30%, transparent);
+  --border-accent: color-mix(in srgb, var(--palette-periwinkle) 65%, transparent);
+  --focus-ring: var(--palette-periwinkle-deep);
 }
 
 /* §6 — Tailwind mapping. `inline` is load-bearing: utilities must

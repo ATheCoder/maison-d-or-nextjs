@@ -17,15 +17,15 @@ import TextLink from '@/components/ds/TextLink';
  * and the house buttons — alongside the complete variant coverage: disabled
  * and loading buttons, the four field states, all six hearts, every rule.
  * Only SectionSurface's surface prop changes between stamps, which is the
- * §1.2 architecture carrying all six surfaces with zero per-section logic.
- * Light dominates: parchment first, then the three soft families, then the
+ * §1.2 architecture carrying all seven surfaces with zero per-section logic.
+ * Light dominates: parchment first, then the four soft families, then the
  * two cinematic interludes. Sections butt with the fine rule (composition's
  * job — the tinting proves border-fine is scoped); the dark→navy seam wears
  * the accent rule instead, per the globals.css §3.2 note about not baking
  * it in.
  */
 type Story = {
-  surface: 'light' | 'sage' | 'rose' | 'lavender' | 'dark' | 'navy';
+  surface: 'light' | 'sage' | 'rose' | 'lavender' | 'periwinkle' | 'dark' | 'navy';
   eyebrow: string;
   title: string;
   body: ReactNode;
@@ -121,6 +121,26 @@ const STORIES: Story[] = [
     primary: 'Step inside',
     ghost: 'Leave the door ajar',
     ornament: '☾',
+  },
+  {
+    surface: 'periwinkle',
+    eyebrow: 'The sky study · curiosity',
+    title: 'The weather arrives here a little before it arrives anywhere else.',
+    body: (
+      <>
+        The sky study keeps the barometers, the kite with the mended tail, and
+        a ledger of clouds nobody has managed to name the same way twice. The
+        swallows file their reports at the window; the house copies them into{' '}
+        <TextLink href="#">the cloud ledger</TextLink>, spelling and all.
+      </>
+    ),
+    aside: 'The kite flies best on Thursdays. Nobody knows why, and nobody is in a hurry to find out.',
+    card: { title: 'A cloud shaped like the tortoise', caption: 'Witnessed from the weather window' },
+    quote: 'The wind read my kite like a letter and sent it back with an answer.',
+    attribution: 'A sky watcher, aged eight',
+    primary: 'Climb to the window',
+    ghost: 'Watch from the lawn',
+    ornament: '✧',
   },
   {
     surface: 'dark',
