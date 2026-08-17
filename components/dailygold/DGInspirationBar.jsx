@@ -50,30 +50,19 @@ export default function DGInspirationBar({ edition }) {
       {/* Heading cluster */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
         <div aria-hidden="true" style={{ width: 40, height: 1, background: 'color-mix(in srgb, var(--accent) 50%, transparent)' }} />
-        <DGEyebrow tracking="hero" color="var(--accent-readable)" style={{ fontSize: '0.72rem', fontWeight: 500 }}>
+        <DGEyebrow tracking="hero" color="var(--accent-readable)">
           Daily Dose of Inspiration
         </DGEyebrow>
         <div aria-hidden="true" style={{ width: 40, height: 1, background: 'color-mix(in srgb, var(--accent) 50%, transparent)' }} />
       </div>
 
-      <p style={{
-        fontFamily: 'var(--face-sans)',
-        fontSize: '0.78rem',
-        color: 'var(--text-secondary)',
-        margin: '0 0 0.5rem',
-        letterSpacing: '0.05em',
-      }}>
+      <p className="type-caption" style={{ margin: '0 0 0.5rem' }}>
         A quote, a reminder, a spark for your day
       </p>
 
       {/* Quote */}
-      <blockquote style={{
-        fontFamily: 'var(--face-display)',
-        fontStyle: 'italic',
-        fontSize: 'clamp(1.05rem, 2.2vw, 1.4rem)',
-        fontWeight: 400,
+      <blockquote className="type-quote" style={{
         color: 'var(--accent-readable)',
-        lineHeight: 1.65,
         maxWidth: 680,
         margin: '0 auto',
         padding: 0,
@@ -84,7 +73,7 @@ export default function DGInspirationBar({ edition }) {
 
       {/* Attribution */}
       {quote.author && (
-        <DGEyebrow tracking="tight" color="var(--accent-readable)" style={{ fontSize: '0.72rem', fontWeight: 500 }}>
+        <DGEyebrow tracking="tight" color="var(--accent-readable)">
           {quote.author}
         </DGEyebrow>
       )}

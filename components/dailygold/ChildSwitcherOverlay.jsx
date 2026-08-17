@@ -141,7 +141,6 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
     width: '100%', padding: '0.6rem 1rem', minHeight: 48,
     background: 'transparent', border: 'none', cursor: 'pointer',
     borderTop: '1px solid var(--border-fine)',
-    fontFamily: 'var(--face-sans)', fontSize: '0.8rem', letterSpacing: '0.04em',
     color: 'var(--text-primary)', textAlign: 'left',
   };
 
@@ -180,9 +179,10 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
             aria-label={guardianCredential ? 'Parent PIN or password' : `${pinFor.displayName}'s PIN`}
             onChange={e => setPin(guardianCredential ? e.target.value : e.target.value.replace(/\D/g, ''))}
             onKeyDown={e => { if (e.key === 'Enter') submitCredential(); if (e.key === 'Escape') { e.stopPropagation(); closeCredentialForm(); } }}
+            className="type-body-ui"
             style={{
               width: '100%', padding: '0.6rem 0.65rem',
-              fontFamily: 'var(--face-sans)', fontSize: '0.9rem',
+              /* the wide 0.3em spacing is the PIN-dot layout, not typography */
               letterSpacing: guardianCredential ? 'normal' : '0.3em', textAlign: guardianCredential ? 'left' : 'center',
               color: 'var(--text-primary)', background: 'var(--surface-raised)',
               border: '1px solid color-mix(in srgb, var(--accent) 40%, transparent)', borderRadius: 8,
@@ -190,7 +190,7 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
             }}
           />
           {error && (
-            <p role="alert" style={{ fontFamily: 'var(--face-sans)', fontSize: '0.72rem', color: ERROR_RED, margin: '0.45rem 0 0' }}>
+            <p role="alert" className="type-caption" style={{ color: ERROR_RED, margin: '0.45rem 0 0' }}>
               {error}
             </p>
           )}
@@ -198,9 +198,9 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
             <button
               onClick={submitCredential}
               disabled={pending || pin.length < (guardianCredential ? 1 : 4)}
+              className="type-body-ui"
               style={{
                 flex: 1, padding: '0.6rem', borderRadius: 8, cursor: 'pointer', minHeight: 40,
-                fontFamily: 'var(--face-sans)', fontSize: '0.75rem', letterSpacing: '0.08em',
                 color: 'var(--surface-raised)', background: 'var(--accent)', border: 'none',
                 opacity: pending || pin.length < (guardianCredential ? 1 : 4) ? 0.5 : 1,
               }}
@@ -209,9 +209,9 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
             </button>
             <button
               onClick={closeCredentialForm}
+              className="type-body-ui"
               style={{
                 padding: '0.6rem 0.8rem', borderRadius: 8, cursor: 'pointer', minHeight: 40,
-                fontFamily: 'var(--face-sans)', fontSize: '0.75rem',
                 color: 'var(--text-secondary)', background: 'transparent', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
               }}
             >
@@ -221,9 +221,9 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
           {pinFor && !asGuardian && (
             <button
               onClick={() => { setAsGuardian(true); setPin(''); setError(null); }}
+              className="type-caption"
               style={{
                 background: 'none', border: 'none', cursor: 'pointer', padding: '0.6rem 0 0',
-                fontFamily: 'var(--face-sans)', fontSize: '0.7rem', color: 'var(--text-secondary)',
                 textDecoration: 'underline', display: 'block',
               }}
             >
@@ -268,11 +268,11 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
                   {avatar.emoji}
                 </div>
                 <div style={{ textAlign: 'left' }}>
-                  <p style={{ fontFamily: 'var(--face-display)', fontSize: '0.85rem', fontWeight: isCurrent ? 700 : 400, color: 'var(--text-primary)', margin: 0 }}>
+                  <p className="type-caption font-display" style={{ fontWeight: isCurrent ? 700 : 400, color: 'var(--text-primary)', margin: 0 }}>
                     {kid.displayName}
                   </p>
                   {kid.age > 0 && (
-                    <p style={{ fontFamily: 'var(--face-sans)', fontSize: '0.7rem', color: 'var(--text-faint)', margin: 0 }}>
+                    <p className="type-caption" style={{ color: 'var(--text-faint)', margin: 0 }}>
                       Age {kid.age}
                     </p>
                   )}
@@ -286,7 +286,7 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
             );
           })}
           {error && (
-            <p role="alert" style={{ fontFamily: 'var(--face-sans)', fontSize: '0.72rem', color: ERROR_RED, margin: 0, padding: '0.5rem 1rem' }}>
+            <p role="alert" className="type-caption" style={{ color: ERROR_RED, margin: 0, padding: '0.5rem 1rem' }}>
               {error}
             </p>
           )}
@@ -295,6 +295,7 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
               role="menuitem"
               onClick={() => { setParentGate(true); setPin(''); setError(null); }}
               disabled={pending}
+              className="type-body-ui"
               style={actionRowStyle}
             >
               <span aria-hidden="true" style={{
@@ -314,6 +315,7 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
               role="menuitem"
               onClick={signOut}
               disabled={pending}
+              className="type-body-ui"
               style={{ ...actionRowStyle, color: 'var(--text-secondary)' }}
             >
               {pending ? 'Signing out…' : 'Sign out'}

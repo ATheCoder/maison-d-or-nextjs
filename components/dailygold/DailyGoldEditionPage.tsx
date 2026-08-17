@@ -287,16 +287,14 @@ function DailyGoldDay({
         padding: 'clamp(3rem, 6vw, 5rem) clamp(1.5rem, 5vw, 4rem)',
         textAlign: 'center',
       }}>
-        <p style={{
-          fontFamily: 'var(--face-display)', fontStyle: 'italic',
-          fontSize: 'clamp(1.1rem, 2.5vw, 1.6rem)', fontWeight: 300,
-          color: 'var(--text-secondary)', margin: '0 auto 1rem', maxWidth: 600, lineHeight: 1.8,
+        <p className="type-quote" style={{
+          color: 'var(--text-secondary)', margin: '0 auto 1rem', maxWidth: 600,
         }}>
           &ldquo;The more we learn about the world, the more we learn about ourselves.&rdquo;
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center', marginTop: '1.5rem' }}>
           <div aria-hidden="true" style={{ height: 1, width: 60, background: 'color-mix(in srgb, var(--accent) 30%, transparent)' }} />
-          <span style={{ fontFamily: 'var(--face-display)', fontSize: '0.85rem', color: 'var(--text-faint)', letterSpacing: '0.1em' }}>
+          <span className="type-caption font-display" style={{ color: 'var(--text-faint)' }}>
             Daily Gold · {dateLabel}
           </span>
           <div aria-hidden="true" style={{ height: 1, width: 60, background: 'color-mix(in srgb, var(--accent) 30%, transparent)' }} />

@@ -60,7 +60,7 @@ class DGErrorBoundary extends React.Component {
   render() {
     if (this.state.error) return (
       <div role="alert" style={{ padding: 40, background: 'var(--surface-page)', minHeight: '100vh' }}>
-        <h2 style={{ color: 'var(--danger-readable)' }}>Daily Gold Error</h2>
+        <h2 className="type-display-section" style={{ color: 'var(--danger-readable)' }}>Daily Gold Error</h2>
         <pre style={{ fontSize: 12, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
           {this.state.error?.toString()}
         </pre>

@@ -60,10 +60,7 @@ export default function FlagSealCelebration({ countryCode, countryName, type = '
             boxShadow: 'var(--shadow-card)',
           }}>+1</div>
         </div>
-        <span aria-hidden="true" style={{
-          fontFamily: 'var(--face-display)',
-          fontSize: '1rem', color: 'var(--accent-readable)', fontStyle: 'italic',
-        }}>
+        <span aria-hidden="true" className="type-body-ui font-display italic" style={{ color: 'var(--accent-readable)' }}>
           {countryName}
         </span>
       </div>
@@ -121,18 +118,14 @@ export default function FlagSealCelebration({ countryCode, countryName, type = '
         </div>
 
         <div style={{ textAlign: 'center' }}>
-          <p style={{
-            fontFamily: 'var(--face-display)',
-            fontSize: 'clamp(1.2rem, 4vw, 1.7rem)',
-            fontWeight: 700, color: 'var(--palette-gold-bright)', margin: '0 0 6px',
+          <p className="type-display-story" style={{
+            color: 'var(--palette-gold-bright)', margin: '0 0 6px',
             textShadow: '0 2px 4px rgba(15,10,4,0.75), 0 0 24px color-mix(in srgb, var(--accent) 60%, transparent)',
           }}>
             You earned {countryName}!
           </p>
-          <p style={{
-            fontFamily: 'var(--face-sans)', fontSize: '0.72rem',
+          <p className="type-label-editorial" style={{
             color: 'color-mix(in srgb, var(--palette-ink-on-dark) 90%, transparent)', margin: 0,
-            letterSpacing: '0.14em', textTransform: 'uppercase',
             textShadow: '0 1px 3px rgba(15,10,4,0.6)',
           }}>
             ✦ Flag Seal Collected ✦

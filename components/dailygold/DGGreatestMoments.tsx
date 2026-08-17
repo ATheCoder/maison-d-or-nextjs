@@ -51,7 +51,7 @@ function MomentModal({ item, onClose }: { item: GreatestMomentRecord; onClose: (
           boxShadow: 'var(--shadow-card)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <span style={{ fontFamily: 'var(--face-sans)', fontSize: '0.8rem', fontWeight: 700, color: 'var(--surface-raised)' }}>
+          <span className="type-body-ui" style={{ color: 'var(--surface-raised)' }}>
             {item.rank}
           </span>
         </div>
@@ -62,19 +62,10 @@ function MomentModal({ item, onClose }: { item: GreatestMomentRecord; onClose: (
         <DGEyebrow tracking="wide" color="var(--accent-readable)" style={{ margin: '0 0 0.5rem' }}>
           {item.year}
         </DGEyebrow>
-        <h2 style={{
-          fontFamily: 'var(--face-display)',
-          fontSize: 'clamp(1.3rem, 2.5vw, 1.8rem)',
-          fontWeight: 700, color: 'var(--accent)',
-          margin: '0 0 1.25rem', lineHeight: 1.25,
-        }}>
+        <h2 className="type-display-section" style={{ color: 'var(--accent)', margin: '0 0 1.25rem' }}>
           {item.headline}
         </h2>
-        <p style={{
-          fontFamily: 'var(--face-sans)', fontWeight: 300,
-          fontSize: '0.92rem', color: 'var(--text-primary)',
-          lineHeight: 1.9, margin: 0,
-        }}>
+        <p className="type-body" style={{ color: 'var(--text-primary)', margin: 0 }}>
           {item.story}
         </p>
       </div>
@@ -103,7 +94,7 @@ export default function DGGreatestMoments({
       <section style={{ background: 'transparent' }}>
         <DGSectionHeader eyebrow="Across all of history" title="Greatest Moments" />
         <DGCard size="small" style={{ padding: '2rem 1.25rem', textAlign: 'center' }}>
-          <p style={{ fontFamily: 'var(--face-sans)', fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
+          <p className="type-caption" style={{ margin: 0 }}>
             Preparing the greatest moments…
           </p>
         </DGCard>
@@ -148,8 +139,7 @@ export default function DGGreatestMoments({
                 border: `1.5px solid ${i === 0 ? 'color-mix(in srgb, var(--accent) 90%, transparent)' : 'color-mix(in srgb, var(--accent) 40%, transparent)'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <span style={{
-                  fontFamily: 'var(--face-sans)', fontSize: '0.7rem', fontWeight: 700,
+                <span className="type-body-ui" style={{
                   color: i === 0 ? 'var(--surface-raised)' : 'var(--accent-readable)',
                 }}>
                   {m.rank || i + 1}
@@ -171,17 +161,12 @@ export default function DGGreatestMoments({
 
               {/* Text */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{
-                  fontFamily: 'var(--face-sans)', fontSize: '0.7rem', color: 'var(--accent-readable)',
-                  margin: '0 0 2px', letterSpacing: '0.08em', fontWeight: 500,
-                }}>
+                <p className="type-caption" style={{ color: 'var(--accent-readable)', margin: '0 0 2px' }}>
                   {m.year}
                 </p>
-                <p style={{
-                  fontFamily: 'var(--face-display)',
-                  fontSize: '0.8rem', fontWeight: 600,
+                <p className="type-body-ui font-display" style={{
                   color: 'var(--accent-readable)',
-                  margin: 0, lineHeight: 1.3,
+                  margin: 0,
                   overflow: 'hidden', display: '-webkit-box',
                   WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                 }}>

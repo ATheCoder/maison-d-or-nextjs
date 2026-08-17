@@ -272,26 +272,14 @@ export default function DGHero({
           boxShadow: 'var(--shadow-card)',
         }}>
            <div aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)' }} />
-           <span style={{
-             fontFamily: 'var(--face-sans)',
-             fontSize: '0.85rem',
-             fontWeight: 400,
-             letterSpacing: '0.18em',
-             textTransform: 'uppercase',
-             color: 'var(--text-primary)',
-           }}>
+           <span className="type-label-editorial" style={{ color: 'var(--text-primary)' }}>
             {dateStr}
            </span>
         </div>
 
         {/* Main title - luminous gold gradient */}
-        <h1 style={{
-          fontFamily: 'var(--face-display)',
-          fontSize: 'clamp(2.5rem, 6vw, 4.5rem)',
-          fontWeight: 700,
+        <h1 className="type-display-hero" style={{
           margin: '0 0 0.75rem',
-          lineHeight: 1.05,
-          letterSpacing: '-0.02em',
           animation: 'dgReveal 1.1s ease-out 0.4s backwards',
           backgroundImage: 'linear-gradient(135deg, var(--palette-gold-bright) 0%, var(--accent) 50%, var(--palette-gold) 100%)',
           WebkitBackgroundClip: 'text',
@@ -303,27 +291,19 @@ export default function DGHero({
         </h1>
 
         {/* Subtitle */}
-        <p style={{
-          fontFamily: 'var(--face-sans)',
-          fontSize: 'clamp(0.9rem, 1.8vw, 1.1rem)',
-          fontWeight: 300,
+        <p className="type-body" style={{
           color: 'var(--text-primary)',
           margin: '0 auto 1.25rem',
           maxWidth: 480,
-          lineHeight: 1.6,
           animation: 'dgReveal 1.2s ease-out 0.6s backwards',
         }}>
           A daily collection of wonder, wisdom and beautiful things happening in our world.
         </p>
 
         {/* Quote */}
-        <p style={{
-          fontFamily: 'var(--face-display)',
-          fontStyle: 'italic',
-          fontSize: 'clamp(0.95rem, 1.8vw, 1.1rem)',
+        <p className="type-quote" style={{
           color: 'var(--text-secondary)',
           margin: 0,
-          lineHeight: 1.7,
           animation: 'dgReveal 1.3s ease-out 0.8s backwards',
         }}>
           &ldquo;Every day holds a little gold. Let&rsquo;s go discover it together.&rdquo;

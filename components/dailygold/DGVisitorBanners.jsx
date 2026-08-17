@@ -41,16 +41,10 @@ export function WelcomeFlourish({ name }) {
     }}>
       <span aria-hidden="true" style={{ fontSize: '1.5rem', lineHeight: 1 }}>✨</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{
-          fontFamily: 'var(--face-display)',
-          fontStyle: 'italic',
-          fontSize: 'clamp(1rem, 2.2vw, 1.2rem)',
-          color: 'var(--accent-readable)',
-          margin: '0 0 0.2rem',
-        }}>
+        <p className="type-quote" style={{ color: 'var(--accent-readable)', margin: '0 0 0.2rem' }}>
           {name}&rsquo;s first edition
         </p>
-        <p style={{ fontFamily: 'var(--face-sans)', fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+        <p className="type-caption" style={{ margin: 0 }}>
           A new paper arrives every morning. Tap a heart to keep something, and the
           world&rsquo;s flags collect themselves as you read.
         </p>
@@ -130,30 +124,19 @@ export function SignedOutCta() {
         style={{ '--cta-bg': 'var(--surface-raised)', '--cta-border': 'color-mix(in srgb, var(--accent) 27%, transparent)' }}
       >
         <div className="dg-signedout-cta-sub" style={{ flex: '1 1 200px', minWidth: 0 }}>
-          <p style={{
-            fontFamily: 'var(--face-display)',
-            fontSize: 'clamp(0.95rem, 2vw, 1.1rem)',
-            color: 'var(--accent-readable)',
-            margin: 0,
-          }}>
+          <p className="type-body-ui font-display" style={{ color: 'var(--accent-readable)', margin: 0 }}>
             Start your family&rsquo;s collection
           </p>
-          <p style={{
-            fontFamily: 'var(--face-sans)', fontSize: '0.75rem', color: 'var(--text-secondary)',
-            margin: 0, lineHeight: 1.4,
-          }}>
+          <p className="type-caption" style={{ margin: 0 }}>
             Save treasures, earn flags, follow the reading journey.
           </p>
         </div>
         <a
           href={LOGIN_HREF}
+          className="type-body-ui"
           style={{
             flexShrink: 0,
             padding: '0.5rem 0.35rem',
-            fontFamily: 'var(--face-sans)',
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            letterSpacing: '0.04em',
             color: 'var(--text-secondary)',
             textDecoration: 'none',
             whiteSpace: 'nowrap',
@@ -163,17 +146,13 @@ export function SignedOutCta() {
         </a>
         <a
           href={SIGNUP_HREF}
+          className="type-label-editorial"
           style={{
             flexShrink: 0,
             padding: '0.5rem 1.15rem',
             borderRadius: 10,
             background: 'var(--accent)',
             color: 'var(--palette-ink)',
-            fontFamily: 'var(--face-sans)',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
             textDecoration: 'none',
             whiteSpace: 'nowrap',
           }}

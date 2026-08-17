@@ -162,7 +162,7 @@ export default function BookOpeningCurtain({ name, imgUrl = null, resume = false
         .dgo-cover-initials {
           position: absolute; inset: 0;
           display: flex; align-items: center; justify-content: center;
-          font-family: Georgia, 'Times New Roman', serif;
+          font-family: var(--face-display);
           font-size: 3rem; letter-spacing: 0.08em;
           color: color-mix(in srgb, var(--palette-gold-bright) 55%, transparent);
         }
@@ -203,14 +203,10 @@ export default function BookOpeningCurtain({ name, imgUrl = null, resume = false
         .dgo-caption { text-align: center; display: grid; justify-items: center; gap: 0.6rem; }
         .dgo-eyebrow {
           margin: 0;
-          font-family: var(--face-sans);
-          font-size: 0.66rem; letter-spacing: 0.3em; text-transform: uppercase;
           color: color-mix(in srgb, var(--palette-gold-bright) 72%, transparent);
         }
         .dgo-name {
           margin: 0;
-          font-size: clamp(1.2rem, 3.2vw, 1.7rem);
-          font-weight: 700; letter-spacing: 0.02em;
           color: color-mix(in srgb, var(--palette-gold-bright) 45%, var(--palette-ivory));
           text-shadow: 0 2px 18px color-mix(in srgb, var(--palette-gold-bright) 28%, transparent);
         }
@@ -288,8 +284,8 @@ export default function BookOpeningCurtain({ name, imgUrl = null, resume = false
         </div>
 
         <div className="dgo-caption">
-          <p className="dgo-eyebrow">Opening the story of</p>
-          <p className="dgo-name" style={{ fontFamily: 'var(--face-display)' }}>{name}</p>
+          <p className="dgo-eyebrow type-label-editorial">Opening the story of</p>
+          <p className="dgo-name type-display-story">{name}</p>
           <div className="dgo-bar"><i /></div>
         </div>
       </div>

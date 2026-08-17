@@ -29,10 +29,11 @@ const TRACKING: Record<DGEyebrowTracking, string> = {
 };
 
 /**
- * The uppercase kicker label. Margins are the call site's business — the base
- * style zeroes them, and `style` is merged last so a site can set its own
- * spacing (and, where the design asks for it, a different size or weight)
- * without reaching for the tracking.
+ * The uppercase kicker label. Face, size and weight come from the §2.2
+ * `type-label-editorial` token; the tracking tiers above are this component's
+ * one deliberate override of it. Margins are the call site's business — the
+ * base style zeroes them, and `style` is merged last so a site can set its own
+ * spacing without reaching for the tracking.
  */
 export function DGEyebrow({
   children,
@@ -53,12 +54,9 @@ export function DGEyebrow({
 }) {
   return (
     <Tag
-      className={className}
+      className={className ? `type-label-editorial ${className}` : 'type-label-editorial'}
       style={{
-        fontFamily: 'var(--face-sans)',
-        fontSize: '0.7rem',
         letterSpacing: TRACKING[tracking],
-        textTransform: 'uppercase',
         color: color ?? 'var(--accent-readable)',
         margin: 0,
         ...style,
@@ -88,14 +86,7 @@ export default function DGSectionHeader({
       <DGEyebrow tracking="hero" style={{ margin: '0 0 0.35rem' }}>
         {eyebrow}
       </DGEyebrow>
-      <h2 style={{
-        fontFamily: 'var(--face-display)',
-        fontSize: '1.4rem',
-        fontWeight: 600,
-        color: 'var(--accent-readable)',
-        margin: 0,
-        lineHeight: 1.15,
-      }}>
+      <h2 className="type-display-story" style={{ color: 'var(--accent-readable)', margin: 0 }}>
         {title}
       </h2>
     </div>

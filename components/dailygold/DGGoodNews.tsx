@@ -13,7 +13,7 @@ import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import DGModal from '@/components/dailygold/DGModal';
 import DGCard from '@/components/dailygold/DGCard';
 import DGHeroImage from '@/components/dailygold/DGHeroImage';
-import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
+import DGSectionHeader, { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import { resolveLocation } from '@/lib/countries';
 import type { GoodNewsRecord } from '@/app/(dg)/daily-gold-edition/queries';
 import type { OnFlagEarned } from '@/components/dailygold/useFlagEarn';
@@ -36,7 +36,7 @@ function NewsModal({ item, onClose }: { item: GoodNewsRecord; onClose: () => voi
 
       {/* Story content */}
       <div style={{ padding: '1.5rem 2rem 2.5rem' }}>
-        <h2 style={{ fontFamily: 'var(--face-display)', fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 700, color: 'var(--accent)', margin: '0 0 1rem', lineHeight: 1.2 }}>
+        <h2 className="type-display-section" style={{ color: 'var(--accent)', margin: '0 0 1rem' }}>
           {item.headline}
         </h2>
 
@@ -46,7 +46,7 @@ function NewsModal({ item, onClose }: { item: GoodNewsRecord; onClose: () => voi
           </DGEyebrow>
         )}
 
-        <div style={{ fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.9 }}>
+        <div className="type-body" style={{ color: 'var(--text-primary)' }}>
           {(() => {
             if (!item.description) return <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Story content coming soon...</p>;
             return item.description.split('\n\n').map((para, i) => (
@@ -98,14 +98,10 @@ export default function DGGoodNews({
     <section style={{ background: 'transparent', borderRadius: 0, overflow: 'visible' }}>
       {/* Header */}
       <div style={{ padding: '0' }}>
-        {/* Not DGSectionHeader: this section's heading is the page's lead, a
-            size up from the column sections, so only the eyebrow is shared. */}
-        <DGEyebrow tracking="hero" style={{ margin: '0 0 0.5rem' }}>
-          Stories of hope, kindness and progress
-        </DGEyebrow>
-        <h2 style={{ fontFamily: 'var(--face-display)', fontSize: '1.6rem', fontWeight: 600, color: 'var(--accent)', margin: '0 0 1.25rem', lineHeight: 1.15 }}>
-          Good News of the Day
-        </h2>
+        <DGSectionHeader
+          eyebrow="Stories of hope, kindness and progress"
+          title="Good News of the Day"
+        />
 
         {/* Primary story - compact card. The heart is its own button, so it
             sits beside the card button rather than inside it. */}
@@ -124,10 +120,10 @@ export default function DGGoodNews({
             >
               <DGHeroImage imageUrl={primaryImg} aspectRatio="16/10" />
               <div style={{ padding: '1rem 1.25rem 1.25rem' }}>
-                <h3 style={{ fontFamily: 'var(--face-display)', fontSize: '1.05rem', fontWeight: 600, color: 'var(--accent-readable)', margin: '0 0 0.5rem', lineHeight: 1.3, paddingRight: '2.5rem' }}>
+                <h3 className="type-display-story" style={{ color: 'var(--accent-readable)', margin: '0 0 0.5rem', paddingRight: '2.5rem' }}>
                   {primary.headline}
                 </h3>
-                <p style={{ fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.82rem', color: 'var(--text-primary)', margin: 0, lineHeight: 1.7 }}>
+                <p className="type-caption" style={{ color: 'var(--text-primary)', margin: 0 }}>
                   {(primary.description || '').split('.').slice(0, 2).join('.').trim() + '.'}
                 </p>
               </div>
@@ -182,11 +178,11 @@ export default function DGGoodNews({
               </div>
               {/* Text */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontFamily: 'var(--face-sans)', fontSize: '0.8rem', fontWeight: 500, color: 'var(--accent-readable)', margin: '0 0 0.2rem', lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                <p className="type-body-ui" style={{ color: 'var(--accent-readable)', margin: '0 0 0.2rem', lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                   {item.headline}
                 </p>
                 {item.description && (
-                  <p style={{ fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.72rem', color: 'var(--text-primary)', margin: 0, lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
+                  <p className="type-caption" style={{ color: 'var(--text-primary)', margin: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
                     {item.description.split('.')[0].trim() + '.'}
                   </p>
                 )}

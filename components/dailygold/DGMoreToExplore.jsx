@@ -80,10 +80,10 @@ function ExploreCard({ card }) {
         <DGEyebrow tracking="tight" color="var(--accent-readable)" style={{ margin: '0 0 0.4rem' }}>
           Coming soon
         </DGEyebrow>
-        <h3 style={{ fontFamily: 'var(--face-display)', fontSize: '1.3rem', fontWeight: 600, color: 'var(--accent-readable)', margin: '0 0 0.4rem', lineHeight: 1.2 }}>
+        <h3 className="type-display-story" style={{ color: 'var(--accent-readable)', margin: '0 0 0.4rem' }}>
           {card.label}
         </h3>
-        <p style={{ fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
+        <p className="type-caption" style={{ margin: 0 }}>
           {card.description}
         </p>
       </div>
@@ -98,10 +98,10 @@ export default function DGMoreToExplore() {
         <DGEyebrow tracking="wide" color="var(--accent-readable)" style={{ margin: '0 0 0.75rem', textAlign: 'center' }}>
           Coming soon to the journey
         </DGEyebrow>
-        <h2 style={{ fontFamily: 'var(--face-display)', fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', fontWeight: 600, color: 'var(--accent)', margin: '0 0 0.75rem', textAlign: 'center', lineHeight: 1.15 }}>
+        <h2 className="type-display-section" style={{ color: 'var(--accent)', margin: '0 0 0.75rem', textAlign: 'center' }}>
           More to Explore
         </h2>
-        <p style={{ fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.95rem', color: 'var(--text-secondary)', margin: '0 0 3rem', textAlign: 'center' }}>
+        <p className="type-body" style={{ color: 'var(--text-secondary)', margin: '0 0 3rem', textAlign: 'center' }}>
           New rooms of the Maison, opening their doors soon.
         </p>
 

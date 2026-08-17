@@ -237,15 +237,9 @@ export default function DGWaxSealNavigator({ currentDate, onDateChange, availabl
           transition: 'transform 0.2s ease-in-out',
           transformStyle: 'preserve-3d',
         }}>
-          <p style={{
-            fontFamily: 'var(--face-display)',
-            fontStyle: 'italic',
-            fontWeight: 400,
-            fontSize: 'clamp(0.9rem, 2vw, 1.1rem)',
+          <p className="type-body font-display italic" style={{
             color: 'var(--text-primary)',
             margin: 0,
-            letterSpacing: '0.03em',
-            lineHeight: 1.3,
           }}>
             {formatDisplayDate(displayDate)}
           </p>

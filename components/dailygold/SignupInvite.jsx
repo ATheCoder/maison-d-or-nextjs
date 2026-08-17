@@ -69,28 +69,18 @@ function InviteToast({ message, onClose }) {
         animation: 'dgFadeIn 0.3s ease-out',
       }}
     >
-      <span style={{
-        fontFamily: 'var(--face-sans)',
-        fontSize: '0.8rem',
-        color: 'var(--text-primary)',
-        lineHeight: 1.5,
-        flex: 1,
-      }}>
+      <span className="type-body-ui" style={{ color: 'var(--text-primary)', flex: 1 }}>
         {message}
       </span>
       <a
         href={SIGNUP_HREF}
+        className="type-label-editorial"
         style={{
           flexShrink: 0,
           padding: '0.5rem 0.9rem',
           borderRadius: 10,
           background: 'var(--accent)',
           color: 'var(--palette-ink)',
-          fontFamily: 'var(--face-sans)',
-          fontSize: '0.7rem',
-          fontWeight: 700,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
           textDecoration: 'none',
           whiteSpace: 'nowrap',
         }}

@@ -115,11 +115,11 @@ function DetailCard({
       <DGEyebrow tracking="tight" color="var(--accent-readable)" style={{ margin: '0.3rem 0 0.2rem' }}>
         {label}
       </DGEyebrow>
-      <p style={{ fontFamily: 'var(--face-display)', fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-readable)', margin: 0, lineHeight: 1.3 }}>
+      <p className="type-caption font-display" style={{ color: 'var(--accent-readable)', margin: 0, lineHeight: 1.3 }}>
         {title}
       </p>
       {subtitle && (
-        <p style={{ fontFamily: 'var(--face-display)', fontStyle: 'italic', fontSize: '0.72rem', color: 'var(--text-secondary)', margin: '0.2rem 0 0', lineHeight: 1.35 }}>
+        <p className="type-caption font-display italic" style={{ margin: '0.2rem 0 0', lineHeight: 1.35 }}>
           {subtitle}
         </p>
       )}
@@ -197,7 +197,7 @@ export default function DGDestination({
           >
             <span style={{ position: 'absolute', bottom: '1rem', left: '1.25rem', right: '4rem', display: 'flex', alignItems: 'center', gap: 10 }}>
               {iso2 && <FlagSealMedallion countryCode={iso2} countryName={shortName} size="md" earned />}
-              <span style={{ fontFamily: 'var(--face-display)', fontSize: 'clamp(1.2rem, 3vw, 1.5rem)', fontWeight: 700, color: 'var(--accent-readable)', lineHeight: 1.1 }}>
+              <span className="type-display-story" style={{ color: 'var(--accent-readable)', lineHeight: 1.1 }}>
                 {shortName}
               </span>
             </span>
@@ -232,7 +232,7 @@ export default function DGDestination({
 
         {/* Atmosphere */}
         {dest.atmosphere && (
-          <p style={{ fontFamily: 'var(--face-display)', fontStyle: 'italic', fontSize: '0.9rem', color: 'var(--text-primary)', margin: '0 0 1rem', lineHeight: 1.7 }}>
+          <p className="type-caption font-display italic" style={{ color: 'var(--text-primary)', margin: '0 0 1rem', lineHeight: 1.7 }}>
             {dest.atmosphere.split('.').slice(0, 2).join('.') + '.'}
           </p>
         )}
@@ -266,13 +266,13 @@ export default function DGDestination({
 
             <div style={{ padding: 'clamp(1.25rem, 4vw, 2.5rem)' }}>
               {dest.atmosphere && (
-                <p style={{ fontFamily: 'var(--face-display)', fontStyle: 'italic', fontSize: '1.15rem', color: 'var(--text-primary)', lineHeight: 1.85, margin: '0 0 1.5rem', borderLeft: '3px solid color-mix(in srgb, var(--accent) 25%, transparent)', paddingLeft: '1rem' }}>
+                <p className="type-quote" style={{ color: 'var(--text-primary)', margin: '0 0 1.5rem', borderLeft: '3px solid color-mix(in srgb, var(--accent) 25%, transparent)', paddingLeft: '1rem' }}>
                   {dest.atmosphere}
                 </p>
               )}
 
               {dest.child_life?.story && (
-                <div style={{ fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.9 }}>
+                <div className="type-body" style={{ color: 'var(--text-primary)' }}>
                   {dest.child_life.story.split('\n\n').map((para, i) => (
                     <p key={i} style={{ margin: '0 0 1rem' }}>{para}</p>
                   ))}

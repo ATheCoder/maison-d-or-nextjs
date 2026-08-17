@@ -194,7 +194,7 @@ export default function StorybookView({ story, canEarn = false, childId = null }
         <button
           onClick={() => router.back()}
           aria-label="Back to Daily Gold"
-          className="mdo-story-back"
+          className="mdo-story-back type-label-editorial"
           style={{
             position: 'fixed', top: 20, left: 20, zIndex: 50,
             display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -203,8 +203,6 @@ export default function StorybookView({ story, canEarn = false, childId = null }
             border: '1px solid rgba(201,169,110,0.4)',
             borderRadius: 30,
             color: '#A8884A',
-            fontFamily: 'Lato, sans-serif',
-            fontSize: '0.68rem', letterSpacing: '0.16em', textTransform: 'uppercase',
             cursor: 'pointer',
             boxShadow: '0 6px 18px rgba(90,60,20,0.12)',
             backdropFilter: 'blur(6px)',
@@ -221,19 +219,15 @@ export default function StorybookView({ story, canEarn = false, childId = null }
             alignItems: 'center', justifyContent: 'center', gap: '1.25rem', padding: '2rem',
             textAlign: 'center',
           }}>
-            <p style={{
-              fontFamily: 'Playfair Display, serif', fontSize: '1.4rem',
-              color: '#4A3B2A', margin: 0,
-            }}>
+            <p className="type-display-story" style={{ color: '#4A3B2A', margin: 0 }}>
               This story could not be found.
             </p>
             <button
               onClick={() => router.push('/daily-gold-edition')}
+              className="type-label-editorial"
               style={{
                 padding: '0.7rem 1.6rem', background: '#C8A96B', border: 'none',
                 borderRadius: 30, color: '#2C1F0E', cursor: 'pointer',
-                fontFamily: 'Lato, sans-serif', fontSize: '0.72rem',
-                letterSpacing: '0.14em', textTransform: 'uppercase',
               }}
             >
               Return to Daily Gold

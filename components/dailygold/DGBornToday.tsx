@@ -574,7 +574,9 @@ export default function DGBornToday({
         .dgbt-cta {
           margin-top: 0.5rem;
           display: flex; align-items: center; gap: 5px;
-          font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase;
+          /* mirrors type-label-editorial (class can't reach into this block) */
+          font-size: var(--type-label-editorial); font-weight: 560;
+          letter-spacing: 0.14em; text-transform: uppercase;
           color: var(--palette-gold-bright);
           opacity: 0; transform: translateY(5px);
           transition: opacity 0.28s ease, transform 0.28s ease;
@@ -663,28 +665,15 @@ export default function DGBornToday({
       <div style={{ marginBottom: '2.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '0.75rem' }}>
           <div aria-hidden="true" style={{ height: 1, width: 36, background: 'linear-gradient(to right, transparent, color-mix(in srgb, var(--accent) 53%, transparent))' }} />
-          <p style={{
-            fontFamily: 'var(--face-sans)', fontSize: '0.7rem',
-            letterSpacing: '0.32em', textTransform: 'uppercase',
-            color: 'var(--accent-readable)', margin: 0,
-          }}>
+          <p className="type-label-editorial" style={{ color: 'var(--accent-readable)', margin: 0 }}>
             Extraordinary Lives
           </p>
           <div aria-hidden="true" style={{ height: 1, flex: 1, background: 'linear-gradient(to right, color-mix(in srgb, var(--accent) 53%, transparent), transparent)' }} />
         </div>
-        <h2 style={{
-          fontFamily: 'var(--face-display)',
-          fontSize: 'clamp(1.9rem, 3.5vw, 2.7rem)',
-          fontWeight: 700, color: 'var(--text-primary)',
-          margin: 0, lineHeight: 1.1, letterSpacing: '0.02em',
-        }}>
+        <h2 className="type-display-section" style={{ color: 'var(--text-primary)', margin: 0 }}>
           Born on This Day
         </h2>
-        <p style={{
-          fontFamily: 'var(--face-display)',
-          fontStyle: 'italic', fontSize: '0.8rem',
-          color: 'var(--text-secondary)', margin: '0.4rem 0 0', letterSpacing: '0.03em',
-        }}>
+        <p className="type-caption font-display italic" style={{ margin: '0.4rem 0 0' }}>
           {people.length > 1
             ? `${people.length} remarkable lives, bound and waiting on today's shelf`
             : 'A remarkable life, bound and waiting on today’s shelf'}

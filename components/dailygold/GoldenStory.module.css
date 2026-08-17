@@ -1,11 +1,15 @@
 /* GoldenStory — scoped styles for the open-storybook view (see GoldenStory.jsx).
-   Ported unchanged from the component's original inline <style> string, which
-   itself came from the Maison d'Oré "Golden Story" design template
+   Ported from the component's original inline <style> string, which itself came
+   from the Maison d'Oré "Golden Story" design template
    (templates/golden-story/GoldenStory.dc.html).
 
-   Fonts (Playfair Display, Lato, Great Vibes) are loaded by a <link> tag in
-   GoldenStory.jsx — an external @import url() here would be silently dropped
-   by the bundler (Turbopack does not support external url() CSS imports). */
+   Typography rides the §2.2 system: --serif/--sans resolve to the house faces
+   (Fraunces / Instrument Sans), --script is Fraunces Italic (no third font),
+   and static text sizes use the --type-* size vars. Display sizes stay in px
+   on purpose — the book is a fixed 1300×866 canvas fit to the viewport by a
+   JS-computed transform scale, so the fluid clamp() display tokens would
+   respond to the viewport a second time and fight the canvas scale; the
+   compact/portrait blocks retune those px steps per mode instead. */
 
 .book-stage {
   --parch: #efe4c8;
@@ -16,9 +20,9 @@
   --head-deep: #7c5a28;
   --gold: #b9975a;
   --leaf: #9aa06a;
-  --serif: "Playfair Display", Georgia, serif;
-  --sans: Lato, "Source Sans 3", sans-serif;
-  --script: "Great Vibes", cursive;
+  --serif: var(--face-display);
+  --sans: var(--face-sans);
+  --script: var(--face-display);
   position: fixed;
   inset: 0;
   overflow: hidden;
@@ -138,7 +142,7 @@
   top: 34px;
   left: 58px;
   font-family: var(--serif);
-  font-size: 13px;
+  font-size: var(--type-caption);
   letter-spacing: .16em;
   color: var(--head-deep);
   opacity: .55;
@@ -162,7 +166,8 @@
 
 .ch-label {
   font-family: var(--serif);
-  font-size: 12px;
+  font-size: var(--type-label-editorial);
+  font-weight: 560;
   letter-spacing: .26em;
   text-transform: uppercase;
   color: var(--gold);
@@ -210,7 +215,7 @@
 }
 
 .pg-body p {
-  font-size: 16.5px;
+  font-size: var(--type-body);
   line-height: 1.78;
   color: var(--ink);
   margin: 0 0 15px;
@@ -321,7 +326,8 @@
 
 .cover-eyebrow {
   font-family: var(--serif);
-  font-size: 11px;
+  font-size: var(--type-label-editorial);
+  font-weight: 560;
   letter-spacing: .3em;
   text-transform: uppercase;
   color: #f1e4c2;
@@ -342,7 +348,7 @@
 .cover-sub {
   font-family: var(--serif);
   font-style: italic;
-  font-size: 15px;
+  font-size: var(--type-body-ui);
   color: #efe0bc;
   margin: 14px 0 0;
   letter-spacing: .02em;
@@ -355,6 +361,7 @@
   left: 52px;
   z-index: 3;
   font-family: var(--script);
+  font-style: italic;
   font-size: 31px;
   color: #f4e7c6;
   text-shadow: 0 2px 10px rgba(0, 0, 0, .5);
@@ -620,7 +627,7 @@
 }
 
 .tl-cap {
-  font-size: 12.5px;
+  font-size: var(--type-caption);
   line-height: 1.55;
   color: var(--ink-soft);
   max-width: 17ch;
@@ -630,6 +637,7 @@
 .tl-quote {
   text-align: center;
   font-family: var(--script);
+  font-style: italic;
   font-size: 27px;
   color: var(--gold);
   margin: 28px 0 0;
@@ -638,12 +646,13 @@
 .tl-quote span {
   font-family: var(--serif);
   font-style: italic;
-  font-size: 15px;
+  font-size: var(--type-body-ui);
   color: var(--ink-soft);
 }
 
 .tr-intro {
-  font-size: 14.5px;
+  font-size: var(--type-body-ui);
+  font-weight: 450;
   line-height: 1.7;
   color: var(--ink);
   margin: 0 0 20px;
@@ -670,7 +679,7 @@
 
 .tr-name {
   font-family: var(--serif);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.4;
   color: var(--ink-soft);
   margin: 8px 0 0;
@@ -680,7 +689,7 @@
   margin: 20px 0 0;
   font-family: var(--serif);
   font-style: italic;
-  font-size: 14px;
+  font-size: var(--type-caption);
   color: var(--head-deep);
   text-align: center;
   border: 1px solid rgba(185, 151, 90, .4);
@@ -725,7 +734,6 @@
 }
 
 .ls-left .pg-body p {
-  font-size: 17px;
   line-height: 1.85;
 }
 
@@ -811,13 +819,13 @@
 
 .ls-label {
   font-family: var(--serif);
-  font-size: 14px;
+  font-size: var(--type-body-ui);
   color: var(--head-deep);
   margin: 0 0 4px;
 }
 
 .ls-text {
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.5;
   color: var(--ink-soft);
   max-width: 21ch;
@@ -839,6 +847,7 @@
 
 .close-take {
   font-family: var(--script);
+  font-style: italic;
   font-size: 44px;
   line-height: 1.35;
   color: var(--head);
@@ -857,7 +866,8 @@
 
 .close-name {
   font-family: var(--serif);
-  font-size: 12px;
+  font-size: var(--type-label-editorial);
+  font-weight: 560;
   letter-spacing: .16em;
   color: var(--ink-soft);
   margin: 13px 0 0;
@@ -992,7 +1002,7 @@
   transform: translateX(-50%);
   color: rgba(232, 211, 162, .7);
   font-family: var(--serif);
-  font-size: 13px;
+  font-size: var(--type-caption);
   letter-spacing: .22em;
   z-index: 50;
 }
@@ -1474,10 +1484,6 @@
   min-height: 0;
   align-content: start;
   overflow-y: auto;
-}
-
-.portrait .tr-name {
-  font-size: 13px;
 }
 
 .portrait .page-lessons {

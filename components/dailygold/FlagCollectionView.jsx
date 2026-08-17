@@ -39,8 +39,7 @@ export default function FlagCollectionView({ seals = [], earnedCount = 0, totalC
     background: 'color-mix(in srgb, var(--accent) 15%, transparent)',
     border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
     borderRadius: 20, padding: '4px 16px',
-    fontFamily: 'var(--face-sans)', fontSize: '0.72rem',
-    color: 'var(--text-secondary)', letterSpacing: '0.12em', textTransform: 'uppercase',
+    color: 'var(--text-secondary)',
   };
 
   return (
@@ -65,16 +64,11 @@ export default function FlagCollectionView({ seals = [], earnedCount = 0, totalC
       >
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{
-            fontFamily: 'var(--face-display)',
-            fontSize: 'clamp(1.6rem, 4vw, 2.4rem)',
-            fontWeight: 700, color: 'var(--accent)', margin: '0 0 0.4rem',
-          }}>
+          <h1 className="type-display-section" style={{ color: 'var(--accent)', margin: '0 0 0.4rem' }}>
             My Flag Collection
           </h1>
-          <p style={{
-            fontFamily: 'var(--face-sans)',
-            fontSize: '1rem', color: 'var(--text-secondary)', margin: '0 0 0.6rem',
+          <p className="type-body" style={{
+            color: 'var(--text-secondary)', margin: '0 0 0.6rem',
             fontStyle: 'italic',
           }}>
             {earnedCount === 0
@@ -82,11 +76,11 @@ export default function FlagCollectionView({ seals = [], earnedCount = 0, totalC
               : `You have collected ${earnedCount} of ${totalCountries} countries`}
           </p>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <div style={badgeStyle}>
+            <div className="type-label-editorial" style={badgeStyle}>
               {totalCountries} Countries · The World
             </div>
             {earnedCount > 0 && (
-              <div style={badgeStyle}>
+              <div className="type-label-editorial" style={badgeStyle}>
                 <span aria-hidden="true">✦ </span>{Math.round((earnedCount / totalCountries) * 100)}% Complete
               </div>
             )}
@@ -149,13 +143,13 @@ export default function FlagCollectionView({ seals = [], earnedCount = 0, totalC
               <div>
                 <DGEyebrow tracking="tight" color="var(--text-secondary)" style={{ margin: '0 0 2px' }}>Seen on</DGEyebrow>
                 {/* timesEarned counts distinct edition days, not raw triggers */}
-                <p style={{ fontFamily: 'var(--face-display)', fontSize: '1.1rem', color: 'var(--text-primary)', margin: 0 }}>
+                <p className="type-display-story" style={{ color: 'var(--text-primary)', margin: 0 }}>
                   {selectedSeal.times_earned} {selectedSeal.times_earned === 1 ? 'day' : 'days'}
                 </p>
               </div>
               <div>
                 <DGEyebrow tracking="tight" color="var(--text-secondary)" style={{ margin: '0 0 2px' }}>First collected</DGEyebrow>
-                <p style={{ fontFamily: 'var(--face-display)', fontSize: '1.1rem', color: 'var(--text-primary)', margin: 0 }}>
+                <p className="type-display-story" style={{ color: 'var(--text-primary)', margin: 0 }}>
                   {selectedSeal.first_earned_date ? new Date(`${selectedSeal.first_earned_date}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                 </p>
               </div>
@@ -163,11 +157,10 @@ export default function FlagCollectionView({ seals = [], earnedCount = 0, totalC
             {selectedSeal.sources?.length > 0 && (
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                 {[...new Set(selectedSeal.sources)].map(src => (
-                  <span key={src} style={{
+                  <span key={src} className="type-label-editorial" style={{
                     background: 'color-mix(in srgb, var(--accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
                     borderRadius: 12, padding: '2px 10px',
-                    fontFamily: 'var(--face-sans)', fontSize: '0.7rem', color: 'var(--text-secondary)',
-                    letterSpacing: '0.1em', textTransform: 'uppercase',
+                    color: 'var(--text-secondary)',
                   }}>
                     {src.replaceAll('_', ' ')}
                   </span>

@@ -959,7 +959,11 @@ body {
   line-height: 1.75;
 }
 
-h1, h2, h3, h4, h5, h6 {
+/* Headings wearing a §2.2 type-* utility must escape this unlayered rule
+   (unlayered beats the layered utilities regardless of specificity). The
+   :where() keeps the selector at plain element specificity, so every
+   heading without a type-* class behaves exactly as before. */
+:is(h1, h2, h3, h4, h5, h6):where(:not([class*='type-'])) {
   font-family: var(--font-serif);
   font-weight: 300;
   letter-spacing: 0.08em;

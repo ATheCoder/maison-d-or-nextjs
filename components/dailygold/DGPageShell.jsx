@@ -125,7 +125,9 @@ export const NAV_SHELL_CSS = `
     /* One line, always: a wrapped tab label makes the bar two rows tall and
        pushes the icons off their baseline. */
     .dg-tab-label {
-      font-size: 0.7rem;
+      /* mirrors the type-label-editorial size (class can't reach this block);
+         no uppercase — tab labels stay sentence case */
+      font-size: var(--type-label-editorial);
       letter-spacing: 0.02em;
       white-space: nowrap;
     }

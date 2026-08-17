@@ -750,16 +750,6 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
       ref={stageRef}
       style={embedded ? { position: 'relative', inset: 'auto', width: '100%', height: '100%' } : undefined}
     >
-      {/* The bundler (Turbopack) silently drops external url() @imports from
-          CSS — including the Google Fonts import in app/globals.css — so the
-          storybook loads its own fonts here. Same families/weights the
-          original inline <style> imported; React hoists this into <head>. */}
-      <link
-        rel="stylesheet"
-        precedence="default"
-        href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Lato:wght@300;400;700&family=Great+Vibes&display=swap"
-      />
-
       {!embedded && (
         <button className={cx(styles.nav, styles['nav-prev'])} onClick={() => go(-1)} aria-label="Previous page">{'‹'}</button>
       )}

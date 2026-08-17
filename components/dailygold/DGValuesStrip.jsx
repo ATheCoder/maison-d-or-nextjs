@@ -30,14 +30,7 @@ export default function DGValuesStrip() {
       >
         {VALUES.map((value, i) => (
           <Fragment key={value}>
-            <span style={{
-              fontFamily: 'var(--face-display)',
-              fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)',
-              fontWeight: 400,
-              color: 'var(--accent-readable)',
-              letterSpacing: '0.15em',
-              textTransform: 'uppercase',
-            }}>
+            <span className="type-label-editorial font-display" style={{ color: 'var(--accent-readable)' }}>
               {value}
             </span>
             {i < VALUES.length - 1 && (

@@ -72,13 +72,12 @@ export default function DGIdentityHeader({ child = null, viewer = null }) {
           }}>
             {avatar.emoji}
           </span>
-          <span style={{
-            fontFamily: 'var(--face-display)', fontStyle: 'italic', fontSize: '0.95rem',
-            color: 'var(--text-secondary)', whiteSpace: 'nowrap',
+          <span className="type-caption font-display italic" style={{
+            whiteSpace: 'nowrap',
             overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
           }}>
             {child ? 'Hi, ' : `${viewer.role === 'admin' ? 'Admin' : 'Parent'} · `}
-            <span style={{ fontWeight: 600, color: 'var(--accent-readable)' }}>{child ? child.name : viewer.name}</span>
+            <span style={{ color: 'var(--accent-readable)' }}>{child ? child.name : viewer.name}</span>
           </span>
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
             <path d="M2 3.5l3 3 3-3" style={{ stroke: 'var(--text-secondary)' }} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -116,10 +115,7 @@ export default function DGIdentityHeader({ child = null, viewer = null }) {
             <span style={{ display: 'inline-flex', color: 'var(--accent)' }}>
               <DGIcon name={item.icon} size={15} />
             </span>
-            <span style={{
-              fontFamily: 'var(--face-sans)', fontSize: '0.75rem', letterSpacing: '0.06em',
-              color: 'var(--text-primary)', whiteSpace: 'nowrap',
-            }}>
+            <span className="type-body-ui" style={{ color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
               {item.label}
             </span>
           </button>

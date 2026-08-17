@@ -81,12 +81,11 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
               {avatar.emoji}
             </span>
             <span className="dg-rail-label" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 }}>
-              <span style={{ fontFamily: 'var(--face-sans)', fontSize: '0.7rem', color: 'var(--text-secondary)', letterSpacing: '0.08em' }}>
+              <span className="type-caption">
                 Hi,
               </span>
-              <span style={{
-                fontFamily: 'var(--face-display)', fontStyle: 'italic', fontWeight: 600,
-                fontSize: '0.95rem', color: 'var(--accent-readable)',
+              <span className="type-caption font-display italic" style={{
+                color: 'var(--accent-readable)',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110,
               }}>
                 {child.name}
@@ -131,9 +130,8 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
               <DGEyebrow as="span" tracking="tight" color="var(--text-secondary)">
                 {viewer.role === 'admin' ? 'Admin' : 'Parent'}
               </DGEyebrow>
-              <span style={{
-                fontFamily: 'var(--face-display)', fontStyle: 'italic', fontWeight: 600,
-                fontSize: '0.95rem', color: 'var(--accent-readable)',
+              <span className="type-caption font-display italic" style={{
+                color: 'var(--accent-readable)',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110,
               }}>
                 {viewer.name}
@@ -185,8 +183,7 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
               <span style={{ display: 'inline-flex', flexShrink: 0, color: active ? 'var(--accent)' : 'var(--text-secondary)' }}>
                 <DGIcon name={item.icon} size={20} />
               </span>
-              <span className="dg-rail-label" style={{
-                fontFamily: 'var(--face-sans)', fontSize: '0.8rem', letterSpacing: '0.06em',
+              <span className="dg-rail-label type-body-ui" style={{
                 color: active ? 'var(--accent-readable)' : 'var(--text-secondary)',
                 fontWeight: active ? 700 : 400,
               }}>
@@ -225,8 +222,7 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
                   <span style={{ display: 'inline-flex', flexShrink: 0, color: 'var(--accent)' }}>
                     <DGIcon name={item.icon} size={20} />
                   </span>
-                  <span className="dg-rail-label" style={{
-                    fontFamily: 'var(--face-sans)', fontSize: '0.8rem', letterSpacing: '0.06em',
+                  <span className="dg-rail-label type-body-ui" style={{
                     color: active ? 'var(--accent-readable)' : 'var(--text-primary)',
                     fontWeight: active ? 700 : 400,
                   }}>

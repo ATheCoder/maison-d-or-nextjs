@@ -243,10 +243,11 @@ export default function DGOnThisDay({
         <DGCard size="small" style={{ overflow: 'hidden' }}>
           {/* Year display + arrows — all inside the card */}
           <div style={{ padding: '1rem 1.25rem 0.75rem', borderBottom: '1px solid var(--border-fine)' }}>
-            <p style={{ fontFamily: 'var(--face-display)', fontSize: '1.6rem', fontWeight: 600, color: 'var(--accent)', margin: '0 0 0.1rem', lineHeight: 1, textAlign: 'center' }}>
+            {/* lineHeight 1 kept: the numeral sets the header band's height */}
+            <p className="type-display-section" style={{ color: 'var(--accent)', margin: '0 0 0.1rem', lineHeight: 1, textAlign: 'center' }}>
               {currentYear}
             </p>
-            <p style={{ fontFamily: 'var(--face-sans)', fontSize: '0.7rem', color: 'var(--text-faint)', margin: '0 0 0.75rem', textAlign: 'center' }}>
+            <p className="type-caption" style={{ color: 'var(--text-faint)', margin: '0 0 0.75rem', textAlign: 'center' }}>
               {currentYear === MAX_YEAR ? 'Most recent year' : `${MAX_YEAR - currentYear} years ago`}
             </p>
             {/* Arrows below the year */}
@@ -315,11 +316,11 @@ export default function DGOnThisDay({
                       </div>
                     )}
 
-                    <h3 style={{ fontFamily: 'var(--face-display)', fontSize: '1.1rem', fontWeight: 600, color: 'var(--accent-readable)', margin: '0 0 0.6rem', lineHeight: 1.3 }}>
+                    <h3 className="type-display-story" style={{ color: 'var(--accent-readable)', margin: '0 0 0.6rem' }}>
                       {ev.headline}
                     </h3>
 
-                    <p style={{ fontFamily: 'var(--face-sans)', fontWeight: 300, fontSize: '0.82rem', color: 'var(--text-primary)', margin: 0, lineHeight: 1.75 }}>
+                    <p className="type-caption" style={{ color: 'var(--text-primary)', margin: 0 }}>
                       {ev.story}
                     </p>
                   </div>
@@ -330,12 +331,13 @@ export default function DGOnThisDay({
             /* An unauthored year is a designed state, not a gap. Offer the
                nearest year that has something rather than an apology. */
             <div style={{ padding: '2rem 1.25rem', textAlign: 'center' }}>
-              <p style={{ fontFamily: 'var(--face-sans)', fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.7 }}>
+              <p className="type-caption" style={{ margin: 0 }}>
                 Nothing from {currentYear} yet.
               </p>
               {nearestAuthoredYear != null && (
                 <button
                   type="button"
+                  className="type-body-ui"
                   onClick={() => jumpToYear(nearestAuthoredYear)}
                   style={{
                     marginTop: '0.9rem',
@@ -345,9 +347,6 @@ export default function DGOnThisDay({
                     border: '1px solid var(--border-accent)',
                     background: 'var(--surface-raised)',
                     boxShadow: 'var(--shadow-card)',
-                    fontFamily: 'var(--face-sans)',
-                    fontSize: '0.72rem',
-                    letterSpacing: '0.08em',
                     color: 'var(--accent-readable)',
                     cursor: 'pointer',
                   }}
