@@ -27,7 +27,6 @@
  */
 import type { ReactNode } from 'react';
 import { Heading } from '@/components/ds';
-import DGThemeSwitcher from '@/components/dailygold/DGThemeSwitcher';
 
 export default function DGHero({
   dateStr,
@@ -93,8 +92,6 @@ export default function DGHero({
 
         {children}
       </div>
-
-      <DGThemeSwitcher />
     </section>
   );
 }

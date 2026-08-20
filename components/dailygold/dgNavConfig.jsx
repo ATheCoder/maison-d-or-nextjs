@@ -69,7 +69,10 @@ export function isNavItemActive(item, pathname) {
 }
 
 export const DG_SHELF = [
-  { key: 'flags', label: 'The Living Atlas', path: '/passport', icon: 'flag' },
+  // `shortLabel` is what the folded rail (768-1023px) writes under the icon:
+  // that tier gives a label 62px, and "The Living Atlas" is four wrapped lines
+  // in it. Only this item needs one; everywhere else the label already fits.
+  { key: 'flags', label: 'The Living Atlas', shortLabel: 'Atlas', path: '/passport', icon: 'flag' },
   // Labelled "Treasury", not "My Treasury": the mobile bar carries five tabs at
   // 0.7rem, and an eleventh character wraps the label at 320px. The page's own
   // title says "My Treasury".

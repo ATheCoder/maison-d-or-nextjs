@@ -6,16 +6,27 @@
  * DGNavigationRail (desktop, ≥768px)
  *
  * One of the two renderers of dgNavConfig (the other is DGMobileTabBar).
- * Top to bottom: monogram, identity block, global destinations, then the
- * child's own "My World" shelf. The identity block wears whichever identity
- * the session holds: the active reader ("Hi, {name}" + reader switcher), or
- * the signed-in grown-up (role caption + account menu with sign-out).
+ * Top to bottom: the house wordmark, global destinations, the child's own
+ * "My World" shelf, and then — pinned to the foot — the identity block over
+ * the seven inks. The identity block wears whichever identity the session
+ * holds: the active reader (their name over the grown-up whose session this
+ * is), or the signed-in grown-up alone (name over role).
+ *
+ * The shape is `06-gallery-themes.html`'s `.gl-rail`, which is where the two
+ * things that are new here come from: the wordmark that replaced a monogram
+ * disc, and the ink row. The inks used to be a fixed puck declared inside
+ * DGHero, which meant the palette could only be changed from the edition —
+ * hanging them in the rail hands them to all five destinations at once. Below
+ * 768px, where there is no rail, DGPageShell mounts the puck instead.
  *
  * Layout contract: the rail's width is the shared `--dg-rail-w` CSS variable
  * set by DailyGoldEditionPage's shell stylesheet, which also pads the page
  * content by the same variable — the two can never drift apart. At 768–1023px
- * the shell collapses the rail to icons (labels hidden via `.dg-rail-label`);
- * below 768px the rail is hidden entirely.
+ * the shell folds the rail to a 76px post: the wordmark becomes its initial
+ * (`.dg-rail-mark-short`), each row stacks its icon over a micro-label
+ * (`.dg-rail-label-short`, which is why the shelf's Atlas carries a
+ * `shortLabel`), and the identity block keeps its avatar alone
+ * (`.dg-rail-id-label` hides). Below 768px the rail is hidden entirely.
  */
 import { useState } from 'react';
 import { Button } from '@/components/ds';
@@ -25,6 +36,7 @@ import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import { dgDestinationsFor, DG_SHELF, DGIcon, isNavItemActive } from '@/components/dailygold/dgNavConfig';
 import ChildSwitcherOverlay from '@/components/dailygold/ChildSwitcherOverlay';
+import DGThemeSwitcher from '@/components/dailygold/DGThemeSwitcher';
 import SwitchCurtain, { useProfileSwitch } from '@/components/dailygold/ProfileSwitchCurtain';
 import { AVATARS } from '@/lib/avatars';
 
@@ -48,109 +60,57 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
     landSwitch(kind, profile);
   };
 
+  const roleWord = viewer?.role === 'admin' ? 'Admin' : 'Parent';
+
+  /* One row, both lists. The mockup gives destinations and shelf items the
+     same ink and the same metrics — the only thing that separates them is the
+     hairline between, so there is no reason for two renderings of it. Active
+     is the tint plus --accent-readable, inherited by the icon through
+     `currentColor`; there is no dot and no bold weight any more, because a
+     row that is already a different colour on a different ground does not
+     need a third signal to say the same thing. */
+  const navRow = (item, onSelect) => {
+    const active = isActive(item);
+    return (
+      <Link
+        key={item.key}
+        href={item.path}
+        prefetch={item.prefetchFull ? true : undefined}
+        className={`dg-rail-item${active ? ' dg-rail-active' : ''}`}
+        /* onNavigate, not onClick: it fires only for the client-side
+           navigation this event describes — a cmd-click into a new tab
+           is not this session going anywhere. */
+        onNavigate={() => onSelect(item)}
+        aria-current={active ? 'page' : undefined}
+        /* The label is named here rather than read off the text, because the
+           two label spans below swap with the breakpoint and one of them is
+           an abbreviation. The accessible name never abbreviates. */
+        aria-label={item.label}
+        title={item.label}
+      >
+        <span className="dg-rail-glyph" aria-hidden="true">
+          <DGIcon name={item.icon} size={20} />
+        </span>
+        <span className="dg-rail-label type-body-ui" aria-hidden="true">{item.label}</span>
+        <span className="dg-rail-label-short" aria-hidden="true">{item.shortLabel || item.label}</span>
+      </Link>
+    );
+  };
+
   return (
     <nav className="dg-rail" aria-label="Daily Gold navigation">
       <SwitchCurtain switching={switching} />
-      {/* Monogram */}
-      <div aria-hidden="true" style={{
-        width: 44, height: 44, borderRadius: '50%', alignSelf: 'center',
-        background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 19%, transparent) 0%, color-mix(in srgb, var(--accent) 6%, transparent) 100%)',
-        border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: 'var(--face-display)', fontSize: '1.15rem', color: 'var(--accent-readable)',
-        flexShrink: 0,
-      }}>
-        M
+
+      {/* The house mark. Two spellings of the same name: the rail writes it
+          out, the 76px post writes its initial. Both are decorative — the
+          <nav> above is what carries the accessible name. */}
+      <div className="dg-rail-mark" aria-hidden="true">
+        <span className="dg-rail-mark-full font-display">Maison d&rsquo;Or&eacute;</span>
+        <span className="dg-rail-mark-short font-display">M</span>
+        <DGEyebrow as="span" tracking="wide" tone="faint" className="dg-rail-mark-sub">
+          Daily Gold
+        </DGEyebrow>
       </div>
-
-      {/* Identity block — persistent chrome, not scroll-away content */}
-      {child && (
-        <div style={{ position: 'relative', marginTop: '1.5rem' }}>
-          <Button variant="bare"
-            className="dg-rail-item dg-rail-id"
-            onClick={() => setShowSwitcher(v => !v)}
-            aria-haspopup="menu"
-            aria-expanded={showSwitcher}
-            aria-label={`Reading as ${child.name}. Switch reader`}
-          >
-            <span aria-hidden="true" style={{
-              width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-              background: avatar.bg, border: '1.5px solid color-mix(in srgb, var(--accent) 50%, transparent)',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '1rem',
-            }}>
-              {avatar.emoji}
-            </span>
-            <span className="dg-rail-label" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 }}>
-              <span className="type-caption">
-                Hi,
-              </span>
-              <span className="type-caption font-display italic" style={{
-                color: 'var(--accent-readable)',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110,
-              }}>
-                {child.name}
-              </span>
-            </span>
-            <svg className="dg-rail-label" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ marginLeft: 'auto', flexShrink: 0 }}>
-              <path d="M2 3.5l3 3 3-3" style={{ stroke: 'var(--text-secondary)' }} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </Button>
-          {showSwitcher && (
-            <ChildSwitcherOverlay
-              currentChildId={child.id}
-              viewer={viewer}
-              onSwitched={handleSwitched}
-              onClose={() => setShowSwitcher(false)}
-            />
-          )}
-        </div>
-      )}
-
-      {/* Grown-up identity block — a parent or admin with no active reader.
-          Same slot, same menu affordance; the caption names the role so the
-          account holder always knows which hat they are wearing. */}
-      {!child && viewer && (
-        <div style={{ position: 'relative', marginTop: '1.5rem' }}>
-          <Button variant="bare"
-            className="dg-rail-item dg-rail-id"
-            onClick={() => setShowSwitcher(v => !v)}
-            aria-haspopup="menu"
-            aria-expanded={showSwitcher}
-            aria-label={`Signed in as ${viewer.name} (${viewer.role === 'admin' ? 'admin' : 'parent'}). Account menu`}
-          >
-            <span aria-hidden="true" style={{
-              width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-              background: 'var(--surface-tint)', border: '1.5px solid color-mix(in srgb, var(--accent) 50%, transparent)',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '1rem',
-            }}>
-              🗝️
-            </span>
-            <span className="dg-rail-label" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 }}>
-              <DGEyebrow as="span" tracking="tight" tone="secondary">
-                {viewer.role === 'admin' ? 'Admin' : 'Parent'}
-              </DGEyebrow>
-              <span className="type-caption font-display italic" style={{
-                color: 'var(--accent-readable)',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110,
-              }}>
-                {viewer.name}
-              </span>
-            </span>
-            <svg className="dg-rail-label" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ marginLeft: 'auto', flexShrink: 0 }}>
-              <path d="M2 3.5l3 3 3-3" style={{ stroke: 'var(--text-secondary)' }} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </Button>
-          {showSwitcher && (
-            <ChildSwitcherOverlay
-              viewer={viewer}
-              onSwitched={handleSwitched}
-              onClose={() => setShowSwitcher(false)}
-            />
-          )}
-        </div>
-      )}
 
       {/* Global destinations.
 
@@ -162,80 +122,103 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
           for dynamic routes, so this costs no full server renders — except for
           the one destination that asks for the whole route (`prefetchFull` in
           dgNavConfig, and the reason it may). */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: '1.5rem' }}>
-        {destinations.map(item => {
-          const active = isActive(item);
-          return (
-            <Link
-              key={item.key}
-              href={item.path}
-              prefetch={item.prefetchFull ? true : undefined}
-              className={`dg-rail-item${active ? ' dg-rail-active' : ''}`}
-              /* onNavigate, not onClick: it fires only for the client-side
-                 navigation this event describes — a cmd-click into a new tab
-                 is not this session going anywhere. */
-              onNavigate={() => {
-                track('nav_select', { contentId: item.path, label: item.label, source: 'rail' });
-              }}
-              aria-current={active ? 'page' : undefined}
-              aria-label={item.label}
-              title={item.label}
-            >
-              <span style={{ display: 'inline-flex', flexShrink: 0, color: active ? 'var(--accent)' : 'var(--text-secondary)' }}>
-                <DGIcon name={item.icon} size={20} />
-              </span>
-              <span className="dg-rail-label type-body-ui" style={{
-                color: active ? 'var(--accent-readable)' : 'var(--text-secondary)',
-                fontWeight: active ? 700 : 400,
-              }}>
-                {item.label}
-              </span>
-              {active && <span className="dg-rail-dot" aria-hidden="true" style={{ marginLeft: 'auto', width: 4, height: 4, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />}
-            </Link>
-          );
-        })}
-      </div>
+      {destinations.map(item => navRow(item, (it) => {
+        track('nav_select', { contentId: it.path, label: it.label, source: 'rail' });
+      }))}
 
-      {/* My World — the child's own shelf, a peer of global nav */}
+      {/* My World — the child's own shelf, a peer of global nav. The heading
+          IS the divider: it carries the hairline on its own top border, which
+          is what lets the folded rail keep the rule and drop the words. */}
       {child && (
         <>
-          <div aria-hidden="true" style={{ height: 1, background: 'var(--border-fine)', margin: '1.25rem 0.5rem' }} />
-          <DGEyebrow className="dg-rail-label" tracking="wide" style={{ margin: '0 0 0.5rem 0.9rem' }}>
-            My World
+          <DGEyebrow className="dg-rail-sub" tracking="wide" tone="faint">
+            My world
           </DGEyebrow>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {DG_SHELF.map(item => {
-              const active = isActive(item);
-              return (
-                <Link
-                  key={item.key}
-                  href={item.path}
-                  className={`dg-rail-item${active ? ' dg-rail-active' : ''}`}
-                  /* The shelf is the child's own space, not a destination of the
-                     app — its own event, from the same source. */
-                  onNavigate={() => {
-                    track('shelf_open', { contentId: item.path, label: item.label, source: 'rail' });
-                  }}
-                  aria-current={active ? 'page' : undefined}
-                  aria-label={item.label}
-                  title={item.label}
-                >
-                  <span style={{ display: 'inline-flex', flexShrink: 0, color: 'var(--accent)' }}>
-                    <DGIcon name={item.icon} size={20} />
-                  </span>
-                  <span className="dg-rail-label type-body-ui" style={{
-                    color: active ? 'var(--accent-readable)' : 'var(--text-primary)',
-                    fontWeight: active ? 700 : 400,
-                  }}>
-                    {item.label}
-                  </span>
-                  {active && <span className="dg-rail-dot" aria-hidden="true" style={{ marginLeft: 'auto', width: 4, height: 4, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />}
-                </Link>
-              );
-            })}
-          </div>
+          {/* The shelf is the child's own space, not a destination of the
+              app — its own event, from the same source. */}
+          {DG_SHELF.map(item => navRow(item, (it) => {
+            track('shelf_open', { contentId: it.path, label: it.label, source: 'rail' });
+          }))}
         </>
       )}
+
+      {/* The foot. `margin-top: auto` on the identity block pushes both it and
+          the inks down; a signed-out stranger has no identity block, so the
+          inks take the auto margin instead and the foot still reads as a foot. */}
+
+      {/* Identity — persistent chrome, not scroll-away content. The reader's
+          name leads and the grown-up holding the session is named beneath it,
+          so a child always knows whose house they are reading in. */}
+      {child && (
+        <div className="dg-rail-id">
+          <Button variant="bare"
+            className="dg-rail-item dg-rail-id-btn"
+            onClick={() => setShowSwitcher(v => !v)}
+            aria-haspopup="menu"
+            aria-expanded={showSwitcher}
+            aria-label={`Reading as ${child.name}. Switch reader`}
+          >
+            <span className="dg-rail-av" aria-hidden="true" style={{ background: avatar.bg }}>
+              {avatar.emoji}
+            </span>
+            <span className="dg-rail-id-label" aria-hidden="true">
+              <b className="dg-rail-id-name">{child.name}</b>
+              <small className="dg-rail-id-meta">
+                {viewer ? `${viewer.name} · ${roleWord.toLowerCase()} ` : 'Reading '}
+                <span className="dg-rail-chev">&#8964;</span>
+              </small>
+            </span>
+          </Button>
+          {showSwitcher && (
+            <ChildSwitcherOverlay
+              currentChildId={child.id}
+              viewer={viewer}
+              placement="top"
+              onSwitched={handleSwitched}
+              onClose={() => setShowSwitcher(false)}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Grown-up identity — a parent or admin with no active reader. Same
+          slot, same menu affordance; the second line names the role so the
+          account holder always knows which hat they are wearing. */}
+      {!child && viewer && (
+        <div className="dg-rail-id">
+          <Button variant="bare"
+            className="dg-rail-item dg-rail-id-btn"
+            onClick={() => setShowSwitcher(v => !v)}
+            aria-haspopup="menu"
+            aria-expanded={showSwitcher}
+            aria-label={`Signed in as ${viewer.name} (${roleWord.toLowerCase()}). Account menu`}
+          >
+            <span className="dg-rail-av dg-rail-av-key" aria-hidden="true">
+              🗝️
+            </span>
+            <span className="dg-rail-id-label" aria-hidden="true">
+              <b className="dg-rail-id-name">{viewer.name}</b>
+              <small className="dg-rail-id-meta">
+                {roleWord} <span className="dg-rail-chev">&#8964;</span>
+              </small>
+            </span>
+          </Button>
+          {showSwitcher && (
+            <ChildSwitcherOverlay
+              viewer={viewer}
+              placement="top"
+              onSwitched={handleSwitched}
+              onClose={() => setShowSwitcher(false)}
+            />
+          )}
+        </div>
+      )}
+
+      {/* The seven inks. Every destination the rail reaches can now re-ground
+          the room; the phone gets the same control as a puck from DGPageShell. */}
+      <div className="dg-rail-ink">
+        <DGThemeSwitcher variant="rail" />
+      </div>
     </nav>
   );
 }

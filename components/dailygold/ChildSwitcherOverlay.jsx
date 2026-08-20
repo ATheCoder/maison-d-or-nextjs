@@ -37,7 +37,7 @@ import { AVATARS } from '@/lib/avatars';
 
 const ERROR_RED = 'var(--danger-readable)';
 
-export default function ChildSwitcherOverlay({ currentChildId = null, viewer = null, onSwitched, onClose, align = 'left' }) {
+export default function ChildSwitcherOverlay({ currentChildId = null, viewer = null, onSwitched, onClose, align = 'left', placement = 'bottom' }) {
   const isAdminViewer = viewer?.role === 'admin';
   const [children, setChildren] = useState([]);
   // Admins have no family, so there is nothing to load for them.
@@ -151,7 +151,11 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
       role="menu"
       aria-label={inChildMode ? 'Switch reader' : 'Account menu'}
       style={{
-        position: 'absolute', top: 'calc(100% + 8px)', zIndex: 1100,
+        position: 'absolute', zIndex: 1100,
+        /* The rail's identity block sits at the FOOT of the rail, so its menu
+           has to grow upward or it opens off the bottom of the screen. The
+           mobile identity header, which is at the top, passes nothing. */
+        ...(placement === 'top' ? { bottom: 'calc(100% + 8px)' } : { top: 'calc(100% + 8px)' }),
         ...(align === 'right' ? { right: 0 } : { left: 0 }),
         background: 'var(--surface-raised)',
         border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
@@ -159,7 +163,12 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
         boxShadow: 'var(--shadow-modal)',
         minWidth: 220,
         maxWidth: 'min(320px, calc(100vw - 2rem))',
-        overflow: 'hidden',
+        /* Scrolls rather than clips: a family with many readers opening
+           upward would otherwise run off the top of the viewport, and there
+           is no room above the first row to run into. */
+        maxHeight: 'min(70vh, 520px)',
+        overflowY: 'auto',
+        overflowX: 'hidden',
       }}
     >
       <style>{`@keyframes dgSpin { to { transform: rotate(360deg); } }`}</style>
