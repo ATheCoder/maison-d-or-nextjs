@@ -14,6 +14,7 @@
  * shows up here already coloured.
  */
 import { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ds';
 import { usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme/ThemeContext';
 import { THEME_KEYS, THEME_NAMES } from '@/lib/theme-keys';
@@ -60,8 +61,9 @@ export default function DGThemeSwitcher() {
           boxShadow: 'var(--shadow-raised)',
         }}>
           {THEME_KEYS.map((key) => (
-            <button
+            <Button
               key={key}
+              variant="bare"
               onClick={() => { switchTheme(key); setExpanded(false); }}
               aria-label={`Switch to ${THEME_NAMES[key]} theme`}
               aria-pressed={themeKey === key}
@@ -75,7 +77,6 @@ export default function DGThemeSwitcher() {
                 padding: 0,
                 border: 'none',
                 background: 'transparent',
-                cursor: 'pointer',
                 transition: 'transform 0.15s ease',
               }}
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
@@ -89,12 +90,13 @@ export default function DGThemeSwitcher() {
                 opacity: themeKey === key ? 1 : 0.85,
                 boxShadow: themeKey === key ? '0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent)' : 'none',
               }} />
-            </button>
+            </Button>
           ))}
         </div>
       )}
       {/* Toggle button — 44px tap target with a 28px swatch inside */}
-      <button
+      <Button
+        variant="bare"
         onClick={() => setExpanded(!expanded)}
         aria-label={expanded ? 'Close theme picker' : 'Open theme picker'}
         aria-expanded={expanded}
@@ -107,7 +109,6 @@ export default function DGThemeSwitcher() {
           padding: 0,
           border: 'none',
           background: 'transparent',
-          cursor: 'pointer',
           transition: 'transform 0.2s ease',
         }}
         onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
@@ -122,7 +123,7 @@ export default function DGThemeSwitcher() {
           boxShadow: 'var(--shadow-card)',
           display: 'block',
         }} />
-      </button>
+      </Button>
     </div>
   );
 }

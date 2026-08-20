@@ -13,12 +13,15 @@
  * guess: an invited co-parent inherits a named household and starts at the
  * reader.
  *
- * Everything about how it looks comes from components/maison/guardianSurface
- * and the `.mdo-guardian-*` classes — the same drawing-room photograph, glass
- * card, field, button and palette the front door wears, because a visitor
- * arrives here one click after /signup and the two should read as one room.
- * What stays local is what is genuinely only here: the step dots, the emblem
- * and colour grids, and the panels around the invitation.
+ * Everything about how it looks comes from components/ds, like the rest of
+ * the house — the same card, field, button and eyebrow /signup wears, because
+ * a visitor arrives here one click after it and the two should read as one
+ * room. That used to be true by a different route: both wore
+ * components/maison/guardianSurface, a second design system kept deliberately
+ * theme-immune by writing its palette out as hex. The immunity now comes from
+ * data-theme="parchment" on the route group's layout, so the tokens can be the
+ * tokens. What stays local is what is genuinely only here: the step dots, the
+ * emblem and colour grids, and the panels around the invitation.
  */
 import { useLayoutEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
@@ -27,24 +30,12 @@ import {
   renameFamily,
   setFamilyTimezone,
 } from '@/app/(dg)/family/actions';
-import { finishWelcome } from '@/app/welcome/actions';
+import { finishWelcome } from '@/app/(front-door)/welcome/actions';
 import { AVATARS, type AvatarKey } from '@/lib/avatars';
 import { ageOnDay, birthDateBounds, formatBirthDate, normalizeBirthDate } from '@/lib/child-birth-date';
 import { THEME_KEYS, THEME_NAMES, type ThemeKey } from '@/lib/theme-keys';
 import DatePicker from '@/components/ui/DatePicker';
-import {
-  C,
-  photoShellStyle,
-  wideCardStyle,
-  glassCardStyle,
-  eyebrowStyle,
-  titleStyle,
-  subtitleStyle,
-  labelStyle,
-  hintStyle,
-  noteStyle,
-  errorStyle,
-} from '@/components/maison/guardianSurface';
+import { Button, Card, Eyebrow, Field, Heading, Prose } from '@/components/ds';
 
 /**
  * Every zone the runtime knows, with UTC guaranteed present — the same list
@@ -57,13 +48,6 @@ const TIME_ZONES: string[] = (() => {
     : [];
   return Array.from(new Set(['UTC', ...supported]));
 })();
-
-/**
- * Every step opens with a heading and a line saying what the step is for, so
- * the title closes up from its standalone spacing and the pair carries the air
- * instead. /signup does the same thing for the same reason.
- */
-const stepTitleStyle: React.CSSProperties = { ...titleStyle, margin: '0 0 0.6rem' };
 
 /**
  * The device's own zone, read through useSyncExternalStore so that the server
@@ -88,6 +72,53 @@ function detectedTimeZone(): string | null {
   }
 }
 
+/**
+ * Every step opens with a heading and a line saying what the step is for, so
+ * the title closes up from its standalone spacing and the pair carries the air
+ * instead. /signup does the same thing for the same reason. Extracted because
+ * it was three hand-typed copies of the same two elements.
+ */
+function StepHeader({ title, lede }: { title: string; lede: string }) {
+  return (
+    <>
+      <Heading level={1} variant="section" className="mb-2.5 text-center">
+        {title}
+      </Heading>
+      <Prose variant="caption" measure={false} className="mb-7 text-center">
+        {lede}
+      </Prose>
+    </>
+  );
+}
+
+/**
+ * What went wrong with the step just attempted. role="alert" because it
+ * arrives in answer to something the grown-up just did — the field-level
+ * messages get theirs from Field.
+ */
+function StepError({ error }: { error: string | null }) {
+  if (!error) return null;
+  return (
+    <Prose variant="caption" tone="none" measure={false} role="alert" className="mb-4 text-danger-readable">
+      {error}
+    </Prose>
+  );
+}
+
+/**
+ * A panel set off from the form — a reassurance, or the result of something
+ * just done. The dashed gold edge is what marks it as an aside rather than
+ * another field; Card has no `dashed` prop and should not grow one for this,
+ * so the border style is stated here over a bordered={false} tint.
+ */
+function NotePanel({ className = '', children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <Card tone="tint" bordered={false} padding="sm" className={`border border-dashed border-accent ${className}`}>
+      {children}
+    </Card>
+  );
+}
+
 function StepDots({ total, current }: { total: number; current: number }) {
   return (
     <div aria-hidden="true" style={{ display: 'flex', gap: 6, justifyContent: 'center', margin: '0 0 1.5rem' }}>
@@ -98,7 +129,9 @@ function StepDots({ total, current }: { total: number; current: number }) {
             width: i === current ? 22 : 6,
             height: 6,
             borderRadius: 3,
-            background: i <= current ? C.gold : 'rgba(201,169,110,0.3)',
+            background: i <= current
+              ? 'var(--accent)'
+              : 'color-mix(in srgb, var(--accent) 30%, transparent)',
             transition: 'width 0.25s ease, background 0.25s ease',
           }}
         />
@@ -227,79 +260,89 @@ export default function WelcomeWizard({
   }
 
   return (
-    <div style={{ ...photoShellStyle, fontFamily: 'var(--font-sans)' }}>
-      <div style={{ ...wideCardStyle, ...glassCardStyle }}>
-        <p style={{ ...eyebrowStyle, margin: '0 0 1.25rem' }}>Maison d&apos;Oré</p>
+    <div className="front-door front-door-photo">
+      {/* Wider than the four auth cards (480 against 400), and not for
+          decoration: this step asks for an emblem and a colour scheme, and
+          both are swatch grids that wrap badly at 400. Everything else — the
+          glass, the corner, the gold rule on top — is shared, which is the
+          point. */}
+      <Card
+        tone="glass"
+        elevation="modal"
+        radius="lg"
+        padding="none"
+        className="front-door-card w-full max-w-120 px-8 py-10"
+      >
+        <Eyebrow rule={false} className="mb-5 text-center">Maison d&apos;Oré</Eyebrow>
 
         <StepDots total={steps.length} current={stepIndex} />
 
         {step === 'family' && (
           <>
-            <h1 style={stepTitleStyle}>Welcome, {guardianName.split(' ')[0]}</h1>
-            <p style={subtitleStyle}>
-              Just a couple of things before we begin.
-            </p>
+            <StepHeader
+              title={`Welcome, ${guardianName.split(' ')[0]}`}
+              lede="Just a couple of things before we begin."
+            />
 
-            <div style={{ marginBottom: '1.1rem' }}>
-              <label htmlFor="familyName" style={labelStyle}>What should we call your family?</label>
-              <input
-                id="familyName"
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                maxLength={80}
-                className="mdo-guardian-field"
-                autoFocus
-              />
-            </div>
+            <Field
+              id="familyName"
+              label="What should we call your family?"
+              className="mb-4"
+              value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
+              maxLength={80}
+              autoFocus
+            />
 
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label htmlFor="timezone" style={labelStyle}>Where do your days begin?</label>
-              <select
-                id="timezone"
-                value={zone}
-                onChange={(e) => setZoneChoice(e.target.value)}
-                className="mdo-guardian-field"
-                style={{ cursor: 'pointer' }}
-              >
-                {TIME_ZONES.map((z) => (
-                  <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>
-                ))}
-              </select>
-              <p style={hintStyle}>
-                So your days begin at the right time. We&apos;ve chosen your time zone from your device, but you can change it anytime.
-              </p>
-            </div>
+            <Field
+              as="select"
+              id="timezone"
+              label="Where do your days begin?"
+              className="mb-6"
+              value={zone}
+              onChange={(e) => setZoneChoice(e.target.value)}
+              hint="So your days begin at the right time. We've chosen your time zone from your device, but you can change it anytime."
+            >
+              {TIME_ZONES.map((z) => (
+                <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>
+              ))}
+            </Field>
 
-            {error && <p style={errorStyle}>{error}</p>}
+            <StepError error={error} />
 
-            <button onClick={saveFamily} disabled={pending} className="mdo-guardian-submit">
+            <Button onClick={saveFamily} loading={pending} className="w-full">
               {pending ? 'One moment…' : `Let's begin`}
-            </button>
+            </Button>
           </>
         )}
 
         {step === 'reader' && (
           <>
-            <h1 style={stepTitleStyle}>Your first reader</h1>
-            <p style={subtitleStyle}>
-              Who are we making this for? You can add the rest of the family anytime.
-            </p>
+            <StepHeader
+              title="Your first reader"
+              lede="Who are we making this for? You can add the rest of the family anytime."
+            />
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor="childName" style={labelStyle}>Their name</label>
-              <input
-                id="childName"
-                value={childName}
-                onChange={(e) => setChildName(e.target.value)}
-                maxLength={40}
-                placeholder="Amélie"
-                className="mdo-guardian-field"
-                autoFocus
-              />
-            </div>
+            <Field
+              id="childName"
+              label="Their name"
+              className="mb-4"
+              value={childName}
+              onChange={(e) => setChildName(e.target.value)}
+              maxLength={40}
+              placeholder="Amélie"
+              autoFocus
+            />
 
             <div style={{ marginBottom: '1.2rem' }}>
-              <label htmlFor="birthDate" style={labelStyle}>Their birthday</label>
+              {/* DatePicker is a compound widget, not a ds primitive — it owns
+                  a popover, a calendar grid and its own .mdo-dp-* coat — so the
+                  label is written out here rather than coming from Field. It
+                  wears Field's exact label classes so the three controls on
+                  this step read as one set. */}
+              <label htmlFor="birthDate" className="type-label-editorial block text-secondary">
+                Their birthday
+              </label>
               <DatePicker
                 id="birthDate"
                 value={birthDate}
@@ -311,51 +354,48 @@ export default function WelcomeWizard({
                 aria-describedby="birthDateHint"
                 style={{ width: '100%', maxWidth: 240 }}
               />
-              <p id="birthDateHint" style={hintStyle}>
+              <Prose id="birthDateHint" variant="caption" measure={false} className="mt-1.5">
                 {birthDate === ''
                   ? 'This helps us choose stories that feel right for their age and remember their birthday, of course.'
                   : born.ok
                     ? `${formatBirthDate(birthDate)} — that makes them ${ageOnDay(birthDate)}.`
                     : born.error}
-              </p>
+              </Prose>
             </div>
 
             <div style={{ marginBottom: '1.2rem' }}>
-              <span style={labelStyle}>Their emblem</span>
+              <span className="type-label-editorial block text-secondary">Their emblem</span>
               <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
                 {(Object.keys(AVATARS) as AvatarKey[]).map((k) => (
-                  <button
+                  <Button
                     key={k}
-                    type="button"
+                    variant="bare"
                     onClick={() => setAvatar(k)}
                     aria-pressed={avatar === k}
                     aria-label={k}
                     style={{
-                      width: 40, height: 40, borderRadius: '50%', fontSize: '1.1rem', cursor: 'pointer',
+                      width: 40, height: 40, borderRadius: '50%', fontSize: '1.1rem',
                       background: AVATARS[k].bg,
-                      border: avatar === k ? `2.5px solid ${C.gold}` : '2.5px solid transparent',
+                      border: avatar === k ? '2.5px solid var(--accent)' : '2.5px solid transparent',
                     }}
                   >
                     {AVATARS[k].emoji}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
 
             <div style={{ marginBottom: '1.3rem' }}>
-              <span style={labelStyle}>Their colours</span>
+              <span className="type-label-editorial block text-secondary">Their colours</span>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {THEME_KEYS.map((k) => (
-                  <button
+                  <Button
                     key={k}
-                    type="button"
+                    variant="bare"
                     onClick={() => setThemeKey(k)}
                     aria-pressed={themeKey === k}
                     title={THEME_NAMES[k]}
-                    style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-                    }}
+                    className="flex flex-col items-center gap-1"
                   >
                     {/* data-theme re-scopes the tokens on the chip itself, so the
                         gradient previews the theme's actual ground and accent. */}
@@ -365,92 +405,107 @@ export default function WelcomeWizard({
                       style={{
                         width: 44, height: 30, borderRadius: 8,
                         background: 'linear-gradient(135deg, var(--surface-page) 0%, var(--surface-raised) 55%, var(--accent) 100%)',
-                        border: themeKey === k ? `2.5px solid ${C.gold}` : '2.5px solid rgba(201,169,110,0.25)',
-                        boxShadow: themeKey === k ? '0 2px 10px rgba(100,80,40,0.18)' : 'none',
+                        border: themeKey === k
+                          ? '2.5px solid var(--accent)'
+                          : '2.5px solid color-mix(in srgb, var(--accent) 25%, transparent)',
+                        boxShadow: themeKey === k ? 'var(--shadow-card)' : 'none',
                       }}
                     />
-                    <span style={{ fontSize: '0.58rem', color: themeKey === k ? C.umber : C.taupe, maxWidth: 54, textAlign: 'center', lineHeight: 1.2 }}>
+                    <span
+                      className={`type-caption text-center ${themeKey === k ? 'text-primary' : 'text-secondary'}`}
+                      style={{ maxWidth: 54, lineHeight: 1.2 }}
+                    >
                       {THEME_NAMES[k]}
                     </span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
 
-            <p style={{ ...noteStyle, margin: '0 0 1.3rem' }}>
-              Your child never has an account, an email, or a password — just a nickname and a
-              reading history you control.
-            </p>
+            <NotePanel className="mb-5">
+              <Prose variant="caption" measure={false}>
+                Your child never has an account, an email, or a password — just a nickname and a
+                reading history you control.
+              </Prose>
+            </NotePanel>
 
-            {error && <p style={errorStyle}>{error}</p>}
+            <StepError error={error} />
 
-            <button onClick={saveChild} disabled={pending || !readerReady} className="mdo-guardian-submit">
+            <Button
+              onClick={saveChild}
+              disabled={!readerReady}
+              loading={pending}
+              className="w-full"
+            >
               {pending ? 'Making it theirs… Just adding the finishing touches.' : 'Create their reader'}
-            </button>
+            </Button>
           </>
         )}
 
         {step === 'invite' && (
           <>
-            <h1 style={stepTitleStyle}>Share it with someone</h1>
-            <p style={subtitleStyle}>
-              Invite someone you trust to be part of your family&apos;s Maison d&apos;Oré. They&apos;ll be able to see the children’s spaces and share the journey with you. You can always do this later.
-            </p>
+            <StepHeader
+              title="Share it with someone"
+              lede="Invite someone you trust to be part of your family's Maison d'Oré. They'll be able to see the children's spaces and share the journey with you. You can always do this later."
+            />
 
-            <div style={{ marginBottom: '0.9rem' }}>
-              <label htmlFor="inviteEmail" style={labelStyle}>Their email</label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input
-                  id="inviteEmail"
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="their@email.com"
-                  className="mdo-guardian-field"
-                  style={{ flex: 1, minWidth: 0 }}
-                />
-                <button
-                  onClick={sendInvite}
-                  disabled={pending || !inviteEmail}
-                  className="mdo-guardian-submit mdo-guardian-submit--inline"
-                >
-                  Send invitation
-                </button>
-              </div>
+            {/* The button sits beside the field rather than under it, so it
+                aligns to the control and not to the label above it — hence
+                items-end rather than items-center. */}
+            <div className="mb-4 flex items-end gap-2">
+              <Field
+                id="inviteEmail"
+                label="Their email"
+                type="email"
+                className="min-w-0 flex-1"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="their@email.com"
+              />
+              <Button onClick={sendInvite} disabled={!inviteEmail} loading={pending}>
+                Send invitation
+              </Button>
             </div>
 
             {sentInvite && (
-              <div style={{ ...noteStyle, marginBottom: '1.1rem' }}>
-                <p style={{ margin: '0 0 0.5rem' }}>
+              <NotePanel className="mb-4">
+                <Prose variant="caption" measure={false} className="mb-2">
                   Invitation sent 🤍
 We&apos;ve sent it to <strong>{sentInvite.email}</strong>. You can also share their private invitation link below. It will be available here once and expires in 7 days.
-                </p>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <code style={{ fontSize: '0.7rem', color: C.brown, wordBreak: 'break-all', flex: 1, minWidth: 0 }}>{sentInvite.url}</code>
-                  <button
+                </Prose>
+                <div className="flex items-center gap-2">
+                  <code className="type-caption min-w-0 flex-1 break-all text-primary">{sentInvite.url}</code>
+                  {/* Ghost rather than a third gold button: two primaries in
+                      one panel is two calls to action, and the one that
+                      matters here is Enter Maison d'Oré below. */}
+                  <Button
+                    variant="ghost"
                     onClick={async () => { await navigator.clipboard.writeText(sentInvite.url); setCopied(true); }}
-                    className="mdo-guardian-submit mdo-guardian-submit--compact"
                   >
                     {copied ? 'Copied' : 'Copy link'}
-                  </button>
+                  </Button>
                 </div>
-              </div>
+              </NotePanel>
             )}
 
-            {error && <p style={errorStyle}>{error}</p>}
+            <StepError error={error} />
 
-            <button onClick={finish} disabled={pending} className="mdo-guardian-submit">
+            <Button onClick={finish} loading={pending} className="w-full">
               {pending ? 'Opening the paper…' : sentInvite ? 'Enter Maison d’Oré' : 'See today’s edition'}
-            </button>
+            </Button>
 
             {!sentInvite && (
-              <p style={{ textAlign: 'center', margin: '1rem 0 0' }}>
-                <button onClick={finish} disabled={pending} className="mdo-guardian-quiet">I&apos;ll do this later</button>
+              // Quiet on purpose: a way past the step, not a second call to
+              // action competing with the button above it.
+              <p className="mt-4 text-center">
+                <Button variant="link" onClick={finish} disabled={pending} className="type-caption">
+                  I&apos;ll do this later
+                </Button>
               </p>
             )}
           </>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

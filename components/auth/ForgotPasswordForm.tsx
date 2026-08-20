@@ -9,17 +9,7 @@
  */
 import { useState, type FormEvent } from 'react';
 import { authClient } from '@/lib/auth-client';
-import {
-  shellStyle,
-  cardStyle,
-  eyebrowStyle,
-  titleStyle,
-  bodyStyle,
-  ruleStyle,
-  labelStyle,
-  errorStyle,
-  footerStyle,
-} from '@/components/maison/guardianSurface';
+import { Button, Card, Eyebrow, Field, Heading, Prose, Rule, TextLink } from '@/components/ds';
 
 export default function ForgotPasswordForm() {
   const [email, setEmail] = useState('');
@@ -47,59 +37,69 @@ export default function ForgotPasswordForm() {
     setSent(true);
   }
 
+  // No photograph here: the drawing room is for the doors a visitor arrives
+  // through. Recovery is a detour, and it stands on the flat wash.
   return (
-    <div style={shellStyle}>
-      <div style={cardStyle}>
-        <p style={eyebrowStyle}>Maison d&apos;Oré</p>
-        <h1 style={titleStyle}>
+    <div className="front-door">
+      <Card
+        tone="raised"
+        elevation="card"
+        radius="lg"
+        padding="none"
+        className="w-full max-w-100 front-door-card px-9 py-11"
+      >
+        <Eyebrow rule={false} className="text-center">Maison d&apos;Oré</Eyebrow>
+        <Heading level={1} variant="section" className="mt-4 mb-6 text-center">
           {sent ? 'Check your email' : 'Forgot your password?'}
-        </h1>
-        <hr style={ruleStyle} />
+        </Heading>
+        <Rule variant="accent" className="mb-7" />
 
         {sent ? (
           <>
-            <p style={bodyStyle}>
+            <Prose variant="caption" measure={false} className="text-center">
               If an account exists for that address, a link to set a new password is on its way.
               It expires in an hour.
-            </p>
-            <p style={{ ...footerStyle, margin: 0 }}>
-              <a href="/login" className="mdo-guardian-link">Back to log in</a>
-            </p>
+            </Prose>
+            <Prose variant="caption" measure={false} className="mt-6 text-center">
+              <TextLink href="/login">Back to log in</TextLink>
+            </Prose>
           </>
         ) : (
           <>
-            <p style={bodyStyle}>
+            <Prose variant="caption" measure={false} className="mb-7 text-center">
               Tell us the address you signed up with and we&apos;ll send you a link to choose a new one.
-            </p>
+            </Prose>
 
             <form onSubmit={handleSubmit}>
-              <div style={{ marginBottom: '1.6rem' }}>
-                <label htmlFor="email" style={labelStyle}>Email</label>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                  autoFocus
-                  className="mdo-guardian-field"
-                />
-              </div>
+              <Field
+                id="email"
+                label="Email"
+                type="email"
+                className="mb-6"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                autoFocus
+              />
 
-              {error && <p style={errorStyle}>{error}</p>}
+              {error && (
+                <Prose variant="caption" tone="none" measure={false} role="alert" className="mb-4 text-danger-readable">
+                  {error}
+                </Prose>
+              )}
 
-              <button type="submit" disabled={pending} className="mdo-guardian-submit">
+              <Button type="submit" loading={pending} className="w-full">
                 {pending ? 'One moment…' : 'Send the link'}
-              </button>
+              </Button>
             </form>
 
-            <p style={footerStyle}>
-              Remembered it? <a href="/login" className="mdo-guardian-link">Log in</a>
-            </p>
+            <Prose variant="caption" measure={false} className="mt-6 text-center">
+              Remembered it? <TextLink href="/login">Log in</TextLink>
+            </Prose>
           </>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

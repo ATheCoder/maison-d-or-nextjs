@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { THEME_KEYS, THEME_NAMES } from '@/lib/theme-keys';
+import OverlayDemo from './OverlayDemo';
 import {
   Button,
   Card,
@@ -226,6 +227,45 @@ function Specimen({ story }: { story: Story }) {
         </Button>
       </div>
 
+      {/* The same coats on an anchor. `href` swaps the <button> for an <a>
+          and changes nothing else — an action that navigates is a link, and
+          must keep the middle-click and the copy-link that a <button> throws
+          away. Stamped beside the buttons above precisely so the two read as
+          one control: if these ever drift apart visually, the house has two
+          primary buttons again, which is the thing this replaced. There is no
+          disabled stamp because that side of the union does not exist — a
+          link that must not be followed has no href, and is a button. */}
+      <div className="flex flex-wrap items-center gap-4">
+        <Button href="#">{story.primary}</Button>
+        <Button variant="ghost" href="#">
+          {story.ghost}
+        </Button>
+        <Button variant="link" href="#">
+          Read the letter
+        </Button>
+      </div>
+
+      {/* The fourth variant, which has no look of its own: `bare` brings the
+          focus ring, the pointer and the disabled/loading behaviour, and the
+          call site brings everything else. Stamped here dressed two ways —
+          as the gallery's micro-link and as a plain hit target — because what
+          the stamp has to prove is that the RING re-scopes per surface even
+          though nothing else about the button does. Tab to them. */}
+      <div className="flex flex-wrap items-center gap-6">
+        <Button
+          variant="bare"
+          className="type-caption uppercase tracking-[0.15em] text-accent-readable hover:text-primary"
+        >
+          Read the whole story
+        </Button>
+        <Button variant="bare" className="rounded-sm border border-fine px-3 py-1.5">
+          <span className="type-caption text-secondary">A plain hit target</span>
+        </Button>
+        <Button variant="bare" className="type-caption text-faint" disabled>
+          Nothing to open
+        </Button>
+      </div>
+
       {/* The four field states: at rest with a hint, filled, in error, and
           asleep. The error field is genuinely invalid (aria-invalid via the
           error prop) — the danger border and message are the same terracotta
@@ -244,6 +284,35 @@ function Specimen({ story }: { story: Story }) {
           error="That address will not reach anyone — check it once more."
         />
         <Field label="The cellar door code" placeholder="Locked for the season" disabled />
+        {/* The other two controls, wearing the same coat, the same label and
+            the same message seat as the inputs above — which is the whole
+            claim: to someone filling in a form these are one thing, and only
+            the answer's shape differs. The select keeps its NATIVE arrow on
+            purpose (see Field's docstring); the textarea resizes vertically
+            only, so it cannot break the measure it sits in. */}
+        <Field as="select" label="Which room" defaultValue="garden" hint="The house will remember.">
+          <option value="garden">The garden, by the south wall</option>
+          <option value="evening">The evening room</option>
+          <option value="sky">The sky study</option>
+        </Field>
+        <Field
+          as="textarea"
+          label="What you found there"
+          rows={3}
+          placeholder="A tortoise, unhurried."
+        />
+        {/* The label is hidden, not absent — still in the accessibility tree,
+            still clickable to focus, still surviving translation tooling, all
+            of which `aria-label` on a bare input gives up. For the controls
+            whose question is already answered by what surrounds them: the PIN
+            box inside a menu that is titled with whose PIN it wants. */}
+        <Field
+          label="The word at the gate"
+          labelHidden
+          type="password"
+          placeholder="••••"
+          hint="Its label is there — read the DOM, or tab to it with a screen reader on."
+        />
       </div>
 
       <div className="flex flex-wrap gap-6">
@@ -322,6 +391,98 @@ function ThemeGallery() {
   );
 }
 
+/* The three primitives the seven environment stamps deliberately do NOT carry.
+   A dialog is page-level rather than surface-level, `variant="none"` is a
+   mechanism rather than a colour, and glass over flat paint demonstrates
+   nothing — stamping these seven times would pad the page without proving
+   anything. They are stamped once each, on the ground that shows them. */
+function Interactive() {
+  return (
+    <Container width="prose" className="space-y-10">
+      <Eyebrow>The rest of the set · dialog, glass, bare semantics</Eyebrow>
+
+      <div className="space-y-4">
+        <Heading level={3} variant="story">
+          Overlay
+        </Heading>
+        <Prose>
+          The house dialog shell — scrim, panel, close button, and the four
+          behaviours a modal is not a modal without: Escape, focus trap, focus
+          restore, scroll lock. It was Daily Gold&rsquo;s <code>DGModal</code>
+          {' '}until it turned out to be the only <code>aria-modal</code>{' '}
+          implementation in the app, serving the paper, the Treasury and the
+          flag collection alike; the shell moved here and the dwell clock
+          stayed there.
+        </Prose>
+        <OverlayDemo />
+      </div>
+
+      <div className="space-y-4">
+        <Heading level={3} variant="story">
+          Heading, with no size of its own
+        </Heading>
+        <Prose>
+          <code>variant=&quot;none&quot;</code> renders the heading role and
+          level and nothing about the size, for the one case where a stylesheet
+          outside the token scale legitimately owns it — the gallery&rsquo;s
+          entrance sets its own <code>clamp(40px, 6.6vw, 104px)</code>, and
+          shipping a <code>type-display-*</code> class alongside that would mean
+          two rules competing to set one property. The line below is a real
+          heading at level 3, sized entirely by the call site:
+        </Prose>
+        <Card tone="tint">
+          <Heading
+            level={3}
+            variant="none"
+            className="font-display italic"
+            style={{ fontSize: 'clamp(28px, 5vw, 52px)', lineHeight: 1, letterSpacing: '-0.02em' }}
+          >
+            Today the world is in Kyoto
+          </Heading>
+        </Card>
+        <Prose variant="caption">
+          Use it only where such a rule already exists and is documented. A
+          heading with no size from anywhere is a bug, not a variant.
+        </Prose>
+      </div>
+
+      <div className="space-y-4">
+        <Heading level={3} variant="story">
+          Card, in glass
+        </Heading>
+        <Prose>
+          The card that stands on a photograph rather than on paint — the front
+          door&rsquo;s. <code>--surface-glass</code> is derived from{' '}
+          <code>--surface-raised</code>, so one declaration follows every theme:
+          the glass is ivory over parchment and espresso over the interludes,
+          with no props and no second stamp. It composites brighter than the
+          wall behind it on purpose, which is what lifts it off the room instead
+          of letting it dissolve into it.
+        </Prose>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {THEME_KEYS.map((key) => (
+          <div
+            key={key}
+            data-theme={key}
+            className="rounded-lg bg-cover bg-center p-5"
+            style={{ backgroundImage: "url('/auth/maison-drawing-room.webp')" }}
+          >
+            {/* elevation="modal" is not decoration here: on paint a hairline
+                separates a card from its ground, but on a photograph only a
+                shadow does. */}
+            <Card tone="glass" elevation="modal" radius="lg">
+              <p className="type-label-editorial text-accent-readable">{key}</p>
+              <p className="type-body-ui mt-2 text-primary">The glass card</p>
+              <p className="type-caption text-faint">and the room behind it</p>
+            </Card>
+          </div>
+        ))}
+      </div>
+    </Container>
+  );
+}
+
 export default function PrimitivesShowcase() {
   return (
     <div>
@@ -342,6 +503,9 @@ export default function PrimitivesShowcase() {
       ))}
       <SectionSurface surface="light" className="border-t border-fine">
         <ThemeGallery />
+      </SectionSurface>
+      <SectionSurface surface="light" className="border-t border-fine">
+        <Interactive />
       </SectionSurface>
     </div>
   );

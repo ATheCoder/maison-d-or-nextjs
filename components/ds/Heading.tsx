@@ -18,13 +18,23 @@ import type { CSSProperties, ReactNode } from 'react';
  * `variant` defaults from `level` (1 → hero, 2 → section, 3+ → story), which
  * is the house's usual pairing; pass it explicitly for the cases where the
  * outline and the size legitimately disagree.
+ *
+ * `variant="none"` renders the semantics with no type token at all — the
+ * heading role and level, and nothing about the size. It is for the one case
+ * where a stylesheet outside the token scale legitimately owns the display
+ * size: the gallery's entrance sets its own clamp(40px, 6.6vw, 104px) in
+ * GALLERY_CSS, and shipping a `type-display-*` class alongside it would mean
+ * two rules competing to set the same property. Use it only where such a rule
+ * already exists and is documented; a heading with no size from anywhere is a
+ * bug, not a variant.
  */
-type HeadingVariant = 'hero' | 'section' | 'story';
+type HeadingVariant = 'hero' | 'section' | 'story' | 'none';
 
 const VARIANT: Record<HeadingVariant, string> = {
   hero: 'type-display-hero',
   section: 'type-display-section',
   story: 'type-display-story',
+  none: '',
 };
 
 /* Spelled out, not interpolated: Tailwind v4 scans source text, and a

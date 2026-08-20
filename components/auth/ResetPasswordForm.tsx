@@ -10,17 +10,7 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
-import {
-  shellStyle,
-  cardStyle,
-  eyebrowStyle,
-  titleStyle,
-  bodyStyle,
-  ruleStyle,
-  labelStyle,
-  errorStyle,
-  footerStyle,
-} from '@/components/maison/guardianSurface';
+import { Button, Card, Eyebrow, Field, Heading, Prose, Rule, TextLink } from '@/components/ds';
 
 export default function ResetPasswordForm() {
   const router = useRouter();
@@ -60,63 +50,69 @@ export default function ResetPasswordForm() {
   }
 
   return (
-    <div style={shellStyle}>
-      <div style={cardStyle}>
-        <p style={eyebrowStyle}>Maison d&apos;Oré</p>
-        <h1 style={titleStyle}>
+    <div className="front-door">
+      <Card
+        tone="raised"
+        elevation="card"
+        radius="lg"
+        padding="none"
+        className="w-full max-w-100 front-door-card px-9 py-11"
+      >
+        <Eyebrow rule={false} className="text-center">Maison d&apos;Oré</Eyebrow>
+        <Heading level={1} variant="section" className="mt-4 mb-6 text-center">
           {linkIsDead ? 'This link has expired' : done ? 'Password changed' : 'Choose a new password'}
-        </h1>
-        <hr style={ruleStyle} />
+        </Heading>
+        <Rule variant="accent" className="mb-7" />
 
         {linkIsDead ? (
           <>
-            <p style={bodyStyle}>
+            <Prose variant="caption" measure={false} className="text-center">
               Reset links last an hour and work once. Ask for a fresh one and it will be with you in a moment.
-            </p>
-            <p style={{ ...footerStyle, margin: 0 }}>
-              <a href="/forgot-password" className="mdo-guardian-link">Send a new link</a>
-            </p>
+            </Prose>
+            <Prose variant="caption" measure={false} className="mt-6 text-center">
+              <TextLink href="/forgot-password">Send a new link</TextLink>
+            </Prose>
           </>
         ) : done ? (
-          <p style={{ ...bodyStyle, margin: 0 }}>Taking you to the log-in page…</p>
+          <Prose variant="caption" measure={false} className="text-center">Taking you to the log-in page…</Prose>
         ) : (
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor="password" style={labelStyle}>New password</label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={8}
-                autoComplete="new-password"
-                autoFocus
-                className="mdo-guardian-field"
-              />
-            </div>
-            <div style={{ marginBottom: '1.6rem' }}>
-              <label htmlFor="confirm" style={labelStyle}>Repeat it</label>
-              <input
-                id="confirm"
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                required
-                minLength={8}
-                autoComplete="new-password"
-                className="mdo-guardian-field"
-              />
-            </div>
+            <Field
+              id="password"
+              label="New password"
+              type="password"
+              className="mb-4"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+              autoComplete="new-password"
+              autoFocus
+            />
+            <Field
+              id="confirm"
+              label="Repeat it"
+              type="password"
+              className="mb-6"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
 
-            {error && <p style={errorStyle}>{error}</p>}
+            {error && (
+              <Prose variant="caption" tone="none" measure={false} role="alert" className="mb-4 text-danger-readable">
+                {error}
+              </Prose>
+            )}
 
-            <button type="submit" disabled={pending} className="mdo-guardian-submit">
+            <Button type="submit" loading={pending} className="w-full">
               {pending ? 'One moment…' : 'Save new password'}
-            </button>
+            </Button>
           </form>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

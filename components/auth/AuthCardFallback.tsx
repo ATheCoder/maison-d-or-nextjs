@@ -11,73 +11,72 @@
  * as the form's JavaScript takes to arrive — which is exactly the moment a
  * visitor decides the site is broken.
  *
- * So the geometry here is the shared one from guardianSurface (which AuthForm,
- * ForgotPasswordForm and ResetPasswordForm all dress themselves from): same
- * full-height centred shell, same 400px card with the gold rule along its top
- * and the same corners, same rhythm of eyebrow / title / hairline / two
- * fields / button / footer link. The real form lands into the same shape the
- * placeholder was holding, so nothing jumps.
+ * So the geometry here is the shared one: the same `.front-door` shell and the
+ * same ds Card the real forms build themselves from, and the field and button
+ * heights come from components/ds/geometry, which measures them off the coats.
+ * The real form lands into the same shape the placeholder was holding, so
+ * nothing jumps. That module exists for this: before it, the skeleton and the
+ * control it stood in for each carried their own idea of how tall a field was.
  *
  * Two deliberate departures. The brand eyebrow is real text, not a bar: it is
  * static on every one of these pages, it costs nothing to render, and reading
  * "Maison d'Oré" while the form loads is the difference between a page that is
- * arriving and a page that is broken. And the shell keeps the plain ivory wash
- * rather than AuthForm's drawing-room photograph — ivory is what shows under
- * that photo until it decodes anyway (AuthForm picked it for exactly that
- * reason), and a placeholder has no business pulling a background image down
- * the same wire the form is waiting on.
+ * arriving and a page that is broken. And the shell keeps the plain wash rather
+ * than AuthForm's drawing-room photograph — that paint is what shows under the
+ * photo until it decodes anyway, and a placeholder has no business pulling a
+ * background image down the same wire the form is waiting on.
  *
  * Server component on purpose — no 'use client', no hooks. A client boundary
  * here would ship a component whose entire job is to be replaced.
  */
 import { SkeletonBar, SkeletonStatus } from '@/components/maison/ParchmentSkeleton';
-import {
-  shellStyle,
-  cardStyle,
-  eyebrowStyle,
-  ruleStyle,
-  FIELD_HEIGHT,
-  FIELD_RADIUS,
-  BUTTON_HEIGHT,
-  BUTTON_RADIUS,
-} from '@/components/maison/guardianSurface';
+import { Card, Eyebrow, Rule } from '@/components/ds';
+import { CONTROL_HEIGHT, CONTROL_RADIUS } from '@/components/ds/geometry';
 
 /**
  * Label bar + field bar, at the spacing the real field groups use — and at the
- * field's own corner and height, taken from guardianSurface rather than typed
- * out here, so the form lands into the shape being held for it even after
- * someone changes the field.
+ * control's own corner and height, taken from ds/geometry rather than typed out
+ * here, so the form lands into the shape being held for it even after someone
+ * changes the field.
  */
 function FieldGroup({ gap }: { gap: string }) {
   return (
     <div style={{ marginBottom: gap }}>
       <SkeletonBar w={80} h={8} radius={2} style={{ marginBottom: '0.45rem' }} />
-      <SkeletonBar h={FIELD_HEIGHT} radius={FIELD_RADIUS} />
+      <SkeletonBar h={CONTROL_HEIGHT} radius={CONTROL_RADIUS} />
     </div>
   );
 }
 
 export default function AuthCardFallback() {
   return (
-    <div
-      className="mdo-anim"
-      style={{ ...shellStyle, animation: 'mdoSkelFade 0.3s ease-out' }}
-    >
-      <div style={cardStyle}>
+    <div className="front-door mdo-anim" style={{ animation: 'mdoSkelFade 0.3s ease-out' }}>
+      <Card
+        tone="raised"
+        elevation="card"
+        radius="lg"
+        padding="none"
+        className="front-door-card w-full max-w-100 px-9 py-11"
+      >
         <SkeletonStatus label="Loading">
-          <p style={eyebrowStyle}>Maison d&apos;Oré</p>
+          <Eyebrow rule={false} className="text-center">Maison d&apos;Oré</Eyebrow>
 
-          <SkeletonBar w="55%" h={22} radius={2} style={{ margin: '0 auto 1.6rem' }} />
-          <hr style={ruleStyle} />
+          <SkeletonBar w="55%" h={22} radius={2} style={{ margin: '1rem auto 1.6rem' }} />
+          <Rule variant="accent" className="mb-7" />
 
           <FieldGroup gap="1rem" />
-          <FieldGroup gap="1.6rem" />
+          <FieldGroup gap="1.5rem" />
 
-          <SkeletonBar h={BUTTON_HEIGHT} radius={BUTTON_RADIUS} style={{ background: 'rgba(201,169,110,0.4)' }} />
+          {/* The button, in the gold tint of the solid one it stands in for. */}
+          <SkeletonBar
+            h={CONTROL_HEIGHT}
+            radius={CONTROL_RADIUS}
+            style={{ background: 'color-mix(in srgb, var(--accent) 40%, transparent)' }}
+          />
 
           <SkeletonBar w={140} h={9} radius={2} style={{ margin: '1.6rem auto 0' }} />
         </SkeletonStatus>
-      </div>
+      </Card>
     </div>
   );
 }

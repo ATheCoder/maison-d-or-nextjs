@@ -16,6 +16,7 @@
  * 2.20–2.96:1 as small text, and this text is 9.5–13.5px.
  */
 import type { ReactNode } from 'react';
+import { Button } from '@/components/ds';
 
 export default function Label({
   title,
@@ -64,9 +65,9 @@ export function LabelAction({
   onClick?: () => void;
 } & Record<string, unknown>) {
   return (
-    <button type="button" className="go" onClick={onClick} {...rest}>
+    <Button variant="bare" className="go" onClick={onClick} {...rest}>
       {children}
-    </button>
+    </Button>
   );
 }
 

@@ -109,6 +109,15 @@
      declared per scope: var() resolves at the consuming element, so the veil
      follows whichever theme/surface it sits in for free. */
   --surface-overlay: color-mix(in srgb, var(--surface-page) 93%, transparent);
+  /* The frosted card that stands on a photograph rather than on paint — the
+     front door's glass. Derived from --surface-raised for the same reason
+     --surface-overlay derives from --surface-page: var() resolves at the
+     consuming element, so one declaration follows every theme and surface
+     scope. It composites BRIGHTER than the wall behind it on purpose (82%
+     of the raised ground, not of the page), which is what lifts the card off
+     the room instead of letting it dissolve into it. Pair it with
+     `elevation="modal"` — the blur alone does not separate. */
+  --surface-glass: color-mix(in srgb, var(--surface-raised) 82%, transparent);
 
   /* semantic — text */
   --text-primary: var(--palette-ink);
@@ -424,6 +433,7 @@ html[data-theme] body {
   --color-surface-dark: var(--surface-dark);
   --color-surface-navy: var(--surface-navy);
   --color-surface-wood: var(--surface-wood);
+  --color-surface-glass: var(--surface-glass);
 
   --color-primary: var(--text-primary);
   --color-secondary: var(--text-secondary);
@@ -801,6 +811,17 @@ html[data-theme] body {
   @media (prefers-reduced-motion: reduce) {
     animation: btn-wink 1.6s ease-in-out infinite;
   }
+}
+
+/* §4 — Overlay entrance. The scrim fades up; the panel does not move, because
+   a dialog that slides is a dialog the reader has to track. Declared here
+   rather than in DGPageShell's NAV_SHELL_CSS (where the identical `dgFadeIn`
+   lives) because Overlay is a house primitive now — it has to work on /design
+   and on the front door, neither of which loads the Daily Gold stylesheet.
+   Reduced motion drops it entirely: the scrim is already a state change. */
+@keyframes ds-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* §4 — Heart save toggle. An outline heart in secondary ink that fills
@@ -1453,138 +1474,52 @@ body {
 }
 
 /* ============================================================
-   GUARDIAN CARD — /login, /signup, /forgot-password,
-   /reset-password, /welcome
-   The controls on the grown-up surfaces whose look depends on
-   state: hover, focus, disabled, and Chrome's autofill. Everything
-   static about those pages is in
-   components/maison/guardianSurface.ts; only what an inline style
-   cannot express lives here.
+   FRONT DOOR — the shell under /login, /signup,
+   /forgot-password, /reset-password and /welcome.
 
-   Named -guardian- rather than -auth- because /welcome wears these
-   too, and it is the one page here nobody reaches signed out.
+   What is left of components/maison/guardianSurface: the two
+   grounds those five pages stand on. Everything else that module
+   held — the card, the eyebrow, the title, the field, the button,
+   the link — is a components/ds primitive now, so what used to be
+   a parallel design system is two rules about a background.
 
-   Palette is written out for the same reason as .mdo-dp above — the
-   Daily Gold themes repaint --gold, and the front door should not
-   change colour with them. These are the classic values.
+   Tokens, not the hex literals this replaced. The old module spelled
+   its palette out to stay immune to the Daily Gold themes; the
+   immunity comes from data-theme="parchment" on the route group's
+   layout instead, which pins the scope these vars resolve in.
    ============================================================ */
-.mdo-guardian-field {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.75rem 0.9rem;
-  border: 1px solid #E8DDD0;
-  border-radius: 10px;
-  background: #FFFDF9;
-  color: #2C2416;
-  font-family: var(--font-sans);
-  font-size: 0.85rem;
-  font-weight: 300;
-  letter-spacing: 0.02em;
-  outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-.mdo-guardian-field:hover { border-color: rgba(201, 169, 110, 0.55); }
-.mdo-guardian-field:focus {
-  border-color: #C9A96E;
-  box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.14);
-}
-/* Chrome paints an autofilled field pale blue, which on a warm ivory card is
-   the one colour nothing else on the page is. The inset shadow is the only way
-   to override it. */
-.mdo-guardian-field:-webkit-autofill,
-.mdo-guardian-field:-webkit-autofill:hover,
-.mdo-guardian-field:-webkit-autofill:focus {
-  -webkit-text-fill-color: #2C2416;
-  -webkit-box-shadow: 0 0 0 40px #FFFDF9 inset;
-  caret-color: #2C2416;
-  font-family: var(--font-sans);
+.front-door {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background-color: var(--surface-page);
+  background-image:
+    radial-gradient(ellipse at 15% 25%, color-mix(in srgb, var(--palette-walnut) 6%, transparent) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 75%, color-mix(in srgb, var(--palette-walnut) 4%, transparent) 0%, transparent 45%);
 }
 
-/* The house button (.mdo-btn) wearing its hover state at rest, because this is
-   the one thing being asked for on the page: white on gold, Lato 400, tracked
-   0.2em. Same reading as .mdo-dp-done, at the welcome wizard's 12px corner so
-   the front door and the room behind it agree. */
-.mdo-guardian-submit {
-  width: 100%;
-  padding: 0.95rem 1.5rem;
-  border: 1px solid #C9A96E;
-  border-radius: 12px;
-  background: #C9A96E;
-  color: #FFF;
-  font-family: var(--font-sans);
-  font-size: 0.7rem;
-  font-weight: 400;
-  letter-spacing: 0.2em;
-  text-indent: 0.2em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background 0.3s ease, border-color 0.3s ease;
-}
-.mdo-guardian-submit:hover:not(:disabled) { background: #A8843F; border-color: #A8843F; }
-.mdo-guardian-submit:disabled {
-  background: rgba(201, 169, 110, 0.45);
-  border-color: transparent;
-  cursor: default;
+/* The gold rule along the top of the card — the one thing a ds Card does not
+   have a prop for, because it is not a Card variant: it is this surface's
+   signature, worn by all four front-door cards and by nothing else. The rest
+   of the box (fill, hairline, corner, shadow) is Card's. */
+.front-door-card {
+  border-top-color: var(--accent);
 }
 
-/* The same button sitting beside a field rather than under one — /welcome's
-   "send invitation" next to the address it sends to. Shrinks to its label and
-   loses the full-width block; everything that makes it the house button stays.
-   The tracking has to come back off the right edge here, because unlike a
-   centred block label this one is measured against the field it sits next to. */
-.mdo-guardian-submit--inline {
-  width: auto;
-  flex: 0 0 auto;
-  padding: 0.7rem 1.1rem;
-  text-indent: 0;
-}
-/* Smaller again: an action *inside* a panel, like copying the invitation link
-   out of the confirmation it just appeared in. */
-.mdo-guardian-submit--compact {
-  width: auto;
-  flex: 0 0 auto;
-  padding: 0.45rem 0.85rem;
-  font-size: 0.62rem;
-  letter-spacing: 0.14em;
-  text-indent: 0;
-}
-
-/* Gold, underlined by a hairline rather than by text-decoration, so the rule
-   sits clear of the descenders. */
-.mdo-guardian-link {
-  color: #C9A96E;
-  text-decoration: none;
-  border-bottom: 1px solid rgba(201, 169, 110, 0.45);
-  padding-bottom: 1px;
-  transition: color 0.25s ease, border-color 0.25s ease;
-}
-.mdo-guardian-link:hover { color: #A8843F; border-color: #A8843F; }
-
-/* Quieter still: the way out for the one guardian who needs it — "forgot
-   password?" on /login, "I'll do this later" on /welcome. Worn by an <a> in one
-   place and a <button> in the other (skipping the invite step is an action, not
-   a destination), hence the button chrome reset: both must read as the same
-   piece of quiet text. */
-.mdo-guardian-quiet {
-  padding: 0;
-  border: none;
-  background: none;
-  font-family: var(--font-sans);
-  font-size: 0.7rem;
-  font-weight: 300;
-  letter-spacing: 0.04em;
-  color: #8B7355;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-  transition: color 0.25s ease;
-}
-.mdo-guardian-quiet:hover:not(:disabled) { color: #C9A96E; }
-.mdo-guardian-quiet:disabled { cursor: default; opacity: 0.6; }
-
-@media (prefers-reduced-motion: reduce) {
-  .mdo-guardian-field,
-  .mdo-guardian-submit,
-  .mdo-guardian-link,
-  .mdo-guardian-quiet { transition: none; }
+/* The drawing room, hung over that wash — the front door proper. Worn by the
+   three pages a visitor arrives through, never by a skeleton: the paint
+   underneath is what shows while the photo decodes, and it is close enough to
+   the wall in the picture that a failed load reads as a warm empty room
+   rather than a white flash. The vignette sits ABOVE the photo, settling the
+   gilt frames at the edges so they frame the card instead of pulling the eye
+   outward. */
+.front-door-photo {
+  background-image:
+    radial-gradient(ellipse at 50% 50%, transparent 45%, color-mix(in srgb, var(--palette-walnut) 10%, transparent) 100%),
+    url('/auth/maison-drawing-room.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }

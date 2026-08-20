@@ -3,6 +3,7 @@
 // file, delete the marker. Do not add one to a new file.
 'use client';
 import React from 'react';
+import { Heading } from '@/components/ds';
 import { usePathname, useSearchParams } from 'next/navigation';
 import DGPageShell from '@/components/dailygold/DGPageShell';
 import { DGInstrumentationProvider } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
@@ -60,7 +61,7 @@ class DGErrorBoundary extends React.Component {
   render() {
     if (this.state.error) return (
       <div role="alert" style={{ padding: 40, background: 'var(--surface-page)', minHeight: '100vh' }}>
-        <h2 className="type-display-section" style={{ color: 'var(--danger-readable)' }}>Daily Gold Error</h2>
+        <Heading level={2} variant="section" tone="none" className="text-danger-readable">Daily Gold Error</Heading>
         <pre style={{ fontSize: 12, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
           {this.state.error?.toString()}
         </pre>

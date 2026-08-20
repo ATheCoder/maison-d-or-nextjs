@@ -17,6 +17,7 @@ export { default as Eyebrow } from './Eyebrow';
 export { default as Field } from './Field';
 export { default as Heading } from './Heading';
 export { default as HeartToggle } from './HeartToggle';
+export { default as Overlay } from './Overlay';
 export { default as PageSection } from './PageSection';
 export { default as Prose } from './Prose';
 export { default as Quote } from './Quote';

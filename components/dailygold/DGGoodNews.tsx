@@ -21,6 +21,7 @@
  * client component or the design-sync bundle.
  */
 import { useCallback, useRef, useState } from 'react';
+import { Heading } from '@/components/ds';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import DGModal from '@/components/dailygold/DGModal';
 import DGHeroImage from '@/components/dailygold/DGHeroImage';
@@ -52,9 +53,9 @@ function NewsModal({ item, onClose }: { item: GoodNewsRecord; onClose: () => voi
 
       {/* Story content */}
       <div style={{ padding: '1.5rem 2rem 2.5rem' }}>
-        <h2 className="type-display-section" style={{ color: 'var(--accent-readable)', margin: '0 0 1rem' }}>
+        <Heading level={2} variant="section" tone="none" className="text-accent-readable" style={{ margin: '0 0 1rem' }}>
           {item.headline}
-        </h2>
+        </Heading>
 
         {item.location && (
           <DGEyebrow tracking="tight" style={{ margin: '0 0 1.5rem' }}>

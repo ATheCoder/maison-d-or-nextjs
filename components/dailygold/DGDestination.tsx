@@ -263,7 +263,7 @@ export default function DGDestination({
             scrimFrom={60}
             fallback={<span aria-hidden="true" style={{ fontSize: '5rem', opacity: 0.2 }}>🌍</span>}
           >
-            <DGEyebrow tracking="wide" color="var(--accent-readable)" style={{
+            <DGEyebrow tracking="wide" style={{
               position: 'absolute', bottom: '1rem', left: 'clamp(1.25rem, 4vw, 2rem)', right: 'clamp(1.25rem, 4vw, 2rem)',
             }}>
               {dest.continent && `${dest.continent} · `}{dest.name}

@@ -135,12 +135,19 @@ export const GALLERY_CSS = `
 }
 .gl-entry-in { padding: 26px var(--gut) 0; position: relative; z-index: 2; }
 .gl-entry-in .eye { font-family: var(--face-sans); font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--accent-readable); margin: 0 0 16px; }
-.gl-entry-in h1 {
+/* [role="heading"], not h1: the entrance heading is the ds <Heading>
+   primitive, which renders <p role="heading" aria-level> because the legacy
+   unlayered h1–h6 rules in globals.css beat any layered type-* utility on a
+   real heading tag (see components/ds/Heading.tsx). The outline is identical —
+   assistive technology reads role+aria-level exactly as it reads the tag — and
+   this rule keeps owning the size, which is what variant="none" is for.
+   Do not "restore" the h1 selector: it would match nothing. */
+.gl-entry-in [role="heading"] {
   font-family: var(--face-display); font-size: clamp(40px, 6.6vw, 104px); font-weight: 300;
   margin: 0 0 14px; line-height: 0.98; letter-spacing: -0.02em; color: var(--text-primary);
   font-variation-settings: 'opsz' 144;
 }
-.gl-entry-in h1 em { font-style: italic; font-weight: 400; color: var(--accent-readable); }
+.gl-entry-in [role="heading"] em { font-style: italic; font-weight: 400; color: var(--accent-readable); }
 .gl-entry-in .sub { font-size: 15.5px; line-height: 1.6; color: var(--text-secondary); margin: 0; max-width: 42ch; }
 
 /* The two cinematic grounds get the mockup's own entrance: the label stands
@@ -370,7 +377,7 @@ export const GALLERY_CSS = `
   /* The entrance turns from a letterbox into a plate. A portrait tablet's
      first screen is tall, and at 21:9 the painting would be a strip. */
   .gl-entry-art { aspect-ratio: 4 / 3; }
-  .gl-entry-in h1 { font-size: 46px; }
+  .gl-entry-in [role="heading"] { font-size: 46px; }
   .gl-entry-in .sub { font-size: 14.5px; max-width: 40ch; }
 
   .gl-ghost { font-size: 132px; }
@@ -402,7 +409,7 @@ export const GALLERY_CSS = `
 
   .gl-entry-art { aspect-ratio: 4 / 5; }
   .gl-entry-in { padding-top: 20px; }
-  .gl-entry-in h1 { font-size: 38px; }
+  .gl-entry-in [role="heading"] { font-size: 38px; }
   .gl-entry-in .eye { margin-bottom: 10px; }
   .gl-entry-in .sub { font-size: 14px; }
   [data-theme="dark"] .gl-entry-art,

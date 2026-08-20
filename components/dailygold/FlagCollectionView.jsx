@@ -141,14 +141,14 @@ export default function FlagCollectionView({ seals = [], earnedCount = 0, totalC
             </div>
             <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center', marginBottom: '1rem' }}>
               <div>
-                <DGEyebrow tracking="tight" color="var(--text-secondary)" style={{ margin: '0 0 2px' }}>Seen on</DGEyebrow>
+                <DGEyebrow tracking="tight" tone="secondary" style={{ margin: '0 0 2px' }}>Seen on</DGEyebrow>
                 {/* timesEarned counts distinct edition days, not raw triggers */}
                 <p className="type-display-story" style={{ color: 'var(--text-primary)', margin: 0 }}>
                   {selectedSeal.times_earned} {selectedSeal.times_earned === 1 ? 'day' : 'days'}
                 </p>
               </div>
               <div>
-                <DGEyebrow tracking="tight" color="var(--text-secondary)" style={{ margin: '0 0 2px' }}>First collected</DGEyebrow>
+                <DGEyebrow tracking="tight" tone="secondary" style={{ margin: '0 0 2px' }}>First collected</DGEyebrow>
                 <p className="type-display-story" style={{ color: 'var(--text-primary)', margin: 0 }}>
                   {selectedSeal.first_earned_date ? new Date(`${selectedSeal.first_earned_date}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                 </p>

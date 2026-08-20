@@ -17,6 +17,7 @@
  * Renders nothing only for signed-out visitors.
  */
 import { useState } from 'react';
+import { Button } from '@/components/ds';
 import { useRouter } from 'next/navigation';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import { DG_SHELF, DGIcon } from '@/components/dailygold/dgNavConfig';
@@ -51,7 +52,7 @@ export default function DGIdentityHeader({ child = null, viewer = null }) {
       <SwitchCurtain switching={switching} />
       {/* Identity + switcher */}
       <div style={{ position: 'relative', minWidth: 0 }}>
-        <button
+        <Button variant="bare"
           onClick={() => setShowSwitcher(v => !v)}
           aria-haspopup="menu"
           aria-expanded={showSwitcher}
@@ -82,7 +83,7 @@ export default function DGIdentityHeader({ child = null, viewer = null }) {
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
             <path d="M2 3.5l3 3 3-3" style={{ stroke: 'var(--text-secondary)' }} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-        </button>
+        </Button>
         {showSwitcher && (
           <ChildSwitcherOverlay
             currentChildId={child?.id ?? null}
@@ -96,7 +97,7 @@ export default function DGIdentityHeader({ child = null, viewer = null }) {
       {/* My World chips — the reader's own space; grown-ups have no shelf */}
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {child && DG_SHELF.map(item => (
-          <button
+          <Button variant="bare"
             key={item.key}
             /* Chips are the shelf in miniature — same event as the rail's My
                World items, distinguished only by where the child tapped. */
@@ -118,7 +119,7 @@ export default function DGIdentityHeader({ child = null, viewer = null }) {
             <span className="type-body-ui" style={{ color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
               {item.label}
             </span>
-          </button>
+          </Button>
         ))}
       </div>
     </div>

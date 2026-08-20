@@ -24,7 +24,7 @@ import type { ElementType, HTMLAttributes } from 'react';
  * on hover — a card that lifts is doing something this component has no
  * business knowing about.
  */
-type CardTone = 'raised' | 'tint' | 'page' | 'none';
+type CardTone = 'raised' | 'tint' | 'page' | 'glass' | 'none';
 type CardElevation = 'none' | 'card' | 'raised' | 'modal';
 type CardRadius = 'sm' | 'md' | 'lg';
 type CardPadding = 'none' | 'sm' | 'md' | 'lg';
@@ -33,6 +33,13 @@ const TONE: Record<CardTone, string> = {
   raised: 'bg-surface-raised',
   tint: 'bg-surface-tint',
   page: 'bg-surface-page',
+  /* The card that stands on a photograph. --surface-glass composites brighter
+     than the wall behind it (see globals.css §1), and the blur is what turns
+     the room behind into a ground rather than a distraction. A glass card
+     almost always wants `elevation="modal"` too: on paint a hairline is
+     enough to separate a card from its ground, but on a photograph only a
+     shadow is. Saturation is nudged up because blur desaturates. */
+  glass: 'bg-surface-glass backdrop-blur-[10px] backdrop-saturate-[1.08]',
   none: '',
 };
 

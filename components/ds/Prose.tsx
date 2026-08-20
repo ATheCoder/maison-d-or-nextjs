@@ -1,4 +1,4 @@
-import type { CSSProperties, ElementType, ReactNode } from 'react';
+import type { CSSProperties, ElementType, HTMLAttributes, ReactNode } from 'react';
 
 /**
  * Prose — running text at the house measure. The pattern it replaces
@@ -16,6 +16,11 @@ import type { CSSProperties, ElementType, ReactNode } from 'react';
  * narrower, to sit inside their own padding) passes `measure={false}` and
  * states the width itself — deliberately not a second max-w-* class, which
  * would collide with this one in Tailwind's output order.
+ *
+ * Remaining props pass through to the element, the way Card and Chip already
+ * do. That is what lets a paragraph carry `role="alert"` — a form error is
+ * running text and belongs in Prose, but it also has to be announced, and
+ * before this the only way to say so was to drop out of the primitive.
  */
 type ProseVariant = 'body' | 'body-ui' | 'caption';
 
@@ -46,6 +51,7 @@ export default function Prose({
   className = '',
   style,
   children,
+  ...rest
 }: {
   variant?: ProseVariant;
   tone?: keyof typeof TONE | 'none';
@@ -54,13 +60,14 @@ export default function Prose({
   className?: string;
   style?: CSSProperties;
   children: ReactNode;
-}) {
+} & Omit<HTMLAttributes<HTMLElement>, 'style' | 'className' | 'children'>) {
   const resolved = tone ?? DEFAULT_TONE[variant];
   const ink = resolved && resolved !== 'none' ? `${TONE[resolved]} ` : '';
   return (
     <Tag
       className={`${VARIANT[variant]} ${ink}${measure ? 'max-w-[38rem] ' : ''}${className}`}
       style={style}
+      {...rest}
     >
       {children}
     </Tag>

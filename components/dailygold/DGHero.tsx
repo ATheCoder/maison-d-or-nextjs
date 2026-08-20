@@ -24,6 +24,7 @@
  * a page is a navigation and the router lives up there.
  */
 import type { ReactNode } from 'react';
+import { Heading } from '@/components/ds';
 import DGThemeSwitcher from '@/components/dailygold/DGThemeSwitcher';
 
 export default function DGHero({
@@ -67,12 +68,18 @@ export default function DGHero({
       <div className="gl-entry-in">
         <p className="eye">Daily Gold · {dateStr}</p>
 
+        {/* `variant="none"` and `tone="none"`: GALLERY_CSS owns this one's
+            size (clamp 40–104px) and ink, and shipping a type-display-* class
+            alongside its rule would mean two declarations competing to set the
+            same property. Heading is here for the semantics — it renders
+            <p role="heading" aria-level="1">, which is why the stylesheet
+            targets [role="heading"] rather than h1. */}
         {place ? (
-          <h1>Today the world<br />is in <em>{place}</em></h1>
+          <Heading level={1} variant="none" tone="none">Today the world<br />is in <em>{place}</em></Heading>
         ) : hasEdition ? (
-          <h1>Today&rsquo;s wall<br />is being <em>hung</em></h1>
+          <Heading level={1} variant="none" tone="none">Today&rsquo;s wall<br />is being <em>hung</em></Heading>
         ) : (
-          <h1>The walls<br />are <em>bare</em> today</h1>
+          <Heading level={1} variant="none" tone="none">The walls<br />are <em>bare</em> today</Heading>
         )}
 
         <p className="sub">

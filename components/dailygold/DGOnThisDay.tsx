@@ -9,6 +9,7 @@
  * component or the design-sync bundle.
  */
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Button } from '@/components/ds';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
 import Wall from '@/components/dailygold/gallery/Wall';
@@ -39,8 +40,8 @@ function YearSeal({
   const goldFaint = disabled ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'color-mix(in srgb, var(--accent) 30%, transparent)';
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="bare"
       onClick={onPress}
       disabled={disabled}
       aria-label={isBack ? 'Travel to an earlier year' : 'Travel to a later year'}
@@ -81,7 +82,7 @@ function YearSeal({
           </g>
         )}
       </svg>
-    </button>
+    </Button>
   );
 }
 
@@ -337,9 +338,9 @@ export default function DGOnThisDay({
             {nearestAuthoredYear != null ? (
               <>
                 <p>Nothing from {currentYear} yet.</p>
-                <button type="button" className="go" onClick={() => jumpToYear(nearestAuthoredYear)}>
+                <Button variant="bare" className="go" onClick={() => jumpToYear(nearestAuthoredYear)}>
                   Travel to {nearestAuthoredYear} ›
-                </button>
+                </Button>
               </>
             ) : (
               <p>No year has been travelled to on this date yet.</p>

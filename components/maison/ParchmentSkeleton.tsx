@@ -91,15 +91,19 @@ export function SkeletonBar({
  */
 export function SkeletonStatus({
   label,
+  className,
   style,
   children,
 }: {
   label: string;
+  /** For the skeletons whose shell is a class rather than a style object —
+      /welcome's is `.front-door`, the same ground the wizard stands on. */
+  className?: string;
   style?: CSSProperties;
   children?: ReactNode;
 }) {
   return (
-    <div role="status" aria-live="polite" aria-busy="true" style={style}>
+    <div role="status" aria-live="polite" aria-busy="true" className={className} style={style}>
       <style>{PARCHMENT_SKELETON_CSS}</style>
       <span style={{
         position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,

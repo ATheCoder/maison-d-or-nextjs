@@ -16,6 +16,7 @@
  * module reaches this client component or the design-sync bundle.
  */
 import { useState } from 'react';
+import { Button, Heading } from '@/components/ds';
 import DGModal from '@/components/dailygold/DGModal';
 import DGHeroImage from '@/components/dailygold/DGHeroImage';
 import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
@@ -67,12 +68,12 @@ function MomentModal({ item, onClose }: { item: GreatestMomentRecord; onClose: (
 
       {/* Content */}
       <div style={{ padding: '1.5rem 2rem 2rem' }}>
-        <DGEyebrow tracking="wide" color="var(--accent-readable)" style={{ margin: '0 0 0.5rem' }}>
+        <DGEyebrow tracking="wide" style={{ margin: '0 0 0.5rem' }}>
           {item.year}
         </DGEyebrow>
-        <h2 className="type-display-section" style={{ color: 'var(--accent-readable)', margin: '0 0 1.25rem' }}>
+        <Heading level={2} variant="section" tone="none" className="text-accent-readable" style={{ margin: '0 0 1.25rem' }}>
           {item.headline}
-        </h2>
+        </Heading>
         <p className="type-body" style={{ color: 'var(--text-primary)', margin: 0 }}>
           {item.story}
         </p>
@@ -152,8 +153,8 @@ export default function DGGreatestMoments({
         <div className="gl-list">
           {rows.map((m, i) => (
             <div key={m.id ?? i} className="gl-row-wrap">
-              <button
-                type="button"
+              <Button
+                variant="bare"
                 className={`gl-row${i === 0 ? ' gl-row-1' : ''}`}
                 onClick={() => setSelected(m)}
               >
@@ -161,7 +162,7 @@ export default function DGGreatestMoments({
                 <span className="y">{m.year}</span>
                 <span className="t">{m.headline}</span>
                 <span className="h" />
-              </button>
+              </Button>
               {savedSet && (
                 <span className="gl-row-heart">
                   <TreasuryHeart

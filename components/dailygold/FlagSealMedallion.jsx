@@ -16,6 +16,7 @@
  * A missing/failed image falls back to the initials treatment.
  */
 import React, { useState } from 'react';
+import { Button } from '@/components/ds';
 
 const SIZES = { xs: 24, sm: 36, md: 56, lg: 80 };
 
@@ -151,8 +152,8 @@ function FlagSealMedallion({ countryCode, countryName, size = 'sm', earned = tru
     // negative margin keeps the visual footprint unchanged.
     const hitPad = Math.max(0, Math.ceil((44 - px) / 2));
     return (
-      <button
-        type="button"
+      <Button
+        variant="bare"
         onClick={onClick}
         aria-label={ariaLabel}
         title={countryName}
@@ -162,13 +163,12 @@ function FlagSealMedallion({ countryCode, countryName, size = 'sm', earned = tru
           border: 'none',
           padding: hitPad,
           margin: -hitPad,
-          cursor: 'pointer',
           font: 'inherit',
           color: 'inherit',
         }}
       >
         <span aria-hidden="true" style={{ display: 'contents' }}>{medallion}</span>
-      </button>
+      </Button>
     );
   }
 

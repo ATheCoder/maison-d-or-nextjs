@@ -22,6 +22,7 @@
  * behave exactly as they did.
  */
 import { createContext, useContext, useMemo, useState } from 'react';
+import { Button } from '@/components/ds';
 
 const SignupInviteContext = createContext(null);
 
@@ -72,32 +73,24 @@ function InviteToast({ message, onClose }) {
       <span className="type-body-ui" style={{ color: 'var(--text-primary)', flex: 1 }}>
         {message}
       </span>
-      <a
-        href={SIGNUP_HREF}
-        className="type-label-editorial"
-        style={{
-          flexShrink: 0,
-          padding: '0.5rem 0.9rem',
-          borderRadius: 10,
-          background: 'var(--accent)',
-          color: 'var(--palette-ink)',
-          textDecoration: 'none',
-          whiteSpace: 'nowrap',
-        }}
-      >
+      {/* The same correction as the CTA bar's pill (DGVisitorBanners): this
+          was btn-primary hand-copied into inline styles, down to a raw
+          --palette-* ink. It is a link — it navigates — so it keeps the <a>
+          and wears the coat rather than an imitation of one. */}
+      <Button variant="primary" href={SIGNUP_HREF} style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
         Sign up
-      </a>
-      <button
-        type="button"
+      </Button>
+      <Button
+        variant="bare"
         onClick={onClose}
         aria-label="Dismiss"
         style={{
-          flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer',
+          flexShrink: 0, background: 'none', border: 'none',
           color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1, padding: '0.2rem',
         }}
       >
         ×
-      </button>
+      </Button>
     </div>
   );
 }

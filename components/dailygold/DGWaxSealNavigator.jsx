@@ -8,6 +8,7 @@
  * Press animation: stamp-down + page-turn rotateY flip to new date.
  */
 import { useState, useCallback, useOptimistic, useTransition } from 'react';
+import { Button } from '@/components/ds';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 
 // SVG seal face — vintage engraved arrow as the clear primary mark,
@@ -68,7 +69,8 @@ function WaxSeal({ direction, disabled, onPress, pressing, ariaLabel }) {
   const linen = 'var(--palette-sand)';
 
   return (
-    <button
+    <Button
+      variant="bare"
       onClick={onPress}
       disabled={disabled}
       aria-label={ariaLabel}
@@ -107,7 +109,7 @@ function WaxSeal({ direction, disabled, onPress, pressing, ariaLabel }) {
       }} />
       {/* Seal face SVG */}
       <SealFace direction={direction} disabled={disabled} />
-    </button>
+    </Button>
   );
 }
 

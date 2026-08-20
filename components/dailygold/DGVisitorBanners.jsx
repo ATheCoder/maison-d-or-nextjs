@@ -17,6 +17,7 @@
  * actually buys rather than shouting.
  */
 import { useState } from 'react';
+import { Button } from '@/components/ds';
 import { SIGNUP_HREF, LOGIN_HREF } from '@/components/dailygold/SignupInvite';
 
 /** @param {{ name: string }} props */
@@ -49,17 +50,17 @@ export function WelcomeFlourish({ name }) {
           world&rsquo;s flags collect themselves as you read.
         </p>
       </div>
-      <button
-        type="button"
+      <Button
+        variant="bare"
         onClick={() => setDismissed(true)}
         aria-label="Dismiss"
         style={{
-          flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer',
+          flexShrink: 0, background: 'none', border: 'none',
           color: 'var(--text-secondary)', fontSize: '1.1rem', lineHeight: 1, padding: '0.25rem',
         }}
       >
         ×
-      </button>
+      </Button>
     </div>
   );
 }
@@ -84,6 +85,7 @@ const CTA_CSS = `
     gap: 1rem;
     flex-wrap: wrap;
   }
+  .dg-signedout-cta > a { flex-shrink: 0; white-space: nowrap; }
   .dg-signedout-cta .dg-cta-label-mobile { display: none; }
   @media (max-width: 767px) {
     .dg-signedout-cta {
@@ -110,7 +112,7 @@ const CTA_CSS = `
     /* The docked bar floats over the tail of the page; give the shell that
        much extra bottom room so the last section can scroll clear of it. */
     .dg-root:has(.dg-signedout-cta) .dg-shell {
-      padding-bottom: calc(var(--dg-tabbar-h, 0px) + 64px + env(safe-area-inset-bottom, 0px));
+      padding-bottom: calc(var(--dg-tabbar-h, 0px) + 76px + env(safe-area-inset-bottom, 0px));
     }
   }
 `;
@@ -131,35 +133,18 @@ export function SignedOutCta() {
             Save treasures, earn flags, follow the reading journey.
           </p>
         </div>
-        <a
-          href={LOGIN_HREF}
-          className="type-body-ui"
-          style={{
-            flexShrink: 0,
-            padding: '0.5rem 0.35rem',
-            color: 'var(--text-secondary)',
-            textDecoration: 'none',
-            whiteSpace: 'nowrap',
-          }}
-        >
+        {/* The house pair, not a hand-rolled one: these were an <a> wearing an
+            inline gold fill and a raw --palette-ink, which is btn-primary
+            copied badly — no hover, no press, no focus ring, and an ink
+            colour that only happened to survive the seven accent scopes.
+            Still anchors, because they navigate; the coat rides the <a>. */}
+        <Button variant="ghost" href={LOGIN_HREF}>
           Sign in
-        </a>
-        <a
-          href={SIGNUP_HREF}
-          className="type-label-editorial"
-          style={{
-            flexShrink: 0,
-            padding: '0.5rem 1.15rem',
-            borderRadius: 10,
-            background: 'var(--accent)',
-            color: 'var(--palette-ink)',
-            textDecoration: 'none',
-            whiteSpace: 'nowrap',
-          }}
-        >
+        </Button>
+        <Button variant="primary" href={SIGNUP_HREF}>
           <span className="dg-cta-label-desktop">Create an account</span>
           <span className="dg-cta-label-mobile">Start your family&rsquo;s journey</span>
-        </a>
+        </Button>
       </div>
     </>
   );

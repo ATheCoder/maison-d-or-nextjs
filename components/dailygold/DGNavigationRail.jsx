@@ -18,6 +18,7 @@
  * below 768px the rail is hidden entirely.
  */
 import { useState } from 'react';
+import { Button } from '@/components/ds';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
@@ -65,7 +66,7 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
       {/* Identity block — persistent chrome, not scroll-away content */}
       {child && (
         <div style={{ position: 'relative', marginTop: '1.5rem' }}>
-          <button
+          <Button variant="bare"
             className="dg-rail-item dg-rail-id"
             onClick={() => setShowSwitcher(v => !v)}
             aria-haspopup="menu"
@@ -94,7 +95,7 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
             <svg className="dg-rail-label" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ marginLeft: 'auto', flexShrink: 0 }}>
               <path d="M2 3.5l3 3 3-3" style={{ stroke: 'var(--text-secondary)' }} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          </button>
+          </Button>
           {showSwitcher && (
             <ChildSwitcherOverlay
               currentChildId={child.id}
@@ -111,7 +112,7 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
           account holder always knows which hat they are wearing. */}
       {!child && viewer && (
         <div style={{ position: 'relative', marginTop: '1.5rem' }}>
-          <button
+          <Button variant="bare"
             className="dg-rail-item dg-rail-id"
             onClick={() => setShowSwitcher(v => !v)}
             aria-haspopup="menu"
@@ -127,7 +128,7 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
               🗝️
             </span>
             <span className="dg-rail-label" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 }}>
-              <DGEyebrow as="span" tracking="tight" color="var(--text-secondary)">
+              <DGEyebrow as="span" tracking="tight" tone="secondary">
                 {viewer.role === 'admin' ? 'Admin' : 'Parent'}
               </DGEyebrow>
               <span className="type-caption font-display italic" style={{
@@ -140,7 +141,7 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
             <svg className="dg-rail-label" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ marginLeft: 'auto', flexShrink: 0 }}>
               <path d="M2 3.5l3 3 3-3" style={{ stroke: 'var(--text-secondary)' }} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          </button>
+          </Button>
           {showSwitcher && (
             <ChildSwitcherOverlay
               viewer={viewer}
@@ -199,7 +200,7 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
       {child && (
         <>
           <div aria-hidden="true" style={{ height: 1, background: 'var(--border-fine)', margin: '1.25rem 0.5rem' }} />
-          <DGEyebrow className="dg-rail-label" tracking="wide" color="var(--accent-readable)" style={{ margin: '0 0 0.5rem 0.9rem' }}>
+          <DGEyebrow className="dg-rail-label" tracking="wide" style={{ margin: '0 0 0.5rem 0.9rem' }}>
             My World
           </DGEyebrow>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

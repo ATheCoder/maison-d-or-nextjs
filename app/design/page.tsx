@@ -71,7 +71,7 @@ export default function DesignPage() {
 
       <PageSection
         eyebrow="05 · Primitives"
-        lede="Eyebrow, Button, Field, TextLink, Rule, SectionSurface, Quote and the heart — every variant, stamped once per surface, and every stamp a full environment: parchment, then sage for the garden, rose for the family, lavender for the evening, periwinkle for the sky, then the two cinematic interludes. One dominant atmospheric accent per section; gold keeps meaning action and errors keep their terracotta (rose on the interludes) in every room. Sections butt with the fine rule; no shadows between them."
+        lede="Eyebrow, Button, Field, TextLink, Rule, SectionSurface, Quote and the heart — every variant, stamped once per surface, and every stamp a full environment: parchment, then sage for the garden, rose for the family, lavender for the evening, periwinkle for the sky, then the two cinematic interludes. One dominant atmospheric accent per section; gold keeps meaning action and errors keep their terracotta (rose on the interludes) in every room. Sections butt with the fine rule; no shadows between them. Three primitives are stamped once rather than seven times, at the end: Overlay, because a dialog is page-level rather than surface-level; Heading without a size, because that is a mechanism and not a colour; and the glass Card, on the photograph it exists for. This page is the whole inventory of components/ds by design — if a primitive is not stamped here, the rooms have no business using it."
         bleed
       >
         <PrimitivesShowcase />

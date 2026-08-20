@@ -29,6 +29,7 @@
  * curtain over the wait.
  */
 import { useState, useEffect, useRef } from 'react';
+import { Button, Field } from '@/components/ds';
 import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import { getProfilesForPicker, enterChildProfile, enterChildProfileAsGuardian, passGrownUpGate } from '@/app/profiles/actions';
 import { authClient } from '@/lib/auth-client';
@@ -163,39 +164,40 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
     >
       <style>{`@keyframes dgSpin { to { transform: rotate(360deg); } }`}</style>
       <div style={{ padding: '0.65rem 1rem 0.4rem', borderBottom: '1px solid var(--border-fine)' }}>
-        <DGEyebrow tracking="wide" color="var(--text-secondary)">
+        <DGEyebrow tracking="wide" tone="secondary">
           {heading}
         </DGEyebrow>
       </div>
       {showCredentialForm ? (
         <div style={{ padding: '0.85rem 1rem 1rem' }}>
-          <input
+          {/* The label is hidden, not absent: the menu heading directly above
+              already asks the question, but a real <label> survives translation
+              and can be clicked, which the aria-label here before it could not.
+              The error moved into Field's own message seat, which carries
+              role="alert" and the aria-describedby wiring this hand-rolled
+              pair never had. The bespoke border and radius are gone with it —
+              the house field coat brings a focus halo, and this box previously
+              set outline:none and offered nothing in its place. */}
+          <Field
+            label={guardianCredential ? 'Parent PIN or password' : `${pinFor.displayName}'s PIN`}
+            labelHidden
             type="password"
             inputMode={guardianCredential ? 'text' : 'numeric'}
             autoFocus
             value={pin}
             maxLength={guardianCredential ? undefined : 4}
             placeholder={guardianCredential ? 'Parent PIN or password' : '••••'}
-            aria-label={guardianCredential ? 'Parent PIN or password' : `${pinFor.displayName}'s PIN`}
+            error={error ?? undefined}
             onChange={e => setPin(guardianCredential ? e.target.value : e.target.value.replace(/\D/g, ''))}
             onKeyDown={e => { if (e.key === 'Enter') submitCredential(); if (e.key === 'Escape') { e.stopPropagation(); closeCredentialForm(); } }}
-            className="type-body-ui"
             style={{
-              width: '100%', padding: '0.6rem 0.65rem',
               /* the wide 0.3em spacing is the PIN-dot layout, not typography */
-              letterSpacing: guardianCredential ? 'normal' : '0.3em', textAlign: guardianCredential ? 'left' : 'center',
-              color: 'var(--text-primary)', background: 'var(--surface-raised)',
-              border: '1px solid color-mix(in srgb, var(--accent) 40%, transparent)', borderRadius: 8,
-              outline: 'none', boxSizing: 'border-box',
+              letterSpacing: guardianCredential ? 'normal' : '0.3em',
+              textAlign: guardianCredential ? 'left' : 'center',
             }}
           />
-          {error && (
-            <p role="alert" className="type-caption" style={{ color: ERROR_RED, margin: '0.45rem 0 0' }}>
-              {error}
-            </p>
-          )}
           <div style={{ display: 'flex', gap: 6, marginTop: '0.6rem' }}>
-            <button
+            <Button variant="bare"
               onClick={submitCredential}
               disabled={pending || pin.length < (guardianCredential ? 1 : 4)}
               className="type-body-ui"
@@ -206,8 +208,8 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
               }}
             >
               {pending ? '…' : 'Open'}
-            </button>
-            <button
+            </Button>
+            <Button variant="bare"
               onClick={closeCredentialForm}
               className="type-body-ui"
               style={{
@@ -216,10 +218,10 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
               }}
             >
               Back
-            </button>
+            </Button>
           </div>
           {pinFor && !asGuardian && (
-            <button
+            <Button variant="bare"
               onClick={() => { setAsGuardian(true); setPin(''); setError(null); }}
               className="type-caption"
               style={{
@@ -228,7 +230,7 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
               }}
             >
               Forgot it? Ask a grown-up
-            </button>
+            </Button>
           )}
         </div>
       ) : loading ? (
@@ -241,7 +243,7 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
             const avatar = AVATARS[kid.avatar] || AVATARS.sun;
             const isCurrent = kid.id === currentChildId;
             return (
-              <button
+              <Button variant="bare"
                 key={kid.id}
                 role="menuitem"
                 onClick={() => pick(kid)}
@@ -282,7 +284,7 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
                 ) : kid.hasPin ? (
                   <span style={{ marginLeft: 'auto', fontSize: '0.7rem', opacity: 0.55 }} role="img" aria-label="PIN protected">🔒</span>
                 ) : null}
-              </button>
+              </Button>
             );
           })}
           {error && (
@@ -291,7 +293,7 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
             </p>
           )}
           {inChildMode && (
-            <button
+            <Button variant="bare"
               role="menuitem"
               onClick={() => { setParentGate(true); setPin(''); setError(null); }}
               disabled={pending}
@@ -308,10 +310,10 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
               </span>
               <span>Switch to parent</span>
               <span style={{ marginLeft: 'auto', fontSize: '0.7rem', opacity: 0.55 }} role="img" aria-label="Requires the parent PIN or password">🔒</span>
-            </button>
+            </Button>
           )}
           {!inChildMode && viewer && (
-            <button
+            <Button variant="bare"
               role="menuitem"
               onClick={signOut}
               disabled={pending}
@@ -319,7 +321,7 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
               style={{ ...actionRowStyle, color: 'var(--text-secondary)' }}
             >
               {pending ? 'Signing out…' : 'Sign out'}
-            </button>
+            </Button>
           )}
         </>
       )}

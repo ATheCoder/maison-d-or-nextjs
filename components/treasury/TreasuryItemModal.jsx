@@ -72,7 +72,7 @@ function KeepsakeFoot({ item }) {
       marginTop: '1.75rem', paddingTop: '1rem',
       borderTop: '1px solid var(--border-fine)',
     }}>
-      <DGEyebrow tracking="tight" color="var(--text-faint)" style={{ fontSize: '0.62rem' }}>
+      <DGEyebrow tracking="tight" tone="faint" style={{ fontSize: '0.62rem' }}>
         Kept from {dateLabel}
       </DGEyebrow>
       <Link
@@ -139,7 +139,7 @@ function MomentBody({ item, detail, loading }) {
       </DGHeroImage>
       <div style={{ padding: '1.5rem 2rem 2rem' }}>
         {year && (
-          <DGEyebrow tracking="wide" color="var(--accent-readable)" style={{ margin: '0 0 0.5rem' }}>
+          <DGEyebrow tracking="wide" style={{ margin: '0 0 0.5rem' }}>
             {year}{detail?.location ? ` · ${detail.location}` : ''}
           </DGEyebrow>
         )}
@@ -167,7 +167,7 @@ function DestinationBody({ item, detail, loading }) {
   return (
     <>
       <DGHeroImage imageUrl={detail?.image_url ?? item.item_image_url} aspectRatio="16/9" fallbackMark="🌍">
-        <DGEyebrow tracking="wide" color="var(--accent-readable)" style={{
+        <DGEyebrow tracking="wide" style={{
           position: 'absolute', bottom: '1rem', left: 'clamp(1.25rem, 4vw, 2rem)', right: 'clamp(1.25rem, 4vw, 2rem)',
         }}>
           {detail?.continent ? `${detail.continent} · ` : ''}{detail?.name ?? item.item_title}
@@ -205,7 +205,7 @@ function TokenBody({ item, detail, loading }) {
       }}>
         {meta.emoji}
       </div>
-      <DGEyebrow tracking="wide" color="var(--accent-readable)" style={{ fontSize: '0.62rem', margin: '0 0 0.75rem' }}>
+      <DGEyebrow tracking="wide" style={{ fontSize: '0.62rem', margin: '0 0 0.75rem' }}>
         {meta.label}{detail?.language ? ` · ${detail.language}` : ''}{item.country_name ? ` · ${item.country_name}` : ''}
       </DGEyebrow>
       <h2 style={{

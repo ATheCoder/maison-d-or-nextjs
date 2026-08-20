@@ -30,6 +30,7 @@
  */
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { Button } from '@/components/ds';
 
 export default function Work({
   imageUrl,
@@ -78,9 +79,9 @@ export default function Work({
           {frame}
         </Link>
       ) : onClick ? (
-        <button type="button" className="gl-door" onClick={onClick} aria-label={ariaLabel}>
+        <Button variant="bare" className="gl-door" onClick={onClick} aria-label={ariaLabel}>
           {frame}
-        </button>
+        </Button>
       ) : frame}
       {seal && <span className="gl-seal">{seal}</span>}
       {heart && <span className="gl-heart">{heart}</span>}

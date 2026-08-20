@@ -3,24 +3,18 @@
  * Shared login / signup form (docs/auth-plan.md §6). Signup always creates a
  * guardian — the role field is server-controlled and not part of this form.
  * Errors stay generic on login so accounts can't be enumerated.
+ *
+ * Dressed in components/ds, like everything else in the house. It used to be
+ * dressed in components/maison/guardianSurface — a second set of primitives
+ * with its own palette, field and button, kept deliberately theme-immune by
+ * writing every colour out as a hex literal. The immunity now comes from
+ * data-theme="parchment" on the route group's layout, so the tokens can be
+ * the tokens and there is one design system again.
  */
 import { useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
-import {
-  photoShellStyle,
-  cardStyle,
-  glassCardStyle,
-  eyebrowStyle,
-  titleStyle,
-  flourishStyle,
-  leadStyle,
-  bodyStyle,
-  ruleStyle,
-  labelStyle,
-  errorStyle,
-  footerStyle,
-} from '@/components/maison/guardianSurface';
+import { Button, Card, Eyebrow, Field, Heading, Prose, Rule, TextLink } from '@/components/ds';
 
 export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const router = useRouter();
@@ -82,99 +76,107 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   }
 
   return (
-    <div style={photoShellStyle}>
-      <div style={{ ...cardStyle, ...glassCardStyle }}>
-        {/* Signup opens the way the homepage hero does — the script greeting,
-            then the wordmark itself as the heading. Printing the eyebrow too
-            would put the name of the house on the card twice, so on this one
-            page the title stands in for it. Login, which is a return rather
-            than an arrival, keeps the ordinary eyebrow. */}
-        {isSignup ? (
-          <p style={flourishStyle}>Welcome to</p>
-        ) : (
-          <p style={eyebrowStyle}>Maison d&apos;Oré</p>
-        )}
-        <h1 style={{
-          ...titleStyle,
+    <div className="front-door front-door-photo">
+      <Card
+        tone="glass"
+        elevation="modal"
+        radius="lg"
+        padding="none"
+        className="w-full max-w-100 front-door-card px-9 py-11"
+      >
+        {/* Signup used to open with a Great Vibes flourish — "Welcome to", in
+            script, over the wordmark — echoing the homepage hero. It is gone:
+            §2.1 admits no third face, and that one line was the only thing on
+            the migrated front door still asking for the legacy font stack.
+            Both doors now open on the same eyebrow, which is what they always
+            should have done — the difference between arriving and returning is
+            the heading's words, not a different typeface. */}
+        <Eyebrow rule={false} className="text-center">Maison d&apos;Oré</Eyebrow>
+        <Heading
+          level={1}
+          variant="section"
+          className="mt-4 text-center"
           // Signup carries a tagline underneath, so the heading closes up and
           // the block as a whole keeps the same air above the form.
-          margin: isSignup ? '0 0 0.7rem' : '0 0 1.6rem',
-        }}>
+          style={{ marginBottom: isSignup ? '0.7rem' : '1.6rem' }}
+        >
           {isSignup ? <>Maison d&apos;Oré</> : 'Welcome back'}
-        </h1>
+        </Heading>
         {isSignup && (
           <>
-            <p style={leadStyle}>For the things worth making time for.</p>
-            <p style={bodyStyle}>
+            <Prose measure={false} className="text-center font-display italic">
+              For the things worth making time for.
+            </Prose>
+            <Prose variant="caption" measure={false} className="mt-3 mb-7 text-center">
               Recipes, places, ideas and little rituals for making more of everyday life.
-            </p>
+            </Prose>
           </>
         )}
-        <hr style={ruleStyle} />
+        <Rule variant="accent" className="mb-7" />
 
         <form onSubmit={handleSubmit}>
           {isSignup && (
-            <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor="name" style={labelStyle}>Your name</label>
-              <input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                minLength={2}
-                autoComplete="name"
-                className="mdo-guardian-field"
-              />
-            </div>
+            <Field
+              id="name"
+              label="Your name"
+              className="mb-4"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              minLength={2}
+              autoComplete="name"
+            />
           )}
-          <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="email" style={labelStyle}>Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              className="mdo-guardian-field"
-            />
-          </div>
-          <div style={{ marginBottom: '1.6rem' }}>
-            <label htmlFor="password" style={labelStyle}>Password</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              autoComplete={isSignup ? 'new-password' : 'current-password'}
-              className="mdo-guardian-field"
-            />
-            {!isSignup && (
-              // Quiet on purpose: the way out for the one guardian who needs
-              // it, not a second call to action competing with Log in.
-              <p style={{ margin: '0.55rem 0 0', textAlign: 'right' }}>
-                <a href="/forgot-password" className="mdo-guardian-quiet">Forgot password?</a>
-              </p>
-            )}
-          </div>
+          <Field
+            id="email"
+            label="Email"
+            type="email"
+            className="mb-4"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+          />
+          <Field
+            id="password"
+            label="Password"
+            type="password"
+            className="mb-6"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            autoComplete={isSignup ? 'new-password' : 'current-password'}
+          />
+          {!isSignup && (
+            // Quiet on purpose: the way out for the one guardian who needs
+            // it, not a second call to action competing with Log in.
+            <p className="-mt-4 mb-6 text-right">
+              <TextLink href="/forgot-password" className="type-caption">Forgot password?</TextLink>
+            </p>
+          )}
 
-          {error && <p style={errorStyle}>{error}</p>}
+          {/* role="alert" because this arrives in answer to a submit the
+              person just made; the field-level errors get theirs from Field. */}
+          {error && (
+            <Prose variant="caption" tone="none" measure={false} role="alert" className="mb-4 text-danger-readable">
+              {error}
+            </Prose>
+          )}
 
-          <button type="submit" disabled={pending} className="mdo-guardian-submit">
+          <Button type="submit" loading={pending} className="w-full">
             {pending ? 'One moment…' : isSignup ? 'Create an account' : 'Log in'}
-          </button>
+          </Button>
         </form>
 
-        <p style={footerStyle}>
+        <Prose variant="caption" measure={false} className="mt-6 text-center">
           {isSignup ? (
-            <>Already part of Maison d&apos;Oré? <a href="/login" className="mdo-guardian-link">Log in</a></>
+            <>Already part of Maison d&apos;Oré? <TextLink href="/login">Log in</TextLink></>
           ) : (
-            <>New to Maison d&apos;Oré? <a href="/signup" className="mdo-guardian-link">Create an account</a></>
+            <>New to Maison d&apos;Oré? <TextLink href="/signup">Create an account</TextLink></>
           )}
-        </p>
-      </div>
+        </Prose>
+      </Card>
     </div>
   );
 }
