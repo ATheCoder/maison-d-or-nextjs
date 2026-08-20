@@ -56,6 +56,11 @@ export type EditorEdition = {
   tiny_phrase: string | null;
   tiny_phrase_language: string | null;
   tiny_phrase_translation: string | null;
+  // The four senses' own paintings — the destination wall hangs them as works.
+  taste_image_url: string | null;
+  sound_image_url: string | null;
+  nature_image_url: string | null;
+  phrase_image_url: string | null;
   daily_quote: string | null;
   daily_quote_author: string | null;
   generated_at: string | null;
@@ -209,6 +214,10 @@ export async function getDayForEditor(date: string): Promise<DayForEditor | null
       tiny_phrase: row.tinyPhrase,
       tiny_phrase_language: row.tinyPhraseLanguage,
       tiny_phrase_translation: row.tinyPhraseTranslation,
+      taste_image_url: row.tasteImageUrl,
+      sound_image_url: row.soundImageUrl,
+      nature_image_url: row.natureImageUrl,
+      phrase_image_url: row.phraseImageUrl,
       daily_quote: row.dailyQuote,
       daily_quote_author: row.dailyQuoteAuthor,
       generated_at: iso(row.generatedAt),
@@ -249,6 +258,7 @@ export type EditionPatch = Partial<Record<
   | 'hero_image_url' | 'destination_country' | 'continent' | 'destination_description'
   | 'destination_image_url' | 'child_life_story' | 'taste_of_day' | 'sound_of_day'
   | 'nature_detail' | 'tiny_phrase' | 'tiny_phrase_language' | 'tiny_phrase_translation'
+  | 'taste_image_url' | 'sound_image_url' | 'nature_image_url' | 'phrase_image_url'
   | 'daily_quote' | 'daily_quote_author', unknown>>;
 
 /**
@@ -266,6 +276,10 @@ export async function saveEdition(date: string, patch: EditionPatch):
 
   if (has('hero_image_url')) set.heroImageUrl = url(patch.hero_image_url);
   if (has('destination_image_url')) set.destinationImageUrl = url(patch.destination_image_url);
+  if (has('taste_image_url')) set.tasteImageUrl = url(patch.taste_image_url);
+  if (has('sound_image_url')) set.soundImageUrl = url(patch.sound_image_url);
+  if (has('nature_image_url')) set.natureImageUrl = url(patch.nature_image_url);
+  if (has('phrase_image_url')) set.phraseImageUrl = url(patch.phrase_image_url);
   if (has('destination_country')) set.destinationCountry = str(patch.destination_country, 200);
   if (has('continent')) {
     const c = str(patch.continent, 40);

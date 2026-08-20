@@ -1,8 +1,13 @@
+import type { ReactNode } from 'react';
 import DGGreatestMoments from '@/components/dailygold/DGGreatestMoments';
+import { GALLERY_CSS } from '@/components/dailygold/galleryCss';
 
-// `moments` are ranked historical entries: rank, year, headline, story,
-// image_url. `editionDate` sets the "…on <day> <month>" label. The empty
-// state is a real, deliberately-styled path, so it gets its own story.
+// The ledger. `moments` are ranked historical entries: rank, year, headline,
+// story, image_url. Shown twice on purpose — rank one hangs as a work with its
+// story, and all ten stand beside it as a slim index of rank / year / headline
+// / heart, so a reader gets both the invitation and the contents page without
+// opening anything. `editionDate` sets the "…on <day> <month>" label. The empty
+// state is a real, deliberately styled path, so it gets its own story.
 
 const ART =
   'data:image/svg+xml;utf8,' +
@@ -39,14 +44,43 @@ const MOMENTS = [
   },
 ];
 
+/**
+ * The room a wall needs around it when it is shown on its own.
+ *
+ * GALLERY_CSS is emitted once by the edition page for the whole reading
+ * column, so a single wall lifted out of it has no frames, no hairlines and no
+ * label scale until it brings the stylesheet with it. `.gl` is the room those
+ * rules hang in.
+ */
+function Room({ children }: { children: ReactNode }) {
+  return (
+    <div className="gl" style={{ background: 'var(--surface-page)', paddingBottom: 24 }}>
+      <style>{GALLERY_CSS}</style>
+      {children}
+    </div>
+  );
+}
+
 export function RankedMoments() {
-  return <DGGreatestMoments moments={MOMENTS} editionDate="2026-07-27" />;
+  return (
+    <Room>
+      <DGGreatestMoments moments={MOMENTS} editionDate="2026-07-27" />
+    </Room>
+  );
 }
 
 export function TopMomentOnly() {
-  return <DGGreatestMoments moments={[MOMENTS[0]]} editionDate="2026-07-27" />;
+  return (
+    <Room>
+      <DGGreatestMoments moments={[MOMENTS[0]]} editionDate="2026-07-27" />
+    </Room>
+  );
 }
 
 export function NothingYet() {
-  return <DGGreatestMoments moments={[]} editionDate="2026-07-27" />;
+  return (
+    <Room>
+      <DGGreatestMoments moments={[]} editionDate="2026-07-27" />
+    </Room>
+  );
 }

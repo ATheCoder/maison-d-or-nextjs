@@ -1,19 +1,27 @@
 'use client';
 /**
- * DGGreatestMoments — Column 3
- * Top 10 greatest events that ever happened on this calendar date, across all history.
+ * DGGreatestMoments — the ledger: the ten greatest things that ever happened
+ * on this calendar date, across all of history.
  *
- * `moments` is `getGreatestMomentsForDate`'s return value, unmapped — the record
- * type is imported from the query module rather than restated, so a column
- * renamed in the query is a compile error here instead of an undefined at
- * render. The import is type-only and erased: nothing of that `server-only`
+ * Shown twice, on purpose. Rank one hangs as a work with its story, and all
+ * ten stand beside it as a slim index of rank / year / headline / heart. A
+ * reader gets both the invitation and the contents page without opening
+ * anything — which is what the old design's ten identical thumbnail rows never
+ * managed, because a list of ten equals is a list with no way in.
+ *
+ * `moments` is `getGreatestMomentsForDate`'s return value, unmapped — the
+ * record type is imported from the query module rather than restated, so a
+ * column renamed in the query is a compile error here instead of an undefined
+ * at render. The import is type-only and erased: nothing of that `server-only`
  * module reaches this client component or the design-sync bundle.
  */
 import { useState } from 'react';
 import DGModal from '@/components/dailygold/DGModal';
-import DGCard from '@/components/dailygold/DGCard';
 import DGHeroImage from '@/components/dailygold/DGHeroImage';
-import DGSectionHeader, { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
+import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
+import Wall from '@/components/dailygold/gallery/Wall';
+import Work from '@/components/dailygold/gallery/Work';
+import Label, { LabelAction } from '@/components/dailygold/gallery/Label';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import type { GreatestMomentRecord } from '@/app/(dg)/daily-gold-edition/queries';
 
@@ -62,7 +70,7 @@ function MomentModal({ item, onClose }: { item: GreatestMomentRecord; onClose: (
         <DGEyebrow tracking="wide" color="var(--accent-readable)" style={{ margin: '0 0 0.5rem' }}>
           {item.year}
         </DGEyebrow>
-        <h2 className="type-display-section" style={{ color: 'var(--accent)', margin: '0 0 1.25rem' }}>
+        <h2 className="type-display-section" style={{ color: 'var(--accent-readable)', margin: '0 0 1.25rem' }}>
           {item.headline}
         </h2>
         <p className="type-body" style={{ color: 'var(--text-primary)', margin: 0 }}>
@@ -91,110 +99,88 @@ export default function DGGreatestMoments({
 
   if (!moments.length) {
     return (
-      <section style={{ background: 'transparent' }}>
-        <DGSectionHeader eyebrow="Across all of history" title="Greatest Moments" />
-        <DGCard size="small" style={{ padding: '2rem 1.25rem', textAlign: 'center' }}>
-          <p className="type-caption" style={{ margin: 0 }}>
-            Preparing the greatest moments…
-          </p>
-        </DGCard>
-      </section>
+      <Wall eyebrow="Across all of history" title="Greatest Moments">
+        <div className="gl-year-empty" style={{ padding: '0 var(--gut)' }}>
+          <p>The ledger for this date is still being written.</p>
+        </div>
+      </Wall>
     );
   }
 
+  const rows = moments.slice(0, 10);
+  const lead = rows[0];
+
   return (
-    <section style={{ background: 'transparent' }}>
-      {/* Header */}
-      <DGSectionHeader eyebrow="Across all of history" title={`Greatest Moments on ${dateLabel}`} />
+    <Wall eyebrow="Across all of history" title={`Greatest Moments on ${dateLabel}`}>
+      <div className="gl-ledger">
+        {/* Rank one, hung */}
+        <div>
+          <Work
+            /* 4:3, not the mockup's 4:5. Every moment painting in the corpus
+               is landscape 3:2, and an upright frame throws away a third of
+               each one's width. */
+            aspect="4 / 3"
+            imageUrl={lead.image_url}
+            onClick={() => setSelected(lead)}
+            ariaLabel={`Open: ${lead.headline}`}
+            heart={savedSet ? (
+              <TreasuryHeart
+                itemType="greatest_moment"
+                itemId={String(lead.id)}
+                itemTitle={lead.headline}
+                itemSubtitle={String(lead.year)}
+                itemImageUrl={lead.image_url}
+                editionDate={editionDate}
+                initialSaved={savedSet.has(`greatest_moment:${lead.id}`)}
+                onImage
+              />
+            ) : undefined}
+          />
+          <Label
+            className="gl-year-lab"
+            size="lead"
+            title={lead.headline}
+            meta={`${lead.year} · rank one of ${rows.length}`}
+            body={lead.story}
+            action={<LabelAction onClick={() => setSelected(lead)}>Open the moment ›</LabelAction>}
+          />
+        </div>
 
-      {/* Ranked list */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-        {moments.slice(0, 10).map((m, i) => (
-          /* The row is a button, so its heart has to be a sibling floating over
-             the right edge — with the row padded so the chevron steps aside
-             rather than sitting under the tap target. */
-          <div key={m.id ?? i} style={{ position: 'relative' }}>
-            <DGCard
-              as="button"
-              size="small"
-              type="button"
-              onClick={() => setSelected(m)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.75rem',
-                width: '100%', textAlign: 'left', font: 'inherit',
-                padding: '0.7rem 0.9rem', minHeight: 44,
-                paddingRight: savedSet ? '3.1rem' : '0.9rem',
-                cursor: 'pointer',
-                transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-              }}
-              /* The lift is this row's own, not the shell's — DGCard only
-                 states the resting shadow it returns to. */
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-raised)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'var(--shadow-card)'; }}
-            >
-              {/* Rank circle */}
-              <div style={{
-                width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-                background: i === 0 ? 'var(--accent)' : 'color-mix(in srgb, var(--accent) 18%, transparent)',
-                border: `1.5px solid ${i === 0 ? 'color-mix(in srgb, var(--accent) 90%, transparent)' : 'color-mix(in srgb, var(--accent) 40%, transparent)'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <span className="type-body-ui" style={{
-                  color: i === 0 ? 'var(--surface-raised)' : 'var(--accent-readable)',
-                }}>
-                  {m.rank || i + 1}
+        {/* All ten, as the index. The row is a button, so its heart is a
+            sibling in the row's own last column rather than a control nested
+            inside another control. */}
+        <div className="gl-list">
+          {rows.map((m, i) => (
+            <div key={m.id ?? i} className="gl-row-wrap">
+              <button
+                type="button"
+                className={`gl-row${i === 0 ? ' gl-row-1' : ''}`}
+                onClick={() => setSelected(m)}
+              >
+                <span className="n">{String(m.rank || i + 1).padStart(2, '0')}</span>
+                <span className="y">{m.year}</span>
+                <span className="t">{m.headline}</span>
+                <span className="h" />
+              </button>
+              {savedSet && (
+                <span className="gl-row-heart">
+                  <TreasuryHeart
+                    itemType="greatest_moment"
+                    itemId={String(m.id)}
+                    itemTitle={m.headline}
+                    itemSubtitle={String(m.year)}
+                    itemImageUrl={m.image_url}
+                    editionDate={editionDate}
+                    initialSaved={savedSet.has(`greatest_moment:${m.id}`)}
+                  />
                 </span>
-              </div>
-
-              {/* Thumbnail */}
-              <div style={{
-                width: 46, height: 46, borderRadius: 8, flexShrink: 0, overflow: 'hidden',
-                background: m.image_url ? undefined : 'color-mix(in srgb, var(--accent) 12%, transparent)',
-              }}>
-                {m.image_url
-                  ? <img src={m.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <div aria-hidden="true" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: '1.1rem', opacity: 0.35 }}>✦</span>
-                    </div>
-                }
-              </div>
-
-              {/* Text */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p className="type-caption" style={{ color: 'var(--accent-readable)', margin: '0 0 2px' }}>
-                  {m.year}
-                </p>
-                <p className="type-body-ui font-display" style={{
-                  color: 'var(--accent-readable)',
-                  margin: 0,
-                  overflow: 'hidden', display: '-webkit-box',
-                  WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                }}>
-                  {m.headline}
-                </p>
-              </div>
-
-              {/* Chevron */}
-              <span aria-hidden="true" style={{ color: 'color-mix(in srgb, var(--accent) 50%, transparent)', fontSize: '0.8rem', flexShrink: 0 }}>›</span>
-            </DGCard>
-            {savedSet && (
-              <div style={{ position: 'absolute', top: '50%', right: 2, transform: 'translateY(-50%)', zIndex: 10 }}>
-                <TreasuryHeart
-                  itemType="greatest_moment"
-                  itemId={String(m.id)}
-                  itemTitle={m.headline}
-                  itemSubtitle={String(m.year)}
-                  itemImageUrl={m.image_url}
-                  editionDate={editionDate}
-                  initialSaved={savedSet.has(`greatest_moment:${m.id}`)}
-                />
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {selected && <MomentModal item={selected} onClose={() => setSelected(null)} />}
-    </section>
+    </Wall>
   );
 }

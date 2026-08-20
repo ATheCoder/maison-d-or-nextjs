@@ -27,7 +27,7 @@ import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifi
 import { CSS as dndCSS } from '@dnd-kit/utilities';
 import { flagEmoji, resolveLocation } from '@/lib/countries';
 import { CONTINENTS } from '@/lib/daily-gold/edition';
-import { destinationSlot, heroSlot, newsSlot } from '@/lib/daily-gold/slots';
+import { destinationSlot, heroSlot, newsSlot, senseSlot, type SenseKind } from '@/lib/daily-gold/slots';
 import SlotOpener from './SlotOpener';
 import AskPanel, { type AskJob } from './AskPanel';
 import CandidateCard from './CandidateCard';
@@ -311,6 +311,17 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
   const destIso2 = draft.destination_country ? resolveLocation(draft.destination_country) : null;
   const destCity = (draft.destination_country ?? '').split(',')[0].trim();
   const sensoryFilled = [draft.taste_of_day, draft.sound_of_day, draft.nature_detail].filter((v) => v?.trim()).length;
+  // The four senses' paintings: which column holds the url, which key holds the
+  // scene, and the text the painting is of — so an opener can say "nothing
+  // written for this one yet" rather than offering to paint an empty slot.
+  const SENSE_ART: { kind: SenseKind; urlField: string; sceneKey: string; text: string | null | undefined }[] = [
+    { kind: 'taste', urlField: 'taste_image_url', sceneKey: 'sense:taste', text: draft.taste_of_day },
+    { kind: 'sound', urlField: 'sound_image_url', sceneKey: 'sense:sound', text: draft.sound_of_day },
+    { kind: 'nature', urlField: 'nature_image_url', sceneKey: 'sense:nature', text: draft.nature_detail },
+    { kind: 'phrase', urlField: 'phrase_image_url', sceneKey: 'sense:phrase', text: draft.tiny_phrase },
+  ];
+  const sensePainted = SENSE_ART.filter(({ urlField }) =>
+    (e as Record<string, string | null> | null)?.[urlField]?.trim()).length;
   const paragraphs = paragraphCount(draft.child_life_story ?? '');
   const publishedNews = day.news.filter((n) => n.published).length;
 
@@ -673,6 +684,43 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
                   The block a family sees. An empty field is an em-dash, not a missing card.
                 </span>
               </div>
+            </div>
+          </div>
+
+          {/* The four senses' paintings. They hang as four small SQUARE works
+              beside the destination's own on the reader's destination wall, so
+              an unpainted one is a label plate rather than a picture — which is
+              why this block is a set of openers and not a warning. Every day
+              authored before these columns existed has four empty ones. */}
+          <div className="fgroup" id="sec-sense-art">
+            <div className="flbl">
+              <span className="kick">The four paintings</span>
+              <span className={`chip ${sensePainted === 4 ? 'chip-green' : 'chip-amber'}`}>
+                {sensePainted} / 4 painted
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
+              {SENSE_ART.map(({ kind, urlField, sceneKey, text }) => (
+                <div key={kind} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <SlotOpener
+                    slot={senseSlot(kind)}
+                    subject={subject}
+                    imageUrl={(e as Record<string, string | null> | null)?.[urlField] ?? null}
+                    scene={day.scenes[sceneKey] ?? ''}
+                    context={`Daily Gold · ${fmtDate(day.date)}`}
+                    emptyText={day.scenes[sceneKey] ? 'prompt written · not painted' : 'hangs as a label plate'}
+                    onChanged={() => { refresh(); loadJobs(); }}
+                  />
+                  {!text?.trim() && (
+                    <span className="note">Nothing written for this one yet — paint it after the words.</span>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="note">
+              Cropped to a square and hung about 200&nbsp;px across, so one close object each — the dish, the
+              thing that makes the sound, the plant, a homely object from where the phrase is said. Never
+              lettering: the tiny phrase&rsquo;s painting is not the word written down.
             </div>
           </div>
 

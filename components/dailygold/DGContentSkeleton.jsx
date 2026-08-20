@@ -45,7 +45,16 @@ export const SKELETON_CSS = `
   @keyframes dgSkelSweep { to { transform: translateX(100%); } }
 `;
 
-/** A single shimmering block. `w` and `h` take any CSS length. */
+/**
+ * A single shimmering block.
+ *
+ * @param {{
+ *   w?: string | number,
+ *   h?: string | number,
+ *   radius?: string | number,
+ *   style?: import('react').CSSProperties,
+ * }} props
+ */
 export function Bar({ w = '100%', h = 14, radius = 10, style }) {
   return <div className="dg-skel" style={{ width: w, height: h, borderRadius: radius, ...style }} />;
 }

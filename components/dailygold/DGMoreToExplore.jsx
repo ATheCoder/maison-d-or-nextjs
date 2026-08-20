@@ -1,120 +1,69 @@
-// @ts-nocheck — untyped .jsx from before checkJs was on; 2 errors to clear.
-// This line is the backlog entry (tsconfig.json explains the ratchet): fix the
-// file, delete the marker. Do not add one to a new file.
 'use client';
-import DGCard from '@/components/dailygold/DGCard';
-import DGHeroImage from '@/components/dailygold/DGHeroImage';
-import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
+/**
+ * DGMoreToExplore — the closed rooms: parts of the Maison that have not opened
+ * yet, hung dimmed rather than dressed up as cards.
+ *
+ * Brightness and a scrim say "not open" more plainly than a "coming soon"
+ * eyebrow on a fully lit card does — and, unlike a card, a dimmed work cannot
+ * be mistaken for something to press. The dimming is in GALLERY_CSS because it
+ * has to invert: a closed room fades TOWARDS the wall, which on the five lit
+ * grounds means brighter, not darker.
+ *
+ * These destinations are not routes yet: /escapes, /academy and /recipes do
+ * not exist in app/. `path` and `prompt` stay as authored intent for the day
+ * they do.
+ */
+import Wall from '@/components/dailygold/gallery/Wall';
+import Work from '@/components/dailygold/gallery/Work';
+import Label from '@/components/dailygold/gallery/Label';
 
 // The real Daily Gold house style. Nothing here renders any more — it is kept
 // as the source of truth for lib/daily-gold/prompts.ts, which harvests it, and
-// for the per-card scene text below it.
+// for the per-room scene text below it.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const MASTER_STYLE = "Fine art oil painting, luminous and painterly, in the style of a luxurious illustrated storybook. Rich warm natural light, soft visible brushstrokes, depth and atmosphere, golden hour glow. Warm cream, gold, sage, and earth tones. Elegant, serene, emotionally warm, museum-quality illustration. Soft focus background, beautiful composition. NOT flat, NOT cartoon, NOT vector, NOT simple graphic art. Oil on canvas texture, fine detail, painterly realism with a dreamy quality. No text, no watermarks, no logos.";
 
-// These destinations are not routes yet: /escapes, /academy and /recipes do
-// not exist in app/. The cards render as a quiet "coming soon" editorial band
-// (no click affordance) until their pages ship. `path` and `prompt` stay as
-// authored intent for that day.
-const EXPLORE_CARDS = [
+const CLOSED_ROOMS = [
   {
     label: 'Golden Escapes',
-    description: 'Dream destinations for curious hearts.',
+    description: 'Dream destinations for curious hearts',
     path: '/escapes',
     prompt: `A child looking at a glowing world map with golden compass, warm adventure atmosphere`,
     image_url: null,
   },
   {
     label: 'Languages',
-    description: 'One word a day opens a new world.',
+    description: 'One word a day opens a new world',
     path: '/academy',
     prompt: `Beautiful handwritten letters and ink, warm golden light, book pages, magical atmosphere`,
     image_url: null,
   },
   {
     label: 'Recipes',
-    description: 'Taste the world together.',
+    description: 'Taste the world together',
     path: '/recipes',
     prompt: `Beautiful Mediterranean food spread, warm colours, golden light, painterly style`,
     image_url: null,
   },
 ];
 
-function ExploreCard({ card }) {
-  // The card's painting, when it has one. Rendering is all this does: the
-  // reader never calls a model (D5), so a card with no image_url keeps its
-  // placeholder gradient until one is authored in the admin.
-  const imgUrl = card.image_url;
-
-  return (
-    <DGCard
-      borderAlpha="24"
-      style={{
-        position: 'relative',
-        overflow: 'hidden',
-        aspectRatio: '16 / 11',
-      }}
-    >
-      {/* Scrim from 0%: this card's wash covers the whole painting, so the
-          label block at its foot reads without a caption plate. */}
-      <DGHeroImage
-        imageUrl={imgUrl}
-        aspectRatio="16 / 11"
-        scrimFrom={0}
-        fallback={
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: 'radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--accent) 8%, transparent) 0%, transparent 70%)',
-          }} />
-        }
-      />
-
-      {/* Accent thread */}
-      <div aria-hidden="true" style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-        background: 'linear-gradient(to right, transparent, var(--accent), transparent)',
-        opacity: 0.6,
-      }} />
-
-      <div style={{ position: 'absolute', bottom: '1.5rem', left: '1.5rem', right: '1.5rem' }}>
-        <DGEyebrow tracking="tight" color="var(--accent-readable)" style={{ margin: '0 0 0.4rem' }}>
-          Coming soon
-        </DGEyebrow>
-        <h3 className="type-display-story" style={{ color: 'var(--accent-readable)', margin: '0 0 0.4rem' }}>
-          {card.label}
-        </h3>
-        <p className="type-caption" style={{ margin: 0 }}>
-          {card.description}
-        </p>
-      </div>
-    </DGCard>
-  );
-}
-
 export default function DGMoreToExplore() {
   return (
-    <section style={{ padding: '5rem clamp(1.5rem, 5vw, 4rem)', background: 'linear-gradient(to bottom, var(--surface-page), var(--surface-tint))' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <DGEyebrow tracking="wide" color="var(--accent-readable)" style={{ margin: '0 0 0.75rem', textAlign: 'center' }}>
-          Coming soon to the journey
-        </DGEyebrow>
-        <h2 className="type-display-section" style={{ color: 'var(--accent)', margin: '0 0 0.75rem', textAlign: 'center' }}>
-          More to Explore
-        </h2>
-        <p className="type-body" style={{ color: 'var(--text-secondary)', margin: '0 0 3rem', textAlign: 'center' }}>
-          New rooms of the Maison, opening their doors soon.
-        </p>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
-          gap: '1.5rem',
-        }}>
-          {EXPLORE_CARDS.map((card, i) => (
-            <ExploreCard key={i} card={card} />
-          ))}
-        </div>
+    <Wall
+      eyebrow="Coming soon to the journey"
+      title="Rooms not yet open"
+      lede="Dimmed rather than removed, and not doors. New rooms of the Maison, opening soon."
+    >
+      <div className="gl-closed">
+        {CLOSED_ROOMS.map((room) => (
+          <div className="gl-cw" key={room.path}>
+            {/* No href, no onClick: a closed room is not a door, so the frame
+                is not a control. */}
+            <Work aspect="4 / 3" imageUrl={room.image_url} />
+            <Label title={room.label} subtitle={room.description} meta="Coming soon" />
+          </div>
+        ))}
       </div>
-    </section>
+    </Wall>
   );
 }

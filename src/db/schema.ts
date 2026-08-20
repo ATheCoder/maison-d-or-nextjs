@@ -562,6 +562,25 @@ export const dailyGoldEdition = pgTable('daily_gold_edition', {
   tinyPhraseLanguage: text('tiny_phrase_language'),
   tinyPhraseTranslation: text('tiny_phrase_translation'),
 
+  // The four senses each got a painting when the reader became a gallery: the
+  // destination wall hangs them as four small works beside the destination's
+  // own, and four text plates on a wall of paintings is a wall with a corner
+  // missing. Same scene/url pair as the two edition-level slots above, for the
+  // same reason — the editable half of the prompt is stored, so a text-only
+  // ask leaves the slot empty *with something to paint from*.
+  //
+  // Nullable, and expected to be null for a long time: every day authored
+  // before this column existed has four unpainted senses, and the wall hangs
+  // those as label plates rather than as holes.
+  tasteImageUrl: text('taste_image_url'),
+  tasteScene: text('taste_scene'),
+  soundImageUrl: text('sound_image_url'),
+  soundScene: text('sound_scene'),
+  natureImageUrl: text('nature_image_url'),
+  natureScene: text('nature_scene'),
+  phraseImageUrl: text('phrase_image_url'),
+  phraseScene: text('phrase_scene'),
+
   // The <DGInspirationBar> quote. Left null the bar rotates its own curated set,
   // so a day without one still reads finished.
   dailyQuote: text('daily_quote'),

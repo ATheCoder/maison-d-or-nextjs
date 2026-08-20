@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Chip, Prose } from '@/components/ds';
 
 /**
  * §5.6 — WCAG contrast for every text/surface pair in use, measured, not
@@ -191,19 +192,19 @@ export default function ContrastTable() {
                       {/* Scoped wrapper so the vars resolve to this tbody's
                           surface, not the page's — light needs no attribute. */}
                       <span aria-hidden data-surface={scope === 'light' ? undefined : scope} className="inline-block">
-                        <span
-                          className="type-body-ui inline-flex h-8 min-w-14 items-center justify-center rounded-sm border border-fine px-3"
+                        <Chip
+                          className="h-8 min-w-14 justify-center"
                           style={{ backgroundColor: `var(${pair.bg})`, color: `var(${pair.fg})` }}
                         >
                           {pair.fg === '--heart-saved' ? '♥' : 'Aa'}
-                        </span>
+                        </Chip>
                       </span>
                     </td>
                     <td className="type-caption py-2.5 pr-4">{pair.use}</td>
-                    <td className="type-body-ui py-2.5 pr-4 text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    <td className="type-body-ui py-2.5 pr-4 text-primary tabular-nums">
                       {r != null ? `${r.toFixed(2)} : 1` : '—'}
                     </td>
-                    <td className="type-body-ui py-2.5 pr-4 text-secondary" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    <td className="type-body-ui py-2.5 pr-4 text-secondary tabular-nums">
                       {pair.floor > 0 ? `${pair.floor.toFixed(1)} : 1` : '—'}
                     </td>
                     <td
@@ -218,14 +219,14 @@ export default function ContrastTable() {
           ))}
         </table>
       </div>
-      <p className="type-caption mt-4 max-w-[38rem]">
+      <Prose variant="caption" className="mt-4">
         Each pair is graded against its own floor: 4.5:1 for body and all functional small
         text, 3.0:1 for metadata and non-text glyphs (WCAG 1.4.11). text-faint never carries
         information a visitor genuinely needs. Decorative rows — bare gold and the family
         mid-tones — have no floor and may never carry meaning: anything functional at small
         sizes wears accent-readable, and links are underlined so colour is never their only
         marker.
-      </p>
+      </Prose>
     </div>
   );
 }

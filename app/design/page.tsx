@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
-import Eyebrow from '@/components/ds/Eyebrow';
-import Rule from '@/components/ds/Rule';
+import { Container, Eyebrow, Heading, PageSection, Prose, Rule } from '@/components/ds';
 import ContrastTable from './ContrastTable';
 import Foundations from './Foundations';
 import GrainToggle from './GrainToggle';
@@ -25,126 +23,81 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/**
- * Headings render as role="heading" on <p>, not <h*>: the legacy unlayered
- * h1–h6 rules in globals.css (Playfair, 0.08em tracking, --brown ink) beat
- * the layered type-* utilities on real heading tags, and this page exists to
- * show the tokens exactly. Same document outline, exact rendering.
- */
-function Heading({ level, className, children }: { level: number; className: string; children: ReactNode }) {
-  return (
-    <p role="heading" aria-level={level} className={className}>
-      {children}
-    </p>
-  );
-}
-
-function Section({
-  number,
-  title,
-  lede,
-  children,
-  bleed = false,
-}: {
-  number: string;
-  title: string;
-  lede: string;
-  children: ReactNode;
-  bleed?: boolean;
-}) {
-  return (
-    <section className="pt-16">
-      <div className="mx-auto max-w-5xl px-6">
-        <Eyebrow>{`${number} · ${title}`}</Eyebrow>
-        <p className="type-body mt-4 mb-8 max-w-[38rem] text-secondary">{lede}</p>
-      </div>
-      {bleed ? children : <div className="mx-auto max-w-5xl px-6">{children}</div>}
-    </section>
-  );
-}
-
 export default function DesignPage() {
   return (
     <main className="min-h-screen bg-surface-page pb-24 text-primary">
-      <header className="mx-auto max-w-5xl px-6 pt-20 pb-4">
+      <Container as="header" className="pt-20 pb-4">
         <Eyebrow>Maison d&rsquo;Or&eacute; &middot; Phase one</Eyebrow>
-        <Heading level={1} className="type-display-hero mt-6 max-w-[16em] text-primary">
+        <Heading level={1} className="mt-6 max-w-[16em]">
           The design system, laid on the table.
         </Heading>
-        <p className="type-body mt-6 max-w-[38rem] text-secondary">
+        <Prose className="mt-6">
           Tokens, typography, texture and the base primitives — everything Phase 1
           ships, on one page, on every surface: the warm light grounds the Maison
           breathes through, the four soft atmospheres, and the two cinematic
           interludes. Values are tuned by eye here first (in globals.css), then
           adopted by the rooms in later phases.
-        </p>
+        </Prose>
         <Rule ornament className="mt-12" />
-      </header>
+      </Container>
 
-      <Section
-        number="01"
-        title="Raw palette"
+      <PageSection
+        eyebrow="01 · Raw palette"
         lede="The full palette with name and hex, read live from the stylesheet — tune a value in globals.css and this page tells the truth about it."
       >
         <Swatches />
-      </Section>
+      </PageSection>
 
-      <Section
-        number="02"
-        title="Semantic tokens"
+      <PageSection
+        eyebrow="02 · Semantic tokens"
         lede="The same markup once per surface; only data-surface changes. Text, accent and borders re-scope themselves — no per-component logic anywhere."
       >
         <SemanticTokens />
-      </Section>
+      </PageSection>
 
-      <Section
-        number="03"
-        title="Type scale"
+      <PageSection
+        eyebrow="03 · Type scale"
         lede="Eight tokens, real copy. Squint test: hero, section, body and label must be unmistakably different in grayscale."
       >
         <TypeSpecimen />
-      </Section>
+      </PageSection>
 
-      <Section
-        number="04"
-        title="Texture"
+      <PageSection
+        eyebrow="04 · Texture"
         lede="Paper grain on trial. It should be invisible as an effect — you only notice it when it leaves."
       >
         <GrainToggle />
-      </Section>
+      </PageSection>
 
-      <Section
-        number="05"
-        title="Primitives"
+      <PageSection
+        eyebrow="05 · Primitives"
         lede="Eyebrow, Button, Field, TextLink, Rule, SectionSurface, Quote and the heart — every variant, stamped once per surface, and every stamp a full environment: parchment, then sage for the garden, rose for the family, lavender for the evening, periwinkle for the sky, then the two cinematic interludes. One dominant atmospheric accent per section; gold keeps meaning action and errors keep their terracotta (rose on the interludes) in every room. Sections butt with the fine rule; no shadows between them."
         bleed
       >
         <PrimitivesShowcase />
-      </Section>
+      </PageSection>
 
-      <Section
-        number="06"
-        title="Foundations"
+      <PageSection
+        eyebrow="06 · Foundations"
         lede="Rules the primitives already obey, written down: the radius steps, the dress of a link, and the house timing — including what remains when a visitor asks for reduced motion. Radius values are read live from the stylesheet; the motion is demonstrated by the primitives themselves."
       >
         <Foundations />
-      </Section>
+      </PageSection>
 
-      <Section
-        number="07"
-        title="Contrast"
+      <PageSection
+        eyebrow="07 · Contrast"
         lede="Every text/surface pair in use, measured in this browser against its own WCAG floor — 4.5:1 for body and functional text, 3:1 for metadata and non-text. Nothing ships below its floor."
       >
         <ContrastTable />
-      </Section>
+      </PageSection>
 
-      <footer className="mx-auto max-w-5xl px-6 pt-16">
+      <Container as="footer" className="pt-16">
         <Rule variant="accent" />
-        <p className="type-caption mt-4">
+        <Prose variant="caption" measure={false} className="mt-4">
           Phase 1 approval artifact &middot; docs/DesignSystemP1.md &middot; hex values live in
           app/globals.css and are expected to be tuned here by eye.
-        </p>
-      </footer>
+        </Prose>
+      </Container>
     </main>
   );
 }

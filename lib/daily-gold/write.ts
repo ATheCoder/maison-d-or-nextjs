@@ -200,6 +200,10 @@ export const DAY_DRAFT_SCHEMA = obj({
   tiny_phrase_translation: str,
   hero_scene: str,
   destination_scene: str,
+  taste_scene: str,
+  sound_scene: str,
+  nature_scene: str,
+  phrase_scene: str,
 });
 
 export type DayDraft = {
@@ -215,6 +219,10 @@ export type DayDraft = {
   tiny_phrase_translation: string;
   hero_scene: string;
   destination_scene: string;
+  taste_scene: string;
+  sound_scene: string;
+  nature_scene: string;
+  phrase_scene: string;
 };
 
 const CONTINENT_LIST = 'Africa, Asia, Europe, North America, South America, Oceania, Antarctica';
@@ -253,8 +261,12 @@ Fields:
 - tiny_phrase: ${DG_FIELDS.tiny_phrase.guidance}
 - tiny_phrase_language: the language that phrase is in, in English, e.g. "Portuguese". It must be a language genuinely spoken at the destination you chose.
 - tiny_phrase_translation: what it means in English, e.g. "Thank you". The phrase and its translation are a factual claim — use a phrase you are certain of.
-- hero_scene: a SUBJECT description for the masthead painting. One or two sentences of concrete nouns describing a wide, calm view of this place. No style words (no "oil painting", "warm light") — a fixed style block is added separately. No text or lettering in the scene.
-- destination_scene: a SUBJECT description for the destination card painting: the place itself, a street, coastline or building, with the subject slightly below centre. Same rules — no style words, no text.
+- hero_scene: a SUBJECT description for the entrance painting, which hangs whole across the top of the page. One or two sentences of concrete nouns describing a wide, calm view of this place, with everything that matters near the middle — it is cropped to a letterbox on a wide screen and to an upright on a phone. No style words (no "oil painting", "warm light") — a fixed style block is added separately. No text or lettering in the scene.
+- destination_scene: a SUBJECT description for the destination's own painting, hung as the largest work on its wall: the place itself, a street, coastline or building, filling the frame. Same rules — no style words, no text.
+- taste_scene: a SUBJECT description for a small SQUARE painting of the taste of the day — the dish or drink itself, close up, one object on a simple background, nothing at the edges of the frame. Same rules.
+- sound_scene: the same, for the sound of the day. A sound has no picture, so name the THING that makes it — the tram, the bell, the bamboo, the bird — as one close object, not as a scene. Same rules.
+- nature_scene: the same, for the nature detail. The plant, animal or piece of weather itself, close up. Same rules.
+- phrase_scene: the same, for the tiny phrase. Not the word written down — there is no lettering in these paintings — but one homely object from the place where a child would hear it said. Same rules.
 
 "THIS DESTINATION" above means the one place you name in destination_country, and nowhere else in the world. The taste, the sound, the nature detail and the tiny phrase are what make this edition feel like that place rather than any other, so all four must be specifically true of it: a food eaten there, a sound heard there, something that grows or lives there, a phrase spoken there. If you cannot name a real one for the place you picked, pick a place you know well enough to.`,
     schema: DAY_DRAFT_SCHEMA,

@@ -75,15 +75,12 @@ export default function TypeSpecimen() {
         <p className="type-caption mb-3">
           numerals <span className="text-faint">— Fraunces oldstyle (decorative) vs tabular (aligned data)</span>
         </p>
-        <p
-          className="type-display-story text-primary"
-          style={{ fontVariantNumeric: 'oldstyle-nums' }}
-        >
+        <p className="type-display-story text-primary oldstyle-nums">
           Born on 14 March 1879 · 226 countries · 365 mornings
         </p>
         <div
-          className="type-body-ui mt-3 max-w-56 text-secondary"
-          style={{ fontFamily: 'var(--face-display)', fontVariantNumeric: 'tabular-nums' }}
+          className="type-body-ui mt-3 max-w-56 text-secondary tabular-nums"
+          style={{ fontFamily: 'var(--face-display)' }}
         >
           <p className="flex justify-between"><span>Stories kept</span> <span>1,048</span></p>
           <p className="flex justify-between"><span>Flags raised</span> <span>87</span></p>

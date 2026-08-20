@@ -11,9 +11,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 import FlagSealMedallion from '@/components/dailygold/FlagSealMedallion';
-import DGCard from '@/components/dailygold/DGCard';
-import DGHeroImage from '@/components/dailygold/DGHeroImage';
-import DGSectionHeader, { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
+import Wall from '@/components/dailygold/gallery/Wall';
+import Work from '@/components/dailygold/gallery/Work';
+import Label from '@/components/dailygold/gallery/Label';
 import TreasuryHeart from '@/components/treasury/TreasuryHeart';
 import { resolveLocation } from '@/lib/countries';
 import type { OnThisDayRecord } from '@/app/(dg)/daily-gold-edition/queries';
@@ -233,130 +233,120 @@ export default function DGOnThisDay({
     }
   }, [yearEvents, onFlagEarned]);
 
-  return (
-    <section style={{ background: 'transparent', borderRadius: 0, overflow: 'visible' }}>
-      <div style={{ padding: '0' }}>
-        {/* Header — fixed height, matches sibling columns exactly */}
-        <DGSectionHeader eyebrow="Travel through time" title="On This Day" />
+  const lead = yearEvents[0];
+  const rest = yearEvents.slice(1);
 
-        {/* Card — year nav INSIDE, below the year heading */}
-        <DGCard size="small" style={{ overflow: 'hidden' }}>
-          {/* Year display + arrows — all inside the card */}
-          <div style={{ padding: '1rem 1.25rem 0.75rem', borderBottom: '1px solid var(--border-fine)' }}>
-            {/* lineHeight 1 kept: the numeral sets the header band's height */}
-            <p className="type-display-section" style={{ color: 'var(--accent)', margin: '0 0 0.1rem', lineHeight: 1, textAlign: 'center' }}>
-              {currentYear}
-            </p>
-            <p className="type-caption" style={{ color: 'var(--text-faint)', margin: '0 0 0.75rem', textAlign: 'center' }}>
-              {currentYear === MAX_YEAR ? 'Most recent year' : `${MAX_YEAR - currentYear} years ago`}
-            </p>
-            {/* Arrows below the year */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
-              <YearSeal
-                direction="back"
-                disabled={!canGoBack}
-                pressing={pressingYear === 'back'}
-                onPress={() => { setPressingYear('back'); setTimeout(() => setPressingYear(null), 110); goBackOneYear(); }}
-              />
-              <YearSeal
-                direction="forward"
-                disabled={!canGoForward}
-                pressing={pressingYear === 'forward'}
-                onPress={() => { setPressingYear('forward'); setTimeout(() => setPressingYear(null), 110); goForwardOneYear(); }}
-              />
-            </div>
-          </div>
+  // The two seals and the year line. They sit ABOVE the room rather than
+  // inside it: the hollow numeral is 212px tall and starts above its own
+  // room's top edge, so a nav inside the grid ends up printed across the
+  // digits — legible, but it reads as a collision rather than as layering.
+  // Shown whether or not the year holds anything, because an empty year is a
+  // place a child has travelled to and the way out is the pair of seals that
+  // got them there.
+  const nav = (
+    <div className="gl-year-nav">
+      <YearSeal
+        direction="back"
+        disabled={!canGoBack}
+        pressing={pressingYear === 'back'}
+        onPress={() => { setPressingYear('back'); setTimeout(() => setPressingYear(null), 110); goBackOneYear(); }}
+      />
+      <YearSeal
+        direction="forward"
+        disabled={!canGoForward}
+        pressing={pressingYear === 'forward'}
+        onPress={() => { setPressingYear('forward'); setTimeout(() => setPressingYear(null), 110); goForwardOneYear(); }}
+      />
+      <span className="n">
+        {currentYear} · {currentYear === MAX_YEAR ? 'most recent year' : `${MAX_YEAR - currentYear} years ago`}
+      </span>
+    </div>
+  );
 
-          {/* Content — every published event the year holds, in position order */}
-          {yearEvents.length > 0 ? (
-            yearEvents.map((ev, i) => {
-              const iso2 = ev.location ? resolveLocation(ev.location) : null;
-              return (
-                <div
-                  key={ev.id ?? `${ev.year}:${ev.position ?? i}`}
-                  style={{
-                    position: 'relative',
-                    ...(i > 0 ? { borderTop: '1px solid var(--border-fine)' } : null),
-                  }}
-                >
-                  {/* Treasury heart — top-right of the event block. When the
-                      event has no picture it floats over the text, so the copy
-                      below is padded clear of the 44px target. */}
-                  {savedSet && (
-                    <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 10 }}>
-                      <TreasuryHeart
-                        itemType="on_this_day"
-                        itemId={String(ev.id)}
-                        itemTitle={ev.headline}
-                        itemSubtitle={String(ev.year)}
-                        itemImageUrl={ev.image_url}
-                        countryCode={iso2}
-                        countryName={ev.location}
-                        editionDate={editionDate}
-                        initialSaved={savedSet.has(`on_this_day:${ev.id}`)}
-                      />
-                    </div>
-                  )}
-
-                  {ev.image_url && (
-                    <DGHeroImage imageUrl={ev.image_url} aspectRatio="16/10" scrimFrom={40} />
-                  )}
-
-                  <div style={{
-                    padding: '1rem 1.25rem 1.25rem',
-                    ...(savedSet && !ev.image_url ? { paddingRight: '3.25rem' } : null),
-                  }}>
-                    {ev.location && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.6rem' }}>
-                        {iso2 && <FlagSealMedallion countryCode={iso2} countryName={ev.location} size="xs" earned />}
-                        <DGEyebrow tracking="tight">
-                          {ev.location}
-                        </DGEyebrow>
-                      </div>
-                    )}
-
-                    <h3 className="type-display-story" style={{ color: 'var(--accent-readable)', margin: '0 0 0.6rem' }}>
-                      {ev.headline}
-                    </h3>
-
-                    <p className="type-caption" style={{ color: 'var(--text-primary)', margin: 0 }}>
-                      {ev.story}
-                    </p>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            /* An unauthored year is a designed state, not a gap. Offer the
-               nearest year that has something rather than an apology. */
-            <div style={{ padding: '2rem 1.25rem', textAlign: 'center' }}>
-              <p className="type-caption" style={{ margin: 0 }}>
-                Nothing from {currentYear} yet.
-              </p>
-              {nearestAuthoredYear != null && (
-                <button
-                  type="button"
-                  className="type-body-ui"
-                  onClick={() => jumpToYear(nearestAuthoredYear)}
-                  style={{
-                    marginTop: '0.9rem',
-                    padding: '0.5rem 1.1rem',
-                    minHeight: 44,
-                    borderRadius: 999,
-                    border: '1px solid var(--border-accent)',
-                    background: 'var(--surface-raised)',
-                    boxShadow: 'var(--shadow-card)',
-                    color: 'var(--accent-readable)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Travel to {nearestAuthoredYear} <span aria-hidden="true">→</span>
-                </button>
-              )}
-            </div>
-          )}
-        </DGCard>
+  const hung = (ev: OnThisDayRecord, isLead: boolean, i = 0) => {
+    const iso2 = ev.location ? resolveLocation(ev.location) : null;
+    return (
+      <div key={ev.id ?? `${ev.year}:${ev.position ?? 0}`} style={!isLead && i > 0 ? { marginTop: 44 } : undefined}>
+        <Work
+          aspect={isLead ? '16 / 10' : '4 / 3'}
+          imageUrl={ev.image_url}
+          seal={iso2 ? (
+            <FlagSealMedallion countryCode={iso2} countryName={ev.location || ''} size={isLead ? 'sm' : 'xs'} earned />
+          ) : undefined}
+          heart={savedSet ? (
+            <TreasuryHeart
+              itemType="on_this_day"
+              itemId={String(ev.id)}
+              itemTitle={ev.headline}
+              itemSubtitle={String(ev.year)}
+              itemImageUrl={ev.image_url}
+              countryCode={iso2}
+              countryName={ev.location}
+              editionDate={editionDate}
+              initialSaved={savedSet.has(`on_this_day:${ev.id}`)}
+              onImage
+            />
+          ) : undefined}
+        />
+        <Label
+          className="gl-year-lab"
+          size={isLead ? 'lead' : 'work'}
+          title={ev.headline}
+          meta={ev.location || undefined}
+          body={ev.story}
+        />
       </div>
-    </section>
+    );
+  };
+
+  return (
+    <Wall eyebrow="Travel through time" title="On This Day">
+      {/* The year, set enormous and hollow, behind the work. It replaces a
+          centred numeral in a bordered card head with something that actually
+          feels like travelling to a year. Absolutely positioned, so its ink
+          still counts towards the page's scrollable width — the max-width /
+          overflow pair in GALLERY_CSS is the guard that keeps a 260px numeral
+          from being the one thing on the page that reaches past the wall. */}
+      {nav}
+      <div className="gl-year-room">
+        {/* The hollow numeral is the year room's whole idea, so it is painted
+            only when there is a year to be standing in. Set 200px high around
+            an empty wall it decorates an absence, and its two dead seals end
+            up sitting inside the digits. */}
+        {lead && <span className="gl-ghost" aria-hidden="true">{currentYear}</span>}
+
+        {lead ? (
+          <div className="gl-year-grid">
+            <div>{hung(lead, true)}</div>
+            {/* Everything else the year holds, hung smaller beside it — rank by
+                size, as on every other wall here. A year holding one event
+                simply leaves the second column empty; the grid does not
+                stretch the first to fill it, because a 16:10 work at the full
+                wall is the entrance, not an event. */}
+            <div>{rest.map((ev, i) => hung(ev, false, i))}</div>
+          </div>
+        ) : (
+          /* An unauthored year is a designed state, not a gap. Offer the
+             nearest year that has something rather than an apology. */
+          <div className="gl-year-empty">
+            {/* Two states, and they are not the same absence: a year this date
+                simply has nothing in *yet*, with somewhere to travel to; and a
+                date with no travels recorded at all, where the seals lead
+                nowhere and saying "nothing from 2026" invites a press that
+                cannot answer. */}
+            {nearestAuthoredYear != null ? (
+              <>
+                <p>Nothing from {currentYear} yet.</p>
+                <button type="button" className="go" onClick={() => jumpToYear(nearestAuthoredYear)}>
+                  Travel to {nearestAuthoredYear} ›
+                </button>
+              </>
+            ) : (
+              <p>No year has been travelled to on this date yet.</p>
+            )}
+          </div>
+        )}
+      </div>
+    </Wall>
   );
 }

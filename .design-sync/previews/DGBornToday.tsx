@@ -1,12 +1,19 @@
+import type { ReactNode } from 'react';
 import DGBornToday from '@/components/dailygold/DGBornToday';
+import { GALLERY_CSS } from '@/components/dailygold/galleryCss';
 
-// The shelf of people born on this day. Each `person` is a remarkable-person
-// row. Rank is staged, not labelled: the first volume stands front-and-centre
-// on a podium under a cone of light, the second and third flank it angled
-// inward and set back in depth, and everyone else stands in a smaller, dimmer
-// row behind. Hovering any volume hands it the spotlight. It returns null on
-// an empty list, so every story supplies people. `Shelf` shows the full
-// diorama; `ShortShelf` exercises the two-volume podium with no back row.
+// The portrait wall: the people born on this date, hung flat at 3:4 with the
+// label — name, role, dates, country, the door — BENEATH the work rather than
+// stamped across it. This was a shelf of leather-bound volumes with the name
+// foil-stamped over the face; the four gradient washes that existed to keep
+// that foil legible are gone with it, and the portraits are visible for the
+// first time.
+//
+// Rank is the SIZE of the work: the first is hung double and given the wall's
+// corner. Below three works there is no lead at all — a doubled portrait on a
+// two-column wall reads as "only", not as "first" — which is what `ShortShelf`
+// exercises. A person with no `slug` has no story to open: that work hangs
+// quieter, wears no heart, and says so. Returns null on an empty list.
 
 const PORTRAIT = (a: string, b: string) =>
   'data:image/svg+xml;utf8,' +
@@ -89,10 +96,35 @@ const PEOPLE = [
   },
 ];
 
+/**
+ * The room a wall needs around it when it is shown on its own.
+ *
+ * GALLERY_CSS is emitted once by the edition page for the whole reading
+ * column, so a single wall lifted out of it has no frames, no hairlines and no
+ * label scale until it brings the stylesheet with it. `.gl` is the room those
+ * rules hang in.
+ */
+function Room({ children }: { children: ReactNode }) {
+  return (
+    <div className="gl" style={{ background: 'var(--surface-page)', paddingBottom: 24 }}>
+      <style>{GALLERY_CSS}</style>
+      {children}
+    </div>
+  );
+}
+
 export function Shelf() {
-  return <DGBornToday people={PEOPLE} editionDate="2026-07-27" />;
+  return (
+    <Room>
+      <DGBornToday people={PEOPLE} editionDate="2026-07-27" />
+    </Room>
+  );
 }
 
 export function ShortShelf() {
-  return <DGBornToday people={PEOPLE.slice(0, 2)} editionDate="2026-07-27" />;
+  return (
+    <Room>
+      <DGBornToday people={PEOPLE.slice(0, 2)} editionDate="2026-07-27" />
+    </Room>
+  );
 }

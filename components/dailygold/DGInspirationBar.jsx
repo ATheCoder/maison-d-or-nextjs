@@ -1,14 +1,20 @@
-// @ts-nocheck — untyped .jsx from before checkJs was on; 1 error to clear.
-// This line is the backlog entry (tsconfig.json explains the ratchet): fix the
-// file, delete the marker. Do not add one to a new file.
 'use client';
 /**
- * DGInspirationBar — Full-width warm quote band.
- * Uses rotating curated quotes until live quote data is wired in.
- * NOTE: Currently using a static rotating set of uplifting quotes.
- * Wire to a `daily_quote` field on DailyGoldEdition when ready.
+ * DGInspirationBar — the quiet room: the day's quote, and nothing else on the
+ * screen with it.
+ *
+ * It was a tinted full-width band with a gold gradient, two hairlines, a
+ * heading cluster, a sub-line, quotation ornaments and an attribution, all
+ * stacked at 2rem of padding. In the gallery it is a room a reader walks into:
+ * a great deal of air, the quote set as large as 62px in the display italic,
+ * and the attribution in small caps beneath. The band, the gradient and both
+ * hairlines are gone — a wall between two walls already has the only rule this
+ * page draws.
+ *
+ * NOTE: still falls back to a curated rotation when the edition authored no
+ * quote of its own. Wire the fallback out when `daily_quote` is reliably
+ * populated.
  */
-import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 
 const QUOTES = [
   { text: "The more that you read, the more things you will know. The more that you learn, the more places you'll go.", author: "Dr. Seuss" },
@@ -29,6 +35,7 @@ const QUOTES = [
 const DAY_OF_YEAR = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
 const FALLBACK_QUOTE = QUOTES[DAY_OF_YEAR % QUOTES.length];
 
+/** @param {{ edition?: { daily_quote?: string | null, daily_quote_author?: string | null } | null }} props */
 export default function DGInspirationBar({ edition }) {
   // Pick a quote: the edition's own if authored, otherwise the daily rotation.
   const quote = edition?.daily_quote
@@ -36,47 +43,11 @@ export default function DGInspirationBar({ edition }) {
     : FALLBACK_QUOTE;
 
   return (
-    <div style={{
-      background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent) 0%, color-mix(in srgb, var(--accent) 8%, transparent) 50%, color-mix(in srgb, var(--accent) 12%, transparent) 100%)',
-      borderTop: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
-      borderBottom: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
-      padding: '2rem clamp(1.5rem, 6vw, 5rem)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      textAlign: 'center',
-      gap: '0.75rem',
-    }}>
-      {/* Heading cluster */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
-        <div aria-hidden="true" style={{ width: 40, height: 1, background: 'color-mix(in srgb, var(--accent) 50%, transparent)' }} />
-        <DGEyebrow tracking="hero" color="var(--accent-readable)">
-          Daily Dose of Inspiration
-        </DGEyebrow>
-        <div aria-hidden="true" style={{ width: 40, height: 1, background: 'color-mix(in srgb, var(--accent) 50%, transparent)' }} />
-      </div>
-
-      <p className="type-caption" style={{ margin: '0 0 0.5rem' }}>
-        A quote, a reminder, a spark for your day
-      </p>
-
-      {/* Quote */}
-      <blockquote className="type-quote" style={{
-        color: 'var(--accent-readable)',
-        maxWidth: 680,
-        margin: '0 auto',
-        padding: 0,
-        border: 'none',
-      }}>
-        <span aria-hidden="true">❝ </span>{quote.text}<span aria-hidden="true"> ❞</span>
-      </blockquote>
-
-      {/* Attribution */}
-      {quote.author && (
-        <DGEyebrow tracking="tight" color="var(--accent-readable)">
-          {quote.author}
-        </DGEyebrow>
-      )}
-    </div>
+    <section className="wall gl-quiet">
+      <small>Daily dose of inspiration</small>
+      <p className="q">&ldquo;{quote.text}&rdquo;</p>
+      {quote.author && <cite>{quote.author}</cite>}
+      <p>A quote, a reminder, a spark for your day</p>
+    </section>
   );
 }

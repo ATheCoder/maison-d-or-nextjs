@@ -8,7 +8,6 @@
  * Press animation: stamp-down + page-turn rotateY flip to new date.
  */
 import { useState, useCallback, useOptimistic, useTransition } from 'react';
-import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import { useInstrumentation } from '@/components/dailygold/instrumentation/DGInstrumentationProvider';
 
 // SVG seal face — vintage engraved arrow as the clear primary mark,
@@ -74,8 +73,8 @@ function WaxSeal({ direction, disabled, onPress, pressing, ariaLabel }) {
       disabled={disabled}
       aria-label={ariaLabel}
       style={{
-        width: 64,
-        height: 64,
+        width: 48,
+        height: 48,
         borderRadius: '50%',
         background: disabled
           ? `radial-gradient(circle at 35% 30%, #F0EAE0 0%, #E0D8CC 60%, #D4CBBC 100%)`
@@ -192,31 +191,13 @@ export default function DGWaxSealNavigator({ currentDate, onDateChange, availabl
   const canGoForward = currentIndex < allDates.length - 1;
 
   return (
-    <div style={{
-      position: 'relative',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '1.25rem',
-      padding: '1.75rem 1.5rem 1.5rem',
-      // The hero above and the section below both sit on the page's own
-      // `bgPrimary`, so a flat `bgSoft` block reads as a pasted-on band with a
-      // hard seam at each edge. Fading the tint in from — and back out to —
-      // fully transparent `bgSoft` (the same hue at zero alpha, so no grey
-      // halo) lets the strip lift off the page instead of cutting into it.
-      // Every stop is theme-token derived, so it holds for all five themes.
-      background: 'linear-gradient(180deg, color-mix(in srgb, var(--surface-tint) 0%, transparent) 0%, color-mix(in srgb, var(--surface-tint) 35%, transparent) 20%, color-mix(in srgb, var(--surface-tint) 90%, transparent) 48%, color-mix(in srgb, var(--surface-tint) 90%, transparent) 72%, color-mix(in srgb, var(--surface-tint) 0%, transparent) 100%)',
-    }}>
-      {/* Divider rule — a gradient hairline that fades at both ends, rather
-          than a full-width border that would re-introduce a hard edge. */}
-      <div aria-hidden="true" style={{
-        position: 'absolute',
-        left: 0, right: 0, bottom: 0,
-        height: 1,
-        background: 'linear-gradient(to right, transparent, color-mix(in srgb, var(--accent) 20%, transparent) 25%, color-mix(in srgb, var(--accent) 20%, transparent) 75%, transparent)',
-        pointerEvents: 'none',
-      }} />
-      {/* Back seal */}
+    /* The turner, hung on the entrance label's own line: two seals, the date
+       between them, and nothing around it. It used to be a full-width tinted
+       band with its own fading hairline, because it sat between a masthead and
+       a section and had to bridge them. In the gallery it sits inside the
+       entrance, on the entrance's ground, under the rule the label already
+       draws — so the band, the gradient and the divider are all gone. */
+    <div className="gl-turn">
       <WaxSeal
         direction="back"
         disabled={!canGoBack || pending}
@@ -225,49 +206,29 @@ export default function DGWaxSealNavigator({ currentDate, onDateChange, availabl
         ariaLabel="Previous day"
       />
 
-      {/* Date display with page-turn flip */}
-      <div style={{
-        flex: 1,
-        maxWidth: 340,
-        textAlign: 'center',
-        perspective: '600px',
-      }}>
+      {/* The date, with the page-turn flip it has always had. */}
+      <div className="gl-turn-mid" style={{ perspective: '600px' }}>
         <div style={{
           transform: flipping ? `rotateY(${flipDir * 90}deg)` : 'rotateY(0deg)',
           transition: 'transform 0.2s ease-in-out',
           transformStyle: 'preserve-3d',
         }}>
-          <p className="type-body font-display italic" style={{
-            color: 'var(--text-primary)',
-            margin: 0,
-          }}>
-            {formatDisplayDate(displayDate)}
-          </p>
-          {pending && (
-            <DGEyebrow tracking="tight" color="var(--accent-readable)" style={{ margin: '0.25rem 0 0' }}>
-              Loading edition…
-            </DGEyebrow>
-          )}
+          <b>{formatDisplayDate(displayDate)}</b>
+          {/* Position in the archive. Counts days, not editions: a listed day
+              may have only Golden Stories and no edition row. Hidden on a day
+              that isn't in the list at all (today, before anything is
+              authored). The loading line takes its place while a day is on its
+              way, so the line never says two things at once. */}
+          <small>
+            {pending
+              ? 'Loading edition…'
+              : allDates.length > 1 && currentIndex < allDates.length
+                ? `Day ${currentIndex + 1} of ${allDates.length}`
+                : '\u00a0'}
+          </small>
         </div>
-
-        {/* Thin gold rule beneath date */}
-        <div aria-hidden="true" style={{
-          height: 1,
-          background: 'linear-gradient(to right, transparent, color-mix(in srgb, var(--accent) 31%, transparent), transparent)',
-          marginTop: '0.5rem',
-        }} />
-
-        {/* Position in the archive. Counts days, not editions: a listed day may
-            have only Golden Stories and no edition row. Hidden on a day that
-            isn't in the list at all (today, before anything is authored). */}
-        {allDates.length > 1 && currentIndex < allDates.length && (
-          <DGEyebrow tracking="wide" color="var(--text-secondary)" style={{ margin: '0.35rem 0 0' }}>
-            Day {currentIndex + 1} of {allDates.length}
-          </DGEyebrow>
-        )}
       </div>
 
-      {/* Forward seal */}
       <WaxSeal
         direction="forward"
         disabled={!canGoForward || pending}

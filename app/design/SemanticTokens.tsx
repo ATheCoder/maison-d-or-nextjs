@@ -1,4 +1,4 @@
-import Rule from '@/components/ds/Rule';
+import { Chip, Rule, Swatch } from '@/components/ds';
 
 /**
  * §5.2 — the semantic token set rendered once per surface scope, side by
@@ -29,10 +29,7 @@ function TokenColumn() {
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3">
         {SURFACE_CHIPS.map(({ token, className }) => (
-          <div key={token}>
-            <div className={`h-10 rounded-sm border border-fine ${className}`} />
-            <p className="type-caption mt-1">{token}</p>
-          </div>
+          <Swatch key={token} sampleClassName={className} height="sm" caption={token} />
         ))}
       </div>
 
@@ -58,9 +55,9 @@ function TokenColumn() {
       </div>
 
       <div>
-        <span className="type-body-ui inline-block rounded-sm border border-fine px-3 py-1.5 text-primary outline-2 outline-solid outline-offset-2 outline-focus-ring">
+        <Chip className="text-primary outline-2 outline-solid outline-offset-2 outline-focus-ring">
           focus-ring
-        </span>
+        </Chip>
       </div>
     </div>
   );

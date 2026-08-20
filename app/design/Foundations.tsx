@@ -1,9 +1,7 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import Button from '@/components/ds/Button';
-import HeartToggle from '@/components/ds/HeartToggle';
-import TextLink from '@/components/ds/TextLink';
+import { Button, Card, HeartToggle, Prose, Swatch, TextLink } from '@/components/ds';
 
 /**
  * §5 addendum — the decided third of the §7 foundations list, written down:
@@ -17,9 +15,9 @@ import TextLink from '@/components/ds/TextLink';
  * (globals.css §4) and must move with it.
  */
 const RADII = [
-  { token: 'radius-sm', className: 'rounded-sm', use: 'chips, swatches, small tags' },
-  { token: 'radius-md', className: 'rounded-md', use: 'buttons, fields, cards, asides' },
-  { token: 'radius-lg', className: 'rounded-lg', use: 'floating panels — reserved; nothing wears it yet' },
+  { token: 'radius-sm', radius: 'sm', use: 'chips, swatches, small tags' },
+  { token: 'radius-md', radius: 'md', use: 'buttons, fields, cards, asides' },
+  { token: 'radius-lg', radius: 'lg', use: 'floating panels — reserved; nothing wears it yet' },
 ] as const;
 
 const TIMING = [
@@ -65,55 +63,55 @@ export default function Foundations() {
     <div className="space-y-12">
       <div>
         <p className="type-body-ui text-primary">Border radius</p>
-        <p className="type-caption mt-1 mb-4 max-w-[38rem]">
+        <Prose variant="caption" className="mt-1 mb-4">
           Three steps, soft enough to feel hand-finished, never round enough to go
           friendly-app. Labelled buttons must not become pills; the only full circles
           are icon toggles like the heart, which have no label to stretch.
-        </p>
+        </Prose>
         <div className="grid gap-4 sm:grid-cols-3">
-          {RADII.map(({ token, className, use }) => (
-            <div key={token}>
-              <div className={`h-16 border border-fine bg-surface-raised ${className}`} />
-              <p className="type-body-ui mt-2 text-primary">{token}</p>
-              <p className="type-caption" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                {radius[token] ?? '…'} &middot; {use}
-              </p>
-            </div>
+          {RADII.map(({ token, radius: step, use }) => (
+            <Swatch
+              key={token}
+              sampleClassName="bg-surface-raised"
+              radius={step}
+              label={token}
+              caption={`${radius[token] ?? '…'} · ${use}`}
+            />
           ))}
         </div>
       </div>
 
       <div>
         <p className="type-body-ui text-primary">Links</p>
-        <p className="type-caption mt-1 mb-4 max-w-[38rem]">
+        <Prose variant="caption" className="mt-1 mb-4">
           One dress, worn by prose TextLink and the Button link variant alike. The
           underline is load-bearing — colour is never a link&rsquo;s only marker. The
           ink is the AA accent-readable token, so it re-scopes with the ground:
           gold-deep on the light surfaces, gold-bright on espresso and navy, the
           family&rsquo;s deep tone inside an atmosphere.
-        </p>
-        <div className="rounded-md border border-fine bg-surface-raised p-5">
-          <p className="type-body max-w-[38rem] text-secondary">
+        </Prose>
+        <Card>
+          <Prose>
             At rest a link is already underlined — like{' '}
             <TextLink href="#">this passage to the library</TextLink> — on hover the
             ink deepens to the reading ink and the line thickens, and keyboard focus
             draws the house ring. Visited stays unstyled: the Maison does not
             remember where you have been.
-          </p>
-        </div>
+          </Prose>
+        </Card>
       </div>
 
       <div>
         <p className="type-body-ui text-primary">Motion</p>
-        <p className="type-caption mt-1 mb-4 max-w-[38rem]">
+        <Prose variant="caption" className="mt-1 mb-4">
           The house choreography is asymmetric on purpose: quick to answer, unhurried
           to let go. Every moving thing shares the same ease.
-        </p>
+        </Prose>
         <div className="mb-5 grid gap-x-6 gap-y-2 sm:grid-cols-2">
           {TIMING.map(({ move, value, note }) => (
             <div key={move} className="flex items-baseline gap-3">
               <p className="type-body-ui w-14 shrink-0 text-primary">{move}</p>
-              <p className="type-caption" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              <p className="type-caption tabular-nums">
                 <span className="text-accent-readable">{value}</span> &middot; {note}
               </p>
             </div>
@@ -125,14 +123,14 @@ export default function Foundations() {
           <Button loading>Gathering wonder</Button>
           <HeartToggle variant="chip" aria-label="Save this" />
         </div>
-        <p className="type-caption mt-5 max-w-[38rem]">
+        <Prose variant="caption" className="mt-5">
           This browser is currently asking for{' '}
           <span className="text-primary">{reducedMotion ? 'reduced' : 'full'}</span>{' '}
           motion. Under reduced motion nothing goes dead — state changes still land,
           they just stop travelling: transitions collapse to 0s, the lift and press
           stop moving, the primary&rsquo;s sheen and the heart&rsquo;s burst are
           withheld, and the loading star stops turning and winks instead.
-        </p>
+        </Prose>
       </div>
     </div>
   );

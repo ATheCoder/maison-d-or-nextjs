@@ -490,6 +490,10 @@ export async function paintMissing(subject: DgSubject): Promise<{ ok: boolean; c
     const e = edition[0];
     if (e?.heroScene && !e.heroImageUrl) keys.push('hero');
     if (e?.destinationScene && !e.destinationImageUrl) keys.push('destination');
+    if (e?.tasteScene && !e.tasteImageUrl) keys.push('sense:taste');
+    if (e?.soundScene && !e.soundImageUrl) keys.push('sense:sound');
+    if (e?.natureScene && !e.natureImageUrl) keys.push('sense:nature');
+    if (e?.phraseScene && !e.phraseImageUrl) keys.push('sense:phrase');
     for (const n of news) if (n.imageScene && !n.imageUrl) keys.push(`news:${n.position}`);
   } else {
     const [events, moments] = await Promise.all([

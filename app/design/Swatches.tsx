@@ -1,6 +1,7 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
+import { Prose, Swatch } from '@/components/ds';
 
 /**
  * §5.1 — the raw palette as swatches, name + hex. The one place in app code
@@ -66,21 +67,19 @@ export default function Swatches() {
       {GROUPS.map((group) => (
         <div key={group.title}>
           <p className="type-body-ui text-primary">{group.title}</p>
-          <p className="type-caption mt-1 mb-4">{group.note}</p>
+          <Prose variant="caption" measure={false} className="mt-1 mb-4">
+            {group.note}
+          </Prose>
           {/* Triad groups hold three columns at every width, so each row
               reads as one family: pale → accent → deep. */}
           <div className={`grid gap-4 ${group.triads ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'}`}>
             {group.names.map((name) => (
-              <div key={name}>
-                <div
-                  className="h-16 rounded-sm border border-fine"
-                  style={{ backgroundColor: `var(--palette-${name})` }}
-                />
-                <p className="type-body-ui mt-2 text-primary">{name}</p>
-                <p className="type-caption" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {hex[name] ?? '…'}
-                </p>
-              </div>
+              <Swatch
+                key={name}
+                color={`var(--palette-${name})`}
+                label={name}
+                caption={hex[name] ?? '…'}
+              />
             ))}
           </div>
         </div>

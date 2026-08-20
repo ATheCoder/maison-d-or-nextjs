@@ -103,6 +103,30 @@ function TreatedPreview({ url, treatment, raw, title }: {
     return <div className="stage" style={{ background: '#fffdf8' }}><img src={url} alt="" /></div>;
   }
 
+  if (treatment.kind === 'frame') {
+    // The gallery hangs a painting whole inside a hairline frame, so the only
+    // thing that happens to it between the file and the wall is the crop —
+    // which is why this previews the crop and nothing else. Where a surface is
+    // hung at two shapes (the entrance is a letterbox on a desktop and an
+    // upright on a phone; the year room's lead is wider than its others) both
+    // are shown side by side, because a painting can survive one and not the
+    // other.
+    const shapes = treatment.aspectAlt ? [treatment.aspect, treatment.aspectAlt] : [treatment.aspect];
+    return (
+      <div className="stage" style={{ gap: 10, padding: 10 }}>
+        {shapes.map((aspect) => (
+          <div key={aspect} style={{
+            position: 'relative', height: '100%', aspectRatio: aspect,
+            border: '1px solid rgba(120,90,50,.45)', overflow: 'hidden', flex: '0 1 auto',
+          }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt="" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (treatment.kind === 'mask-wash') {
     return (
       <div className="stage">
@@ -252,7 +276,9 @@ export default function ImageModal({
     });
   };
 
-  const treatmentLabel = slot.treatment.kind === 'multiply' ? 'On the page' : 'As families see it';
+  const treatmentLabel = slot.treatment.kind === 'multiply'
+    ? 'On the page'
+    : slot.treatment.kind === 'frame' ? 'As it is hung' : 'As families see it';
 
   return (
     <div className="imodal-scrim" onClick={onClose}>

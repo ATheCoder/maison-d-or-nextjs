@@ -1,13 +1,20 @@
 import type { ReactNode } from 'react';
 import { THEME_KEYS, THEME_NAMES } from '@/lib/theme-keys';
-import Button from '@/components/ds/Button';
-import Eyebrow from '@/components/ds/Eyebrow';
-import Field from '@/components/ds/Field';
-import HeartToggle from '@/components/ds/HeartToggle';
-import Quote from '@/components/ds/Quote';
-import Rule from '@/components/ds/Rule';
-import SectionSurface from '@/components/ds/SectionSurface';
-import TextLink from '@/components/ds/TextLink';
+import {
+  Button,
+  Card,
+  Container,
+  Eyebrow,
+  Field,
+  HeartToggle,
+  Heading,
+  Prose,
+  Quote,
+  Rule,
+  SectionSurface,
+  TextLink,
+  ThemeDot,
+} from '@/components/ds';
 
 /**
  * §5.5 — all the primitives in all variants, stamped once per surface, and
@@ -187,17 +194,17 @@ const STORIES: Story[] = [
 
 function Specimen({ story }: { story: Story }) {
   return (
-    <div className="mx-auto max-w-3xl space-y-8 px-6">
+    <Container width="prose" className="space-y-8">
       <div className="flex flex-wrap items-end gap-10">
         <Eyebrow>{story.eyebrow}</Eyebrow>
         <Eyebrow rule={false}>Without the rule</Eyebrow>
       </div>
 
-      <p role="heading" aria-level={3} className="type-display-section letterpress text-primary">
+      <Heading level={3} variant="section" className="letterpress">
         {story.title}
-      </p>
+      </Heading>
 
-      <p className="type-body max-w-[38rem] text-secondary">{story.body}</p>
+      <Prose>{story.body}</Prose>
 
       <div className="flex flex-wrap items-center gap-4">
         <Button>{story.primary}</Button>
@@ -243,18 +250,20 @@ function Specimen({ story }: { story: Story }) {
         {/* The tinted aside — surface-tint as the ground's deeper wash: the
             family tint in the atmospheres, sand on parchment, a step into
             the dark on the interludes. */}
-        <div className="min-w-56 flex-1 rounded-md bg-surface-tint p-5">
-          <p className="type-body-ui text-primary">{story.aside}</p>
-        </div>
+        <Card tone="tint" className="min-w-56 flex-1">
+          <Prose variant="body-ui" tone="primary" measure={false}>
+            {story.aside}
+          </Prose>
+        </Card>
         {/* The raised card — surface-raised lifting toward ivory, with the
             heart proving the wax red holds its 3.0 floor here. */}
-        <div className="flex min-w-56 flex-1 items-center gap-4 rounded-md border border-fine bg-surface-raised p-5">
+        <Card className="flex min-w-56 flex-1 items-center gap-4">
           <HeartToggle variant="chip" aria-label="Save this" defaultPressed />
           <div>
             <p className="type-body-ui text-primary">{story.card.title}</p>
             <p className="type-caption text-faint">{story.card.caption}</p>
           </div>
-        </div>
+        </Card>
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
@@ -275,7 +284,7 @@ function Specimen({ story }: { story: Story }) {
         <Rule ornament />
         <Rule variant="accent" ornament={<span className="type-caption text-accent">{story.ornament}</span>} />
       </div>
-    </div>
+    </Container>
   );
 }
 
@@ -285,42 +294,31 @@ function Specimen({ story }: { story: Story }) {
    render their dots from. */
 function ThemeGallery() {
   return (
-    <div className="mx-auto max-w-3xl space-y-8 px-6">
+    <Container width="prose" className="space-y-8">
       <Eyebrow>The seven themes · page-wide scopes</Eyebrow>
-      <p className="type-body max-w-[38rem] text-secondary">
+      <Prose>
         A theme is one of the surface re-scopes applied to a whole page by{' '}
         <code>data-theme</code> — parchment is the house default (the bare-root
         tokens), and the other six share their declarations with the sections
         above, so what is measured there is what ships here.
-      </p>
+      </Prose>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {THEME_KEYS.map((key) => (
-          <div
-            key={key}
-            data-theme={key}
-            className="rounded-md border border-fine bg-surface-page p-5"
-          >
+          <Card key={key} data-theme={key} tone="page">
             <div className="flex items-center gap-3">
-              <span
-                aria-hidden
-                className="inline-block size-5 rounded-full border border-fine"
-                style={{ background: 'var(--theme-swatch)' }}
-              />
+              <ThemeDot theme={key} />
               <p className="type-body-ui text-primary">{THEME_NAMES[key]}</p>
             </div>
-            <div
-              className="mt-4 rounded-md bg-surface-raised p-4"
-              style={{ boxShadow: 'var(--shadow-card)' }}
-            >
+            <Card bordered={false} elevation="card" padding="sm" className="mt-4">
               <p className="type-caption text-accent-readable">{key}</p>
               <p className="type-body-ui text-primary">The raised card</p>
               <p className="type-caption text-faint">and its faint caption</p>
-            </div>
+            </Card>
             <Rule variant="accent" />
-          </div>
+          </Card>
         ))}
       </div>
-    </div>
+    </Container>
   );
 }
 

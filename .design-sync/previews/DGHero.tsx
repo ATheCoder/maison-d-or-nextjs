@@ -1,13 +1,24 @@
+import type { ReactNode } from 'react';
 import DGHero from '@/components/dailygold/DGHero';
+import { GALLERY_CSS } from '@/components/dailygold/galleryCss';
 
-// The edition masthead. `heroImageUrl` is the day's artwork; when the day has
-// no art the hero deliberately renders without it rather than borrowing
-// another day's — both states are real product behaviour, so both are stories.
+// The gallery's entrance: one painting, the day's name, and (in the real page)
+// the turner on the label's own line. `heroImageUrl` is the day's artwork —
+// falling back to the destination painting in the page, since no edition in the
+// corpus has a masthead painting of its own. When there is none at all the
+// entrance renders without it rather than borrowing another day's; both states
+// are real product behaviour, so both are stories.
 //
-// Note the hero overlays its art heavily (0.75 opacity + a radial mask + an
-// ~80%-opaque cream wash) to keep the title legible. Pale artwork disappears
-// under that, so hero art has to carry real contrast — as the painted
-// originals do. This stand-in is saturated for the same reason.
+// The masthead this replaced overlaid its art heavily — 0.75 opacity, a radial
+// mask and an ~80%-opaque cream wash — to keep a title legible on top of it.
+// None of that survives: the painting is now shown whole and the words hang
+// beneath it, except on espresso and navy, where they stand in a two-axis ramp
+// at the painting's foot. Which means WHERE the label sits is a function of the
+// reader's theme, and neither placement is visible in a preview that renders
+// the entrance on the default ground.
+//
+// The stand-in is still saturated, because the two dark grounds do ramp the
+// lower-left quadrant and pale art loses its bottom edge there.
 const ART =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(`
@@ -30,10 +41,34 @@ const ART =
   </g>
 </svg>`);
 
-export function WithArtwork() {
-  return <DGHero dateStr="Monday, 27 July 2026" heroImageUrl={ART} />;
+/** The room the entrance hangs in — see the note above GALLERY_CSS. */
+function Room({ children }: { children: ReactNode }) {
+  return (
+    <div className="gl" style={{ background: 'var(--surface-page)', paddingBottom: 24 }}>
+      <style>{GALLERY_CSS}</style>
+      {children}
+    </div>
+  );
 }
 
+export function WithArtwork() {
+  return (
+    <Room>
+      <DGHero
+        dateStr="Monday, 27 July 2026"
+        heroImageUrl={ART}
+        destinationName="Reykjavík, Iceland"
+        atmosphere="Steam drifts off the ground in the middle of a green field, and the light refuses to leave all summer."
+      />
+    </Room>
+  );
+}
+
+/** No painting, and no edition row behind it: the walls are bare, and say so. */
 export function WithoutArtwork() {
-  return <DGHero dateStr="Tuesday, 28 July 2026" />;
+  return (
+    <Room>
+      <DGHero dateStr="Tuesday, 28 July 2026" hasEdition={false} />
+    </Room>
+  );
 }

@@ -1,11 +1,16 @@
 import DGValuesStrip from '@/components/dailygold/DGValuesStrip';
+import { GALLERY_CSS } from '@/components/dailygold/galleryCss';
 
-// A fixed band of the Maison's four values. No props — the words are the
-// component. Shown on the page ground it actually sits on.
+// The five words the Maison is for, in gold caps at the tail of the gallery.
+// No props — the words are the component. It was a tinted band with a gradient
+// hairline between each word; on a gallery wall the words sit on the same
+// ground as everything else with nothing drawn around them, which is why this
+// story supplies the ground and GALLERY_CSS rather than a container.
 
 export function Values() {
   return (
-    <div style={{ background: 'var(--ivory)', padding: '2rem 0' }}>
+    <div className="gl" style={{ background: 'var(--surface-page)', padding: '2rem 0' }}>
+      <style>{GALLERY_CSS}</style>
       <DGValuesStrip />
     </div>
   );

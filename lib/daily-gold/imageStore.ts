@@ -33,11 +33,11 @@ import { renderImage } from '@/lib/golden-story/images';
 import { putImageAtKey, promoteToKey, deleteStorageObject } from '@/lib/golden-story/storage';
 import { createJob, failJob, deleteJob, jobsForSubject } from '@/lib/golden-story/jobs';
 import { buildPrompt, type DailyGoldPlacement } from './prompts';
-import { parseSlotKey, slotForKey, storageKeyFor, stagingKeyFor } from './slots';
+import { parseSlotKey, slotForKey, storageKeyFor, stagingKeyFor, SENSE_KINDS, type SenseKind } from './slots';
 
-// Size and quality are per-slot, not per-product: the three list surfaces show
-// their art small and under a gradient, so they render at 'low' and at a
-// smaller resolution than the masthead and destination. Both live on the slot
+// Size and quality are per-slot, not per-product: the list surfaces and the
+// four senses are hung small, so they render at 'low' and at a smaller
+// resolution than the masthead and destination. Both live on the slot
 // descriptor (lib/daily-gold/slots.ts) beside the other generation parameters.
 
 /** An edition (by date) or a month-day — never a person; their scenes are on the brief. */
@@ -51,6 +51,30 @@ function placementOf(slotKey: string): DailyGoldPlacement | null {
 
 // ── Scenes ───────────────────────────────────────────────────────────────────
 
+// The four senses' scene and url columns, keyed by sense. Written out rather
+// than built from the key, so a renamed column is a compile error here instead
+// of an undefined at write time.
+const SENSE_SCENE_COL = {
+  taste: dailyGoldEdition.tasteScene,
+  sound: dailyGoldEdition.soundScene,
+  nature: dailyGoldEdition.natureScene,
+  phrase: dailyGoldEdition.phraseScene,
+} as const;
+
+const senseSceneSet = (sense: SenseKind, value: string | null, now: Date) => ({
+  taste: { tasteScene: value, updatedAt: now },
+  sound: { soundScene: value, updatedAt: now },
+  nature: { natureScene: value, updatedAt: now },
+  phrase: { phraseScene: value, updatedAt: now },
+}[sense]);
+
+const senseUrlSet = (sense: SenseKind, url: string | null, now: Date) => ({
+  taste: { tasteImageUrl: url, updatedAt: now },
+  sound: { soundImageUrl: url, updatedAt: now },
+  nature: { natureImageUrl: url, updatedAt: now },
+  phrase: { phraseImageUrl: url, updatedAt: now },
+}[sense]);
+
 /**
  * Every stored scene for a subject, keyed by slot — what the editors hand the
  * modal so it can show the editable half of the prompt without another
@@ -62,7 +86,14 @@ export async function getScenes(subject: DgSubject): Promise<Record<string, stri
   if (subject.kind === 'edition') {
     const [edition, news] = await Promise.all([
       db
-        .select({ hero: dailyGoldEdition.heroScene, dest: dailyGoldEdition.destinationScene })
+        .select({
+          hero: dailyGoldEdition.heroScene,
+          dest: dailyGoldEdition.destinationScene,
+          taste: dailyGoldEdition.tasteScene,
+          sound: dailyGoldEdition.soundScene,
+          nature: dailyGoldEdition.natureScene,
+          phrase: dailyGoldEdition.phraseScene,
+        })
         .from(dailyGoldEdition)
         .where(eq(dailyGoldEdition.editionDate, subject.key))
         .limit(1),
@@ -73,6 +104,10 @@ export async function getScenes(subject: DgSubject): Promise<Record<string, stri
     ]);
     if (edition[0]?.hero) out.hero = edition[0].hero;
     if (edition[0]?.dest) out.destination = edition[0].dest;
+    for (const sense of SENSE_KINDS) {
+      const scene = edition[0]?.[sense];
+      if (scene) out[`sense:${sense}`] = scene;
+    }
     for (const n of news) if (n.scene) out[`news:${n.position}`] = n.scene;
     return out;
   }
@@ -135,6 +170,14 @@ export async function getScene(subject: DgSubject, slotKey: string): Promise<str
         .limit(1);
       return rows[0]?.scene ?? '';
     }
+    case 'sense': {
+      const rows = await db
+        .select({ scene: SENSE_SCENE_COL[parsed.sense] })
+        .from(dailyGoldEdition)
+        .where(eq(dailyGoldEdition.editionDate, subject.key))
+        .limit(1);
+      return rows[0]?.scene ?? '';
+    }
   }
 }
 
@@ -184,6 +227,14 @@ export async function saveDgScene(subject: DgSubject, slotKey: string, scene: st
         .set({ imageScene: value, updatedAt: now })
         .where(and(eq(greatestMoment.monthDay, subject.key), eq(greatestMoment.rank, parsed.rank)))
         .returning({ id: greatestMoment.id });
+      return r.length > 0;
+    }
+    case 'sense': {
+      const r = await db
+        .update(dailyGoldEdition)
+        .set(senseSceneSet(parsed.sense, value, now))
+        .where(eq(dailyGoldEdition.editionDate, subject.key))
+        .returning({ id: dailyGoldEdition.id });
       return r.length > 0;
     }
   }
@@ -246,6 +297,13 @@ export async function writeDgImageUrl(subject: DgSubject, slotKey: string, url: 
         .set({ imageUrl: url, updatedAt: now })
         .where(and(eq(greatestMoment.monthDay, subject.key), eq(greatestMoment.rank, parsed.rank)))
         .returning({ id: greatestMoment.id });
+      return r.length > 0;
+    }
+    case 'sense': {
+      const r = await db.update(dailyGoldEdition)
+        .set(senseUrlSet(parsed.sense, url, now))
+        .where(eq(dailyGoldEdition.editionDate, subject.key))
+        .returning({ id: dailyGoldEdition.id });
       return r.length > 0;
     }
   }

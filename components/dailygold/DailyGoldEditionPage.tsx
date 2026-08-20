@@ -12,6 +12,7 @@ import DGGreatestMoments from '@/components/dailygold/DGGreatestMoments';
 import DGWaxSealNavigator from '@/components/dailygold/DGWaxSealNavigator';
 import DGInspirationBar from '@/components/dailygold/DGInspirationBar';
 import FlagSealCelebration from '@/components/dailygold/FlagSealCelebration';
+import { GALLERY_CSS } from '@/components/dailygold/galleryCss';
 import { useFlagEarn } from '@/components/dailygold/useFlagEarn';
 import { TrackedSection } from '@/components/dailygold/instrumentation/TrackedSection';
 import { SignupInviteProvider } from '@/components/dailygold/SignupInvite';
@@ -28,7 +29,21 @@ import type {
 
 /**
  * PAGE — /daily-gold-edition
- * Daily Gold — Cinematic World Journey
+ * Daily Gold — The Gallery
+ *
+ * The day is hung as a gallery. The paintings are the page and every word is a
+ * label: small, precise, always *beneath* the work rather than printed over
+ * it. One wall per section, an enormous amount of air, and nothing that lifts,
+ * floats or glows — the art does the glowing. The reference drawing is
+ * `.design-sync/redesigns/06-gallery.html`; the geometry lives in GALLERY_CSS
+ * and the walls compose three primitives out of `gallery/` (Wall, Work,
+ * Label).
+ *
+ * The gallery is drawn dark in the mockup, because a gallery is dark so the
+ * pictures can be light. This page is not: it hangs on whichever of the seven
+ * [data-theme] grounds the reader chose, which is why every gold *glyph* on it
+ * is --accent-readable and why the closed rooms dim upward on the five lit
+ * grounds. GALLERY_CSS documents both rules and the measurements behind them.
  *
  * The viewed day lives in the URL, not in component state: today is the bare
  * route and every earlier day is `?date=YYYY-MM-DD`, so any day a reader turns
@@ -43,6 +58,8 @@ import type {
  * with every other rail destination, so that turning to another day rebuilds
  * only what is below. The layout contract
  * (navigation-redesign-spec §4/§7) is documented there and in NAV_SHELL_CSS.
+ * The gallery changed nothing about it: the mockup's 224px rail with its five
+ * routes, its identity block and its theme picker *is* the rail already there.
  */
 
 /**
@@ -96,13 +113,14 @@ function mapRecord(record: EditionRecord) {
       continent: record.continent,
       atmosphere: record.destination_description,
       image_url: record.destination_image_url || null,
-      taste_of_day: record.taste_of_day ? { name: record.taste_of_day } : null,
-      sound_of_day: record.sound_of_day ? { name: record.sound_of_day } : null,
-      nature_detail: record.nature_detail ? { name: record.nature_detail } : null,
+      taste_of_day: record.taste_of_day ? { name: record.taste_of_day, image_url: record.taste_image_url } : null,
+      sound_of_day: record.sound_of_day ? { name: record.sound_of_day, image_url: record.sound_image_url } : null,
+      nature_detail: record.nature_detail ? { name: record.nature_detail, image_url: record.nature_image_url } : null,
       tiny_phrase: record.tiny_phrase ? {
         word: record.tiny_phrase,
         translation: record.tiny_phrase_translation,
         language: record.tiny_phrase_language || null,
+        image_url: record.phrase_image_url,
       } : null,
       child_life: record.child_life || null,
     } : null,
@@ -114,24 +132,6 @@ function mapRecord(record: EditionRecord) {
   };
   return { edition, rawPost: { image_url: record.destination_image_url, id: record.id } };
 }
-
-/**
- * The day's own stylesheet. The navigation layout system it sits inside
- * (NAV_SHELL_CSS) belongs to the chrome and is emitted once by the layout —
- * only what is specific to the reading column lives here.
- */
-const PAGE_CSS = `
-  /* The three-section band: steps 3 → 2 → 1 columns on its own */
-  .dg-band {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
-    gap: clamp(1rem, 2vw, 1.5rem);
-    padding: clamp(1rem, 3vw, 1.5rem) clamp(1rem, 3vw, 2rem);
-    align-items: start;
-    border-top: 1px solid color-mix(in srgb, var(--dg-gold) 10%, transparent);
-    border-bottom: 1px solid color-mix(in srgb, var(--dg-gold) 10%, transparent);
-  }
-`;
 
 type DayContent = {
   date: string;
@@ -164,8 +164,9 @@ function DailyGoldDay({
 }) {
   const router = useRouter();
 
-  // Every section is the server's answer for `date`, so the masthead, the
-  // footer and the content can never disagree about which day this is.
+  // Every section is the server's answer for `date`, so the entrance, the
+  // footer and the walls between them can never disagree about which day this
+  // is.
   const viewedDate = date;
   const dateLabel = new Date(`${viewedDate}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -194,11 +195,11 @@ function DailyGoldDay({
     // The day's content, inside the <main> the chrome provides. The fade is
     // here rather than on <main> so it plays on each day the reader turns to,
     // not once when the chrome first mounts.
-    <div style={{ animation: 'dgFadeIn 0.4s ease-out' }}>
-      <style>{PAGE_CSS}</style>
+    <div className="gl" style={{ animation: 'dgFadeIn 0.4s ease-out' }}>
+      <style>{GALLERY_CSS}</style>
 
       {/* Who is holding the paper, not what is in it — so both sit above the
-          masthead and outside every tracked region. The signed-out bar is
+          entrance and outside every tracked region. The signed-out bar is
           full-bleed and sticky, so it lives directly in the flow; the flourish
           is a card, and its slot pads instead of the card carrying a top
           margin — a first-child margin would collapse out of the page and open
@@ -220,85 +221,82 @@ function DailyGoldDay({
         />
       )}
 
+      {/* ── the entrance ─────────────────────────────────────────────────
+          One painting, the day's name, and the turner on the label's own
+          line. The day navigator is chrome rather than reading, so it sits
+          inside the entrance but outside the tracked region — a child hunting
+          for yesterday's paper shouldn't bank dwell against the hero. */}
       <TrackedSection id="hero">
-        <DGHero dateStr={dateLabel} heroImageUrl={edition.images?.hero || rawPost?.image_url} />
+        <DGHero
+          dateStr={dateLabel}
+          heroImageUrl={edition.images?.hero || rawPost?.image_url}
+          destinationName={edition.destination?.name}
+          atmosphere={edition.destination?.atmosphere}
+          hasEdition={!!editionRecord}
+        >
+          <DGWaxSealNavigator
+            currentDate={viewedDate}
+            availableDates={dates}
+            onDateChange={handleDateChange}
+          />
+        </DGHero>
       </TrackedSection>
 
-      {/* The day navigator is chrome, not reading: it stays outside the tracked
-          regions so a child hunting for yesterday's paper doesn't bank dwell
-          against whatever section they happen to be over. */}
-      <DGWaxSealNavigator
-        currentDate={viewedDate}
-        availableDates={dates}
-        onDateChange={handleDateChange}
-      />
+      {/* ── the destination wall, and its four senses ── */}
+      <TrackedSection id="destination">
+        <DGDestination
+          dest={edition.destination}
+          imageUrl={rawPost?.image_url}
+          onFlagEarned={earn}
+          savedSet={savedSet}
+          editionDate={viewedDate}
+        />
+      </TrackedSection>
 
+      {/* ── the portrait wall ── */}
       <TrackedSection id="born_today">
         <DGBornToday people={people} savedSet={savedSet} editionDate={viewedDate} />
       </TrackedSection>
 
-      {/* Each wrapper below becomes the grid item `.dg-band` lays out — which
-          is why Good News is rendered conditionally rather than left to
-          return null from the inside: an empty wrapper is still an item, and
-          auto-fit would hold a third column open for it. */}
-      <div className="dg-band">
-        {goodNews.length > 0 && (
-          <TrackedSection id="good_news">
-            <DGGoodNews items={goodNews} onFlagEarned={earn} savedSet={savedSet} editionDate={viewedDate} />
-          </TrackedSection>
-        )}
-        {/* On This Day does not award flag seals for now: its locations are
-            wherever history happened, not places the child was taken, so a
-            twenty-year band handed out flags faster than every other surface
-            combined. The section still keeps its earning code — re-enable by
-            passing `onFlagEarned={earn}` again. */}
-        <TrackedSection id="on_this_day">
-          <DGOnThisDay events={onThisDay} savedSet={savedSet} editionDate={viewedDate} />
-        </TrackedSection>
-        <TrackedSection id="greatest_moments">
-          <DGGreatestMoments moments={greatestMoments} savedSet={savedSet} editionDate={viewedDate} />
-        </TrackedSection>
-      </div>
+      {/* ── the salon hang ── */}
+      <TrackedSection id="good_news">
+        <DGGoodNews items={goodNews} onFlagEarned={earn} savedSet={savedSet} editionDate={viewedDate} />
+      </TrackedSection>
 
+      {/* ── the year room ──
+          On This Day does not award flag seals for now: its locations are
+          wherever history happened, not places the child was taken, so a
+          twenty-year band handed out flags faster than every other surface
+          combined. The section still keeps its earning code — re-enable by
+          passing `onFlagEarned={earn}` again. */}
+      <TrackedSection id="on_this_day">
+        <DGOnThisDay events={onThisDay} savedSet={savedSet} editionDate={viewedDate} />
+      </TrackedSection>
+
+      {/* ── the ledger ── */}
+      <TrackedSection id="greatest_moments">
+        <DGGreatestMoments moments={greatestMoments} savedSet={savedSet} editionDate={viewedDate} />
+      </TrackedSection>
+
+      {/* ── the quiet room ── */}
       <TrackedSection id="inspiration">
         <DGInspirationBar edition={edition} />
       </TrackedSection>
 
-      <TrackedSection id="destination">
-        <div style={{ padding: '0.75rem clamp(1rem, 3vw, 2rem) 0.5rem' }}>
-          <DGDestination
-            dest={edition.destination}
-            imageUrl={rawPost?.image_url}
-            onFlagEarned={earn}
-            savedSet={savedSet}
-            editionDate={viewedDate}
-          />
-        </div>
-      </TrackedSection>
-
+      {/* ── the closed rooms ── */}
       <TrackedSection id="more_to_explore">
         <DGMoreToExplore />
       </TrackedSection>
+
+      {/* ── the way out: the five words, then the tail. Neither is a wall, so
+          neither takes the rule that separates one wall from the next. ── */}
       <TrackedSection id="values">
         <DGValuesStrip />
       </TrackedSection>
 
-      <footer style={{
-        padding: 'clamp(3rem, 6vw, 5rem) clamp(1.5rem, 5vw, 4rem)',
-        textAlign: 'center',
-      }}>
-        <p className="type-quote" style={{
-          color: 'var(--text-secondary)', margin: '0 auto 1rem', maxWidth: 600,
-        }}>
-          &ldquo;The more we learn about the world, the more we learn about ourselves.&rdquo;
-        </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center', marginTop: '1.5rem' }}>
-          <div aria-hidden="true" style={{ height: 1, width: 60, background: 'color-mix(in srgb, var(--accent) 30%, transparent)' }} />
-          <span className="type-caption font-display" style={{ color: 'var(--text-faint)' }}>
-            Daily Gold · {dateLabel}
-          </span>
-          <div aria-hidden="true" style={{ height: 1, width: 60, background: 'color-mix(in srgb, var(--accent) 30%, transparent)' }} />
-        </div>
+      <footer className="gl-foot">
+        <p>&ldquo;The more we learn about the world, the more we learn about ourselves.&rdquo;</p>
+        <small>Daily Gold · {dateLabel}</small>
       </footer>
     </div>
   );

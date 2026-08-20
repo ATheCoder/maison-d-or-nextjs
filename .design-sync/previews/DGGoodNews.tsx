@@ -1,8 +1,13 @@
+import type { ReactNode } from 'react';
 import DGGoodNews from '@/components/dailygold/DGGoodNews';
+import { GALLERY_CSS } from '@/components/dailygold/galleryCss';
 
-// `items` are good-news rows: headline, description, location, image_url.
-// The first item is the lead story and the rest become the secondary list,
-// so the story set sweeps one-item, several-item, and the null-render case.
+// The salon hang. `items` are good-news rows: headline, description, location,
+// image_url. The lead takes the wall's corner at double size with its excerpt;
+// the rest hang beside and beneath it in rows, so an eleventh story opens a new
+// row rather than an edge and nothing ever scrolls sideways. Below three
+// stories there is no lead — the works hang at equal size. The story set sweeps
+// one-item, several-item, and the null-render case.
 
 const ART = (a: string, b: string) =>
   'data:image/svg+xml;utf8,' +
@@ -38,10 +43,35 @@ const ITEMS = [
   },
 ];
 
+/**
+ * The room a wall needs around it when it is shown on its own.
+ *
+ * GALLERY_CSS is emitted once by the edition page for the whole reading
+ * column, so a single wall lifted out of it has no frames, no hairlines and no
+ * label scale until it brings the stylesheet with it. `.gl` is the room those
+ * rules hang in.
+ */
+function Room({ children }: { children: ReactNode }) {
+  return (
+    <div className="gl" style={{ background: 'var(--surface-page)', paddingBottom: 24 }}>
+      <style>{GALLERY_CSS}</style>
+      {children}
+    </div>
+  );
+}
+
 export function LeadAndMore() {
-  return <DGGoodNews items={ITEMS} />;
+  return (
+    <Room>
+      <DGGoodNews items={ITEMS} />
+    </Room>
+  );
 }
 
 export function SingleStory() {
-  return <DGGoodNews items={[ITEMS[0]]} />;
+  return (
+    <Room>
+      <DGGoodNews items={[ITEMS[0]]} />
+    </Room>
+  );
 }

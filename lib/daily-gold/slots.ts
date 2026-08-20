@@ -25,9 +25,18 @@ export type ImageQuality = 'auto' | 'low' | 'medium' | 'high';
  */
 export type SlotTreatment =
   | { kind: 'none' }
-  /** Radial mask + opacity + a cream wash — the masthead. */
+  /**
+   * Hung whole inside a hairline frame, cropped to the frame's aspect — every
+   * Daily Gold surface, since the reader became a gallery. `aspect` is the CSS
+   * the wall actually states, and `aspectAlt` the second one where a surface is
+   * hung at two shapes (the entrance is 21:9 on a desktop and 4:5 on a phone;
+   * the year room's lead is 16:10 and its others 4:3). What this previews is
+   * the ONE thing that can now go wrong with a painting: the crop.
+   */
+  | { kind: 'frame'; aspect: string; aspectAlt?: string }
+  /** Radial mask + opacity + a cream wash. Unworn since the gallery. */
   | { kind: 'mask-wash'; opacity: number; mask: string; wash: string }
-  /** A gradient fading the lower part of the frame into the page. */
+  /** A gradient fading the lower part of the frame into the page. Unworn since the gallery. */
   | { kind: 'bottom-gradient'; from: string; colour: string }
   /** Multiply onto parchment — Golden Story spot art. */
   | { kind: 'multiply'; paper: string };
@@ -66,18 +75,17 @@ export type SlotStatus = 'empty' | 'prompt-ready' | 'generating' | 'painted' | '
 
 // ── The reader's real treatments ─────────────────────────────────────────────
 // Lifted from the components so the modal's preview and the page agree by
-// construction: DGHero.jsx:188-201, DGDestination.jsx, DGGoodNews.jsx:75,
-// DGOnThisDay.jsx, DGGreatestMoments.jsx:59.
+// construction — components/dailygold/galleryCss.ts and the walls that wear it.
+//
+// Every one of these used to be a wash: a radial mask and a cream veil over the
+// masthead, and a bottom gradient fading the lower third of every card into the
+// page. The gallery hangs the label BENEATH the work, so there is no longer
+// anything to print over a painting and not one of those washes survives. What
+// is left is the crop, which is now the only thing that happens to a painting
+// between the file and the wall — and the only thing worth previewing.
 
-const HERO_TREATMENT: SlotTreatment = {
-  kind: 'mask-wash',
-  opacity: 0.75,
-  mask: 'radial-gradient(ellipse 100% 90% at 50% 50%, black 40%, transparent 100%)',
-  wash: 'linear-gradient(160deg, rgba(243,233,216,0.6) 0%, rgba(240,228,208,0.5) 40%, rgba(243,233,216,0.6) 100%)',
-};
-
-const gradient = (from: string, colour: string): SlotTreatment =>
-  ({ kind: 'bottom-gradient', from, colour });
+const frame = (aspect: string, aspectAlt?: string): SlotTreatment =>
+  ({ kind: 'frame', aspect, aspectAlt });
 
 // ── Size and quality ─────────────────────────────────────────────────────────
 // Landscape 3:2 everywhere: every Daily Gold surface is a wide card, and one
@@ -94,12 +102,14 @@ const gradient = (from: string, colour: string): SlotTreatment =>
 const LANDSCAPE = '1536x1024';
 
 /**
- * The three list surfaces. Their art is never shown large or unobscured: the
- * biggest is the good-news modal hero at 720×300 CSS px, and every one of them
- * renders under a gradient wash that fades the lower half into the page
- * (`gradient(...)` below) — so detail beyond ~1000px is paid for and thrown
- * away. This is the smallest exact-3:2 size the endpoint accepts, and still
- * 1.4× that widest slot.
+ * The list surfaces and the four senses. Their art is never shown across the
+ * whole wall: the largest is the salon's lead work at about 640 CSS px, and a
+ * sense is hung at roughly 200. This is the smallest exact-3:2 size the
+ * endpoint accepts, and still comfortably above every one of them.
+ *
+ * It was sized under the old design on the argument that a gradient wash threw
+ * half the detail away anyway. The washes are gone, so the argument is now
+ * simply display size — which lands in the same place.
  *
  * The rejection message calls it the *current* minimum pixel budget, so this
  * sits exactly on a floor that OpenAI can raise. If these three surfaces ever
@@ -118,7 +128,8 @@ export function heroSlot(): ImageSlot {
     quality: 'medium',
     style: STYLE,
     composition: COMPOSITION.hero,
-    treatment: HERO_TREATMENT,
+    // 21:9 across a desktop, 4:3 on a tablet, 4:5 on a phone.
+    treatment: frame('21 / 9', '4 / 5'),
     sceneSource: 'hero_scene',
     needsWhiteBackground: false,
   };
@@ -134,7 +145,7 @@ export function destinationSlot(): ImageSlot {
     quality: 'medium',
     style: STYLE,
     composition: COMPOSITION.destination,
-    treatment: gradient('55%', 'rgba(247,242,232,1)'),
+    treatment: frame('4 / 3'),
     sceneSource: 'destination_scene',
     needsWhiteBackground: false,
   };
@@ -151,7 +162,7 @@ export function newsSlot(position: number): ImageSlot {
     quality: 'low',
     style: STYLE,
     composition: COMPOSITION.news,
-    treatment: gradient('30%', 'rgba(247,242,232,0.87)'),
+    treatment: frame('4 / 3'),
     sceneSource: `news.${position}.scene`,
     needsWhiteBackground: false,
   };
@@ -167,7 +178,8 @@ export function historySlot(year: number, position: number): ImageSlot {
     quality: 'low',
     style: STYLE,
     composition: COMPOSITION.history,
-    treatment: gradient('40%', 'rgba(255,248,238,0.95)'),
+    // The year's lead event is hung at 16:10; the rest at 4:3.
+    treatment: frame(position === 0 ? '16 / 10' : '4 / 3'),
     sceneSource: `history.${year}.${position}.scene`,
     needsWhiteBackground: false,
   };
@@ -183,8 +195,50 @@ export function momentSlot(rank: number): ImageSlot {
     quality: 'low',
     style: STYLE,
     composition: COMPOSITION.moment,
-    treatment: gradient('40%', '#F7F2E8'),
+    // Only rank one is hung at all — the other nine are index rows now.
+    treatment: frame('4 / 3'),
     sceneSource: `moments.${rank}.scene`,
+    needsWhiteBackground: false,
+  };
+}
+
+/**
+ * The four senses a destination is met through. They are the newest slots in
+ * the product: the columns behind them were added when the reader became a
+ * gallery and the destination wall started hanging them as four small works
+ * beside the destination's own painting. Before that they were text tiles with
+ * an emoji, and there was nothing to paint.
+ *
+ * Requested landscape like everything else here and centre-cropped to a square
+ * by the wall. That is deliberate: this file's one invariant is that every
+ * Daily Gold render is 3:2, so a render rejected in one slot is still usable in
+ * a neighbouring one. A square request would buy back the third of the width
+ * the crop discards and cost that.
+ */
+export type SenseKind = 'taste' | 'sound' | 'nature' | 'phrase';
+
+const SENSE_LABEL: Record<SenseKind, string> = {
+  taste: 'Taste of the day',
+  sound: 'Sound of the day',
+  nature: 'Nature detail',
+  phrase: 'Tiny phrase',
+};
+
+export const SENSE_KINDS: SenseKind[] = ['taste', 'sound', 'nature', 'phrase'];
+
+export function senseSlot(kind: SenseKind): ImageSlot {
+  return {
+    key: `sense:${kind}`,
+    label: `${SENSE_LABEL[kind]} painting`,
+    shortLabel: SENSE_LABEL[kind].split(' ')[0],
+    size: LANDSCAPE_SMALL,
+    quality: 'low',
+    style: STYLE,
+    composition: COMPOSITION.sense,
+    // Hung at 1:1 and small — the crop is severe and is the whole reason this
+    // slot has its own composition block.
+    treatment: frame('1 / 1'),
+    sceneSource: `${kind}_scene`,
     needsWhiteBackground: false,
   };
 }
@@ -195,9 +249,14 @@ export function parseSlotKey(key: string):
   | { kind: 'news'; position: number }
   | { kind: 'history'; year: number; position: number }
   | { kind: 'moment'; rank: number }
+  | { kind: 'sense'; sense: SenseKind }
   | null {
   if (key === 'hero' || key === 'destination') return { kind: key };
   const parts = key.split(':');
+  if (parts[0] === 'sense' && parts.length === 2) {
+    const sense = parts[1] as SenseKind;
+    return SENSE_KINDS.includes(sense) ? { kind: 'sense', sense } : null;
+  }
   if (parts[0] === 'news' && parts.length === 2) {
     const position = Number(parts[1]);
     return Number.isInteger(position) && position >= 0 ? { kind: 'news', position } : null;
@@ -231,6 +290,7 @@ export function slotForKey(key: string): ImageSlot | null {
     case 'news': return newsSlot(parsed.position);
     case 'history': return historySlot(parsed.year, parsed.position);
     case 'moment': return momentSlot(parsed.rank);
+    case 'sense': return senseSlot(parsed.sense);
   }
 }
 
@@ -263,6 +323,8 @@ export function storageKeyFor(slotKey: string, subjectKey: string): string | nul
       return `history-media/${subjectKey}/year-${parsed.year}-${parsed.position}.webp`;
     case 'moment':
       return `moment-media/${subjectKey}/rank-${parsed.rank}.webp`;
+    case 'sense':
+      return `sense-media/${subjectKey}/${parsed.sense}.webp`;
   }
 }
 

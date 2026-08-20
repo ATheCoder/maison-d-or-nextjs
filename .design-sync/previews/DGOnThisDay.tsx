@@ -1,8 +1,17 @@
+import type { ReactNode } from 'react';
 import DGOnThisDay from '@/components/dailygold/DGOnThisDay';
+import { GALLERY_CSS } from '@/components/dailygold/galleryCss';
 
-// `events` are rows from the on_this_day_event table: the component groups them
-// by year and opens on the most recent year that holds something. Field shape
-// mirrors what the component reads — headline, story, year, location, position.
+// The year room. `events` are rows from the on_this_day_event table: the
+// component groups them by year and opens on the most recent year that holds
+// something, with that year set as an enormous hollow numeral BEHIND the work.
+// Field shape mirrors what the component reads — headline, story, year,
+// location, position.
+//
+// Two distinct empty states, and they are not the same absence: a year this
+// date has nothing in YET, where the seals lead somewhere and a "travel to"
+// line is offered; and a date with no travels recorded at all, where they lead
+// nowhere and the room says so instead. `Empty` is the second.
 
 const EVENTS = [
   {
@@ -39,14 +48,43 @@ const EVENTS = [
   },
 ];
 
+/**
+ * The room a wall needs around it when it is shown on its own.
+ *
+ * GALLERY_CSS is emitted once by the edition page for the whole reading
+ * column, so a single wall lifted out of it has no frames, no hairlines and no
+ * label scale until it brings the stylesheet with it. `.gl` is the room those
+ * rules hang in.
+ */
+function Room({ children }: { children: ReactNode }) {
+  return (
+    <div className="gl" style={{ background: 'var(--surface-page)', paddingBottom: 24 }}>
+      <style>{GALLERY_CSS}</style>
+      {children}
+    </div>
+  );
+}
+
 export function Almanac() {
-  return <DGOnThisDay events={EVENTS} />;
+  return (
+    <Room>
+      <DGOnThisDay events={EVENTS} />
+    </Room>
+  );
 }
 
 export function SingleEntryYear() {
-  return <DGOnThisDay events={EVENTS.filter((e) => e.year === 1928)} />;
+  return (
+    <Room>
+      <DGOnThisDay events={EVENTS.filter((e) => e.year === 1928)} />
+    </Room>
+  );
 }
 
 export function Empty() {
-  return <DGOnThisDay events={[]} />;
+  return (
+    <Room>
+      <DGOnThisDay events={[]} />
+    </Room>
+  );
 }

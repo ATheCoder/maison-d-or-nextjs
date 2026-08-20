@@ -95,6 +95,13 @@ export type EditionRecord = {
   tiny_phrase: string | null;
   tiny_phrase_language: string | null;
   tiny_phrase_translation: string | null;
+  // The four senses' own paintings. Null on every day authored before the
+  // gallery gave them frames, which is most of them — the destination wall
+  // hangs an unpainted sense as a label plate rather than as an empty frame.
+  taste_image_url: string | null;
+  sound_image_url: string | null;
+  nature_image_url: string | null;
+  phrase_image_url: string | null;
   daily_quote: string | null;
   daily_quote_author: string | null;
   generated_at: string | null;
@@ -180,6 +187,10 @@ function rowToRecord(row: DailyGoldEditionRow): EditionRecord {
     tiny_phrase: row.tinyPhrase,
     tiny_phrase_language: row.tinyPhraseLanguage,
     tiny_phrase_translation: row.tinyPhraseTranslation,
+    taste_image_url: row.tasteImageUrl,
+    sound_image_url: row.soundImageUrl,
+    nature_image_url: row.natureImageUrl,
+    phrase_image_url: row.phraseImageUrl,
     daily_quote: row.dailyQuote,
     daily_quote_author: row.dailyQuoteAuthor,
     generated_at: row.generatedAt ? new Date(row.generatedAt).toISOString() : null,

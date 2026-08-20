@@ -8,55 +8,87 @@
  *
  * Each COMPOSITION block below encodes a real CSS treatment the reader applies
  * to that surface. They are not decoration: an image that reads well as a
- * thumbnail dies under the hero's radial mask, so the prompt has to ask for art
- * that survives the mask in the first place (R3.15).
+ * thumbnail dies under a radial mask, so the prompt has to ask for art that
+ * survives the treatment in the first place (R3.15).
+ *
+ * ── REWRITTEN FOR THE GALLERY (see components/dailygold/galleryCss.ts) ──────
+ *
+ * Every block here used to end by describing a gradient: "the lower third
+ * fades into the page", "the bottom quarter of the frame fades", "shown faded
+ * under a warm cream wash with a title written across it". Those washes existed
+ * because the reader printed its words *over* the pictures and needed ground to
+ * print them on.
+ *
+ * The gallery hangs the label beneath the work, so every one of those washes is
+ * gone. A painting is now shown whole, at full opacity, inside a hairline
+ * frame, cropped only to the frame's aspect. Left unrewritten these prompts
+ * would keep asking for art composed around a treatment that no longer exists —
+ * a dead lower third in every painting, and an admin preview showing a wash the
+ * reader never applies. What each block asks for now is the opposite: fill the
+ * frame, and survive the crop.
  *
  * Pure and synchronous — no env, no fetch, safe on the client.
  */
 
 /**
- * Harvested verbatim from DGMoreToExplore's MASTER_STYLE, which is the real
- * house style the surfaces were designed against.
+ * Harvested verbatim from the house style DGMoreToExplore carried, which is
+ * the real style the surfaces were designed against.
  */
 export const STYLE = `Fine art oil painting, luminous and painterly, in the style of a luxurious illustrated storybook. Rich warm natural light, soft visible brushstrokes, depth and atmosphere, golden hour glow. Warm cream, gold, sage, and earth tones. Elegant, serene, emotionally warm, museum-quality illustration. Soft focus background, beautiful composition. NOT flat, NOT cartoon, NOT vector, NOT simple graphic art. Oil on canvas texture, fine detail, painterly realism with a dreamy quality. No text, no watermarks, no logos.`;
 
 /**
- * The masthead behind the edition title. The reader renders it at 0.75 opacity
- * under an elliptical radial mask that fades everything outside the centre to
- * nothing, then washes the whole thing in cream and pans it slowly for forty
- * seconds. Detail at the edges is thrown away twice over, and the title sits
- * across the middle — so the ask is for a calm, wide, centre-weighted scene
- * with nothing important where the words go.
+ * The entrance painting. Hung whole and full-bleed across the top of the page,
+ * cropped hard: 21:9 on a desktop, 4:3 on a tablet, 4:5 on a phone. The only
+ * words on it are on the two dark themes, where the day's headline stands in
+ * the lower-left quadrant over a ramp — so that corner has to be able to go
+ * dark without losing the picture.
  */
-export const HERO_COMPOSITION = `Wide, calm, atmospheric landscape composition with the subject weighted to the centre of the frame and the edges kept simple and uncluttered — soft sky, haze, open water or distant hills. The centre must read clearly at low contrast because the image is shown faded under a warm cream wash with a title written across it. No single high-contrast focal point in the middle of the frame, no busy foreground detail, no strong verticals through the centre. Nothing that would compete with overlaid text. No frame, no border, no text, no lettering, no signature.`;
+export const HERO_COMPOSITION = `Wide, calm, atmospheric landscape composition of the place itself, filling the whole frame edge to edge with no empty margin and no vignette. The subject must sit near the centre and survive being cropped to a narrow letterbox on a wide screen and to an upright portrait on a phone, so keep everything that matters well inside the middle of the frame and let the far left and right edges be open sky, haze, water or distant hills. The lower-left quadrant is where a headline is sometimes laid over the painting, so keep faces and fine detail out of it. No frame, no border, no text, no lettering, no signature.`;
 
 /**
- * The destination card (180px tall) and its modal (340px), both under a bottom
- * gradient that fades the lower third into the card colour. Subject sits
- * centre-low so the gradient lands on ground rather than on faces.
+ * The destination's own painting, hung as the largest work on its wall at 4:3,
+ * whole and unobscured. It is also the entrance's fallback on a day with no
+ * masthead painting of its own, which is most days.
  */
-export const DESTINATION_COMPOSITION = `Landscape composition of the place itself — architecture, coastline, street or countryside — with the main subject sitting slightly below centre and the sky or open space filling the upper third. The bottom quarter of the frame fades into the page under a gradient, so keep faces, focal architecture and anything that must stay legible above that band. Warm inviting daylight, a sense of somewhere a family would want to walk. No frame, no border, no text, no lettering, no signature.`;
+export const DESTINATION_COMPOSITION = `Landscape composition of the place itself — architecture, coastline, street or countryside — filling a 4:3 frame completely, edge to edge. The painting is hung whole with nothing laid over it, so the whole frame is seen: no empty foreground, no dead band at the bottom, no vignette. Warm inviting daylight, a sense of somewhere a family would want to walk. No frame, no border, no text, no lettering, no signature.`;
 
 /**
- * A good-news card: 180px in the list, 300px in the modal, both under a
- * gradient that starts at 30% height. Two-thirds of the frame is what survives.
+ * A good-news work on the salon wall: 4:3, hung whole. The lead is hung at
+ * double size and the rest at roughly a quarter of the wall's width, so the
+ * subject has to hold at both.
  */
-export const NEWS_COMPOSITION = `A single clear, gentle subject filling the upper two-thirds of a landscape frame, photographed-from-life feeling but painted. The lower third fades into the page under a gradient, so nothing essential belongs there. Hopeful, warm and specific rather than symbolic — a real moment rather than an abstract idea. Nothing distressing, no crowds in conflict, no injury, no wreckage. No frame, no border, no text, no lettering, no signature.`;
+export const NEWS_COMPOSITION = `A single clear, gentle subject filling a 4:3 frame, painted from life rather than symbolically — a real moment rather than an abstract idea. The painting is hung whole with nothing laid over it, so it must read complete on its own: no dead band anywhere in the frame, no vignette. It is shown both large and at about a quarter of that size, so one clear subject rather than a busy scene. Hopeful, warm and specific. Nothing distressing, no crowds in conflict, no injury, no wreckage. No frame, no border, no text, no lettering, no signature.`;
 
 /**
- * An On This Day event: a 140px band with a gradient from 40% down. The
- * shallowest surface in the product, so the subject has to be simple and large.
+ * An On This Day work in the year room: the year's lead event at 16:10, the
+ * rest at 4:3, both hung whole beneath an enormous hollow numeral that sits
+ * *behind* the work, never over it.
  */
-export const HISTORY_COMPOSITION = `A simple, bold subject filling the upper half of a wide, shallow landscape frame — one clear thing, large in the frame, readable at a glance in a short horizontal band. The lower half dissolves into the page under a gradient. Historical scene painted warmly and calmly, suitable for a child of seven: no violence, no weapons pointed at anyone, no distress, no wreckage. No frame, no border, no text, no lettering, no signature.`;
+export const HISTORY_COMPOSITION = `A simple, bold subject, large and clear in a wide landscape frame — one thing, readable at a glance. The painting is hung whole with nothing laid over it: fill the frame edge to edge, no dead band, no vignette. Historical scene painted warmly and calmly, suitable for a child of seven: no violence, no weapons pointed at anyone, no distress, no wreckage. No frame, no border, no text, no lettering, no signature.`;
 
 /**
- * A greatest moment: a 280px card with a gradient from 40% down, and a 46px
- * rounded thumbnail in the ladder rows — so it must also survive being tiny.
+ * A greatest moment. Rank one hangs as a work at 4:3 beside the ledger's index
+ * of ten; the other nine are index rows with no picture at all, so this art is
+ * only ever seen large. The thumbnail requirement the old block carried is
+ * gone with the thumbnails.
  */
-export const MOMENT_COMPOSITION = `A single iconic subject, large and centred in the upper half of a landscape frame, with a simple uncluttered background — the image is also shown as a 46-pixel thumbnail, so it must remain recognisable when very small. The lower half fades into the page under a gradient. A great moment in human history rendered with warmth and wonder rather than drama; nothing frightening, no violence, no wreckage. No frame, no border, no text, no lettering, no signature.`;
+export const MOMENT_COMPOSITION = `A single iconic subject, large and centred, filling a landscape frame edge to edge with a simple uncluttered background. The painting is hung whole and shown large, with nothing laid over it — no dead band, no vignette, no empty foreground. A great moment in human history rendered with warmth and wonder rather than drama; nothing frightening, no violence, no wreckage. No frame, no border, no text, no lettering, no signature.`;
+
+/**
+ * One of the day's four senses — a taste, a sound, a detail of nature, a word.
+ * Hung small and SQUARE beside the destination's own painting, so a landscape
+ * render is centre-cropped to 1:1 and roughly a third of its width is thrown
+ * away. Everything has to be in the middle.
+ *
+ * These are the smallest works on the page and the most abstract subjects on
+ * it, which is the same problem twice: a sound has no picture. So the ask is
+ * for the concrete object a child would actually meet — the bowl, the bamboo,
+ * the moss, the handwritten word — rather than for the idea of it.
+ */
+export const SENSE_COMPOSITION = `One concrete object or close detail, centred and filling the middle of the frame, painted at close range against a simple soft background. The image is cropped to a SQUARE and hung small, so everything that matters must sit well inside the centre — nothing important near the left or right edge — and it must read at about two hundred pixels across. A single subject, no scene, no people, no hands, nothing busy. Still-life intimacy: the thing itself, warmly lit. No frame, no border, no text, no lettering, no signature.`;
 
 /** Which composition block a surface uses. */
-export type DailyGoldPlacement = 'hero' | 'destination' | 'news' | 'history' | 'moment';
+export type DailyGoldPlacement = 'hero' | 'destination' | 'news' | 'history' | 'moment' | 'sense';
 
 export const COMPOSITION: Record<DailyGoldPlacement, string> = {
   hero: HERO_COMPOSITION,
@@ -64,6 +96,7 @@ export const COMPOSITION: Record<DailyGoldPlacement, string> = {
   news: NEWS_COMPOSITION,
   history: HISTORY_COMPOSITION,
   moment: MOMENT_COMPOSITION,
+  sense: SENSE_COMPOSITION,
 };
 
 /**

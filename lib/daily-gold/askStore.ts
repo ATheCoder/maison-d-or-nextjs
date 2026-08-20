@@ -306,6 +306,10 @@ async function runDayAsk(req: AskRequest, jobId: number): Promise<AskOutcome> {
     tinyPhraseTranslation: draft.tiny_phrase_translation?.slice(0, 300) || null,
     heroScene: draft.hero_scene?.slice(0, 2000) || null,
     destinationScene: draft.destination_scene?.slice(0, 2000) || null,
+    tasteScene: draft.taste_scene?.slice(0, 2000) || null,
+    soundScene: draft.sound_scene?.slice(0, 2000) || null,
+    natureScene: draft.nature_scene?.slice(0, 2000) || null,
+    phraseScene: draft.phrase_scene?.slice(0, 2000) || null,
     generatedAt: now(),
     updatedAt: now(),
   }).where(eq(dailyGoldEdition.editionDate, date));
@@ -313,6 +317,12 @@ async function runDayAsk(req: AskRequest, jobId: number): Promise<AskOutcome> {
   const slotKeys: string[] = [];
   if (draft.hero_scene?.trim()) slotKeys.push('hero');
   if (draft.destination_scene?.trim()) slotKeys.push('destination');
+  // The four senses' own paintings, since the destination wall started hanging
+  // them as works rather than as text tiles.
+  if (draft.taste_scene?.trim()) slotKeys.push('sense:taste');
+  if (draft.sound_scene?.trim()) slotKeys.push('sense:sound');
+  if (draft.nature_scene?.trim()) slotKeys.push('sense:nature');
+  if (draft.phrase_scene?.trim()) slotKeys.push('sense:phrase');
 
   await advance({ destination: 'done', quote: 'active' });
 
