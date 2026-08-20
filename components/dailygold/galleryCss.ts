@@ -121,19 +121,54 @@ export const GALLERY_CSS = `
 .gl-door { display: block; width: 100%; padding: 0; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
 
 /* ═══ the entrance ═════════════════════════════════════════════════════════
-   One painting, the day's name, and the turner. Nothing else. */
-.gl-entry { position: relative; }
+   One painting, the day's name, and the turner. Nothing else.
+
+   The label stands IN the painting, on every ground, and the ramp it stands on
+   is the READER'S OWN PAGE — the .gl-light stops from 06-gallery-themes.html,
+   verbatim.
+   The painting doesn't end at the entrance, it dissolves into the room, and
+   because the wash IS --surface-page the entrance is the right colour on all
+   seven grounds by construction: no tint to mix, no ink to re-scope, and the
+   label keeps the room's own text tokens. On a lit ground that costs the
+   bottom-left of the picture, which is the trade the mockup makes on purpose
+   and the one this file used to refuse — it hung the label beneath the
+   painting there instead. Do not restore that: it was measured against a
+   darkened entrance, and against the page's own wash it is simply wrong.
+
+   The stops differ, and only the stops. On a lit ground the ramp has to build
+   the whole readable field itself, so it starts higher and holds longer; on
+   espresso and navy the wall already began the darkness and the ramp only
+   finishes it. Light first, because five of the seven grounds are. */
+.gl-entry {
+  position: relative;
+  /* Both children take the same grid cell, so the entrance is as tall as the
+     TALLER of the painting and the words. Absolute positioning was the
+     mockup's answer and it only held at the width the mockup was drawn at: at
+     1176px of wall a 21:9 painting is 504px tall and the label fits under it,
+     and at 1023px it is 438px and the headline hangs off the top of the page.
+     Here the painting simply stretches to make room, which is also what a
+     gallery would do. */
+  display: grid;
+}
+.gl-entry > .gl-entry-art,
+.gl-entry > .gl-entry-in { grid-area: 1 / 1; }
 .gl-entry-art { position: relative; aspect-ratio: 21 / 9; overflow: hidden; background-color: var(--surface-tint); }
 .gl-entry-art > img { display: block; width: 100%; height: 100%; object-fit: cover; }
-/* The label stands bottom-left on the two dark grounds, so the ground there
-   has to be genuinely dark: two ramps, up from the foot and in from the left.
-   On the five lit grounds the label hangs beneath the painting instead (the
-   [data-theme] block below) and this ramp is only a settling wash. */
+/* Two ramps, up from the foot and in from the left, because the label stands
+   bottom-left: the field has to be the page's own colour exactly there and can
+   stay out of the way everywhere else. The top 7% and the right 30% of the
+   painting are never touched, which is what keeps this a dissolve rather than
+   a veil over the whole picture. */
 .gl-entry-art::after {
   content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(to top, var(--surface-page) 0%, color-mix(in srgb, var(--surface-page) 55%, transparent) 26%, transparent 62%);
+  background:
+    linear-gradient(to top, var(--surface-page) 0%, color-mix(in srgb, var(--surface-page) 95%, transparent) 44%, color-mix(in srgb, var(--surface-page) 62%, transparent) 74%, transparent 93%),
+    linear-gradient(to right, color-mix(in srgb, var(--surface-page) 94%, transparent) 0%, color-mix(in srgb, var(--surface-page) 56%, transparent) 44%, transparent 70%);
 }
-.gl-entry-in { padding: 26px var(--gut) 0; position: relative; z-index: 2; }
+/* padding-top, not a margin: the label is what sets the row's height when the
+   words run long, and 80px of it is the air above the eyebrow that keeps the
+   headline off the top edge of the page. */
+.gl-entry-in { align-self: end; padding: 80px var(--gut) 40px; position: relative; z-index: 2; }
 .gl-entry-in .eye { font-family: var(--face-sans); font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--accent-readable); margin: 0 0 16px; }
 /* [role="heading"], not h1: the entrance heading is the ds <Heading>
    primitive, which renders <p role="heading" aria-level> because the legacy
@@ -150,38 +185,33 @@ export const GALLERY_CSS = `
 .gl-entry-in [role="heading"] em { font-style: italic; font-weight: 400; color: var(--accent-readable); }
 .gl-entry-in .sub { font-size: 15.5px; line-height: 1.6; color: var(--text-secondary); margin: 0; max-width: 42ch; }
 
-/* The two cinematic grounds get the mockup's own entrance: the label stands
-   IN the painting, over the ramp. The five lit grounds do not — there the
-   ramp has to build the whole readable ground itself and bleaches most of the
-   painting to do it, which is the one thing this design will not spend. */
+/* Espresso and navy: the wall already started the darkness, so the ramp only
+   has to finish it — it starts lower and lets go sooner, and more of the
+   painting survives than on a lit ground. These are the mockup's base stops,
+   inverted into an override because five of the seven grounds are light. */
 [data-theme="dark"] .gl-entry-art::after,
 [data-theme="navy"] .gl-entry-art::after {
   background:
     linear-gradient(to top, var(--surface-page) 0%, color-mix(in srgb, var(--surface-page) 88%, transparent) 34%, color-mix(in srgb, var(--surface-page) 30%, transparent) 66%, transparent 88%),
     linear-gradient(to right, color-mix(in srgb, var(--surface-page) 88%, transparent) 0%, color-mix(in srgb, var(--surface-page) 40%, transparent) 38%, transparent 62%);
 }
-/* Both children take the same grid cell, so the entrance is as tall as the
-   TALLER of the painting and the words. Absolute positioning was the mockup's
-   answer and it only held at the width the mockup was drawn at: at 1176px of
-   wall a 21:9 painting is 504px tall and the label block fits under it, and at
-   1023px it is 438px and the headline hangs off the top of the page. Here the
-   painting simply stretches to make room, which is also what a gallery would
-   do. */
-[data-theme="dark"] .gl-entry,
-[data-theme="navy"] .gl-entry { display: grid; }
-/* The painting has to be worth standing in front of even when the day's
-   headline is short, so it takes a floor as well as an aspect. */
+/* …and only there does the painting take a floor as well as an aspect: a dark
+   room wants something worth standing in front of, and its ramp leaves enough
+   picture standing to be worth the height. On a lit ground the same floor buys
+   660px of mostly-wash, so the aspect and the words set the height instead. */
 [data-theme="dark"] .gl-entry-art,
 [data-theme="navy"] .gl-entry-art { min-height: min(72vh, 660px); }
-[data-theme="dark"] .gl-entry > .gl-entry-art,
-[data-theme="navy"] .gl-entry > .gl-entry-art,
-[data-theme="dark"] .gl-entry > .gl-entry-in,
-[data-theme="navy"] .gl-entry > .gl-entry-in { grid-area: 1 / 1; }
-/* padding-top, not a margin: the label is what sets the row's height when the
-   words run long, and 80px of it is the air above the eyebrow that keeps the
-   headline off the top edge of the page. */
-[data-theme="dark"] .gl-entry-in,
-[data-theme="navy"] .gl-entry-in { align-self: end; padding: 80px var(--gut) 40px; }
+
+/* A day with no painting has nothing to dissolve: the frame keeps its place,
+   empty, and the label drops back beneath it rather than standing in a blank
+   rectangle pretending to be a picture. DGHero sets this class; the two have
+   to agree, and they agree on "no picture, no overlay". These selectors
+   outrank the plain .gl-entry-* ones above and in the media queries below on
+   specificity, so they hold at every width. */
+.gl-entry-bare { display: block; }
+.gl-entry-bare .gl-entry-art { min-height: 0; }
+.gl-entry-bare .gl-entry-art::after { background: none; }
+.gl-entry-bare .gl-entry-in { padding: 26px var(--gut) 0; }
 
 /* the day navigator: two seals and a date, on the label's own line */
 .gl-turn {
@@ -408,14 +438,13 @@ export const GALLERY_CSS = `
   .wall-h b { font-size: 25px; }
 
   .gl-entry-art { aspect-ratio: 4 / 5; }
-  .gl-entry-in { padding-top: 20px; }
+  [data-theme="dark"] .gl-entry-art,
+  [data-theme="navy"] .gl-entry-art { min-height: min(64vh, 520px); }
+  .gl-entry-in { padding-top: 48px; padding-bottom: 20px; }
   .gl-entry-in [role="heading"] { font-size: 38px; }
   .gl-entry-in .eye { margin-bottom: 10px; }
   .gl-entry-in .sub { font-size: 14px; }
-  [data-theme="dark"] .gl-entry-art,
-  [data-theme="navy"] .gl-entry-art { min-height: min(64vh, 520px); }
-  [data-theme="dark"] .gl-entry-in,
-  [data-theme="navy"] .gl-entry-in { padding-top: 48px; padding-bottom: 20px; }
+  .gl-entry-bare .gl-entry-in { padding-top: 20px; }
   .gl-turn { margin-top: 18px; padding-top: 16px; gap: 12px; max-width: none; }
   .gl-turn-mid b { font-size: 13.5px; }
   .gl-turn-mid small { font-size: 8.5px; }

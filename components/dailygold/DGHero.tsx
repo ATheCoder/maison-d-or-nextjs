@@ -10,15 +10,17 @@
  * the world it goes, and what that place feels like — over the day's own
  * painting, because a room that cannot name its subject is a lobby.
  *
- * WHERE THE LABEL STANDS depends on the ground, and this is the one place the
- * gallery reads the theme rather than the tokens. On espresso and navy the
- * label stands *in* the painting over a two-axis ramp, which is the mockup's
- * own entrance and the best thing in it. On the five lit grounds it hangs
- * beneath the painting instead: there the ramp has to build the whole readable
- * ground itself, and it bleaches most of the picture doing it — measured on
- * `06-gallery-themes.html`, the entrance is the one wall the light rooms
- * cannot afford. Both placements come out of GALLERY_CSS; this file states the
- * markup once and does not know which it got.
+ * THE LABEL STANDS IN THE PAINTING on all seven grounds, over a ramp made of
+ * the reader's own --surface-page, so the picture dissolves into the room it
+ * is hanging in. It used to stand there only on espresso and navy and hang
+ * beneath the picture on the five lit ones; `06-gallery-themes.html` has it in
+ * the painting everywhere, and that is what this renders. GALLERY_CSS owns the
+ * whole of it — including which stops each ground gets — so this file states
+ * the markup once and does not know which ground it got.
+ *
+ * The one thing it does know is whether there is a picture at all. With none,
+ * `gl-entry-bare` drops the label back beneath the empty frame: a wash over a
+ * blank rectangle is not a dissolve, it is a plain band with words on it.
  *
  * The day navigator arrives as `children` — the page owns it, because turning
  * a page is a navigation and the router lives up there.
@@ -60,7 +62,7 @@ export default function DGHero({
     : null;
 
   return (
-    <section className="gl-entry">
+    <section className={imgUrl ? 'gl-entry' : 'gl-entry gl-entry-bare'}>
       <div className="gl-entry-art">
         {imgUrl && <img src={imgUrl} alt="" />}
       </div>
