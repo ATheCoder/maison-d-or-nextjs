@@ -1,4 +1,4 @@
-import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from 'react';
+import type { ComponentPropsWithRef } from 'react';
 
 /**
  * Button — §4 base primitive (docs/DesignSystemP1.md). Three variants,
@@ -31,9 +31,13 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from 'react';
  * `bare` is how those call sites join the primitive without being redressed.
  *
  * It is NOT an escape hatch for "I want a different-looking button". A new
- * button that wants a new look wants a new coat in globals.css and a fourth
+ * button that wants a new look wants a new coat in globals.css and another
  * entry in VARIANT — `bare` is for controls whose geometry genuinely belongs
- * to a stylesheet that already exists.
+ * to a stylesheet that already exists. `danger` is what that path looks like
+ * when it is walked properly: the admin desk's four private stylesheets each
+ * had a `.btn-red`/`.btn-danger` of their own, each reaching for a raw
+ * rgba(181,83,58,…), so the look became a coat in globals.css against the
+ * --danger tokens and an entry here, rather than four copies and a prop.
  *
  * ── href: the same coat on an anchor ──────────────────────────────────────
  * Pass `href` and the coat is painted on an <a> instead. This is not a
@@ -54,8 +58,28 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from 'react';
  * the router, and its two callers are crossing route groups on purpose. A
  * caller that wants client navigation composes — <Link> outside, or a Link
  * wearing these classes — rather than the primitive growing a framework.
+ *
+ * `buttonClasses` below is that second option made real, because "a Link
+ * wearing these classes" was only true if the classes were reachable. The
+ * admin desk is full of in-app navigation that is shaped like an action
+ * ("Open today", "Open the library", the per-row "Open"): a plain <a> would
+ * lose client navigation and prefetching, and a hand-copied gold fill is
+ * exactly what this primitive exists to stop. So `<Link className={buttonClasses(…)}>`
+ * gets the real coat, from here, and moves in the same diff when the coat does.
+ *
+ * ── size: the same coat at the tool scale ─────────────────────────────────
+ * `md` is the reading scale — the front door's CTAs, the Daily Gold buttons —
+ * and stays the default, so nothing that already exists moves. `sm` is the
+ * admin's: a desk that puts a verb on every table row cannot spend 44px of
+ * height on each one, and the honest answer to that is a size, not a fourth
+ * coat. It is the SAME coat — same fill, same hover, same sheen, same
+ * choreography, same --radius-md corner — set at the caption size the house
+ * already names (--type-caption) in a tighter box. Nothing about which button
+ * this is changes with the size; only how much room it takes.
+ * `bare` ignores it, because a bare button has no box to resize.
  */
-type ButtonVariant = 'primary' | 'ghost' | 'link' | 'bare';
+type ButtonVariant = 'primary' | 'ghost' | 'danger' | 'link' | 'bare';
+type ButtonSize = 'md' | 'sm';
 
 /* Focus and pointer: true of every button and every link-shaped one, coat or
    no coat. `cursor-pointer` is here because v4 preflight leaves buttons at
@@ -70,41 +94,96 @@ const BASE =
 const DISABLED = 'disabled:pointer-events-none';
 
 /* The shape the three coated variants share and `bare` deliberately does not:
-   a bare button's box is the call site's stylesheet's business. */
-const SHAPE = 'type-body-ui inline-flex items-center justify-center gap-2.5 rounded-md';
+   a bare button's box is the call site's stylesheet's business. Size-free —
+   type, padding and radius arrive from SIZE below, so the two scales cannot
+   drift apart on anything except the three properties that define them. */
+const SHAPE = 'inline-flex items-center justify-center gap-2.5 rounded-md';
 
+/* The two type scales. `sm` reuses --type-caption rather than inventing a
+   number: it is the size the house already gives small functional text,
+   which is what the label on a table-row button is. Its gap comes in with
+   it — 2.5 (10px) between a glyph and a 15px label reads as a pair; at 13px
+   it reads as two things.
+
+   The RADIUS does not move, and that is the whole point of it being a size.
+   --radius-md is defined in globals.css §3.4 as the roundness of "buttons,
+   fields, cards" — one value for the house, taken from the shapes it already
+   spoke in (.mdo-dp-field, .mdo-dp-day, the guardian fields). A smaller
+   button is the same button in less room; a button with a different corner is
+   a different button, and two of those on one screen read as a bug rather
+   than a scale. So `rounded-md` sits outside SIZE, in SHAPE, where neither
+   size can reach it. */
+const SIZE: Record<ButtonSize, string> = {
+  md: 'type-body-ui',
+  sm: 'font-sans text-[length:var(--type-caption)] font-medium leading-[1.4] gap-1.5',
+};
+
+/* Padding, for the two variants that have a box to pad. `link` is text and
+   is deliberately left unpadded at both sizes — it sits inline in a sentence
+   and a padded one would not. */
+const PAD: Record<ButtonSize, string> = {
+  md: 'px-5 py-2.5',
+  sm: 'px-3.5 py-2',
+};
+
+/* The coats. Each is the variant's own ink and fill only — the box is SIZE's. */
 const VARIANT: Record<ButtonVariant, string> = {
-  primary: `${SHAPE} btn-motion btn-primary px-5 py-2.5`,
-  ghost: `${SHAPE} btn-motion btn-ghost px-5 py-2.5`,
+  primary: 'btn-motion btn-primary',
+  ghost: 'btn-motion btn-ghost',
+  danger: 'btn-motion btn-danger',
   // Links are functional small text: accent-readable, never bare gold, and
   // the underline is load-bearing — colour is never a link's only marker.
   link:
-    `${SHAPE} text-accent-readable underline underline-offset-3 transition-[color,text-decoration-thickness] duration-300 ` +
+    'text-accent-readable underline underline-offset-3 transition-[color,text-decoration-thickness] duration-300 ' +
     'hover:text-primary hover:decoration-2',
   bare: '',
 };
 
-type Common = { variant?: ButtonVariant; className?: string };
+/**
+ * The coat as a class string, for the one call site that cannot be this
+ * component: a next/link that is shaped like an action. Same arguments, same
+ * result — `<Button variant="ghost" size="sm">` and
+ * `<Link className={buttonClasses({ variant: 'ghost', size: 'sm' })}>` are
+ * the same button, one of which also does client navigation.
+ */
+export function buttonClasses({
+  variant = 'primary',
+  size = 'md',
+  className = '',
+}: { variant?: ButtonVariant; size?: ButtonSize; className?: string } = {}): string {
+  const box =
+    variant === 'bare'
+      ? ''
+      : `${SHAPE} ${SIZE[size]}${variant === 'link' ? '' : ` ${PAD[size]}`}`;
+  return [BASE, box, VARIANT[variant], className].filter(Boolean).join(' ');
+}
 
-type ButtonProps = Common & { href?: undefined; loading?: boolean } & ButtonHTMLAttributes<HTMLButtonElement>;
-type LinkProps = Common & { href: string } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>;
+type Common = { variant?: ButtonVariant; size?: ButtonSize; className?: string };
+
+/* ComponentPropsWithRef, not the bare HTMLAttributes: React 19 passes `ref`
+   as an ordinary prop to a function component, and the admin's drag handles
+   need it — dnd-kit hands a row's grip its activator ref, and a primitive
+   that cannot take one is a primitive that call site has to go around. */
+type ButtonProps = Common & { href?: undefined; loading?: boolean } & ComponentPropsWithRef<'button'>;
+type LinkProps = Common & { href: string } & Omit<ComponentPropsWithRef<'a'>, 'href'>;
 
 export default function Button({
   variant = 'primary',
+  size = 'md',
   className = '',
   children,
   ...rest
 }: ButtonProps | LinkProps) {
   /* The coat, plus whatever the rendered element can additionally be in. */
   const dress = (state: string) =>
-    [BASE, state, VARIANT[variant], className].filter(Boolean).join(' ');
+    [buttonClasses({ variant, size }), state, className].filter(Boolean).join(' ');
 
   /* `href` is the discriminant, and `in` is what narrows a union rest. The
      cast that follows is the one TypeScript cannot do for us: it has proved
      the branch, but a rest spread off a union stays a union of rests. */
   if ('href' in rest && rest.href !== undefined) {
     return (
-      <a className={dress('')} {...(rest as AnchorHTMLAttributes<HTMLAnchorElement>)}>
+      <a className={dress('')} {...(rest as ComponentPropsWithRef<'a'>)}>
         {children}
       </a>
     );

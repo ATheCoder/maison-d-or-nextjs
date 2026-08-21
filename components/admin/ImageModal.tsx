@@ -14,6 +14,7 @@
  * outcome R7.16 exists to avoid is two divergent image UIs.
  */
 import { useRef, useState } from 'react';
+import { Button, Field, Heading } from '@/components/ds';
 import type { ImageSlot, SlotTreatment } from '@/lib/daily-gold/slots';
 import {
   acceptSlotFor, generateSlotFor, removeSlotImageFor, revertSlotFor,
@@ -42,23 +43,17 @@ const CSS = `
 .imodal .mhead { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:13px 16px; border-bottom:1px solid var(--line); background:rgba(255,248,238,.82); }
 .imodal .mbody { display:grid; grid-template-columns:340px 1fr; gap:18px; padding:16px; overflow-y:auto; }
 .imodal .mfoot { display:flex; align-items:center; gap:8px; padding:12px 16px; border-top:1px solid var(--line); background:rgba(255,248,238,.6); flex-wrap:wrap; }
-.imodal .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; font:700 12px/1 var(--sans); padding:8px 12px; border-radius:9px; border:1px solid var(--line2); background:#fffdf8; color:var(--brown); cursor:pointer; }
-.imodal .btn:disabled { opacity:.5; cursor:default; }
-.imodal .btn-gold { background:linear-gradient(180deg,#dcc191,#c9a96e); color:#3a2a10; border-color:var(--gold-deep); }
-.imodal .btn-ghost { background:transparent; border-color:transparent; color:var(--brown2); }
-.imodal .btn-red { background:transparent; border-color:rgba(181,83,58,.5); color:var(--red); }
-.imodal .btn-sm { padding:6px 10px; font-size:11px; border-radius:8px; }
+/* .btn / .btn-gold / .btn-red / .field are gone — every verb in this modal
+   is a <Button size="sm"> and the scene box is a <Field as="textarea">. */
 .imodal .chip { display:inline-flex; align-items:center; gap:5px; font:700 10px/1 var(--sans); letter-spacing:.06em; text-transform:uppercase; padding:5px 9px; border-radius:999px; border:1px solid var(--line2); color:var(--brown); background:#fffdf8; white-space:nowrap; }
 .imodal .chip-gold { background:var(--gold-soft); color:var(--gold-deep); }
 .imodal .chip-green { background:rgba(125,138,78,.14); border-color:rgba(125,138,78,.4); color:#5f6c37; }
 .imodal .chip-amber { background:rgba(192,138,46,.14); border-color:rgba(192,138,46,.42); color:#96681f; }
 .imodal .chip-ink { background:rgba(36,26,12,.06); border-color:var(--line); color:var(--brown); text-transform:none; letter-spacing:0; font-weight:400; }
 .imodal .seg { display:inline-flex; padding:3px; background:rgba(36,26,12,.06); border:1px solid var(--line); border-radius:10px; gap:2px; }
-.imodal .seg > button { font:700 10.5px/1 var(--sans); padding:7px 11px; border-radius:7px; color:var(--brown2); cursor:pointer; border:none; background:transparent; }
+.imodal .seg > button { font:700 10.5px/1 var(--sans); padding:7px 11px; border-radius:7px; color:var(--brown2); border:none; background:transparent; }
 .imodal .seg > button.on { background:#fffdf8; color:var(--ink); box-shadow:0 1px 6px rgba(40,26,12,.1); }
 .imodal .pre { background:rgba(36,26,12,.04); border:1px solid var(--line); border-radius:8px; padding:9px 11px; font-size:10.5px; line-height:1.55; color:var(--brown2); max-height:150px; overflow:auto; white-space:pre-wrap; }
-.imodal .field { width:100%; background:#fffdf8; border:1px solid var(--line2); border-radius:10px; color:var(--ink); font:400 12.5px/1.6 var(--sans); padding:10px 12px; outline:none; resize:vertical; }
-.imodal .field:focus { border-color:var(--gold-deep); }
 .imodal .stage { position:relative; height:208px; border-radius:8px; overflow:hidden; background:repeating-linear-gradient(135deg, rgba(120,90,50,.07) 0 7px, transparent 7px 14px), #f3ead2; display:flex; align-items:center; justify-content:center; }
 .imodal .stage img { width:100%; height:100%; object-fit:cover; display:block; }
 .imodal .parch { background:radial-gradient(ellipse 62% 52% at 26% 26%, rgba(255,251,238,.55), transparent 60%), linear-gradient(180deg,var(--parch),var(--parch2)); }
@@ -67,6 +62,11 @@ const CSS = `
 .imodal .b-amber { background:rgba(192,138,46,.09); border:1px solid rgba(192,138,46,.38); color:#7a5518; }
 .imodal .b-red { background:rgba(181,83,58,.08); border:1px solid rgba(181,83,58,.35); color:#7d3a26; }
 .imodal .drop { border:1.5px dashed var(--line2); border-radius:9px; padding:12px; text-align:center; color:var(--brown2); font-size:11.5px; background:#fffdf8; cursor:pointer; display:block; }
+/* The drop zone IS the file field's label, so the control it points at must
+   not draw a box of its own inside it. Clicking the label still opens the
+   picker — that is what htmlFor does, hidden control or not. */
+.imodal .drop .field { display:none; }
+.imodal .drop label { cursor:pointer; }
 .imodal .drop.over { border-color:var(--gold-deep); background:var(--gold-soft); }
 @media (max-width:760px) { .imodal .mbody { grid-template-columns:1fr; } }
 `;
@@ -288,16 +288,18 @@ export default function ImageModal({
         <div className="mhead">
           <div>
             {context && <div className="kick">{context}</div>}
-            <div className="serif" style={{ fontSize: 16, fontWeight: 600, marginTop: 3 }}>{slot.label}</div>
+            <Heading level={2} variant="story" className="mt-1 text-base">{slot.label}</Heading>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {slot.treatment.kind !== 'none' && (
-              <div className="seg">
-                <button className={!raw ? 'on' : undefined} onClick={() => setRaw(false)}>{treatmentLabel}</button>
-                <button className={raw ? 'on' : undefined} onClick={() => setRaw(true)}>The raw file</button>
+              <div className="seg" role="group" aria-label="How to show the painting">
+                <Button variant="bare" aria-pressed={!raw} className={!raw ? 'on' : undefined}
+                  onClick={() => setRaw(false)}>{treatmentLabel}</Button>
+                <Button variant="bare" aria-pressed={raw} className={raw ? 'on' : undefined}
+                  onClick={() => setRaw(true)}>The raw file</Button>
               </div>
             )}
-            <button className="btn btn-ghost btn-sm" style={{ fontSize: 15 }} onClick={onClose}>✕</button>
+            <Button variant="link" size="sm" aria-label="Close" onClick={onClose}>✕</Button>
           </div>
         </div>
 
@@ -347,12 +349,15 @@ export default function ImageModal({
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
                 <span className="kick">The scene</span>
                 {dirtyScene && (
-                  <button className="btn btn-sm btn-gold" onClick={saveScene} disabled={busy}>Save scene</button>
+                  <Button size="sm" onClick={saveScene} loading={busy}>Save scene</Button>
                 )}
               </div>
-              <textarea className="field" style={{ minHeight: 120 }} value={sceneDraft}
+              <Field
+                as="textarea" size="sm" label="The scene" labelHidden
+                style={{ minHeight: 120 }} value={sceneDraft}
                 onChange={(e) => setSceneDraft(e.target.value)}
-                placeholder="What the painting shows…" />
+                placeholder="What the painting shows…"
+              />
             </div>
 
             <div className="note">
@@ -360,21 +365,29 @@ export default function ImageModal({
               it with the pixel size, for painting elsewhere.
             </div>
 
-            <label
+            {/* The drop zone is the Field's own LABEL, not a <label> wrapped
+                around it — nesting one label inside another is invalid, and
+                the wrapper was only ever there to make the zone clickable,
+                which a real `htmlFor` label already does. So the dashed box is
+                a plain <div> that carries the drag handlers, the primitive
+                brings the label and the hint, and the control itself is hidden
+                by `.drop .field`. */}
+            <div
               className={`drop${dragOver ? ' over' : ''}`}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0]); }}
             >
-              ⤓ Drop an image — or click
-              <br />
-              <span style={{ fontSize: 10 }}>
-                {slot.needsWhiteBackground ? 'corner pixels checked on upload' : 'opaque art — no corner check'}
-              </span>
-              <input ref={fileInput} type="file" accept="image/png,image/webp,image/jpeg"
-                style={{ display: 'none' }} disabled={busy}
-                onChange={(e) => handleFile(e.target.files?.[0])} />
-            </label>
+              <Field
+                ref={fileInput}
+                type="file"
+                label="⤓ Drop an image — or click"
+                hint={slot.needsWhiteBackground ? 'corner pixels checked on upload' : 'opaque art — no corner check'}
+                accept="image/png,image/webp,image/jpeg"
+                disabled={busy}
+                onChange={(e) => handleFile(e.target.files?.[0])}
+              />
+            </div>
 
             {error && <div className="banner b-red"><span>{error}</span></div>}
           </div>
@@ -384,25 +397,26 @@ export default function ImageModal({
           {canGenerate && (
             staged ? (
               <>
-                <button className="btn btn-sm btn-gold" onClick={accept} disabled={busy}>✓ Keep this one</button>
-                <button className="btn btn-sm" onClick={generate} disabled={busy}>✦ Regenerate</button>
-                <button className="btn btn-sm" onClick={revert} disabled={busy}>Revert</button>
+                <Button size="sm" onClick={accept} loading={busy}>✓ Keep this one</Button>
+                <Button variant="ghost" size="sm" onClick={generate} disabled={busy}>✦ Regenerate</Button>
+                <Button variant="ghost" size="sm" onClick={revert} disabled={busy}>Revert</Button>
               </>
             ) : (
-              <button className="btn btn-sm btn-gold" onClick={generate} disabled={busy || rendering}>
+              <Button size="sm" onClick={generate} loading={busy || rendering}>
                 {rendering ? 'Rendering…' : imageUrl ? '✦ Regenerate' : '✦ Generate'}
-              </button>
+              </Button>
             )
           )}
-          <button className="btn btn-sm" onClick={() => fileInput.current?.click()} disabled={busy}>Upload a file</button>
-          <button className="btn btn-sm" onClick={copyPayload}>{copied ? '✓ Copied' : 'Copy prompt'}</button>
+          <Button variant="ghost" size="sm" onClick={() => fileInput.current?.click()} disabled={busy}>Upload a file</Button>
+          <Button variant="ghost" size="sm" onClick={copyPayload}>{copied ? '✓ Copied' : 'Copy prompt'}</Button>
           {imageUrl && subject.kind !== 'person' && (
-            <button className="btn btn-sm btn-red" style={{ marginLeft: 'auto' }} onClick={remove} disabled={busy}>
+            <Button variant="danger" size="sm" className="ml-auto" onClick={remove} loading={busy}>
               Remove
-            </button>
+            </Button>
           )}
-          <button className="btn btn-sm" style={imageUrl && subject.kind !== 'person' ? undefined : { marginLeft: 'auto' }}
-            onClick={onClose}>Done</button>
+          <Button variant="ghost" size="sm"
+            className={imageUrl && subject.kind !== 'person' ? undefined : 'ml-auto'}
+            onClick={onClose}>Done</Button>
         </div>
       </div>
     </div>

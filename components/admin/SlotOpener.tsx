@@ -19,6 +19,7 @@ import type { ImageSlot } from '@/lib/daily-gold/slots';
 import type { ImageSubject } from '@/app/admin/imageActions';
 import { getDgJobs } from '@/app/admin/daily-gold/aiActions';
 import type { GenerationJobRow } from '@/src/db/schema';
+import { Button } from '@/components/ds';
 import ImageModal from './ImageModal';
 
 export default function SlotOpener({
@@ -76,33 +77,34 @@ export default function SlotOpener({
   return (
     <>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <button
+        {/* The thumbnail is a hit target laid over a painting — the same
+            case as the gallery's `.gl-door`, and the same answer: `bare`, so
+            the picture is the button's whole look and the primitive brings
+            only the focus ring and the semantics. */}
+        <Button
+          variant="bare"
           onClick={() => setOpen(true)}
           title={filled ? 'Open painting' : 'Add a painting'}
+          className="flex items-center justify-center overflow-hidden rounded-md p-0"
           style={{
-            width, height, borderRadius: 8, padding: 0, cursor: 'pointer', overflow: 'hidden',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: filled ? '1px solid rgba(201,169,110,.45)' : '1px dashed rgba(120,90,50,.35)',
+            width, height,
+            border: filled
+              ? '1px solid var(--border-accent)'
+              : '1px dashed color-mix(in srgb, var(--text-secondary) 35%, transparent)',
             background: filled
               ? `center/cover url(${imageUrl})`
-              : 'repeating-linear-gradient(135deg, rgba(120,90,50,.07) 0 7px, transparent 7px 14px), #f3ead2',
+              : 'repeating-linear-gradient(135deg, color-mix(in srgb, var(--text-secondary) 8%, transparent) 0 7px, transparent 7px 14px), var(--surface-tint)',
           }}
         >
           {!filled && (
-            <span style={{ fontSize: 11, color: '#8b7355', textAlign: 'center', maxWidth: width - 40 }}>
+            <span className="type-caption text-center" style={{ maxWidth: width - 40 }}>
               {emptyText}
             </span>
           )}
-        </button>
-        <button
-          onClick={() => setOpen(true)}
-          style={{
-            font: '700 11px/1 Lato, system-ui, sans-serif', padding: '6px 10px', borderRadius: 8,
-            border: '1px solid rgba(201,169,110,.45)', background: '#fffdf8', color: '#5c4a2a', cursor: 'pointer',
-          }}
-        >
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
           {filled ? 'Open painting' : 'Add a painting'}
-        </button>
+        </Button>
       </div>
 
       {open && (

@@ -19,6 +19,7 @@
  * server-side transactions — see acceptCandidate in aiActions.
  */
 import { useState } from 'react';
+import { Button, Heading, TextLink } from '@/components/ds';
 import { acceptCandidate, rejectCandidate, type CandidateKind } from '@/app/admin/daily-gold/aiActions';
 
 export type Candidate = {
@@ -64,16 +65,16 @@ export default function CandidateCard({ kind, item, onChanged, onError }: {
         {item.location && <span className="chip chip-ink">{item.location}</span>}
       </div>
 
-      <div className="serif" style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.3 }}>
+      <Heading level={3} variant="story" className="text-[15px] leading-tight">
         {item.headline || <i>Untitled</i>}
-      </div>
+      </Heading>
       {item.body && <div className="note" style={{ lineHeight: 1.65 }}>{item.body}</div>}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         {item.source_url ? (
-          <a href={item.source_url} target="_blank" rel="noreferrer noopener" style={{ fontSize: 11.5 }}>
+          <TextLink href={item.source_url} target="_blank" rel="noreferrer noopener" className="type-caption">
             {item.source_title || host || 'the source'} ↗
-          </a>
+          </TextLink>
         ) : (
           <span className="note">
             No source came back with this. Check it yourself before it goes near a family.
@@ -85,14 +86,14 @@ export default function CandidateCard({ kind, item, onChanged, onError }: {
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button className="btn btn-sm btn-gold" disabled={busy}
+        <Button size="sm" loading={busy}
           onClick={() => act(() => acceptCandidate(kind, item.id))}>
           Keep it
-        </button>
-        <button className="btn btn-sm btn-red" disabled={busy}
+        </Button>
+        <Button variant="danger" size="sm" disabled={busy}
           onClick={() => act(() => rejectCandidate(kind, item.id))}>
           Reject
-        </button>
+        </Button>
       </div>
     </div>
   );

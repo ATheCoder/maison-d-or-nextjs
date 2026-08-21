@@ -6,6 +6,7 @@
  * are always kept. Clicking a tile opens its slot card.
  */
 import type { SlotView } from './imageSlots';
+import { Button, Heading, Overlay } from '@/components/ds';
 import styles from './PersonEditor.module.css';
 
 const TILE: Record<SlotView['status'], { th: string; chip?: { cls: string; label: string }; dot?: string }> = {
@@ -31,19 +32,18 @@ export default function ImageStatusBoard({ slots, batchRunning, onStartBatch, on
   const generatable = missing.filter((s) => s.hasPrompt);
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(36,26,12,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 65, padding: '1.5rem' }}>
-      <div onClick={(e) => e.stopPropagation()} className={styles.panel} style={{ background: 'var(--ground)', padding: 22, width: 'min(940px, 100%)', maxHeight: '92vh', overflow: 'auto' }}>
+    <Overlay onClose={onClose} label="Generate all missing images" maxWidth={940}>
+      <div style={{ padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div className={styles.kick}>Illustrations · book-wide</div>
-            <div className={styles.serif} style={{ fontSize: 20, fontWeight: 600, marginTop: 5, color: 'var(--ink)' }}>Generate all missing images</div>
+            <Heading level={2} variant="story" className="mt-1">Generate all missing images</Heading>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span className={`${styles.chip} ${batchRunning ? styles.chipAmber : styles.chipInk}`}>{done} of {total} done{batchRunning ? ' · running' : ''}</span>
             {failed.length > 0
-              ? <button className={`${styles.btn} ${styles.btnGold}`} onClick={() => onStartBatch(failed.map((s) => s.file))} disabled={batchRunning}>Retry failed ({failed.length})</button>
-              : <button className={`${styles.btn} ${styles.btnGold}`} onClick={() => onStartBatch()} disabled={batchRunning || generatable.length === 0} title={generatable.length === 0 ? 'Every renderable slot is filled' : undefined}>Generate all missing ({generatable.length})</button>}
-            <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSm}`} onClick={onClose}>✕</button>
+              ? <Button size="sm" onClick={() => onStartBatch(failed.map((s) => s.file))} loading={batchRunning}>Retry failed ({failed.length})</Button>
+              : <Button size="sm" onClick={() => onStartBatch()} disabled={generatable.length === 0} loading={batchRunning} title={generatable.length === 0 ? 'Every renderable slot is filled' : undefined}>Generate all missing ({generatable.length})</Button>}
           </div>
         </div>
 
@@ -54,7 +54,7 @@ export default function ImageStatusBoard({ slots, batchRunning, onStartBatch, on
               <b>{failed.map((s) => s.file.replace('.png', '')).join(', ')}</b> failed to render — completed slots are kept.
             </span>
             {failed.map((s) => (
-              <button key={s.file} className={`${styles.btn} ${styles.btnSm}`} onClick={() => onStartBatch([s.file])} disabled={batchRunning}>↻ Retry {s.shortLabel}</button>
+              <Button key={s.file} variant="ghost" size="sm" onClick={() => onStartBatch([s.file])} loading={batchRunning}>↻ Retry {s.shortLabel}</Button>
             ))}
           </div>
         )}
@@ -64,7 +64,7 @@ export default function ImageStatusBoard({ slots, batchRunning, onStartBatch, on
             const t = TILE[s.status];
             const hasImg = (s.status === 'generated' || s.status === 'uploaded') && !!s.imageUrl;
             return (
-              <button key={s.file} className={styles.slotTile} style={s.status === 'failed' ? { borderColor: 'rgba(181,83,58,.5)' } : undefined} onClick={() => onOpenSlot(s.file)} title={`Open ${s.label}`}>
+              <Button key={s.file} variant="bare" className={styles.slotTile} style={s.status === 'failed' ? { borderColor: 'rgba(181,83,58,.5)' } : undefined} onClick={() => onOpenSlot(s.file)} title={`Open ${s.label}`}>
                 <div className={`${styles.slotTh} ${hasImg ? '' : t.th}`}>
                   {hasImg
                     // eslint-disable-next-line @next/next/no-img-element
@@ -77,7 +77,7 @@ export default function ImageStatusBoard({ slots, batchRunning, onStartBatch, on
                   <span style={{ fontSize: 11, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.shortLabel}</span>
                   {t.dot ? <span className={`${styles.dot} ${t.dot}`} /> : <span className={`${styles.chip} ${t.chip!.cls}`} style={{ fontSize: 8, padding: '3px 6px' }}>{t.chip!.label}</span>}
                 </div>
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -90,6 +90,6 @@ export default function ImageStatusBoard({ slots, batchRunning, onStartBatch, on
           <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}><span className={styles.dot} style={{ background: 'var(--red)' }} />failed · one-click retry</span>
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 }

@@ -9,7 +9,7 @@
  * --palette-* value or a hex literal; if a primitive needs a colour it does
  * not have, the answer is a semantic token in globals.css, not a prop.
  */
-export { default as Button } from './Button';
+export { default as Button, buttonClasses } from './Button';
 export { default as Card } from './Card';
 export { default as Chip } from './Chip';
 export { default as Container } from './Container';

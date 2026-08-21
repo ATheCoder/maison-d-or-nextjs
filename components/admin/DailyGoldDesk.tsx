@@ -15,6 +15,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Button, buttonClasses, Field, Heading, TextLink } from '@/components/ds';
 import {
   deleteEditionRow, prepareDate, prepareWeek,
   type AlmanacCell, type DeskCoverage, type DuplicateEdition, type WeekDay,
@@ -41,16 +42,13 @@ const CSS = `
 .dgd .h2 { font-family:var(--serif); font-size:19px; font-weight:600; }
 .dgd .note { font-size:11.5px; color:var(--brown2); line-height:1.6; }
 .dgd .panel { background:var(--panel-t); border:1px solid var(--line); border-radius:16px; box-shadow:0 2px 18px rgba(40,26,12,.05); }
-.dgd a { color:var(--gold-deep); text-decoration:none; }
-.dgd a:hover { color:var(--ink); text-decoration:underline; }
 
-.dgd .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; font:700 12px/1 var(--sans); letter-spacing:.02em; padding:10px 15px; border-radius:9px; border:1px solid var(--line2); background:#fffdf8; color:var(--brown); cursor:pointer; transition:transform .1s ease; }
-.dgd .btn:hover { transform:translateY(-1px); }
-.dgd .btn:disabled { opacity:.5; cursor:default; transform:none; }
-.dgd .btn-gold { background:linear-gradient(180deg,#dcc191,#c9a96e); color:#3a2a10; border-color:var(--gold-deep); box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 6px 16px rgba(168,132,63,.28); }
-.dgd .btn-ghost { background:transparent; border-color:transparent; color:var(--brown2); }
-.dgd .btn-sm { padding:7px 11px; font-size:11px; border-radius:8px; }
-
+/* No .btn, no .field and no blanket \`.dgd a\` rule any more: every button on
+   this desk is <Button size="sm">, every anchor shaped like one wears
+   buttonClasses(), the search box is <Field>, and prose links are <TextLink>.
+   The bare-element rule had to go with them — it is UNLAYERED, so it beat the
+   primitives' own utilities outright and would have repainted the ink of every
+   coated link on the page. */
 .dgd .chip { display:inline-flex; align-items:center; gap:6px; font:700 10px/1 var(--sans); letter-spacing:.06em; text-transform:uppercase; padding:5px 9px; border-radius:999px; border:1px solid var(--line2); color:var(--brown); background:#fffdf8; white-space:nowrap; }
 .dgd .chip-gold { background:var(--gold-soft); border-color:var(--line2); color:var(--gold-deep); }
 .dgd .chip-green { background:rgba(125,138,78,.14); border-color:rgba(125,138,78,.4); color:#5f6c37; }
@@ -111,12 +109,14 @@ const CSS = `
 .dgd .legend { display:flex; align-items:center; gap:15px; flex-wrap:wrap; }
 .dgd .lgi { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--brown2); }
 .dgd .swatch { width:15px; height:15px; border-radius:4px; flex:0 0 auto; }
+/* The segmented filter — a geometry the primitives have no coat for (four
+   buttons sharing one inset track, the selected one lifted out of it), which
+   is exactly what Button's \`bare\` variant is for: the track and the tabs are
+   this stylesheet's, the focus ring and the button semantics are the
+   primitive's. */
 .dgd .seg { display:inline-flex; padding:3px; background:rgba(36,26,12,.06); border:1px solid var(--line); border-radius:10px; gap:2px; }
-.dgd .seg > button { font:700 11px/1 var(--sans); letter-spacing:.04em; padding:8px 13px; border-radius:7px; color:var(--brown2); cursor:pointer; white-space:nowrap; border:none; background:transparent; }
+.dgd .seg > button { font:700 11px/1 var(--sans); letter-spacing:.04em; padding:8px 13px; border-radius:7px; border:none; background:transparent; color:var(--brown2); white-space:nowrap; }
 .dgd .seg > button.on { background:#fffdf8; color:var(--ink); box-shadow:0 1px 6px rgba(40,26,12,.1); }
-.dgd .field { background:#fffdf8; border:1px solid var(--line2); border-radius:10px; color:var(--ink); font:400 13px/1 var(--sans); }
-.dgd .search { display:flex; align-items:center; gap:9px; padding:0 13px; height:40px; width:210px; }
-.dgd .search input { border:none; outline:none; background:transparent; font:400 13px/1 var(--sans); color:var(--ink); width:100%; }
 
 @media (max-width:1100px) {
   .dgd .week { grid-template-columns:repeat(4,1fr); }
@@ -225,9 +225,9 @@ export default function DailyGoldDesk({ coverage, week, duplicates, credit, toda
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
           <div>
             <div className="kick">Daily Gold Edition · Admin</div>
-            <div className="serif" style={{ fontSize: 34, fontWeight: 600, marginTop: 8, letterSpacing: '-.01em' }}>
+            <Heading level={1} variant="section" className="mt-2">
               The Daily Gold desk
-            </div>
+            </Heading>
             <div className="muted" style={{ fontSize: 13.5, marginTop: 7 }}>
               <b style={{ color: 'var(--brown)' }}>{coverage.liveDates}</b> date{coverage.liveDates === 1 ? '' : 's'} live
               {' · '}
@@ -248,13 +248,12 @@ export default function DailyGoldDesk({ coverage, week, duplicates, credit, toda
                   ${credit.toFixed(2)} credit
                 </span>
               )}
-              <button className="btn btn-ghost" onClick={runPrepareWeek} disabled={pending}>
+              <Button variant="link" size="sm" onClick={runPrepareWeek} loading={pending}>
                 Prepare next 7 days
-              </button>
-              <button className="btn btn-gold" style={{ padding: '11px 17px' }}
-                onClick={() => openDate(today)} disabled={pending}>
+              </Button>
+              <Button size="sm" onClick={() => openDate(today)} loading={pending}>
                 {todayRow?.status ? 'Open today' : 'Prepare today'}
-              </button>
+              </Button>
             </div>
             <div className="note" style={{ textAlign: 'right', maxWidth: 440 }}>
               Prepare creates empty drafts and never writes anything. Drafting a day happens inside
@@ -267,8 +266,8 @@ export default function DailyGoldDesk({ coverage, week, duplicates, credit, toda
           <div className="banner b-green">
             <span className="dot d-done" />
             <span>{prepareResult}</span>
-            <button className="btn btn-sm btn-ghost" style={{ marginLeft: 'auto' }}
-              onClick={() => setPrepareResult(null)}>Dismiss</button>
+            <Button variant="link" size="sm" className="ml-auto"
+              onClick={() => setPrepareResult(null)}>Dismiss</Button>
           </div>
         )}
 
@@ -325,8 +324,9 @@ export default function DailyGoldDesk({ coverage, week, duplicates, credit, toda
           <div className="note" style={{ marginTop: 13 }}>
             Born&nbsp;Today, On&nbsp;This&nbsp;Day and Moments are keyed to the month-day, so they are the
             same every year — they are shown here because a family sees them on this date, but they are
-            edited in the <Link href={`/admin/daily-gold/almanac/${today.slice(5)}`}>almanac</Link> and the{' '}
-            <Link href="/admin/people">people library</Link>.
+            edited in the{' '}
+            <TextLink as={Link} href={`/admin/daily-gold/almanac/${today.slice(5)}`}>almanac</TextLink> and the{' '}
+            <TextLink as={Link} href="/admin/people">people library</TextLink>.
           </div>
         </div>
 
@@ -334,13 +334,30 @@ export default function DailyGoldDesk({ coverage, week, duplicates, credit, toda
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, gap: 12, flexWrap: 'wrap' }}>
           <div className="h2">Dates with content</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div className="field search">
-              <span className="muted" style={{ fontSize: 13 }}>⌕</span>
-              <input placeholder="Jump to a date…" value={query} onChange={(e) => setQuery(e.target.value)} />
-            </div>
-            <div className="seg">
+            {/* The label is hidden, not absent: "Dates with content" sits two
+                inches to the left and answers what this box searches, but a
+                screen reader arriving at the input still needs to be told. */}
+            <Field
+              size="sm"
+              label="Jump to a date"
+              labelHidden
+              type="search"
+              className="w-[210px]"
+              placeholder="⌕  Jump to a date…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <div className="seg" role="group" aria-label="Filter the dates">
               {([['all', 'All'], ['live', 'Live'], ['draft', 'Drafts'], ['work', 'Needs work']] as const).map(([k, label]) => (
-                <button key={k} className={filter === k ? 'on' : undefined} onClick={() => setFilter(k)}>{label}</button>
+                <Button
+                  key={k}
+                  variant="bare"
+                  aria-pressed={filter === k}
+                  className={filter === k ? 'on' : undefined}
+                  onClick={() => setFilter(k)}
+                >
+                  {label}
+                </Button>
               ))}
             </div>
           </div>
@@ -391,7 +408,9 @@ export default function DailyGoldDesk({ coverage, week, duplicates, credit, toda
                 Set it once per person in the library — it is the field the flag resolver prefers over any name table.
               </div>
             </div>
-            <Link className="btn btn-sm" href="/admin/people">Open the library</Link>
+            <Link className={buttonClasses({ variant: 'ghost', size: 'sm' })} href="/admin/people">
+              Open the library
+            </Link>
           </div>
         )}
       </div>
@@ -424,7 +443,12 @@ function TodayAlarm({ row, today, onPrepare, pending }: {
           {row.publishedNews === 1 ? 'story' : 'stories'}
           {sections.length ? ` and ${sections.join(', ')}` : ''}.
         </span>
-        <Link className="btn btn-sm" style={{ marginLeft: 'auto' }} href={`/admin/daily-gold/${today}`}>Open today</Link>
+        <Link
+          className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'ml-auto shrink-0' })}
+          href={`/admin/daily-gold/${today}`}
+        >
+          Open today
+        </Link>
       </div>
     );
   }
@@ -439,9 +463,9 @@ function TodayAlarm({ row, today, onPrepare, pending }: {
         {sections.length ? `, ${sections.join(', ')}` : ''}
         {empty > 0 ? `, and ${empty} empty column${empty === 1 ? '' : 's'}.` : '.'}
       </span>
-      <button className="btn btn-sm btn-gold" style={{ marginLeft: 'auto' }} onClick={onPrepare} disabled={pending}>
+      <Button size="sm" className="ml-auto shrink-0" onClick={onPrepare} loading={pending}>
         {row.status ? 'Open' : 'Prepare'} {fmtShort(today)}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -482,9 +506,16 @@ function WeekCell({ d, index, pending, onOpen }: {
           <span className="nm">Moments</span><b>{d.momentsFilled}/10</b>
         </div>
       </div>
-      <button className={`btn btn-sm${d.isToday && !d.status ? ' btn-gold' : ''}`} onClick={onOpen} disabled={pending}>
+      {/* Today with nothing on it is the one cell that gets the primary coat:
+          the loud button is the one with a deadline attached. */}
+      <Button
+        variant={d.isToday && !d.status ? 'primary' : 'ghost'}
+        size="sm"
+        onClick={onOpen}
+        loading={pending}
+      >
         {d.status ? 'Continue' : 'Prepare'}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -530,7 +561,9 @@ function DateRow({ d, today, duplicated }: {
             : <span className="chip chip-ink">—</span>}
       </td>
       <td>
-        <Link className="btn btn-sm" href={`/admin/daily-gold/${d.date}`}>Open</Link>
+        <Link className={buttonClasses({ variant: 'ghost', size: 'sm' })} href={`/admin/daily-gold/${d.date}`}>
+          Open
+        </Link>
       </td>
     </tr>
   );
@@ -583,9 +616,9 @@ function DuplicateBanner({ dup, onResolved }: { dup: DuplicateEdition; onResolve
           already see. Copy anything worth keeping into the newer row first.
         </div>
       </div>
-      <button className="btn btn-sm" style={{ marginLeft: 'auto' }} onClick={resolve} disabled={pending}>
+      <Button variant="ghost" size="sm" className="ml-auto shrink-0" onClick={resolve} loading={pending}>
         {pending ? 'Resolving…' : 'Resolve'}
-      </button>
+      </Button>
     </div>
   );
 }

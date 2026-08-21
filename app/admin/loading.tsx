@@ -23,26 +23,24 @@ export default function Loading() {
   return (
     <SkeletonStatus
       label="Opening the admin desk"
-      style={{
-        minHeight: '100vh',
-        background: '#F5F0E7',
-        padding: '3rem clamp(1.5rem, 5vw, 4rem)',
-        fontFamily: 'Lato, sans-serif',
-        animation: 'mdoSkelFade 0.3s ease-out',
-      }}
+      // The ground is the theme's, not a hex: the admin layout scopes
+      // data-theme="parchment" above this, so bg-surface-page here IS the
+      // parchment the desk lands on, and it follows the token if it ever moves.
+      className="mdo-anim min-h-dvh bg-surface-page px-6 py-12 font-sans sm:px-10 lg:px-16"
+      style={{ animation: 'mdoSkelFade 0.3s ease-out' }}
     >
-      {/* The masthead every admin screen wears: the 0.6rem gold eyebrow and the
-          1.9rem Playfair title under it, sized to their line boxes so the real
-          heading arrives without shifting the page. */}
+      {/* The masthead every admin screen wears: the editorial-label eyebrow and
+          the display-section title under it, sized to their line boxes so the
+          real heading arrives without shifting the page. */}
       <SkeletonBar w={220} h={12} style={{ marginBottom: '0.6rem' }} />
-      <SkeletonBar w="42%" h={30} style={{ marginBottom: '2.5rem' }} />
+      <SkeletonBar w="42%" h={34} style={{ marginBottom: '2.5rem' }} />
 
       {/* Body: three cards' worth of ground. The desks below differ far too much
           to draw faithfully from here — this is the shape they share. */}
-      <div style={{ display: 'grid', gap: '1rem', maxWidth: 900 }}>
-        <SkeletonBar h={96} radius={14} />
-        <SkeletonBar h={96} radius={14} />
-        <SkeletonBar h={96} radius={14} />
+      <div className="grid max-w-[900px] gap-4">
+        <SkeletonBar h={96} radius={16} />
+        <SkeletonBar h={96} radius={16} />
+        <SkeletonBar h={96} radius={16} />
       </div>
     </SkeletonStatus>
   );

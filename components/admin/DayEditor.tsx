@@ -28,6 +28,7 @@ import { CSS as dndCSS } from '@dnd-kit/utilities';
 import { flagEmoji, resolveLocation } from '@/lib/countries';
 import { CONTINENTS } from '@/lib/daily-gold/edition';
 import { destinationSlot, heroSlot, newsSlot, senseSlot, type SenseKind } from '@/lib/daily-gold/slots';
+import { Button, buttonClasses, Field, Heading, Overlay, TextLink } from '@/components/ds';
 import SlotOpener from './SlotOpener';
 import AskPanel, { type AskJob } from './AskPanel';
 import CandidateCard from './CandidateCard';
@@ -56,17 +57,13 @@ const CSS = `
 .dge .muted { color:var(--brown2); }
 .dge .note { font-size:11.5px; color:var(--brown2); line-height:1.6; }
 .dge .panel { background:var(--panel-t); border:1px solid var(--line); border-radius:14px; }
-.dge a { color:var(--gold-deep); text-decoration:none; }
-.dge a:hover { color:var(--ink); text-decoration:underline; }
 .dge .hair { height:1px; background:var(--line); border:none; margin:4px 0; }
 
-.dge .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; font:700 12px/1 var(--sans); padding:9px 14px; border-radius:9px; border:1px solid var(--line2); background:#fffdf8; color:var(--brown); cursor:pointer; }
-.dge .btn:hover { transform:translateY(-1px); }
-.dge .btn:disabled { opacity:.5; cursor:default; transform:none; }
-.dge .btn-gold { background:linear-gradient(180deg,#dcc191,#c9a96e); color:#3a2a10; border-color:var(--gold-deep); }
-.dge .btn-ghost { background:transparent; border-color:transparent; color:var(--brown2); }
-.dge .btn-red { background:transparent; border-color:rgba(181,83,58,.5); color:var(--red); }
-.dge .btn-sm { padding:6px 10px; font-size:11px; border-radius:8px; }
+/* The private .btn / .btn-gold / .btn-red / .field coats are gone — every one
+   of them is a <Button size="sm"> or a <Field size="sm"> now, so they follow
+   the house's coats instead of shadowing them. The bare .dge a rule went
+   with them: it is UNLAYERED, so it outranked the primitives' own utilities
+   and would have repainted the ink of every button-shaped link on the page. */
 
 .dge .chip { display:inline-flex; align-items:center; gap:6px; font:700 10px/1 var(--sans); letter-spacing:.06em; text-transform:uppercase; padding:5px 9px; border-radius:999px; border:1px solid var(--line2); color:var(--brown); background:#fffdf8; white-space:nowrap; }
 .dge .chip-gold { background:var(--gold-soft); color:var(--gold-deep); }
@@ -91,13 +88,13 @@ const CSS = `
 .dge .save-dot { width:8px; height:8px; border-radius:50%; background:var(--green); }
 .dge .save-dot.dirty { background:var(--amber); }
 .dge .seg { display:inline-flex; padding:3px; background:rgba(36,26,12,.06); border:1px solid var(--line); border-radius:10px; gap:2px; }
-.dge .seg > button { font:700 11px/1 var(--sans); padding:7px 12px; border-radius:7px; color:var(--brown2); cursor:pointer; border:none; background:transparent; }
+.dge .seg > button { font:700 11px/1 var(--sans); padding:7px 12px; border-radius:7px; color:var(--brown2); border:none; background:transparent; }
 .dge .seg > button.on { background:#fffdf8; color:var(--ink); box-shadow:0 1px 6px rgba(40,26,12,.1); }
 .dge .seg > button.on.draft { color:#96681f; }
 
 .dge .body { display:flex; flex:1; min-height:0; align-items:flex-start; }
 .dge .rail { width:262px; flex:0 0 262px; padding:16px 12px; border-right:1px solid var(--line); display:flex; flex-direction:column; gap:2px; position:sticky; top:0; }
-.dge .navrow { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:9px; font-size:12.5px; color:var(--brown); cursor:pointer; border:none; background:transparent; width:100%; text-align:left; }
+.dge .navrow { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:9px; font-size:12.5px; color:var(--brown); border:none; background:transparent; width:100%; text-align:left; }
 .dge .navrow:hover { background:var(--gold-soft); }
 .dge .navrow.on { background:#fffdf8; box-shadow:0 1px 6px rgba(40,26,12,.08); color:var(--ink); font-weight:700; }
 .dge .navrow .tail { margin-left:auto; font-size:11px; }
@@ -108,10 +105,6 @@ const CSS = `
 .dge .pane { flex:1; min-width:0; padding:22px 26px 60px; display:flex; flex-direction:column; gap:18px; }
 .dge .fgroup { display:flex; flex-direction:column; gap:9px; scroll-margin-top:16px; }
 .dge .flbl { display:flex; align-items:center; justify-content:space-between; gap:10px; }
-.dge .field { width:100%; background:#fffdf8; border:1px solid var(--line2); border-radius:10px; color:var(--ink); font:400 13px/1.6 var(--sans); padding:10px 13px; outline:none; resize:vertical; }
-.dge .field:focus { border-color:var(--gold-deep); }
-.dge .field::placeholder { color:var(--brown3); }
-.dge select.field { cursor:pointer; }
 
 .dge .cut { background:rgba(201,169,110,.10); border-left:3px solid var(--gold); border-radius:0 9px 9px 0; padding:9px 13px; font:400 12.5px/1.7 var(--sans); color:var(--brown); font-style:italic; }
 
@@ -131,13 +124,13 @@ const CSS = `
 
 .dge .nrow { display:flex; align-items:center; gap:11px; padding:10px 12px; }
 .dge .lead { display:flex; align-items:stretch; gap:13px; padding:13px; border-color:var(--line2); background:var(--gold-soft); }
-.dge .lead > .btn, .dge .lead > .grip { align-self:center; }
+.dge .lead > .grip { align-self:center; }
 .dge .grip { cursor:grab; color:var(--brown3); font-size:13px; letter-spacing:-2px; user-select:none; }
 .dge .leadart { width:150px; flex:0 0 150px; min-height:96px; border-radius:8px; }
 .dge .nrowart { width:56px; flex:0 0 56px; height:42px; border-radius:6px; }
 
-.dge .overlay { position:fixed; inset:0; background:rgba(36,26,12,.45); display:flex; align-items:center; justify-content:center; padding:24px; z-index:60; }
-.dge .modal { background:var(--ground); border:1px solid var(--line2); border-radius:16px; padding:24px; width:min(620px,100%); max-height:90vh; overflow-y:auto; display:flex; flex-direction:column; gap:15px; }
+/* The preflight is an <Overlay> now — Escape, focus trap, focus restore and
+   a scroll lock, none of which the hand-rolled scrim had. */
 .dge .callout { background:var(--gold-soft); border:1px solid var(--line); border-radius:10px; padding:10px 13px; }
 `;
 
@@ -345,20 +338,20 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
       <div className="dge">
         <style dangerouslySetInnerHTML={{ __html: CSS }} />
         <div className="topbar">
-          <Link className="btn btn-ghost btn-sm" href="/admin/daily-gold">‹ Desk</Link>
+          <Link className={buttonClasses({ variant: 'link', size: 'sm' })} href="/admin/daily-gold">‹ Desk</Link>
         </div>
         <div className="pane" style={{ maxWidth: 620 }}>
           <div className="kick">Daily Gold edition</div>
-          <div className="serif" style={{ fontSize: 26, fontWeight: 600 }}>{fmtDate(day.date)}</div>
+          <Heading level={1} variant="story">{fmtDate(day.date)}</Heading>
           <p className="note" style={{ fontSize: 13 }}>
             This date has no edition row yet. Preparing creates an empty draft — it writes nothing
             and no family can see it until you publish.
           </p>
           <div>
-            <button className="btn btn-gold" disabled={pending}
+            <Button size="sm" loading={pending}
               onClick={() => start(async () => { await prepareThisDate(day.date); refresh(); })}>
               Prepare {fmtDate(day.date)}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -374,11 +367,11 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
       {/* ── Topbar ─────────────────────────────────────────────── */}
       <div className="topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <Link className="btn btn-ghost btn-sm" href="/admin/daily-gold" style={{ paddingLeft: 0 }}>‹ Desk</Link>
+          <Link className={buttonClasses({ variant: 'link', size: 'sm', className: 'pl-0' })} href="/admin/daily-gold">‹ Desk</Link>
           <div className="vhair" style={{ height: 30 }} />
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <div className="serif" style={{ fontSize: 20, fontWeight: 600 }}>{fmtDate(day.date)}</div>
+              <Heading level={1} variant="story">{fmtDate(day.date)}</Heading>
               {live
                 ? <span className="chip chip-green">Live · families can open this date</span>
                 : <span className="chip chip-amber">Draft · not visible to families</span>}
@@ -387,8 +380,8 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
           </div>
           <div className="vhair" style={{ height: 30 }} />
           <div style={{ display: 'flex', gap: 4 }}>
-            <Link className="btn btn-sm btn-ghost" href={`/admin/daily-gold/${day.prevDate}`} title={fmtDate(day.prevDate)}>‹</Link>
-            <Link className="btn btn-sm btn-ghost" href={`/admin/daily-gold/${day.nextDate}`} title={fmtDate(day.nextDate)}>›</Link>
+            <Link className={buttonClasses({ variant: 'ghost', size: 'sm' })} href={`/admin/daily-gold/${day.prevDate}`} title={fmtDate(day.prevDate)}>‹</Link>
+            <Link className={buttonClasses({ variant: 'ghost', size: 'sm' })} href={`/admin/daily-gold/${day.nextDate}`} title={fmtDate(day.nextDate)}>›</Link>
           </div>
         </div>
 
@@ -402,16 +395,18 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
           {/* §8.2 — whole-day drafting is triggered from in here, one day at a
               time, and never from the desk: the desk creates and navigates, the
               editor writes. */}
-          <button className="btn" onClick={() => setAsk('day')} disabled={pending || Boolean(jobs.ask)}>
+          <Button variant="ghost" size="sm" onClick={() => setAsk('day')} disabled={pending || Boolean(jobs.ask)}>
             ✦ Draft this day
-          </button>
-          <div className="seg">
-            <button className={!live ? 'on draft' : undefined} onClick={() => publish('draft')} disabled={pending || !live}>Draft</button>
-            <button className={live ? 'on' : undefined} onClick={openPreflight} disabled={pending || live}>Live</button>
+          </Button>
+          <div className="seg" role="group" aria-label="Edition status">
+            <Button variant="bare" aria-pressed={!live} className={!live ? 'on draft' : undefined}
+              onClick={() => publish('draft')} disabled={pending || !live}>Draft</Button>
+            <Button variant="bare" aria-pressed={live} className={live ? 'on' : undefined}
+              onClick={openPreflight} disabled={pending || live}>Live</Button>
           </div>
-          <button className="btn btn-gold" onClick={openPreflight} disabled={pending}>
+          <Button size="sm" onClick={openPreflight} loading={pending}>
             {live ? 'Review what families see' : 'Publish to families'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -420,7 +415,7 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
           <span className="dot d-red" />
           <span>
             <b>This date has {day.editionCount} edition rows.</b> You are editing the one families see;
-            the others are invisible. <Link href="/admin/daily-gold">Resolve it on the desk</Link>.
+            the others are invisible. <TextLink as={Link} href="/admin/daily-gold">Resolve it on the desk</TextLink>.
           </span>
         </div>
       )}
@@ -428,7 +423,7 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
       {error && (
         <div className="banner b-red" style={{ borderRadius: 0, padding: '10px 20px' }}>
           <span className="dot d-red" /><span>{error}</span>
-          <button className="btn btn-sm btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => setError(null)}>Dismiss</button>
+          <Button variant="link" size="sm" className="ml-auto" onClick={() => setError(null)}>Dismiss</Button>
         </div>
       )}
 
@@ -477,8 +472,10 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
                 <span className="nm">Born today</span><b>{day.recurring.peopleCount} books</b>
               </div>
             </div>
-            <Link className="btn btn-sm" style={{ justifyContent: 'center', marginTop: 3 }}
-              href={`/admin/daily-gold/almanac/${day.recurring.monthDay}`}>
+            <Link
+              className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'mt-1 justify-center' })}
+              href={`/admin/daily-gold/almanac/${day.recurring.monthDay}`}
+            >
               Open the almanac →
             </Link>
           </div>
@@ -541,14 +538,23 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
           {/* Destination */}
           <div className="fgroup" id="sec-destination">
             <div className="flbl"><span className="kick">Destination</span></div>
+            {/* Labels hidden: the "Destination" kick above IS this pair's
+                label on screen, and repeating it over each box would say the
+                same word three times. Hidden, not absent — both are still
+                announced and still clickable to focus. */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <input className="field" style={{ flex: 1, minWidth: 220 }} placeholder="Lisbon, Portugal"
-                value={draft.destination_country ?? ''} onChange={(ev) => set('destination_country')(ev.target.value)} />
-              <select className="field" style={{ width: 190 }}
-                value={draft.continent ?? ''} onChange={(ev) => set('continent')(ev.target.value)}>
+              <Field
+                size="sm" label="Destination city and country" labelHidden
+                className="min-w-[220px] flex-1" placeholder="Lisbon, Portugal"
+                value={draft.destination_country ?? ''} onChange={(ev) => set('destination_country')(ev.target.value)}
+              />
+              <Field
+                as="select" size="sm" label="Continent" labelHidden className="w-[190px]"
+                value={draft.continent ?? ''} onChange={(ev) => set('continent')(ev.target.value)}
+              >
                 <option value="">— continent —</option>
                 {CONTINENTS.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
+              </Field>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {(draft.continent || destCity) && (
@@ -592,9 +598,12 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
               <span className="kick">Atmosphere</span>
               <RewriteButton {...rewriteProps('destination_description', draft.destination_description ?? '')} />
             </div>
-            <textarea className="field" rows={5} placeholder="What the place feels like…"
+            <Field
+              as="textarea" size="sm" label="Atmosphere" labelHidden rows={5}
+              placeholder="What the place feels like…"
               value={draft.destination_description ?? ''}
-              onChange={(ev) => set('destination_description')(ev.target.value)} />
+              onChange={(ev) => set('destination_description')(ev.target.value)}
+            />
             <FieldReview jobs={jobs.rewrites} fieldPath="destination_description"
               onAccept={set('destination_description')} onResolved={loadJobs} />
             {draft.destination_description?.trim() && (
@@ -622,8 +631,11 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
                 <RewriteButton {...rewriteProps('child_life_story', draft.child_life_story ?? '')} />
               </span>
             </div>
-            <textarea className="field" rows={6} placeholder="One child's ordinary day…"
-              value={draft.child_life_story ?? ''} onChange={(ev) => set('child_life_story')(ev.target.value)} />
+            <Field
+              as="textarea" size="sm" label={`A child in ${destCity || '…'}`} labelHidden rows={6}
+              placeholder="One child's ordinary day…"
+              value={draft.child_life_story ?? ''} onChange={(ev) => set('child_life_story')(ev.target.value)}
+            />
             <FieldReview jobs={jobs.rewrites} fieldPath="child_life_story"
               onAccept={set('child_life_story')} onResolved={loadJobs} />
             <div className="note">
@@ -659,11 +671,15 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
                 <MiniField label="Tiny phrase" value={draft.tiny_phrase} onChange={set('tiny_phrase')} placeholder="Obrigado" />
                 <div style={{ display: 'flex', gap: 9, alignItems: 'center' }}>
                   <span className="note" style={{ width: 74, flex: '0 0 74px' }}>— language</span>
-                  <input className="field" style={{ width: 140 }} placeholder="Portuguese"
-                    value={draft.tiny_phrase_language ?? ''} onChange={(ev) => set('tiny_phrase_language')(ev.target.value)} />
+                  <Field
+                    size="sm" label="Tiny phrase language" labelHidden className="w-[140px]" placeholder="Portuguese"
+                    value={draft.tiny_phrase_language ?? ''} onChange={(ev) => set('tiny_phrase_language')(ev.target.value)}
+                  />
                   <span className="note" style={{ flex: '0 0 52px', textAlign: 'right' }}>means</span>
-                  <input className="field" style={{ flex: 1 }} placeholder="Thank you"
-                    value={draft.tiny_phrase_translation ?? ''} onChange={(ev) => set('tiny_phrase_translation')(ev.target.value)} />
+                  <Field
+                    size="sm" label="Tiny phrase in English" labelHidden className="flex-1" placeholder="Thank you"
+                    value={draft.tiny_phrase_translation ?? ''} onChange={(ev) => set('tiny_phrase_translation')(ev.target.value)}
+                  />
                 </div>
                 <div className="note">The language is the destination&rsquo;s, not English.</div>
               </div>
@@ -733,11 +749,15 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
               <span className="chip chip-ink">Optional</span>
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <input className="field" style={{ flex: 1, minWidth: 240 }}
+              <Field
+                size="sm" label="Daily quote" labelHidden className="min-w-[240px] flex-1"
                 placeholder="Leave blank to use the curated rotation…"
-                value={draft.daily_quote ?? ''} onChange={(ev) => set('daily_quote')(ev.target.value)} />
-              <input className="field" style={{ width: 220 }} placeholder="Attributed to…"
-                value={draft.daily_quote_author ?? ''} onChange={(ev) => set('daily_quote_author')(ev.target.value)} />
+                value={draft.daily_quote ?? ''} onChange={(ev) => set('daily_quote')(ev.target.value)}
+              />
+              <Field
+                size="sm" label="Quote attribution" labelHidden className="w-[220px]" placeholder="Attributed to…"
+                value={draft.daily_quote_author ?? ''} onChange={(ev) => set('daily_quote_author')(ev.target.value)}
+              />
             </div>
             <div className="note">
               Blank is a choice, not a gap: the inspiration bar rotates ten curated quotes.
@@ -791,7 +811,9 @@ function RailRow({ id, label, state, tail, tailColour, active, onGo }: {
   tail?: string; tailColour?: string; active: Section; onGo: (s: Section) => void;
 }) {
   return (
-    <button
+    <Button
+      variant="bare"
+      aria-current={active === id ? 'true' : undefined}
       className={`navrow${active === id ? ' on' : ''}`}
       onClick={() => {
         onGo(id);
@@ -801,7 +823,7 @@ function RailRow({ id, label, state, tail, tailColour, active, onGo }: {
       <span className={`dot d-${state}`} />
       {label}
       {tail && <span className="tail" style={{ color: tailColour ?? 'var(--brown2)' }}>{tail}</span>}
-    </button>
+    </Button>
   );
 }
 
@@ -812,9 +834,16 @@ function MiniField({ label, value, onChange, placeholder, action }: {
 }) {
   return (
     <div style={{ display: 'flex', gap: 9, alignItems: 'center' }}>
-      <span className="note" style={{ width: 74, flex: '0 0 74px' }}>{label}</span>
-      <input className="field" style={{ flex: 1, fontSize: 12.5 }} placeholder={placeholder}
-        value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+      {/* The label is drawn to the LEFT here rather than above, because these
+          four sit beside a live rendering of the block they fill in and the
+          rows have to line up with it. So Field's own label is hidden and this
+          <span> is it — same string, still tied to the control by htmlFor via
+          the hidden label the primitive keeps. */}
+      <span aria-hidden className="note" style={{ width: 74, flex: '0 0 74px' }}>{label}</span>
+      <Field
+        size="sm" label={label} labelHidden className="flex-1" placeholder={placeholder}
+        value={value ?? ''} onChange={(e) => onChange(e.target.value)}
+      />
       {action}
     </div>
   );
@@ -847,7 +876,7 @@ function PaintMissing({ subject, job, onChanged, onError }: {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-      <button className="btn btn-sm" disabled={busy || running}
+      <Button variant="ghost" size="sm" loading={busy || running}
         onClick={() => {
           setBusy(true);
           void paintMissing(subject)
@@ -855,7 +884,7 @@ function PaintMissing({ subject, job, onChanged, onError }: {
             .finally(() => setBusy(false));
         }}>
         {running ? `✦ painting ${done} of ${slots.length}…` : '✦ Paint every empty slot with a prompt'}
-      </button>
+      </Button>
       <span className="note">
         Slots whose prompt is written but which have no picture yet. One failing never discards the others.
       </span>
@@ -968,13 +997,13 @@ function NewsColumn({
               Read the claim against its source. Keeping one gives it the next free place in the ten;
               rejecting deletes it.
             </span>
-            <button className="btn btn-sm btn-ghost" disabled={pending}
+            <Button variant="link" size="sm" loading={pending}
               onClick={() => start(async () => {
                 const r = await rejectAllCandidates('news', date);
                 if (!r.ok) onError(r.error ?? 'Could not clear these.'); else onChanged();
               })}>
               Reject all
-            </button>
+            </Button>
           </div>
           <div style={{ display: 'grid', gap: 9 }}>
             {candidates.map((c) => (
@@ -1006,8 +1035,8 @@ function NewsColumn({
             No good news in the column for this date. An absent column is a designed state — a family
             simply sees the other sections.
           </div>
-          <button className="btn btn-sm" onClick={onOpenAsk} disabled={pending}>✦ Find some</button>
-          <button className="btn btn-sm" onClick={add} disabled={pending}>Add by hand</button>
+          <Button variant="ghost" size="sm" onClick={onOpenAsk} disabled={pending}>✦ Find some</Button>
+          <Button variant="ghost" size="sm" onClick={add} disabled={pending}>Add by hand</Button>
         </div>
       ) : (
         // The stable id keeps dnd-kit's generated aria-describedby identical on
@@ -1040,8 +1069,8 @@ function NewsColumn({
 
       {items.length > 0 && items.length < 10 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button className="btn btn-sm" onClick={add} disabled={pending}>Add another story</button>
-          {!askOpen && <button className="btn btn-sm" onClick={onOpenAsk} disabled={pending}>✦ Find more</button>}
+          <Button variant="ghost" size="sm" onClick={add} disabled={pending}>Add another story</Button>
+          {!askOpen && <Button variant="ghost" size="sm" onClick={onOpenAsk} disabled={pending}>✦ Find more</Button>}
           <span className="note">
             {10 - items.length} of the ten the reader renders still free.
           </span>
@@ -1133,9 +1162,9 @@ function NewsRow({
           )}
         </div>
 
-        <button className="btn btn-sm" onClick={onToggle} disabled={pending}>
+        <Button variant="ghost" size="sm" className="self-center" onClick={onToggle} disabled={pending}>
           {open ? 'Close' : 'Edit'}
-        </button>
+        </Button>
       </div>
 
       {open && (
@@ -1145,9 +1174,9 @@ function NewsRow({
           {item.source_url && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span className="chip chip-green">Sourced</span>
-              <a href={item.source_url} target="_blank" rel="noreferrer noopener" style={{ fontSize: 11.5 }}>
+              <TextLink href={item.source_url} target="_blank" rel="noreferrer noopener" className="type-caption">
                 {item.source_title || 'the source'} ↗
-              </a>
+              </TextLink>
               {item.source_published_at && (
                 <span className="note">published {item.source_published_at.slice(0, 10)}</span>
               )}
@@ -1167,7 +1196,7 @@ function NewsRow({
               onError={onError}
             />
           </div>
-          <input className="field" placeholder="Headline" value={local.headline}
+          <Field size="sm" label="Headline" labelHidden placeholder="Headline" value={local.headline}
             onChange={(e) => set('headline')(e.target.value)} />
           <FieldReview jobs={rewrites} fieldPath={`news.${item.id}.headline`} onAccept={set('headline')} onResolved={onJobsChanged} />
 
@@ -1183,7 +1212,8 @@ function NewsRow({
               onError={onError}
             />
           </div>
-          <textarea className="field" rows={3} placeholder="What happened, for a child of seven…"
+          <Field as="textarea" size="sm" label="The story" labelHidden rows={3}
+            placeholder="What happened, for a child of seven…"
             value={local.description} onChange={(e) => set('description')(e.target.value)} />
           <FieldReview jobs={rewrites} fieldPath={`news.${item.id}.description`} onAccept={set('description')} onResolved={onJobsChanged} />
           <div className="note">
@@ -1192,7 +1222,8 @@ function NewsRow({
           </div>
           <div style={{ display: 'flex', gap: 9, alignItems: 'center', flexWrap: 'wrap' }}>
             <span className="note" style={{ width: 58 }}>Where</span>
-            <input className="field" style={{ flex: 1, minWidth: 180 }} placeholder="Berlin, Germany"
+            <Field size="sm" label="Where it happened" labelHidden className="min-w-[180px] flex-1"
+              placeholder="Berlin, Germany"
               value={local.location} onChange={(e) => set('location')(e.target.value)} />
             {iso2
               ? <span className="chip chip-green">{flagEmoji(iso2)} {iso2}</span>
@@ -1218,20 +1249,20 @@ function NewsRow({
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {live && (
-              <button className="btn btn-sm" disabled={pending} onClick={() => start(async () => {
+              <Button variant="ghost" size="sm" loading={pending} onClick={() => start(async () => {
                 const r = await setNewsPublished(item.id, !item.published);
                 if (!r.ok) onError(r.error ?? 'Could not change that story.'); else onChanged();
               })}>
                 {item.published ? 'Hold back from families' : 'Show to families'}
-              </button>
+              </Button>
             )}
-            <button className="btn btn-sm btn-red" style={{ marginLeft: 'auto' }} disabled={pending}
+            <Button variant="danger" size="sm" className="ml-auto" loading={pending}
               onClick={() => start(async () => {
                 const r = await deleteNewsItem(item.id);
                 if (!r.ok) onError(r.error ?? 'Could not delete.'); else onChanged();
               })}>
               Delete this story
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -1251,15 +1282,15 @@ function PreflightDialog({ preflight, date, live, publishedNews, pending, onClos
         : <span className="chip chip-amber">Visible gap</span>;
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+    <Overlay onClose={onClose} label={`${live ? 'Already live' : 'Publish'} · ${fmtDate(date)}`} maxWidth={620}>
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 15 }}>
         <div>
           <div className="kick">{live ? 'Already live' : 'Publish'} · {fmtDate(date)}</div>
-          <div className="serif" style={{ fontSize: 21, fontWeight: 600, marginTop: 6 }}>
+          <Heading level={2} variant="story" className="mt-1.5">
             {live
               ? 'This date is a wax seal families can open'
               : 'This date becomes a wax seal families can open'}
-          </div>
+          </Heading>
           <div className="note" style={{ marginTop: 6 }}>
             {live
               ? 'It is in the navigator on the reader page now. Here is what a family does and does not see.'
@@ -1283,20 +1314,20 @@ function PreflightDialog({ preflight, date, live, publishedNews, pending, onClos
         )}
 
         <div style={{ display: 'flex', gap: 9, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <button className="btn" onClick={onClose} disabled={pending}>
+          <Button variant="ghost" size="sm" onClick={onClose} disabled={pending}>
             {live ? 'Close' : 'Keep as draft'}
-          </button>
+          </Button>
           {live ? (
-            <button className="btn btn-red" onClick={onUnpublish} disabled={pending}>
+            <Button variant="danger" size="sm" onClick={onUnpublish} loading={pending}>
               Withdraw from families
-            </button>
+            </Button>
           ) : (
-            <button className="btn btn-gold" onClick={onPublish} disabled={pending}>
+            <Button size="sm" onClick={onPublish} loading={pending}>
               Publish {fmtDate(date)}{publishedNews === 0 ? '' : ''}
-            </button>
+            </Button>
           )}
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 }

@@ -41,6 +41,7 @@ import {
 import {
   acceptCandidate, getDgJobs, rejectAllCandidates, rejectCandidate,
 } from '@/app/admin/daily-gold/aiActions';
+import { Button, buttonClasses, Field, Heading, TextLink } from '@/components/ds';
 
 const CSS = `
 .alm {
@@ -59,17 +60,12 @@ const CSS = `
 .alm .muted { color:var(--brown2); }
 .alm .note { font-size:11.5px; color:var(--brown2); line-height:1.6; }
 .alm .panel { background:var(--panel-t); border:1px solid var(--line); border-radius:14px; }
-.alm a { color:var(--gold-deep); text-decoration:none; }
-.alm a:hover { color:var(--ink); text-decoration:underline; }
 .alm .hair { height:1px; background:var(--line); border:none; margin:4px 0; }
 
-.alm .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; font:700 12px/1 var(--sans); padding:9px 14px; border-radius:9px; border:1px solid var(--line2); background:#fffdf8; color:var(--brown); cursor:pointer; }
-.alm .btn:hover { transform:translateY(-1px); }
-.alm .btn:disabled { opacity:.5; cursor:default; transform:none; }
-.alm .btn-gold { background:linear-gradient(180deg,#dcc191,#c9a96e); color:#3a2a10; border-color:var(--gold-deep); }
-.alm .btn-ghost { background:transparent; border-color:transparent; color:var(--brown2); }
-.alm .btn-red { background:transparent; border-color:rgba(181,83,58,.5); color:var(--red); }
-.alm .btn-sm { padding:6px 10px; font-size:11px; border-radius:8px; }
+/* .btn / .btn-gold / .btn-red / .field are gone — every verb here is a
+   <Button size="sm"> and every box a <Field size="sm">. The bare .alm a rule
+   went with them: it is UNLAYERED, so it outranked the primitives' own
+   utilities and repainted the ink of anything link-shaped that wore a coat. */
 
 .alm .chip { display:inline-flex; align-items:center; gap:5px; font:700 10px/1 var(--sans); letter-spacing:.06em; text-transform:uppercase; padding:5px 9px; border-radius:999px; border:1px solid var(--line2); color:var(--brown); background:#fffdf8; white-space:nowrap; }
 .alm .chip-gold { background:var(--gold-soft); color:var(--gold-deep); }
@@ -93,7 +89,7 @@ const CSS = `
 .alm .topbar { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 20px; background:var(--panel-t); border-bottom:1px solid var(--line); flex-wrap:wrap; }
 .alm .vhair { width:1px; background:var(--line); align-self:stretch; }
 .alm .seg { display:inline-flex; padding:3px; background:rgba(36,26,12,.06); border:1px solid var(--line); border-radius:10px; gap:2px; }
-.alm .seg > button { font:700 11px/1 var(--sans); padding:8px 13px; border-radius:7px; color:var(--brown2); cursor:pointer; border:none; background:transparent; }
+.alm .seg > button { font:700 11px/1 var(--sans); padding:8px 13px; border-radius:7px; color:var(--brown2); border:none; background:transparent; }
 .alm .seg > button.on { background:#fffdf8; color:var(--ink); box-shadow:0 1px 6px rgba(40,26,12,.1); }
 
 .alm .daystrip { display:flex; align-items:center; gap:14px; padding:11px 20px; border-bottom:1px solid var(--line); background:rgba(255,248,238,.55); flex-wrap:wrap; }
@@ -118,9 +114,11 @@ const CSS = `
 
 .alm .fgroup { display:flex; flex-direction:column; gap:8px; }
 .alm .flbl { display:flex; align-items:center; justify-content:space-between; gap:10px; }
-.alm .field { width:100%; background:#fffdf8; border:1px solid var(--line2); border-radius:10px; color:var(--ink); font:400 13px/1.6 var(--sans); padding:10px 13px; outline:none; resize:vertical; }
-.alm .field:focus { border-color:var(--gold-deep); }
-.alm .field::placeholder { color:var(--brown3); }
+/* The headline and year boxes are set in the display face — a decision about
+   THOSE questions rather than about fields, so it rides on the call site
+   rather than in the coat. The class lands on Field's wrapper, so it reaches
+   the control through it. */
+.alm .serif-field .field { font-family:var(--serif); font-weight:600; }
 
 .alm .art { border-radius:7px; background:radial-gradient(ellipse at 34% 28%, #e8d29a, transparent 60%), linear-gradient(150deg,#d9c286,#b89a5e 60%,#8f7c4a); background-size:cover; background-position:center; }
 .alm .art-empty { background:repeating-linear-gradient(135deg, rgba(120,90,50,.07) 0 7px, transparent 7px 14px), #f3ead2; border:1px dashed rgba(120,90,50,.35); }
@@ -132,7 +130,7 @@ const CSS = `
 .alm .rank.empty { color:var(--brown3); opacity:.5; }
 .alm .grip { cursor:grab; color:var(--brown3); font-size:13px; letter-spacing:-2px; user-select:none; }
 .alm .open { border-color:var(--gold-deep); box-shadow:0 0 0 2px var(--gold-soft), 0 10px 26px rgba(40,26,12,.1); }
-.alm .sw { width:34px; height:19px; border-radius:999px; background:rgba(92,74,42,.2); position:relative; cursor:pointer; border:none; flex:0 0 34px; }
+.alm .sw { width:34px; height:19px; border-radius:999px; background:rgba(92,74,42,.2); position:relative; border:none; flex:0 0 34px; }
 .alm .sw::after { content:""; position:absolute; top:2px; left:2px; width:15px; height:15px; border-radius:50%; background:#fffdf8; transition:left .12s ease; }
 .alm .sw.on { background:var(--green); }
 .alm .sw.on::after { left:17px; }
@@ -241,22 +239,23 @@ export default function AlmanacEditor({ day }: { day: AlmanacDay }) {
       {/* ── Topbar ─────────────────────────────────────────────── */}
       <div className="topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          <Link className="btn btn-ghost btn-sm" href="/admin/daily-gold" style={{ paddingLeft: 0 }}>‹ Desk</Link>
+          <Link className={buttonClasses({ variant: 'link', size: 'sm', className: 'pl-0' })} href="/admin/daily-gold">‹ Desk</Link>
           <div className="vhair" style={{ height: 30 }} />
           <div>
-            <div className="serif" style={{ fontSize: 20, fontWeight: 600 }}>{fmtMonthDay(day.monthDay)}</div>
+            <Heading level={1} variant="story">{fmtMonthDay(day.monthDay)}</Heading>
             <div className="kick" style={{ marginTop: 4 }}>The almanac · recurring content</div>
           </div>
           <div className="vhair" style={{ height: 30 }} />
           {/* R4.16 — the door back to a real date. */}
-          <Link className="btn btn-ghost btn-sm" href={`/admin/daily-gold/${day.occurrenceDate}`}
+          <Link className={buttonClasses({ variant: 'link', size: 'sm' })} href={`/admin/daily-gold/${day.occurrenceDate}`}
             title="This month-day as an actual date">
             {fmtDate(day.occurrenceDate)} →
           </Link>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button
-            className="btn btn-sm"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setAskOpenFor(tab)}
             disabled={Boolean(tabAsk) || otherAskRunning}
             title={otherAskRunning
@@ -264,10 +263,12 @@ export default function AlmanacEditor({ day }: { day: AlmanacDay }) {
               : undefined}
           >
             {tab === 'history' ? '✦ Ask for events' : '✦ Ask for moments'}
-          </button>
-          <div className="seg">
-            <button className={tab === 'history' ? 'on' : undefined} onClick={() => setTab('history')}>On this day</button>
-            <button className={tab === 'moments' ? 'on' : undefined} onClick={() => setTab('moments')}>Greatest moments</button>
+          </Button>
+          <div className="seg" role="group" aria-label="Which almanac column">
+            <Button variant="bare" aria-pressed={tab === 'history'}
+              className={tab === 'history' ? 'on' : undefined} onClick={() => setTab('history')}>On this day</Button>
+            <Button variant="bare" aria-pressed={tab === 'moments'}
+              className={tab === 'moments' ? 'on' : undefined} onClick={() => setTab('moments')}>Greatest moments</Button>
           </div>
         </div>
       </div>
@@ -279,16 +280,16 @@ export default function AlmanacEditor({ day }: { day: AlmanacDay }) {
           <span>
             <b>This is {fmtMonthDay(day.monthDay)} in every year.</b> On This Day covers the years{' '}
             <b>{day.bandFrom}–{day.bandTo}</b> — the recent past a child can step back through.
-            Anything older belongs to <button className="btn btn-ghost btn-sm" style={{ padding: 0 }}
-              onClick={() => setTab('moments')}>Greatest Moments</button>, which spans all of history.
+            Anything older belongs to <Button variant="link" size="sm"
+              onClick={() => setTab('moments')}>Greatest Moments</Button>, which spans all of history.
           </span>
         ) : (
           <span>
             <b>This is {fmtMonthDay(day.monthDay)} in every year.</b> Greatest Moments has no window:
             the most important things that have <i>ever</i> happened on {fmtMonthDay(day.monthDay)} —
             any year, BC included. Recent events belong to{' '}
-            <button className="btn btn-ghost btn-sm" style={{ padding: 0 }}
-              onClick={() => setTab('history')}>On This Day</button> instead.
+            <Button variant="link" size="sm"
+              onClick={() => setTab('history')}>On This Day</Button> instead.
           </span>
         )}
       </div>
@@ -299,7 +300,7 @@ export default function AlmanacEditor({ day }: { day: AlmanacDay }) {
       {error && (
         <div className="banner b-red" style={{ borderRadius: 0 }}>
           <span className="dot d-red" /><span>{error}</span>
-          <button className="btn btn-sm btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => setError(null)}>Dismiss</button>
+          <Button variant="link" size="sm" className="ml-auto" onClick={() => setError(null)}>Dismiss</Button>
         </div>
       )}
 
@@ -523,7 +524,7 @@ function BornTodayStrip({ day }: { day: AlmanacDay }) {
         Read-only here. People are recurring like the two tabs above, but a person — and the order they
         appear in — is edited in the library.
       </span>
-      <Link className="btn btn-sm" style={{ marginLeft: 'auto' }} href="/admin/people">
+      <Link className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'ml-auto shrink-0' })} href="/admin/people">
         Open the library →
       </Link>
     </div>
@@ -537,13 +538,13 @@ function AddEventButton({ monthDay, year, onDone, onError }: {
 }) {
   const [pending, start] = useTransition();
   return (
-    <button className="btn btn-sm btn-ghost add" disabled={pending} title={`Add an event to ${year}`}
+    <Button variant="link" size="sm" className="add" loading={pending} title={`Add an event to ${year}`}
       onClick={() => start(async () => {
         const res = await createEvent(monthDay, year);
         if (!res.ok) onError(res.error); else onDone();
       })}>
       +
-    </button>
+    </Button>
   );
 }
 
@@ -613,18 +614,19 @@ function EventRailRow({ event, index, selected, onSelect, disabled }: {
         style={{ cursor: 'grab', touchAction: 'none' }} {...attributes} {...listeners}>
         {index + 1}
       </span>
-      <button
+      {/* `bare`: the row's look is the `.ev` rule around it — this button is
+          only the hit target inside it, and what the primitive adds is the
+          focus ring it never had. */}
+      <Button
+        variant="bare"
         onClick={onSelect}
         disabled={disabled}
-        style={{
-          flex: 1, textAlign: 'left', background: 'transparent', border: 'none',
-          padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer',
-        }}
+        className="flex-1 border-none bg-transparent p-0 text-left font-[inherit] text-[inherit]"
       >
         {event.headline || <i>Untitled event</i>}
         {event.candidate && <b style={{ color: '#96681f' }}> · proposed</b>}
         {event.dateMismatch && <b style={{ color: '#96402b' }}> · date looks wrong</b>}
-      </button>
+      </Button>
       {!event.published && <span className="dot d-empty" style={{ marginTop: 4 }} />}
     </div>
   );
@@ -689,9 +691,9 @@ function EventPane({ monthDay, event, siblings, scene, rewrites, onJobsChanged, 
           <span className={`chip ${event.candidate ? 'chip-amber' : 'chip-green'}`}>
             {event.candidate ? 'Proposed · unreviewed' : 'Sourced'}
           </span>
-          <a href={event.source_url} target="_blank" rel="noreferrer noopener" style={{ fontSize: 11.5 }}>
+          <TextLink href={event.source_url} target="_blank" rel="noreferrer noopener" className="type-caption">
             {event.source_title || 'the source'} ↗
-          </a>
+          </TextLink>
           <span className="note" style={{ flex: 1, minWidth: 160 }}>
             Check the year and the day against it before this goes out.
           </span>
@@ -724,7 +726,8 @@ function EventPane({ monthDay, event, siblings, scene, rewrites, onJobsChanged, 
             onError={onError}
           />
         </div>
-        <input className="field serif" style={{ fontSize: 18, fontWeight: 600 }} placeholder="What happened"
+        <Field size="sm" label="Headline" labelHidden className="serif-field w-full" placeholder="What happened"
+          style={{ fontSize: 18 }}
           value={local.headline} onChange={(e) => set('headline')(e.target.value)} />
         <FieldReview jobs={rewrites} fieldPath={`event.${event.id}.headline`}
           onAccept={set('headline')} onResolved={onJobsChanged} />
@@ -746,7 +749,8 @@ function EventPane({ monthDay, event, siblings, scene, rewrites, onJobsChanged, 
             />
           </span>
         </div>
-        <textarea className="field" rows={5} placeholder="For a child of seven…"
+        <Field as="textarea" size="sm" label="The story a child reads" labelHidden rows={5}
+          placeholder="For a child of seven…"
           value={local.story} onChange={(e) => set('story')(e.target.value)} />
         <FieldReview jobs={rewrites} fieldPath={`event.${event.id}.story`}
           onAccept={set('story')} onResolved={onJobsChanged} />
@@ -754,15 +758,16 @@ function EventPane({ monthDay, event, siblings, scene, rewrites, onJobsChanged, 
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div className="fgroup" style={{ width: 120, flex: '0 0 120px' }}>
-          <span className="kick">Year</span>
-          <input className="field serif" style={{ fontSize: 15, fontWeight: 600 }} inputMode="numeric"
+          <span aria-hidden className="kick">Year</span>
+          <Field size="sm" label="Year" labelHidden className="serif-field" inputMode="numeric" style={{ fontSize: 15 }}
             value={local.year} onChange={(e) => set('year')(e.target.value)} />
         </div>
 
         <div className="fgroup" style={{ flex: 1, minWidth: 220 }}>
           <div className="flbl"><span className="kick">Where</span></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-            <input className="field" style={{ flex: 1 }} placeholder="Lisbon, Portugal — or leave blank"
+            <Field size="sm" label="Where it happened" labelHidden className="flex-1"
+              placeholder="Lisbon, Portugal — or leave blank"
               value={local.location} onChange={(e) => set('location')(e.target.value)} />
             {iso2
               ? <span className="iso">{flagEmoji(iso2)} {iso2}</span>
@@ -796,9 +801,15 @@ function EventPane({ monthDay, event, siblings, scene, rewrites, onJobsChanged, 
       <hr className="hair" />
 
       <div className="panel" style={{ padding: '13px 15px', display: 'flex', alignItems: 'center', gap: 13, flexWrap: 'wrap' }}>
-        <button
+        {/* `bare` again: the switch IS `.sw`, a 34×19 track with a knob drawn
+            in a pseudo-element, and the primitive brings the focus ring plus
+            the disabled behaviour a raw <button> had none of. */}
+        <Button
+          variant="bare"
           className={`sw${event.published ? ' on' : ''}`}
           disabled={pending}
+          role="switch"
+          aria-checked={event.published}
           aria-label={event.published ? 'Shown to families' : 'Not shown to families'}
           onClick={() => start(async () => {
             const r = await setEventPublished(event.id, !event.published);
@@ -813,13 +824,13 @@ function EventPane({ monthDay, event, siblings, scene, rewrites, onJobsChanged, 
             Per event, not per year. A draft event renders as if it did not exist.
           </div>
         </div>
-        <button className="btn btn-sm btn-red" disabled={pending}
+        <Button variant="danger" size="sm" loading={pending}
           onClick={() => start(async () => {
             const r = await deleteEvent(event.id);
             if (!r.ok) onError(r.error ?? 'Could not delete.'); else onChanged();
           })}>
           Delete this event
-        </button>
+        </Button>
       </div>
     </>
   );
@@ -923,7 +934,7 @@ function MomentLadder({ day, rewrites, onJobsChanged, onChanged, onError }: {
             ? `${free} free rank${free === 1 ? '' : 's'}. Anything you add lands after the ${day.moments.length} you have.`
             : 'All ten ranks are filled — the reader renders no more.'}
         </div>
-        <button className="btn btn-sm" onClick={add} disabled={pending || free <= 0}>Write one</button>
+        <Button variant="ghost" size="sm" onClick={add} disabled={pending || free <= 0}>Write one</Button>
       </div>
     </>
   );
@@ -998,7 +1009,7 @@ function MomentRung({
               </span>
             </div>
           )}
-          <button className="btn btn-sm btn-ghost" onClick={onToggle}>{open ? 'Close' : 'Open'}</button>
+          <Button variant="link" size="sm" onClick={onToggle}>{open ? 'Close' : 'Open'}</Button>
         </div>
 
         {open && (
@@ -1007,10 +1018,10 @@ function MomentRung({
             <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                 <div className="fgroup" style={{ width: 120, flex: '0 0 120px' }}>
-                  <span className="kick">Year</span>
-                  <input className="field serif" style={{ fontSize: 15, fontWeight: 600 }}
+                  <span aria-hidden className="kick">Year</span>
+                  <Field size="sm" label="Year" labelHidden className="serif-field" style={{ fontSize: 15 }}
+                    hint="BC is negative: −411"
                     value={local.year} onChange={(e) => set('year')(e.target.value)} />
-                  <span className="note">BC is negative: −411</span>
                 </div>
                 <div className="fgroup" style={{ flex: 1, minWidth: 240 }}>
                   <div className="flbl">
@@ -1025,7 +1036,7 @@ function MomentRung({
                       onError={onError}
                     />
                   </div>
-                  <input className="field serif" style={{ fontSize: 15, fontWeight: 600 }}
+                  <Field size="sm" label="Headline" labelHidden className="serif-field" style={{ fontSize: 15 }}
                     value={local.headline} onChange={(e) => set('headline')(e.target.value)} />
                 </div>
               </div>
@@ -1035,9 +1046,9 @@ function MomentRung({
               {moment.source_url && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
                   <span className="chip chip-green">Sourced</span>
-                  <a href={moment.source_url} target="_blank" rel="noreferrer noopener" style={{ fontSize: 11.5 }}>
+                  <TextLink href={moment.source_url} target="_blank" rel="noreferrer noopener" className="type-caption">
                     {moment.source_title || 'the source'} ↗
-                  </a>
+                  </TextLink>
                   <span className="note">Check the year against it — that is what drifts.</span>
                 </div>
               )}
@@ -1058,8 +1069,8 @@ function MomentRung({
                     />
                   </span>
                 </div>
-                <textarea className="field" rows={4} value={local.story}
-                  onChange={(e) => set('story')(e.target.value)} />
+                <Field as="textarea" size="sm" label="The story a child reads" labelHidden rows={4}
+                  value={local.story} onChange={(e) => set('story')(e.target.value)} />
                 <FieldReview jobs={rewrites} fieldPath={`moment.${moment.id}.story`}
                   onAccept={set('story')} onResolved={onJobsChanged} />
               </div>
@@ -1086,7 +1097,9 @@ function MomentRung({
               <hr className="hair" />
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <button className={`sw${moment.published ? ' on' : ''}`} disabled={pending}
+                <Button variant="bare" className={`sw${moment.published ? ' on' : ''}`} disabled={pending}
+                  role="switch"
+                  aria-checked={moment.published}
                   aria-label={moment.published ? 'Shown to families' : 'Not shown to families'}
                   onClick={() => start(async () => {
                     const r = await setMomentPublished(moment.id, !moment.published);
@@ -1096,14 +1109,14 @@ function MomentRung({
                   {moment.published ? 'Shown to families.' : 'Draft — renders as if it did not exist.'}{' '}
                   Everything here is editable, whether you wrote it or accepted it from a proposal.
                 </span>
-                <button className="btn btn-sm btn-red" disabled={pending}
+                <Button variant="danger" size="sm" loading={pending}
                   onClick={() => start(async () => {
                     const r = await deleteMoment(moment.id);
                     if (!r.ok) onError(r.error ?? 'Could not delete.'); else onChanged();
                   })}>
                   Delete this moment
-                </button>
-                <button className="btn btn-sm btn-gold" onClick={onToggle}>Done</button>
+                </Button>
+                <Button size="sm" onClick={onToggle}>Done</Button>
               </div>
             </div>
           </>
@@ -1137,20 +1150,20 @@ function CandidateVerbs({ kind, id, onChanged, onError }: {
   const [pending, start] = useTransition();
   return (
     <span style={{ display: 'flex', gap: 7 }}>
-      <button className="btn btn-sm btn-gold" disabled={pending}
+      <Button size="sm" loading={pending}
         onClick={() => start(async () => {
           const r = await acceptCandidate(kind, id);
           if (!r.ok) onError(r.error ?? 'Could not keep it.'); else onChanged();
         })}>
         Keep it
-      </button>
-      <button className="btn btn-sm btn-red" disabled={pending}
+      </Button>
+      <Button variant="danger" size="sm" disabled={pending}
         onClick={() => start(async () => {
           const r = await rejectCandidate(kind, id);
           if (!r.ok) onError(r.error ?? 'Could not reject it.'); else onChanged();
         })}>
         Reject
-      </button>
+      </Button>
     </span>
   );
 }
@@ -1176,12 +1189,12 @@ function RejectAll({ kind, monthDay, onChanged, onError }: {
 }) {
   const [pending, start] = useTransition();
   return (
-    <button className="btn btn-sm btn-ghost" disabled={pending}
+    <Button variant="link" size="sm" loading={pending}
       onClick={() => start(async () => {
         const r = await rejectAllCandidates(kind, monthDay);
         if (!r.ok) onError(r.error ?? 'Could not clear these.'); else onChanged();
       })}>
       Reject all
-    </button>
+    </Button>
   );
 }

@@ -35,11 +35,13 @@
 .hair { height: 1px; background: var(--line); }
 .vhair { width: 1px; align-self: stretch; background: var(--line); }
 
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; font: 700 12px/1 var(--sans); letter-spacing: 0.02em; padding: 9px 14px; border-radius: 9px; border: 1px solid var(--line2); background: #fffdf8; color: var(--brown); cursor: pointer; text-decoration: none; }
-.btn:disabled { opacity: 0.5; cursor: default; }
-.btnGold { background: linear-gradient(180deg, #dcc191, #c9a96e); color: #3a2a10; border-color: var(--gold-deep); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 6px 16px rgba(168, 132, 63, 0.28); }
-.btnGhost { background: transparent; border-color: transparent; color: var(--brown2); }
-.btnSm { padding: 6px 10px; font-size: 11px; border-radius: 8px; }
+/* .btn / .btnGold / .btnGhost / .btnSm are gone: every verb in the person
+   editor is a <Button size="sm"> from components/ds, and the one Link shaped
+   like a verb wears buttonClasses(). The classes that remain below — .grip,
+   .iconBtn, .navrow, .seg, .sw, .lh, .slotTile — are the controls whose
+   geometry genuinely belongs to this stylesheet, and every one of them is
+   worn by a <Button variant="bare"> so it keeps the focus ring and the
+   disabled behaviour without being redressed. */
 
 .chip { display: inline-flex; align-items: center; gap: 6px; font: 700 10px/1 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 9px; border-radius: 999px; border: 1px solid var(--line2); color: var(--brown); background: #fffdf8; white-space: nowrap; }
 .chipGold { background: var(--gold-soft); border-color: var(--line2); color: var(--gold-deep); }
@@ -54,10 +56,18 @@
 .dPart { background: linear-gradient(90deg, var(--gold) 50%, transparent 50%); border: 1.5px solid var(--gold); }
 .dWarn { background: var(--amber); box-shadow: 0 0 0 2px rgba(192, 138, 46, 0.2); }
 
-.field { background: #fffdf8; border: 1px solid var(--line2); border-radius: 10px; color: var(--ink); font: 400 14px/1.6 var(--sans); width: 100%; }
-.field:focus { outline: none; border-color: var(--gold-deep); box-shadow: 0 0 0 3px var(--gold-soft); }
-.field:disabled { opacity: 0.55; cursor: not-allowed; background: rgba(201, 169, 110, 0.08); }
-textarea.field { resize: vertical; }
+/* .field is gone: every box you type into here is a <Field> from
+   components/ds, which brings the same look from the house's own tokens plus
+   the focus halo, the invalid state and the message seat this never had.
+   What is left is the two things the primitive deliberately does not decide.
+
+   .kickField dresses Field's own <label> as the editor's gold kick, so the
+   label stays a real label — clickable, translatable, in the accessibility
+   tree — instead of being hidden behind an aria-label or duplicated by a
+   <span> beside it. .serifField sets the display face on the two boxes whose
+   answer IS a title. */
+.kickField label { font: 700 10px/1.4 var(--sans); letter-spacing: 0.26em; text-transform: uppercase; color: var(--gold-deep); }
+.serifField input, .serifField textarea { font-family: var(--serif); font-weight: 600; }
 
 .navrow { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 9px; cursor: pointer; color: var(--brown); font-size: 13px; text-align: left; border: 1px solid transparent; background: transparent; width: 100%; font-family: var(--sans); }
 .navrow:hover { background: rgba(201, 169, 110, 0.1); }

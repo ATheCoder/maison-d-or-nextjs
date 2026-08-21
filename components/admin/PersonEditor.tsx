@@ -39,6 +39,7 @@ import { withKeys, stripKeys, type DraftPerson, type Keyed } from './draftTypes'
 import { buildSlotViews, type SlotView } from './imageSlots';
 import { toImageSlot } from '@/lib/golden-story/slots';
 import DatePicker from '@/components/ui/DatePicker';
+import { Button, buttonClasses, Card, Field, Heading } from '@/components/ds';
 import ImageModal from './ImageModal';
 import SlotChip from './SlotChip';
 import ImageStatusBoard from './ImageStatusBoard';
@@ -196,18 +197,19 @@ function Kick({ children }: { children: React.ReactNode }) {
 function TextField({ label, value, onChange, placeholder, serif, disabled }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string; serif?: boolean; disabled?: boolean;
 }) {
+  /* Field's own label, dressed as the editor's kick by `.kickField` — so the
+     text above the box is a real <label> tied to the control, which the
+     hand-rolled <label>-wrapping-<Kick> only achieved by wrapping. */
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <Kick>{label}</Kick>
-      <input
-        className={`${styles.field}${serif ? ` ${styles.serif}` : ''}`}
-        style={{ padding: '11px 14px', fontSize: serif ? 18 : 14, fontWeight: serif ? 600 : 400 }}
-        value={value}
-        placeholder={placeholder}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </label>
+    <Field
+      className={`${styles.kickField}${serif ? ` ${styles.serifField}` : ''}`}
+      label={label}
+      style={serif ? { fontSize: 18 } : undefined}
+      value={value}
+      placeholder={placeholder}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+    />
   );
 }
 
@@ -230,10 +232,10 @@ function CountryCodeField({ code, country, onChange }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <Kick>Flag code</Kick>
-      <select
-        className={styles.field}
-        style={{ padding: '10px 14px', fontSize: 14 }}
+      <Field
+        as="select"
+        className={styles.kickField}
+        label="Flag code"
         value={confirmed?.code ?? ''}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -241,7 +243,7 @@ function CountryCodeField({ code, country, onChange }: {
         {COUNTRIES.map((c) => (
           <option key={c.code} value={c.code}>{`${flagEmoji(c.code)}  ${c.code} · ${c.name}`}</option>
         ))}
-      </select>
+      </Field>
 
       {confirmed ? (
         <div className={styles.muted} style={{ fontSize: 10.5, color: 'var(--brown2)' }}>
@@ -252,13 +254,12 @@ function CountryCodeField({ code, country, onChange }: {
           <span className={`${styles.chip} ${styles.chipAmber}`}>
             Guessed {flagEmoji(guess.code)} {guess.code}
           </span>
-          <button
+          <Button variant="ghost" size="sm"
             type="button"
-            className={`${styles.btn} ${styles.btnSm}`}
             onClick={() => onChange(guess.code)}
           >
             Confirm {guess.name}
-          </button>
+          </Button>
           <span className={styles.muted} style={{ fontSize: 10.5, color: 'var(--red)' }}>
             Unconfirmed — no seal is awarded yet.
           </span>
@@ -289,20 +290,23 @@ function NarrativeField({ label, value, onChange, fieldPath, rw, disabled }: {
         <Kick>{label}</Kick>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {fieldPath && rw && (
-            <button
-              className={`${styles.btn} ${styles.btnSm}`}
-              style={{ color: 'var(--gold-deep)', borderColor: 'var(--line2)' }}
+            <Button variant="link" size="sm"
               disabled={!canRewrite || rw.busy || rewrite?.status === 'running'}
               title={!value.trim() ? 'Write something first' : rw.busy ? 'Another rewrite is running' : 'Draft an alternative in the house style'}
               onClick={() => rw.start(fieldPath, value)}
-            >✦ Rewrite</button>
+            >✦ Rewrite</Button>
           )}
           <span className={`${styles.chip} ${tone}`}>{chipText}</span>
         </div>
       </div>
-      <textarea
-        className={styles.field}
-        style={{ padding: '14px 16px', minHeight: 158, lineHeight: 1.7 }}
+      {/* labelHidden: the <Kick> in the header row above is this control's
+          label on screen, and it shares that row with a status chip, so it
+          cannot also be the box's own label without breaking the row. */}
+      <Field
+        as="textarea"
+        label={label}
+        labelHidden
+        style={{ minHeight: 158, lineHeight: 1.7 }}
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
@@ -334,8 +338,8 @@ function RewriteReview({ fieldPath, rw, rewrite, liveValue }: {
     return (
       <div className={styles.panel} style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, borderColor: 'rgba(181,83,58,.4)', background: 'rgba(181,83,58,.06)' }}>
         <span style={{ fontSize: 11.5, color: 'var(--red)', flex: 1 }}>{rewrite.error ?? 'The rewrite failed.'}</span>
-        <button className={`${styles.btn} ${styles.btnSm}`} onClick={() => rw.tryAgain(fieldPath, liveValue)}>↻ Try again</button>
-        <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`} onClick={() => rw.reject(fieldPath)}>Dismiss</button>
+        <Button variant="ghost" size="sm" onClick={() => rw.tryAgain(fieldPath, liveValue)}>↻ Try again</Button>
+        <Button variant="link" size="sm" onClick={() => rw.reject(fieldPath)}>Dismiss</Button>
       </div>
     );
   }
@@ -346,17 +350,17 @@ function RewriteReview({ fieldPath, rw, rewrite, liveValue }: {
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 200px', minWidth: 0 }}>
           <div className={styles.muted} style={{ fontSize: 10.5, fontWeight: 700, marginBottom: 5 }}>CURRENT</div>
-          <div className={styles.field} style={{ padding: '11px 13px', fontSize: 12, lineHeight: 1.6, color: 'var(--brown)', minHeight: 92, whiteSpace: 'pre-wrap' }}>{rewrite.current ?? liveValue}</div>
+          <Card padding="none" style={{ padding: '11px 13px', fontSize: 12, lineHeight: 1.6, color: 'var(--brown)', minHeight: 92, whiteSpace: 'pre-wrap' }}>{rewrite.current ?? liveValue}</Card>
         </div>
         <div style={{ flex: '1 1 200px', minWidth: 0 }}>
           <div style={{ fontSize: 10.5, fontWeight: 700, marginBottom: 5, color: 'var(--gold-deep)' }}>✦ AI PROPOSES</div>
-          <div className={styles.field} style={{ padding: '11px 13px', fontSize: 12, lineHeight: 1.6, color: 'var(--ink)', minHeight: 92, whiteSpace: 'pre-wrap', borderColor: 'var(--gold-deep)', background: 'var(--gold-soft)' }}>{proposal}</div>
+          <Card padding="none" style={{ padding: '11px 13px', fontSize: 12, lineHeight: 1.6, color: 'var(--ink)', minHeight: 92, whiteSpace: 'pre-wrap', borderColor: 'var(--gold-deep)', background: 'var(--gold-soft)' }}>{proposal}</Card>
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 11, justifyContent: 'flex-end' }}>
-        <button className={`${styles.btn} ${styles.btnSm}`} onClick={() => rw.reject(fieldPath)}>✕ Reject</button>
-        <button className={`${styles.btn} ${styles.btnSm}`} onClick={() => rw.tryAgain(fieldPath, liveValue)}>↻ Try again</button>
-        <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGold}`} onClick={() => rw.accept(fieldPath, proposal)}>✓ Accept</button>
+        <Button variant="ghost" size="sm" onClick={() => rw.reject(fieldPath)}>✕ Reject</Button>
+        <Button variant="ghost" size="sm" onClick={() => rw.tryAgain(fieldPath, liveValue)}>↻ Try again</Button>
+        <Button variant="primary" size="sm" onClick={() => rw.accept(fieldPath, proposal)}>✓ Accept</Button>
       </div>
     </div>
   );
@@ -434,10 +438,10 @@ function LayoutPicker({ span, blend, fade, onSpan, onBlend, onFade }: {
           <div className={styles.muted} style={{ fontSize: 11, marginBottom: 9, fontWeight: 700 }}>Page span</div>
           <div style={{ display: 'flex', gap: 12 }}>
             {SPAN_OPTIONS.map((o) => (
-              <button key={o.value} className={`${styles.lh} ${eff === o.value ? styles.lhOn : styles.lhOff}`} onClick={() => onSpan(o.value)}>
+              <Button variant="bare" key={o.value} className={`${styles.lh} ${eff === o.value ? styles.lhOn : styles.lhOff}`} onClick={() => onSpan(o.value)}>
                 <SpanDiagram value={o.value} />
                 <div className={styles.lhName}>{o.name}</div>
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -446,8 +450,8 @@ function LayoutPicker({ span, blend, fade, onSpan, onBlend, onFade }: {
           <div>
             <div className={styles.muted} style={{ fontSize: 11, marginBottom: 9, fontWeight: 700 }}>Blend</div>
             <div className={styles.seg}>
-              <button className={!blendNormal ? styles.segOn : ''} onClick={() => onBlend('multiply')}>Multiply</button>
-              <button className={blendNormal ? styles.segOn : ''} onClick={() => onBlend('normal')}>Normal</button>
+              <Button variant="bare" className={!blendNormal ? styles.segOn : ''} onClick={() => onBlend('multiply')}>Multiply</Button>
+              <Button variant="bare" className={blendNormal ? styles.segOn : ''} onClick={() => onBlend('normal')}>Normal</Button>
             </div>
             <div className={styles.muted} style={{ fontSize: 10.5, marginTop: 8, maxWidth: 150 }}>Paint on white melts into the parchment.</div>
           </div>
@@ -456,7 +460,7 @@ function LayoutPicker({ span, blend, fade, onSpan, onBlend, onFade }: {
               Text wash <span className={`${styles.chip} ${styles.chipInk}`} style={{ marginLeft: 2 }}>for overlaid text</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, opacity: fadeEnabled ? 1 : 0.5 }}>
-              <button className={`${styles.sw}${fadeOn ? '' : ` ${styles.swOff}`}`} disabled={!fadeEnabled} onClick={() => onFade(!fadeOn)} aria-label="Toggle text wash" />
+              <Button variant="bare" className={`${styles.sw}${fadeOn ? '' : ` ${styles.swOff}`}`} disabled={!fadeEnabled} onClick={() => onFade(!fadeOn)} aria-label="Toggle text wash" />
               <span style={{ fontSize: 12, color: 'var(--ink)', fontWeight: 700 }}>{fadeOn ? 'Fade on' : 'Fade off'}</span>
             </div>
             <div className={styles.muted} style={{ fontSize: 10.5, marginTop: 8, maxWidth: 160 }}>
@@ -486,9 +490,9 @@ function DeathDateControl({ value, onChange }: { value: string; onChange: (v: st
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <Kick>Death date</Kick>
       <div className={styles.seg} style={{ alignSelf: 'flex-start' }}>
-        <button className={mode === 'full' ? styles.segOn : ''} onClick={() => pick('full')}>Full date</button>
-        <button className={mode === 'year' ? styles.segOn : ''} onClick={() => pick('year')}>Year only</button>
-        <button className={mode === 'living' ? styles.segOn : ''} onClick={() => pick('living')}>Living</button>
+        <Button variant="bare" className={mode === 'full' ? styles.segOn : ''} onClick={() => pick('full')}>Full date</Button>
+        <Button variant="bare" className={mode === 'year' ? styles.segOn : ''} onClick={() => pick('year')}>Year only</Button>
+        <Button variant="bare" className={mode === 'living' ? styles.segOn : ''} onClick={() => pick('living')}>Living</Button>
       </div>
       {mode === 'full' && (
         <DatePicker
@@ -499,7 +503,8 @@ function DeathDateControl({ value, onChange }: { value: string; onChange: (v: st
         />
       )}
       {mode === 'year' && (
-        <input type="text" inputMode="numeric" className={styles.field} style={{ padding: '10px 14px', maxWidth: 120 }} placeholder="1519"
+        <Field type="text" inputMode="numeric" label="Year of death" labelHidden
+          className="max-w-[120px]" placeholder="1519"
           value={year} onChange={(e) => onChange(e.target.value.replace(/\D/g, '').slice(0, 4))} />
       )}
       {mode === 'living' && <div className={styles.muted} style={{ fontSize: 12 }}>No death date — shown as still living.</div>}
@@ -537,16 +542,16 @@ function SortableRow({ id, onDelete, children }: { id: string; onDelete: () => v
         ...(isDragging ? { position: 'relative' as const, zIndex: 5, boxShadow: '0 10px 24px rgba(40,26,12,.18)' } : null),
       }}
     >
-      <button
+      <Button variant="bare"
         ref={setActivatorNodeRef}
         className={styles.grip}
         {...attributes}
         {...listeners}
         title="Drag to reorder"
         aria-label="Reorder row"
-      ><GripIcon /></button>
+      ><GripIcon /></Button>
       <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
-      <button className={styles.iconBtn} onClick={onDelete} title="Delete" aria-label="Delete row">✕</button>
+      <Button variant="bare" className={styles.iconBtn} onClick={onDelete} title="Delete" aria-label="Delete row">✕</Button>
     </div>
   );
 }
@@ -583,7 +588,7 @@ function RowList({ ids, onReorder, onDelete, onAdd, addLabel, renderRow }: {
           ))}
         </SortableContext>
       </DndContext>
-      <button className={`${styles.btn} ${styles.btnSm}`} style={{ alignSelf: 'flex-start' }} onClick={onAdd}>＋ {addLabel}</button>
+      <Button variant="ghost" size="sm" style={{ alignSelf: 'flex-start' }} onClick={onAdd}>＋ {addLabel}</Button>
     </div>
   );
 }
@@ -613,7 +618,7 @@ function SortableChapterRow({ s, isActive, onSelect }: { s: Section; isActive: b
   // expects, which never changes slot and so can't animate a reorder.
   const { listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: s.dndKey ?? s.id });
   return (
-    <button
+    <Button variant="bare"
       ref={setNodeRef}
       className={`${styles.navrow}${isActive ? ` ${styles.navrowOn}` : ''}`}
       style={{
@@ -632,7 +637,7 @@ function SortableChapterRow({ s, isActive, onSelect }: { s: Section; isActive: b
         title="Drag to reorder"
       ><GripIcon size={12} /></span>
       <NavRowInner s={s} />
-    </button>
+    </Button>
   );
 }
 
@@ -676,7 +681,7 @@ function AIPanel({
         <div style={{ flex: '1.35 1 380px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <Kick>AI · propose → review → accept</Kick>
-            <div className={styles.serif} style={{ fontSize: 22, fontWeight: 600, marginTop: 6, color: 'var(--ink)' }}>Writing the whole book</div>
+            <Heading level={2} variant="story" className="mt-1.5">Writing the whole book</Heading>
             <div className={styles.muted} style={{ fontSize: 13, marginTop: 6, lineHeight: 1.55 }}>
               One action drafts every narrative, the quote, timeline, treasures and lessons — plus a scene per image slot, the character sheet, and the golden thread. It takes a few minutes; the book fills in as it finishes.
             </div>
@@ -709,8 +714,8 @@ function AIPanel({
               <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--red)', marginBottom: 6 }}>The book couldn’t be written</div>
               <div className={styles.muted} style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>{briefJob?.error ?? 'The writer failed. Nothing was changed.'}</div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`} onClick={onDismissBrief} disabled={genPending}>Dismiss</button>
-                <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGold}`} onClick={onRetryGenerate} disabled={genPending}>↻ Try again</button>
+                <Button variant="link" size="sm" onClick={onDismissBrief} disabled={genPending}>Dismiss</Button>
+                <Button variant="primary" size="sm" onClick={onRetryGenerate} disabled={genPending}>↻ Try again</Button>
               </div>
             </div>
           ) : (
@@ -722,15 +727,15 @@ function AIPanel({
                     <strong style={{ color: 'var(--ink)' }}>{personName}</strong> already has written content. Generating replaces every narrative, the quote, timeline, treasures and lessons. Existing illustrations are kept.
                   </div>
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                    <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`} onClick={onClose} disabled={genPending}>Cancel</button>
-                    <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGold}`} onClick={() => onGenerate(true)} disabled={genPending}>{genPending ? 'Starting…' : 'Overwrite & write'}</button>
+                    <Button variant="link" size="sm" onClick={onClose} disabled={genPending}>Cancel</Button>
+                    <Button variant="primary" size="sm" onClick={() => onGenerate(true)} disabled={genPending}>{genPending ? 'Starting…' : 'Overwrite & write'}</Button>
                   </div>
                 </>
               ) : (
                 <>
-                  <button className={`${styles.btn} ${styles.btnGold}`} style={{ width: '100%' }} onClick={() => onGenerate(false)} disabled={genPending}>
+                  <Button variant="primary" size="sm" style={{ width: '100%' }} onClick={() => onGenerate(false)} disabled={genPending}>
                     {genPending ? 'Starting…' : '✦ Generate the whole book'}
-                  </button>
+                  </Button>
                   {genState.error && <div style={{ fontSize: 11.5, color: 'var(--red)', marginTop: 10 }}>{genState.error}</div>}
                 </>
               )}
@@ -751,16 +756,19 @@ function AIPanel({
             <div className={styles.kick} style={{ color: 'var(--brown)' }}>The golden thread · the story’s spine</div>
             {editingThread ? (
               <>
-                <textarea
-                  className={styles.field}
-                  style={{ marginTop: 8, padding: '10px 12px', fontSize: 14, minHeight: 64 }}
+                <Field
+                  as="textarea"
+                  label="The golden thread"
+                  labelHidden
+                  className="mt-2"
+                  style={{ minHeight: 64 }}
                   value={thread}
                   autoFocus
                   onChange={(e) => setThread(e.target.value)}
                 />
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
-                  <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`} onClick={() => { setThread(goldenThread); setEditingThread(false); }}>Cancel</button>
-                  <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGold}`} onClick={() => { onSaveGoldenThread(thread.trim()); setEditingThread(false); }}>Save</button>
+                  <Button variant="link" size="sm" onClick={() => { setThread(goldenThread); setEditingThread(false); }}>Cancel</Button>
+                  <Button variant="primary" size="sm" onClick={() => { onSaveGoldenThread(thread.trim()); setEditingThread(false); }}>Save</Button>
                 </div>
               </>
             ) : (
@@ -771,7 +779,7 @@ function AIPanel({
                 <div className={styles.muted} style={{ fontSize: 11, marginTop: 8 }}>
                   The one defining quality every page returns to.{' '}
                   {hasBrief
-                    ? <button className={styles.btn + ' ' + styles.btnGhost + ' ' + styles.btnSm} style={{ padding: 0, color: 'var(--gold-deep)', fontWeight: 700 }} onClick={beginEdit}>Edit</button>
+                    ? <Button variant="link" size="sm" onClick={beginEdit}>Edit</Button>
                     : <span>Generate the book to set it.</span>}
                 </div>
               </>
@@ -813,12 +821,11 @@ function CreditsChip({ credits, error, onRefresh }: {
 }) {
   if (error) {
     return (
-      <button
+      <Button variant="bare"
         className={`${styles.chip} ${styles.chipInk}`}
-        style={{ cursor: 'pointer' }}
         onClick={onRefresh}
         title="Couldn’t reach OpenRouter — click to retry"
-      >OpenRouter · unavailable ↻</button>
+      >OpenRouter · unavailable ↻</Button>
     );
   }
   if (!credits) {
@@ -827,12 +834,11 @@ function CreditsChip({ credits, error, onRefresh }: {
   const { remaining } = credits;
   const tone = remaining <= 1 ? styles.chipRed : remaining <= 10 ? styles.chipAmber : styles.chipGreen;
   return (
-    <button
+    <Button variant="bare"
       className={`${styles.chip} ${tone}`}
-      style={{ cursor: 'pointer' }}
       onClick={onRefresh}
       title={`OpenRouter credits — ${fmtUSD(credits.totalUsage)} used of ${fmtUSD(credits.totalCredits)}. Click to refresh.`}
-    >OpenRouter · {fmtUSD(remaining)} left</button>
+    >OpenRouter · {fmtUSD(remaining)} left</Button>
   );
 }
 
@@ -1251,11 +1257,11 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <Link href="/admin/people" className={`${styles.btn} ${styles.btnGhost} ${styles.btnSm}`} style={{ paddingLeft: 0 }}>‹ Library</Link>
+          <Link href="/admin/people" className={buttonClasses({ variant: 'link', size: 'sm', className: 'pl-0' })}>‹ Library</Link>
           <div className={styles.vhair} style={{ height: 30, alignSelf: 'center' }} />
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div className={styles.serif} style={{ fontSize: 20, fontWeight: 600, color: 'var(--ink)' }}>{draft.name || 'Untitled'}</div>
+              <Heading level={1} variant="story">{draft.name || 'Untitled'}</Heading>
               <span className={`${styles.chip} ${styles.chipInk} ${styles.mono}`}>/stories/{slug}</span>
             </div>
             <div className={styles.kick} style={{ marginTop: 4 }}>Remarkable person{born ? ` · ${born}` : ''}</div>
@@ -1263,31 +1269,30 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <CreditsChip credits={credits} error={creditsError} onRefresh={refreshCredits} />
-          <button
-            className={`${styles.btn} ${styles.btnSm}`}
+          <Button variant="ghost" size="sm"
             style={{ color: 'var(--gold-deep)', borderColor: briefJob?.state === 'running' ? 'var(--gold-deep)' : 'var(--line2)', background: briefJob?.state === 'running' ? 'var(--gold-soft)' : undefined }}
             onClick={() => setShowAI(true)}
-          >{briefJob?.state === 'running' ? '✦ Writing…' : '✦ Write with AI'}</button>
+          >{briefJob?.state === 'running' ? '✦ Writing…' : '✦ Write with AI'}</Button>
           <div className={styles.muted} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <span className={`${styles.saveDot} ${saveDotClass}`} />
             <span style={{ fontSize: 12 }}>{saveText}</span>
           </div>
           <div className={styles.seg}>
-            <button
+            <Button variant="bare"
               className={!isPublished ? `${styles.segOn} ${styles.segOnDraft}` : ''}
               onClick={() => isPublished && applyPublish(false)}
               disabled={pubPending}
-            >Draft</button>
-            <button
+            >Draft</Button>
+            <Button variant="bare"
               className={isPublished ? styles.segOn : ''}
               onClick={() => !isPublished && setPublishConfirm(true)}
               disabled={pubPending}
-            >Published</button>
+            >Published</Button>
           </div>
           {isPublished ? (
-            <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => applyPublish(false)} disabled={pubPending}>Move to draft</button>
+            <Button variant="link" size="sm" onClick={() => applyPublish(false)} disabled={pubPending}>Move to draft</Button>
           ) : (
-            <button className={`${styles.btn} ${styles.btnGold}`} onClick={() => setPublishConfirm(true)} disabled={pubPending}>Publish to families</button>
+            <Button variant="primary" size="sm" onClick={() => setPublishConfirm(true)} disabled={pubPending}>Publish to families</Button>
           )}
         </div>
       </div>
@@ -1313,22 +1318,21 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
                 s.kind === 'chapter' ? (
                   <SortableChapterRow key={s.dndKey ?? s.id} s={s} isActive={s.id === active?.id} onSelect={() => selectSection(s)} />
                 ) : (
-                  <button
+                  <Button variant="bare"
                     key={s.id}
                     className={`${styles.navrow}${s.id === active?.id ? ` ${styles.navrowOn}` : ''}`}
                     onClick={() => selectSection(s)}
                   >
                     <NavRowInner s={s} />
-                  </button>
+                  </Button>
                 )
               ))}
             </SortableContext>
           </DndContext>
-          <button
-            className={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`}
+          <Button variant="link" size="sm"
             style={{ margin: '4px 8px 2px', justifyContent: 'flex-start' }}
             onClick={() => { edit({ type: 'listAdd', list: 'chapters' }); setSelectedId(`chapter-${draft.chapters.length}`); }}
-          >＋ Add chapter</button>
+          >＋ Add chapter</Button>
           <div className={styles.hair} style={{ margin: '12px 6px' }} />
           <div className={styles.panel} style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 9 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -1339,15 +1343,14 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
             </div>
             <div className={styles.prog}><i className={styles.progFill} style={{ width: `${illus.total ? (illus.filled / illus.total) * 100 : 0}%` }} /></div>
             {illus.failed > 0 && (
-              <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGold}`} onClick={() => startImagesBatch(illus.failedFiles)} disabled={illus.batchRunning}>Retry failed ({illus.failed})</button>
+              <Button variant="primary" size="sm" onClick={() => startImagesBatch(illus.failedFiles)} disabled={illus.batchRunning}>Retry failed ({illus.failed})</Button>
             )}
-            <button
-              className={`${styles.btn} ${styles.btnSm}`}
+            <Button variant="ghost" size="sm"
               onClick={() => startImagesBatch()}
               disabled={illus.batchRunning || illus.generatable === 0}
               title={illus.generatable === 0 ? 'Every renderable slot is filled — add scenes to generate more' : undefined}
-            >{illus.batchRunning ? `Generating… ${illus.generating} left` : `Generate all missing${illus.generatable ? ` (${illus.generatable})` : ''}`}</button>
-            <button className={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`} style={{ justifyContent: 'flex-start' }} onClick={() => setShowBoard(true)}>▦ Status board · all {illus.total} slots</button>
+            >{illus.batchRunning ? `Generating… ${illus.generating} left` : `Generate all missing${illus.generatable ? ` (${illus.generatable})` : ''}`}</Button>
+            <Button variant="link" size="sm" style={{ justifyContent: 'flex-start' }} onClick={() => setShowBoard(true)}>▦ Status board · all {illus.total} slots</Button>
           </div>
         </div>
 
@@ -1359,11 +1362,10 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
         {/* ── Live-book preview ── */}
         {collapsed ? (
           <div style={{ flex: '0 0 44px', borderLeft: '1px solid var(--line)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 14, background: 'var(--panel)' }}>
-            <button
-              className={`${styles.btn} ${styles.btnGhost} ${styles.btnSm}`}
+            <Button variant="link" size="sm"
               style={{ writingMode: 'vertical-rl', letterSpacing: '.12em' }}
               onClick={() => setCollapsed(false)}
-            >⟨ Live book</button>
+            >⟨ Live book</Button>
           </div>
         ) : (
           <>
@@ -1377,23 +1379,23 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
           <div style={{ width: previewWidth, flex: `0 0 ${previewWidth}px`, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', borderBottom: '1px solid var(--line)', background: 'var(--panel)' }}>
               <span className={styles.kick}>Live book · what families see</span>
-              <button className={`${styles.chip} ${styles.chipInk}`} style={{ cursor: 'pointer' }} onClick={() => setCollapsed(true)}>Collapse ⟩</button>
+              <Button variant="bare" className={`${styles.chip} ${styles.chipInk}`} onClick={() => setCollapsed(true)}>Collapse ⟩</Button>
             </div>
             <div className={styles.stage} style={{ flex: 1, minHeight: 0, position: 'relative' }}>
               <GoldenStory story={draft} page={page} onPageChange={setPage} embedded />
             </div>
             <div className={styles.stage} style={{ padding: '14px 0 18px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <button onClick={() => goToPage(page - 1)} disabled={page <= 0} aria-label="Previous spread"
-                  style={{ width: 34, height: 34, borderRadius: '50%', border: '1px solid rgba(201,169,110,.5)', color: '#e7d5a8', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: page <= 0 ? 'default' : 'pointer', opacity: page <= 0 ? 0.4 : 1 }}>‹</button>
+                <Button variant="bare" onClick={() => goToPage(page - 1)} disabled={page <= 0} aria-label="Previous spread"
+                  style={{ width: 34, height: 34, borderRadius: '50%', border: '1px solid rgba(201,169,110,.5)', color: '#e7d5a8', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</Button>
                 <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
                   {Array.from({ length: count }).map((_, i) => (
-                    <button key={i} onClick={() => goToPage(i)} aria-label={`Spread ${i + 1}`}
-                      style={{ width: i === page ? 18 : 6, height: 6, borderRadius: 999, border: 'none', cursor: 'pointer', background: i === page ? 'var(--gold)' : 'rgba(231,213,168,.35)' }} />
+                    <Button variant="bare" key={i} onClick={() => goToPage(i)} aria-label={`Spread ${i + 1}`}
+                      style={{ width: i === page ? 18 : 6, height: 6, borderRadius: 999, border: 'none', background: i === page ? 'var(--gold)' : 'rgba(231,213,168,.35)' }} />
                   ))}
                 </div>
-                <button onClick={() => goToPage(page + 1)} disabled={page >= count - 1} aria-label="Next spread"
-                  style={{ width: 34, height: 34, borderRadius: '50%', border: '1px solid rgba(201,169,110,.5)', color: '#e7d5a8', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: page >= count - 1 ? 'default' : 'pointer', opacity: page >= count - 1 ? 0.4 : 1 }}>›</button>
+                <Button variant="bare" onClick={() => goToPage(page + 1)} disabled={page >= count - 1} aria-label="Next spread"
+                  style={{ width: 34, height: 34, borderRadius: '50%', border: '1px solid rgba(201,169,110,.5)', color: '#e7d5a8', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</Button>
               </div>
               <div style={{ color: 'rgba(231,213,168,.6)', fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase' }}>
                 Spread {page + 1} · {pageLabel}
@@ -1471,13 +1473,13 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
       {publishConfirm && (
         <div onClick={() => setPublishConfirm(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(36,26,12,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '1.5rem' }}>
           <div onClick={(e) => e.stopPropagation()} className={styles.panel} style={{ background: 'var(--ground)', padding: 24, width: 'min(440px, 100%)' }}>
-            <div className={styles.serif} style={{ fontSize: 21, color: 'var(--ink)', marginBottom: 10 }}>Publish to families?</div>
+            <Heading level={2} variant="story" className="mb-2.5">Publish to families?</Heading>
             <p className={styles.muted} style={{ fontSize: 13, lineHeight: 1.55, margin: '0 0 18px' }}>
               <strong style={{ color: 'var(--ink)' }}>{draft.name}</strong> will go live immediately — appearing on their story page and in Born Today on {born ? born.replace('born ', '') : 'their birthday'}.
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setPublishConfirm(false)} disabled={pubPending}>Cancel</button>
-              <button className={`${styles.btn} ${styles.btnGold}`} onClick={() => applyPublish(true)} disabled={pubPending}>{pubPending ? 'Publishing…' : 'Publish now'}</button>
+              <Button variant="link" size="sm" onClick={() => setPublishConfirm(false)} disabled={pubPending}>Cancel</Button>
+              <Button variant="primary" size="sm" onClick={() => applyPublish(true)} disabled={pubPending}>{pubPending ? 'Publishing…' : 'Publish now'}</Button>
             </div>
           </div>
         </div>
@@ -1503,21 +1505,29 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
     if (!slot) return null;
     const set = slot.status === 'generated' || slot.status === 'uploaded';
     return (
-      <button
+      <Button variant="bare"
         onClick={() => onOpenSlot(file)}
         title={`${slot.label} · ${slot.status}`}
         style={{
-          flex: '0 0 34px', width: 34, aspectRatio: slot.size.replace('x', ' / '), borderRadius: 8, cursor: 'pointer', overflow: 'hidden',
+          flex: '0 0 34px', width: 34, aspectRatio: slot.size.replace('x', ' / '), borderRadius: 8, overflow: 'hidden',
           border: '1px solid var(--line2)', backgroundColor: '#fffdf8', backgroundSize: 'cover', backgroundPosition: 'center',
           backgroundImage: set && slot.imageUrl ? `url(${slot.imageUrl})` : undefined,
           color: slot.status === 'failed' ? 'var(--red)' : 'var(--brown2)', fontSize: 13, alignSelf: 'center',
         }}
-      >{set ? '' : slot.status === 'generating' ? '…' : slot.status === 'failed' ? '↻' : '🖼'}</button>
+      >{set ? '' : slot.status === 'generating' ? '…' : slot.status === 'failed' ? '↻' : '🖼'}</Button>
     );
   };
   const set = (key: keyof DraftPerson) => (value: string) => dispatch({ type: 'field', key, value });
-  const rowInput = (placeholder: string, value: string, onChange: (v: string) => void, extra?: React.CSSProperties, list?: string) => (
-    <input className={styles.field} list={list} style={{ padding: '9px 12px', fontSize: 13, ...extra }} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
+  /* One cell of a repeated row (timeline year, treasure name, lesson text).
+     The placeholder is the question, so it is also the hidden label — a row of
+     five of these cannot carry five stacked labels, but each still has to be
+     announceable on its own. `extra` sizes the WRAPPER, since that is what the
+     surrounding flex row lays out. */
+  const rowInput = (placeholder: string, value: string, onChange: (v: string) => void, width?: string, list?: string) => (
+    <Field
+      size="sm" label={placeholder} labelHidden list={list} className={width ?? 'flex-1'}
+      placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)}
+    />
   );
 
   switch (active.kind) {
@@ -1571,9 +1581,9 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
             <Kick>Chapter {ch?.number ?? i + 1} of {draft.chapters.length}</Kick>
             <div style={{ display: 'flex', gap: 6 }}>
-              <button className={`${styles.btn} ${styles.btnSm}`} onClick={addChapter}>＋ Add</button>
-              <button className={`${styles.btn} ${styles.btnSm}`} onClick={duplicate}>⧉ Duplicate</button>
-              <button className={`${styles.btn} ${styles.btnSm}`} onClick={remove} style={{ color: 'var(--red)', borderColor: 'rgba(181,83,58,.42)' }}>🗑 Delete</button>
+              <Button variant="ghost" size="sm" onClick={addChapter}>＋ Add</Button>
+              <Button variant="ghost" size="sm" onClick={duplicate}>⧉ Duplicate</Button>
+              <Button variant="danger" size="sm" onClick={remove}>🗑 Delete</Button>
             </div>
           </div>
           <LayoutPicker
@@ -1617,14 +1627,14 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
             <div>
               <div className={styles.muted} style={{ fontSize: 11, marginBottom: 9, fontWeight: 700 }}>Blend</div>
               <div className={styles.seg}>
-                <button className={!(draft.after_treasures?.blend === 'normal') ? styles.segOn : ''} onClick={() => dispatch({ type: 'objField', key: 'after_treasures', field: 'blend', value: 'multiply' })}>Multiply</button>
-                <button className={draft.after_treasures?.blend === 'normal' ? styles.segOn : ''} onClick={() => dispatch({ type: 'objField', key: 'after_treasures', field: 'blend', value: 'normal' })}>Normal</button>
+                <Button variant="bare" className={!(draft.after_treasures?.blend === 'normal') ? styles.segOn : ''} onClick={() => dispatch({ type: 'objField', key: 'after_treasures', field: 'blend', value: 'multiply' })}>Multiply</Button>
+                <Button variant="bare" className={draft.after_treasures?.blend === 'normal' ? styles.segOn : ''} onClick={() => dispatch({ type: 'objField', key: 'after_treasures', field: 'blend', value: 'normal' })}>Normal</Button>
               </div>
             </div>
             <div>
               <div className={styles.muted} style={{ fontSize: 11, marginBottom: 9, fontWeight: 700 }}>Text wash</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                <button className={`${styles.sw}${draft.after_treasures?.fade !== false ? '' : ` ${styles.swOff}`}`} onClick={() => dispatch({ type: 'objField', key: 'after_treasures', field: 'fade', value: draft.after_treasures?.fade === false })} aria-label="Toggle text wash" />
+                <Button variant="bare" className={`${styles.sw}${draft.after_treasures?.fade !== false ? '' : ` ${styles.swOff}`}`} onClick={() => dispatch({ type: 'objField', key: 'after_treasures', field: 'fade', value: draft.after_treasures?.fade === false })} aria-label="Toggle text wash" />
                 <span style={{ fontSize: 12, color: 'var(--ink)', fontWeight: 700 }}>{draft.after_treasures?.fade !== false ? 'Fade on' : 'Fade off'}</span>
               </div>
             </div>
@@ -1645,8 +1655,8 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
             onReorder={(from, to) => dispatch({ type: 'listReorder', list: 'timeline', from, to })}
             renderRow={(i) => (
               <div style={{ display: 'flex', gap: 8 }}>
-                {rowInput('Year', draft.timeline[i].year ?? '', (v) => dispatch({ type: 'listItemField', list: 'timeline', index: i, key: 'year', value: v }), { flex: '0 0 88px' })}
-                {rowInput('Caption', draft.timeline[i].caption ?? '', (v) => dispatch({ type: 'listItemField', list: 'timeline', index: i, key: 'caption', value: v }), { flex: 1 })}
+                {rowInput('Year', draft.timeline[i].year ?? '', (v) => dispatch({ type: 'listItemField', list: 'timeline', index: i, key: 'year', value: v }), 'w-[88px] shrink-0')}
+                {rowInput('Caption', draft.timeline[i].caption ?? '', (v) => dispatch({ type: 'listItemField', list: 'timeline', index: i, key: 'caption', value: v }))}
                 {slotMini(`timeline-${i + 1}.png`)}
               </div>
             )}
@@ -1664,7 +1674,7 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
             onReorder={(from, to) => dispatch({ type: 'listReorder', list: 'treasures', from, to })}
             renderRow={(i) => (
               <div style={{ display: 'flex', gap: 8 }}>
-                {rowInput('Name', draft.treasures[i].name ?? '', (v) => dispatch({ type: 'listItemField', list: 'treasures', index: i, key: 'name', value: v }), { flex: 1 })}
+                {rowInput('Name', draft.treasures[i].name ?? '', (v) => dispatch({ type: 'listItemField', list: 'treasures', index: i, key: 'name', value: v }))}
                 {slotMini(`treasure-${i + 1}.png`)}
               </div>
             )}
@@ -1685,8 +1695,8 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
             onReorder={(from, to) => dispatch({ type: 'listReorder', list: 'lessons', from, to })}
             renderRow={(i) => (
               <div style={{ display: 'flex', gap: 8 }}>
-                {rowInput('curiosity', draft.lessons[i].icon_name ?? '', (v) => dispatch({ type: 'listItemField', list: 'lessons', index: i, key: 'icon_name', value: v }), { flex: '0 0 130px' }, 'lesson-icons')}
-                {rowInput('The lesson…', draft.lessons[i].lesson ?? '', (v) => dispatch({ type: 'listItemField', list: 'lessons', index: i, key: 'lesson', value: v }), { flex: 1 })}
+                {rowInput('curiosity', draft.lessons[i].icon_name ?? '', (v) => dispatch({ type: 'listItemField', list: 'lessons', index: i, key: 'icon_name', value: v }), 'w-[130px] shrink-0', 'lesson-icons')}
+                {rowInput('The lesson…', draft.lessons[i].lesson ?? '', (v) => dispatch({ type: 'listItemField', list: 'lessons', index: i, key: 'lesson', value: v }))}
               </div>
             )}
           />

@@ -12,6 +12,7 @@
  * moment it lands, which is also what makes it editable afterwards (R4.20).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ds';
 import type { GenerationJobRow } from '@/src/db/schema';
 import { startDgRewrite, dismissDgJob } from '@/app/admin/daily-gold/aiActions';
 import type { DgSubjectRef } from '@/lib/inngest/client';
@@ -40,10 +41,11 @@ export function RewriteButton({ subject, fieldPath, current, context, job, onSta
   if (job && job.state !== 'running') return null; // the review panel is showing
 
   return (
-    <button
-      className="btn btn-sm btn-ghost"
-      style={{ color: 'var(--gold-deep)' }}
-      disabled={busy || running || !current.trim()}
+    <Button
+      variant="link"
+      size="sm"
+      loading={busy || running}
+      disabled={!current.trim()}
       title={current.trim() ? 'Draft an alternative' : 'Write a first version first'}
       onClick={() => {
         setBusy(true);
@@ -53,7 +55,7 @@ export function RewriteButton({ subject, fieldPath, current, context, job, onSta
       }}
     >
       {running ? '✦ drafting…' : '✦ rewrite'}
-    </button>
+    </Button>
   );
 }
 
@@ -78,7 +80,7 @@ export function RewriteReview({ job, onAccept, onResolved }: {
     return (
       <div className="banner b-red" style={{ fontSize: 12 }}>
         <span style={{ flex: 1 }}>{job.error ?? 'The rewrite failed.'}</span>
-        <button className="btn btn-sm btn-ghost" disabled={busy} onClick={() => resolve()}>Dismiss</button>
+        <Button variant="link" size="sm" loading={busy} onClick={() => resolve()}>Dismiss</Button>
       </div>
     );
   }
@@ -100,11 +102,11 @@ export function RewriteReview({ job, onAccept, onResolved }: {
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn btn-sm btn-gold" disabled={busy}
+        <Button size="sm" loading={busy}
           onClick={() => resolve(() => onAccept(proposal))}>
           Use this
-        </button>
-        <button className="btn btn-sm" disabled={busy} onClick={() => resolve()}>Keep mine</button>
+        </Button>
+        <Button variant="ghost" size="sm" disabled={busy} onClick={() => resolve()}>Keep mine</Button>
       </div>
     </div>
   );

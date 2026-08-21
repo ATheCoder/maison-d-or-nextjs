@@ -23,6 +23,7 @@ import {
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { CSS as dndCSS } from '@dnd-kit/utilities';
 import DatePicker from '@/components/ui/DatePicker';
+import { Button, buttonClasses, Field, Heading, Overlay, Prose } from '@/components/ds';
 import { slugify, SLUG_RE } from '@/lib/slug';
 import { flagEmoji } from '@/lib/countries';
 import { createPerson, deletePerson, reorderBornToday, suggestPeople, type PersonListItem, type PersonSuggestion } from '@/app/admin/people/actions';
@@ -47,13 +48,12 @@ const CSS = `
 .lib .kick { font:700 10px/1.4 var(--sans); letter-spacing:.26em; text-transform:uppercase; color:var(--gold-deep); }
 .lib .muted { color:var(--brown2); }
 .lib .panel { background:var(--panel-t); border:1px solid var(--line); border-radius:16px; box-shadow:0 2px 18px rgba(40,26,12,.05); }
-.lib .btn { display:inline-flex; align-items:center; gap:7px; font:700 12px/1 var(--sans); letter-spacing:.02em; padding:10px 15px; border-radius:9px; border:1px solid var(--line2); background:#fffdf8; color:var(--brown); cursor:pointer; transition:transform .1s ease; }
-.lib .btn:hover { transform:translateY(-1px); }
-.lib .btn:disabled { opacity:.5; cursor:default; transform:none; }
-.lib .btn-gold { background:linear-gradient(180deg,#dcc191,#c9a96e); color:#3a2a10; border-color:var(--gold-deep); box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 6px 16px rgba(168,132,63,.28); }
-.lib .btn-ghost { background:transparent; border-color:transparent; color:var(--brown2); }
-.lib .btn-danger { background:transparent; border-color:rgba(181,83,58,.5); color:var(--red); }
-.lib .btn-sm { padding:7px 11px; font-size:11px; border-radius:8px; }
+/* .btn / .btn-gold / .btn-danger / .field / .finput / .flabel / select.control
+   are all gone: every one of them was a private copy of a primitive that
+   already exists. Buttons are <Button size="sm">, the destructive ones wear
+   the house's own btn-danger coat, and every box you type into is <Field>.
+   What is left below is geometry the primitives genuinely do not have — the
+   calendar cells, the segmented track, the book thumbnails, the drag grips. */
 .lib .chip { display:inline-flex; align-items:center; gap:6px; font:700 10px/1 var(--sans); letter-spacing:.06em; text-transform:uppercase; padding:5px 9px; border-radius:999px; border:1px solid var(--line2); color:var(--brown); background:#fffdf8; white-space:nowrap; }
 .lib .chip-gold { background:var(--gold-soft); border-color:var(--line2); color:var(--gold-deep); }
 .lib .chip-green { background:rgba(125,138,78,.14); border-color:rgba(125,138,78,.4); color:#5f6c37; }
@@ -63,11 +63,9 @@ const CSS = `
 .lib .dot { width:9px; height:9px; border-radius:50%; flex:0 0 auto; }
 .lib .d-warn { background:var(--amber); box-shadow:0 0 0 2px rgba(192,138,46,.2); }
 .lib .d-green { background:var(--green); box-shadow:0 0 0 2px rgba(125,138,78,.2); }
-.lib .field { background:#fffdf8; border:1px solid var(--line2); border-radius:10px; color:var(--ink); font:400 13px/1 var(--sans); }
 .lib .seg { display:inline-flex; padding:3px; background:rgba(36,26,12,.06); border:1px solid var(--line); border-radius:10px; gap:2px; }
-.lib .seg > button { font:700 11px/1 var(--sans); letter-spacing:.04em; padding:8px 13px; border-radius:7px; color:var(--brown2); cursor:pointer; white-space:nowrap; border:none; background:transparent; }
+.lib .seg > button { font:700 11px/1 var(--sans); letter-spacing:.04em; padding:8px 13px; border-radius:7px; color:var(--brown2); white-space:nowrap; border:none; background:transparent; }
 .lib .seg > button.on { background:#fffdf8; color:var(--ink); box-shadow:0 1px 6px rgba(40,26,12,.1); }
-.lib select.control { -webkit-appearance:none; appearance:none; padding:7px 26px 7px 11px; font:700 11px/1 var(--sans); color:var(--brown); border:1px solid var(--line2); border-radius:8px; background:#fffdf8 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235c4a2a' stroke-width='1.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center; cursor:pointer; }
 
 .lib .statrow { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
 .lib .stat { padding:15px 18px; display:flex; flex-direction:column; gap:4px; }
@@ -76,11 +74,11 @@ const CSS = `
 .lib .stat .lbl { font-size:11.5px; color:var(--brown2); }
 
 .lib .calgrid { display:grid; grid-template-columns:104px repeat(31,minmax(0,1fr)); gap:4px; align-items:center; }
-.lib .mlabel { font:700 11px/1 var(--sans); letter-spacing:.12em; text-transform:uppercase; color:var(--brown); text-align:right; padding:0 12px 0 0; background:none; border:none; cursor:pointer; transition:color .1s ease; }
+.lib .mlabel { display:block; width:100%; font:700 11px/1 var(--sans); letter-spacing:.12em; text-transform:uppercase; color:var(--brown); text-align:right; padding:0 12px 0 0; background:none; border:none; transition:color .1s ease; }
 .lib .mlabel:hover { color:var(--gold-deep); }
 .lib .mlabel.on { color:var(--gold-deep); text-decoration:underline; text-underline-offset:3px; text-decoration-thickness:2px; }
 .lib .dhead { font:700 9.5px/1 var(--sans); color:var(--brown3); text-align:center; padding-bottom:6px; }
-.lib .cell { height:22px; border-radius:5px; cursor:pointer; transition:transform .1s ease; border:none; padding:0; width:100%; display:flex; align-items:center; justify-content:center; font:700 9px/1 var(--sans); color:rgba(58,42,16,.72); }
+.lib .cell { height:22px; border-radius:5px; transition:transform .1s ease; border:none; padding:0; width:100%; display:flex; align-items:center; justify-content:center; font:700 9px/1 var(--sans); color:rgba(58,42,16,.72); }
 .lib .cell:hover { transform:translateY(-1px) scale(1.04); }
 .lib .c-pub { background:linear-gradient(180deg,#d8bd86,#c9a96e); box-shadow:0 1px 0 rgba(255,255,255,.35) inset, 0 1px 4px rgba(168,132,63,.22); }
 .lib .c-draft { background:repeating-linear-gradient(135deg, rgba(201,169,110,.32) 0 4px, rgba(201,169,110,.12) 4px 8px); border:1px solid var(--line2); }
@@ -103,23 +101,18 @@ const CSS = `
 .lib .th-tag { position:absolute; left:0; right:0; bottom:0; text-align:center; font:700 8px/1.3 var(--sans); letter-spacing:.16em; text-transform:uppercase; color:rgba(58,42,16,.7); padding:5px 2px; }
 .lib .th-empty-tag { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; font:700 8px/1.4 var(--sans); letter-spacing:.12em; text-transform:uppercase; color:var(--brown3); padding:6px; }
 .lib .badges { display:flex; flex-wrap:wrap; gap:5px; }
-.lib .pdel { position:absolute; top:9px; right:9px; width:24px; height:24px; border-radius:7px; border:1px solid transparent; background:transparent; color:var(--brown3); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; opacity:0; transition:opacity .12s ease; }
+.lib .pdel { position:absolute; top:9px; right:9px; width:24px; height:24px; border-radius:7px; border:1px solid transparent; background:transparent; color:var(--brown3); display:flex; align-items:center; justify-content:center; font-size:14px; opacity:0; transition:opacity .12s ease; }
 .lib .pcard:hover .pdel { opacity:1; }
 .lib .pdel:hover { background:rgba(181,83,58,.12); border-color:rgba(181,83,58,.42); color:var(--red); }
 
-.lib .search { display:flex; align-items:center; gap:9px; padding:0 13px; height:40px; }
-.lib .search input { border:none; outline:none; background:transparent; font:400 13px/1 var(--sans); color:var(--ink); width:100%; }
-.lib .search input::placeholder { color:var(--brown3); }
 .lib .legend { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
 .lib .lgi { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--brown2); }
 .lib .swatch { width:15px; height:15px; border-radius:4px; flex:0 0 auto; }
 
-.lib .overlay { position:fixed; inset:0; background:rgba(36,26,12,.45); display:flex; align-items:center; justify-content:center; padding:24px; z-index:50; }
-.lib .modal { background:var(--ground); border:1px solid var(--line2); border-radius:16px; padding:26px; width:min(460px,100%); box-shadow:0 24px 70px rgba(36,26,12,.35); max-height:90vh; overflow-y:auto; }
-.lib .flabel { font:700 10px/1.4 var(--sans); letter-spacing:.14em; text-transform:uppercase; color:var(--brown2); display:block; margin:0 0 7px; }
-.lib .finput { width:100%; padding:11px 12px; border-radius:10px; box-sizing:border-box; border:1px solid var(--line2); background:#fffdf8; font-family:var(--sans); font-size:14px; color:var(--ink); outline:none; }
-.lib .finput:focus { border-color:var(--gold-deep); }
-.lib .err { font-size:12px; color:var(--red); margin:8px 0 0; }
+/* The two dialogs are <Overlay> now — the house's own modal shell, which
+   brings the four behaviours the hand-rolled .overlay/.modal pair never had:
+   Escape, a focus trap, focus restored on close, and a scroll lock. The
+   delete confirm is the one that makes that matter. */
 
 .lib .rlist { display:flex; flex-direction:column; gap:9px; }
 .lib .prow { display:flex; align-items:center; gap:13px; padding:11px 13px; position:relative; }
@@ -138,7 +131,7 @@ const CSS = `
 
 @media (max-width:900px){ .lib .cards{ grid-template-columns:1fr 1fr; } .lib .statrow{ grid-template-columns:1fr; } .lib .wrap{ padding:28px 22px 56px; } }
 @media (max-width:620px){ .lib .cards{ grid-template-columns:1fr; } }
-@media (prefers-reduced-motion:reduce){ .lib .cell, .lib .pcard, .lib .btn{ transition:none; } }
+@media (prefers-reduced-motion:reduce){ .lib .cell, .lib .pcard{ transition:none; } }
 `;
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -214,12 +207,17 @@ function PersonCard({ p, now, onDelete }: { p: PersonListItem; now: Date; onDele
       onClick={() => router.push(href)}
       onKeyDown={(e) => { if (e.key === 'Enter') router.push(href); }}
     >
-      <button
+      {/* `bare`: the 24px hover-revealed corner square is this stylesheet's
+          geometry, but the focus ring and the button semantics are the
+          primitive's — it used to be the one control on a card you could tab
+          to and not see. */}
+      <Button
+        variant="bare"
         className="pdel"
         title={`Delete ${p.name}`}
         aria-label={`Delete ${p.name}`}
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
-      >✕</button>
+      >✕</Button>
 
       {p.coverUrl ? (
         <div className="thumb">
@@ -315,34 +313,39 @@ function CreateDialog({ onClose, existingNames, initialDate }: {
   }
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+    <Overlay onClose={onClose} label="Add a remarkable person" maxWidth={460}>
+      {/* No second `.lib` wrapper: the dialog renders inside the library's
+          own root, so the scoped stylesheet above already reaches it. Only
+          the padding the old `.modal` carried is needed here. */}
+      <div style={{ padding: 26 }}>
         <div className="kick">Daily Gold Edition · New book</div>
-        <h2 className="serif" style={{ fontSize: 24, fontWeight: 600, margin: '8px 0 18px' }}>Add a remarkable person</h2>
+        <Heading level={2} variant="story" className="mt-2 mb-4">Add a remarkable person</Heading>
 
-        <label className="flabel">Name</label>
-        <input
+        <Field
           autoFocus
-          className="finput"
+          label="Name"
           value={name}
           onChange={(e) => { setName(e.target.value); setCollision(null); }}
           placeholder="Marie Curie"
         />
 
-        <label className="flabel" style={{ marginTop: 16 }}>Slug · folder key, set once here</label>
-        <input
-          className="finput"
-          style={{ fontFamily: 'monospace', fontSize: 13 }}
+        {/* The slug's rule lives on the field it governs: `error` takes the
+            message seat and turns the box, instead of a loose red <p> that
+            nothing points at. */}
+        <Field
+          label="Slug · folder key, set once here"
+          className="mt-4"
+          style={{ fontFamily: 'monospace' }}
           value={slugTouched ? slug : effectiveSlug}
           onChange={(e) => { setSlugTouched(true); setSlug(e.target.value); setCollision(null); }}
           placeholder="marie-curie"
+          error={!slugValid && effectiveSlug.length > 0
+            ? 'Lowercase letters, numbers and single dashes only.'
+            : undefined}
         />
-        {!slugValid && effectiveSlug.length > 0 && (
-          <p className="err">Lowercase letters, numbers and single dashes only.</p>
-        )}
 
         <div className="panel" style={{ marginTop: 18, padding: '14px 15px', background: 'var(--gold-soft)' }}>
-          <label className="flabel" style={{ margin: 0, color: 'var(--gold-deep)' }}>✦ Suggest a person born on a date</label>
+          <p className="kick" style={{ margin: 0 }}>✦ Suggest a person born on a date</p>
           <div style={{ display: 'flex', gap: 8, marginTop: 9, alignItems: 'center' }}>
             <DatePicker
               value={sugDate}
@@ -350,37 +353,37 @@ function CreateDialog({ onClose, existingNames, initialDate }: {
               aria-label="Date of birth to suggest for"
               style={{ maxWidth: 200 }}
             />
-            <button
-              className="btn btn-sm"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => runSuggest(sugDate)}
-              disabled={!sugDate || sugPending}
-            >{sugPending ? 'Thinking…' : 'Suggest'}</button>
+              disabled={!sugDate}
+              loading={sugPending}
+            >{sugPending ? 'Thinking…' : 'Suggest'}</Button>
           </div>
-          {sugError && <p className="err">{sugError}</p>}
+          {sugError && <p role="alert" className="type-caption mt-2 text-danger-readable">{sugError}</p>}
           {suggestions && suggestions.length === 0 && !sugPending && (
             <p className="muted" style={{ fontSize: 12, margin: '9px 0 0' }}>No suggestions for that day.</p>
           )}
           {suggestions && suggestions.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 11 }}>
               {suggestions.map((s) => (
-                <button
+                <Button
                   key={s.name}
+                  variant="bare"
                   onClick={() => { setName(s.name); setCollision(null); }}
-                  style={{
-                    textAlign: 'left', background: '#fffdf8', border: '1px solid var(--line)',
-                    borderRadius: 9, padding: '9px 11px', cursor: 'pointer', fontFamily: 'var(--sans)',
-                  }}
+                  className="block w-full rounded-md border border-fine bg-surface-raised px-3 py-2.5 text-left"
                 >
                   <span style={{ fontWeight: 700, color: 'var(--ink)', fontSize: 13 }}>{s.name}</span>
                   <span className="muted" style={{ fontSize: 12 }}> · {s.birth_date} · {s.field}</span>
                   <span style={{ display: 'block', color: 'var(--brown)', fontSize: 12, marginTop: 3 }}>{s.why}</span>
-                </button>
+                </Button>
               ))}
             </div>
           )}
         </div>
 
-        {error && <p className="err" style={{ marginTop: 14 }}>{error}</p>}
+        {error && <p role="alert" className="type-caption mt-3.5 text-danger-readable">{error}</p>}
 
         {collision && (
           <div className="chip-amber" style={{
@@ -393,23 +396,24 @@ function CreateDialog({ onClose, existingNames, initialDate }: {
         )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 9, marginTop: 22 }}>
-          <button className="btn btn-ghost" onClick={onClose} disabled={pending}>Cancel</button>
+          <Button variant="link" size="sm" onClick={onClose} disabled={pending}>Cancel</Button>
           {collision ? (
-            <button className="btn btn-danger" onClick={() => submit(true)} disabled={pending}>
+            <Button variant="danger" size="sm" onClick={() => submit(true)} loading={pending}>
               {pending ? 'Overwriting…' : `Overwrite ${collision}`}
-            </button>
+            </Button>
           ) : (
-            <button
-              className="btn btn-gold"
+            <Button
+              size="sm"
               onClick={() => submit(false)}
-              disabled={!name.trim() || !slugValid || pending}
+              disabled={!name.trim() || !slugValid}
+              loading={pending}
             >
               {pending ? 'Creating…' : 'Create & edit'}
-            </button>
+            </Button>
           )}
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 }
 
@@ -431,30 +435,34 @@ function DeleteDialog({ person, onClose }: { person: PersonListItem; onClose: ()
   }
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="serif" style={{ fontSize: 24, fontWeight: 600, margin: '0 0 10px' }}>Delete {person.name}?</h2>
-        <p className="muted" style={{ fontSize: 13, margin: '0 0 16px', lineHeight: 1.5 }}>
+    <Overlay onClose={onClose} label={`Delete ${person.name}?`} maxWidth={460}>
+      {/* No second `.lib` wrapper: the dialog renders inside the library's
+          own root, so the scoped stylesheet above already reaches it. Only
+          the padding the old `.modal` carried is needed here. */}
+      <div style={{ padding: 26 }}>
+        <Heading level={2} variant="story">Delete {person.name}?</Heading>
+        <Prose variant="body-ui" className="mt-2.5 mb-4" measure={false}>
           This removes the person and their story brief. Art files in storage are left in place.
           Type <code style={{ color: 'var(--ink)' }}>{person.slug}</code> to confirm.
-        </p>
-        <input
+        </Prose>
+        <Field
           autoFocus
-          className="finput"
-          style={{ fontFamily: 'monospace', fontSize: 13 }}
+          label={`Type ${person.slug} to confirm`}
+          labelHidden
+          style={{ fontFamily: 'monospace' }}
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           placeholder={person.slug}
+          error={error ?? undefined}
         />
-        {error && <p className="err">{error}</p>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 9, marginTop: 22 }}>
-          <button className="btn btn-ghost" onClick={onClose} disabled={pending}>Cancel</button>
-          <button className="btn btn-danger" onClick={confirm} disabled={typed !== person.slug || pending}>
+          <Button variant="link" size="sm" onClick={onClose} disabled={pending}>Cancel</Button>
+          <Button variant="danger" size="sm" onClick={confirm} disabled={typed !== person.slug} loading={pending}>
             {pending ? 'Deleting…' : 'Delete permanently'}
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 }
 
@@ -494,14 +502,15 @@ function PriorityRow({ p, rank }: { p: PersonListItem; rank: number }) {
         ...(isDragging ? { position: 'relative' as const, zIndex: 5, boxShadow: '0 12px 30px rgba(40,26,12,.2)' } : null),
       }}
     >
-      <button
+      <Button
+        variant="bare"
         ref={setActivatorNodeRef}
         className="grip"
         {...attributes}
         {...listeners}
         title="Drag to reorder"
         aria-label={`Reorder ${p.name}`}
-      ><GripIcon /></button>
+      ><GripIcon /></Button>
       <span
         className={`rank${p.published ? '' : ' off'}`}
         title={p.published ? `Position ${rank} for families` : 'Draft — not shown to families yet'}
@@ -521,7 +530,7 @@ function PriorityRow({ p, rank }: { p: PersonListItem; rank: number }) {
       {p.published
         ? <span className="chip chip-gold">Live</span>
         : <span className="chip chip-amber">Draft</span>}
-      <Link href={`/admin/people/${p.slug}`} className="btn btn-sm" style={{ textDecoration: 'none' }}>Open</Link>
+      <Link href={`/admin/people/${p.slug}`} className={buttonClasses({ variant: 'ghost', size: 'sm' })}>Open</Link>
     </div>
   );
 }
@@ -709,9 +718,9 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
             <Link href="/admin" style={{ textDecoration: 'none' }}>
               <div className="kick">Daily Gold Edition · Admin</div>
             </Link>
-            <div className="serif" style={{ fontSize: 34, fontWeight: 600, marginTop: 8, letterSpacing: '-.01em' }}>
+            <Heading level={1} variant="section" className="mt-2">
               The library of remarkable people
-            </div>
+            </Heading>
             <div className="muted" style={{ fontSize: 13.5, marginTop: 7 }}>
               <b style={{ color: 'var(--brown)' }}>{people.length}</b> books ·{' '}
               <b style={{ color: 'var(--brown)' }}>{draftCount}</b> in draft ·{' '}
@@ -719,8 +728,8 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button className="btn btn-ghost" onClick={() => openCreate(`2024-${todayMD}`)}>✦ Suggest for a date</button>
-            <button className="btn btn-gold" style={{ padding: '11px 17px' }} onClick={() => openCreate(null)}>+ New person</button>
+            <Button variant="link" size="sm" onClick={() => openCreate(`2024-${todayMD}`)}>✦ Suggest for a date</Button>
+            <Button size="sm" onClick={() => openCreate(null)}>+ New person</Button>
           </div>
         </div>
 
@@ -748,7 +757,7 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, marginBottom: 18, flexWrap: 'wrap' }}>
             <div>
               <div className="kick">Calendar coverage · what to make next</div>
-              <div className="serif" style={{ fontSize: 20, fontWeight: 600, marginTop: 6 }}>Every day of the year, at a glance</div>
+              <Heading level={2} variant="story" className="mt-1.5">Every day of the year, at a glance</Heading>
               <div className="muted" style={{ fontSize: 12, marginTop: 5 }}>
                 Born&nbsp;Today surfaces a person on their birthday — click a day to order who appears first, or an open day to draft someone born then.
               </div>
@@ -776,17 +785,23 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
                   : 'nobody is born-today. Families opening the edition see an empty slot.'}
             </span>
             {todayState === 'pub' ? (
-              <Link href={`/admin/people/${todayPerson?.slug}`} className="btn btn-sm" style={{ marginLeft: 'auto', textDecoration: 'none' }}>
+              <Link
+                href={`/admin/people/${todayPerson?.slug}`}
+                className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'ml-auto shrink-0' })}
+              >
                 Open {todayPerson?.name}
               </Link>
             ) : todayState === 'draft' ? (
-              <Link href={`/admin/people/${todayPerson?.slug}`} className="btn btn-sm btn-gold" style={{ marginLeft: 'auto', textDecoration: 'none' }}>
+              <Link
+                href={`/admin/people/${todayPerson?.slug}`}
+                className={buttonClasses({ variant: 'primary', size: 'sm', className: 'ml-auto shrink-0' })}
+              >
                 Finish {todayPerson?.name}
               </Link>
             ) : (
-              <button className="btn btn-sm btn-gold" style={{ marginLeft: 'auto' }} onClick={() => openCreate(`2024-${todayMD}`)}>
+              <Button size="sm" className="ml-auto shrink-0" onClick={() => openCreate(`2024-${todayMD}`)}>
                 ✦ Suggest someone born {now.getDate()} {ABBR[now.getMonth()]}
-              </button>
+              </Button>
             )}
           </div>
 
@@ -803,12 +818,13 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {ABBR.map((ab, m) => (
                   <div className="calgrid" key={ab}>
-                    <button
+                    <Button
+                      variant="bare"
                       className={`mlabel${month === m ? ' on' : ''}`}
                       title={month === m ? `Clear ${MONTHS[m]} filter` : `Show ${MONTHS[m]} birthdays`}
                       aria-pressed={month === m}
                       onClick={() => setMonth((cur) => (cur === m ? null : m))}
-                    >{ab}</button>
+                    >{ab}</Button>
                     {Array.from({ length: 31 }, (_, i) => {
                       const d = i + 1;
                       const md = `${pad(m + 1)}-${pad(d)}`;
@@ -828,14 +844,15 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
                         title = md === todayMD ? `Today · ${base}` : base;
                       }
                       return (
-                        <button
+                        <Button
                           key={d}
+                          variant="bare"
                           className={cls}
                           title={title}
                           disabled={!inRange}
                           aria-pressed={md === selectedMd}
                           onClick={() => onCell(m, d)}
-                        >{count > 0 ? count : ''}</button>
+                        >{count > 0 ? count : ''}</Button>
                       );
                     })}
                   </div>
@@ -850,41 +867,61 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
             into Born Today reorder mode. */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 6 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <div className="serif" style={{ fontSize: 20, fontWeight: 600 }}>
+            <Heading level={2} variant="story">
               {showReorder ? `Born Today order · ${dayMonthLabel(selectedMd!)}` : 'In the library'}
-            </div>
+            </Heading>
             <div className="muted" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               {selectedMd && (
-                <button
+                <Button
+                  variant="bare"
                   className="chip chip-gold"
-                  style={{ cursor: 'pointer' }}
                   title="Clear day filter"
                   onClick={() => { setSelectedMd(null); setReorderMode(false); }}
-                >Born {dayMonthLabel(selectedMd)} ✕</button>
+                >Born {dayMonthLabel(selectedMd)} ✕</Button>
               )}
               {canReorder && (
                 showReorder
-                  ? <button className="btn btn-sm" onClick={() => setReorderMode(false)}>← Back to cards</button>
-                  : <button className="btn btn-sm btn-gold" onClick={() => setReorderMode(true)}>⇅ Reorder Born Today</button>
+                  ? <Button variant="ghost" size="sm" onClick={() => setReorderMode(false)}>← Back to cards</Button>
+                  : <Button size="sm" onClick={() => setReorderMode(true)}>⇅ Reorder Born Today</Button>
               )}
               {!showReorder && <span>Showing {shown.length} of {people.length}</span>}
             </div>
           </div>
           {!showReorder && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <div className="field search" style={{ flex: 1, minWidth: 260, maxWidth: 420 }}>
-                <span className="muted" style={{ fontSize: 15 }}>⌕</span>
-                <input placeholder="Search by name…" value={search} onChange={(e) => setSearch(e.target.value)} />
-              </div>
-              <div className="seg">
+              <Field
+                size="sm"
+                label="Search the library by name"
+                labelHidden
+                type="search"
+                className="min-w-[260px] max-w-[420px] flex-1"
+                placeholder="⌕  Search by name…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <div className="seg" role="group" aria-label="Filter the library">
                 {segments.map((s) => (
-                  <button key={s.key} className={segment === s.key ? 'on' : ''} onClick={() => setSegment(s.key)}>{s.label}</button>
+                  <Button
+                    key={s.key}
+                    variant="bare"
+                    aria-pressed={segment === s.key}
+                    className={segment === s.key ? 'on' : ''}
+                    onClick={() => setSegment(s.key)}
+                  >{s.label}</Button>
                 ))}
               </div>
-              <select className="control" style={{ marginLeft: 'auto' }} value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
+              <Field
+                as="select"
+                size="sm"
+                label="Sort the library"
+                labelHidden
+                className="ml-auto"
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as SortKey)}
+              >
                 <option value="birthday">Sort · Birthday</option>
                 <option value="name">Sort · Name</option>
-              </select>
+              </Field>
             </div>
           )}
         </div>
@@ -901,11 +938,11 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
                   : 'No people match this view.'}
             </div>
             {selectedMd && (
-              <button
-                className="btn btn-gold btn-sm"
-                style={{ marginTop: 14 }}
+              <Button
+                size="sm"
+                className="mt-3.5"
                 onClick={() => openCreate(`2024-${selectedMd}`)}
-              >✦ Draft someone born {dayMonthLabel(selectedMd)}</button>
+              >✦ Draft someone born {dayMonthLabel(selectedMd)}</Button>
             )}
           </div>
         ) : (

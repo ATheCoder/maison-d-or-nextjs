@@ -14,6 +14,7 @@
  * answer differs between "draft me five moments" and "fill this one gap".
  */
 import { useEffect, useState } from 'react';
+import { Button, Field } from '@/components/ds';
 import type { GenerationJobRow } from '@/src/db/schema';
 import { getAskCapacity, startDgAsk, dismissDgJob } from '@/app/admin/daily-gold/aiActions';
 import type { AskKind, AskMode } from '@/lib/daily-gold/askStore';
@@ -111,13 +112,13 @@ export default function AskPanel({
 
         {!running && (
           <div>
-            <button className="btn btn-sm btn-gold" disabled={busy}
+            <Button size="sm" loading={busy}
               onClick={() => {
                 setBusy(true);
                 void dismissDgJob(job.id).then(() => { onChanged(); onClose(); }).finally(() => setBusy(false));
               }}>
               {job.state === 'done' ? 'Review what it found' : 'Dismiss'}
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -132,7 +133,7 @@ export default function AskPanel({
     <div className="panel" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
         <span className="kick">{title}</span>
-        <button className="btn btn-sm btn-ghost" onClick={onClose}>Close</button>
+        <Button variant="link" size="sm" onClick={onClose}>Close</Button>
       </div>
       <div className="note">{blurb}</div>
       {capacity?.note && <div className="note" style={{ color: 'var(--amber)' }}>{capacity.note}</div>}
@@ -147,21 +148,29 @@ export default function AskPanel({
             </span>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-sm btn-gold" disabled={busy} onClick={() => run(true)}>
+            <Button size="sm" loading={busy} onClick={() => run(true)}>
               Draft over it
-            </button>
-            <button className="btn btn-sm" disabled={busy} onClick={() => setConfirming(false)}>Keep what is there</button>
+            </Button>
+            <Button variant="ghost" size="sm" disabled={busy} onClick={() => setConfirming(false)}>Keep what is there</Button>
           </div>
         </>
       ) : (
         <>
           {kind !== 'day' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span className="note" style={{ width: 54 }}>How many</span>
-              <input
-                type="range" min={1} max={max} value={Math.min(units, max)}
+              <span aria-hidden className="note" style={{ width: 54 }}>How many</span>
+              {/* A range is still a control with a question above it, so it
+                  takes the field coat like the rest — the slider sits inside
+                  the same bordered box every other answer does. The label is
+                  hidden because the "How many" beside it is the label; what
+                  Field adds is the wiring a raw <input type="range"> had
+                  none of. */}
+              <Field
+                type="range" size="sm" label="How many" labelHidden
+                className="min-w-[140px] flex-1"
+                min={1} max={max} value={Math.min(units, max)}
                 onChange={(e) => setUnits(Number(e.target.value))}
-                style={{ flex: 1, minWidth: 140, accentColor: '#a8843f' }}
+                style={{ accentColor: 'var(--accent-readable)' }}
                 disabled={blocked}
               />
               <span className="chip chip-gold">{Math.min(units, max)} {noun}</span>
@@ -170,13 +179,15 @@ export default function AskPanel({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span className="note" style={{ width: 54 }}>Mode</span>
-            <div className="seg">
-              <button className={mode === 'words' ? 'on' : undefined} onClick={() => setMode('words')}>
+            <div className="seg" role="group" aria-label="What the ask writes">
+              <Button variant="bare" aria-pressed={mode === 'words'}
+                className={mode === 'words' ? 'on' : undefined} onClick={() => setMode('words')}>
                 Words only
-              </button>
-              <button className={mode === 'words+paintings' ? 'on' : undefined} onClick={() => setMode('words+paintings')}>
+              </Button>
+              <Button variant="bare" aria-pressed={mode === 'words+paintings'}
+                className={mode === 'words+paintings' ? 'on' : undefined} onClick={() => setMode('words+paintings')}>
                 Words and paintings
-              </button>
+              </Button>
             </div>
           </div>
           <div className="note">
@@ -186,9 +197,9 @@ export default function AskPanel({
           </div>
 
           <div>
-            <button className="btn btn-gold" disabled={busy || blocked} onClick={() => run()}>
+            <Button size="sm" disabled={blocked} loading={busy} onClick={() => run()}>
               {kind === 'day' ? 'Draft this day' : `Ask for ${Math.min(units, max)} ${noun}`}
-            </button>
+            </Button>
           </div>
         </>
       )}

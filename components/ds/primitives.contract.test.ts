@@ -3,11 +3,11 @@ import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, resolve, relative } from 'node:path';
 
 /**
- * The rule this suite holds: on the Daily Gold page and on the front door,
- * every button, every form control, every heading and every anchor is a
- * components/ds primitive. Not "mostly", and not "unless it looked easier" —
- * those two surfaces were migrated wholesale, and the only thing standing
- * between that and a slow drift back is a test that fails.
+ * The rule this suite holds: on the Daily Gold page, on the front door and
+ * across the admin desk, every button, every form control, every heading and
+ * every anchor is a components/ds primitive. Not "mostly", and not "unless it
+ * looked easier" — those surfaces were migrated wholesale, and the only thing
+ * standing between that and a slow drift back is a test that fails.
  *
  * Why a source-text assertion rather than a lint rule: the scope is not a
  * directory. `components/dailygold/` also holds GoldenStory, StorybookView and
@@ -43,6 +43,22 @@ const DG_ENTRIES = [
 const FRONT_DOOR_DIRS = ['app/(front-door)'];
 
 /**
+ * The admin desk, derived from its routes for the same reason the Daily Gold
+ * page is: `components/admin/` is *nearly* the whole surface, but the desk
+ * also reaches DatePicker, the ds primitives and ImageModal, and it is the
+ * REACHABLE set that has to hold — a helper added under a different directory
+ * tomorrow is covered tomorrow.
+ *
+ * The admin was migrated after the other two, and it is where the rule earns
+ * its keep: five private stylesheets had each grown their own `.btn`,
+ * `.btn-gold`, `.btn-red` and `.field`, four slightly different ways, all of
+ * them reaching for raw hexes and rgba() that no theme could re-scope. Those
+ * copies are what the primitives replaced; this is what stops them coming
+ * back one convenient button at a time.
+ */
+const ADMIN_DIRS = ['app/admin'];
+
+/**
  * The primitives themselves. A <button> inside components/ds/Button.tsx is
  * not a violation of the rule; it IS the rule. Same for HeartToggle's, and
  * for the close button Overlay draws.
@@ -72,6 +88,28 @@ const EXEMPT_PREFIX = 'components/ds/';
  */
 const COMPOSITE_EXCEPTIONS = ['components/ui/DatePicker.tsx'];
 
+/**
+ * Modules a migrated surface RENDERS but does not own, and where the walk
+ * therefore stops.
+ *
+ * There is exactly one, and it is the person editor's live book preview: the
+ * admin embeds `GoldenStory` — the very component a family reads at
+ * /stories/[name] — so that what the editor shows IS what ships, rather than a
+ * second rendering that can drift. That embed makes the reader reachable from
+ * an admin route, but it does not make the reader admin chrome: its buttons
+ * are the child's page-turners, on the child's surface, and redressing them
+ * from here would change what families see in order to satisfy a rule about
+ * an editor.
+ *
+ * The distinction the whole list turns on: the admin owns the FURNITURE around
+ * the preview and every one of those controls is a primitive; the preview is
+ * CONTENT, and it belongs to the migration of its own surface, whenever that
+ * happens. Stopping the walk here rather than filtering the file afterwards is
+ * deliberate — it also keeps everything only GoldenStory reaches (StorybookView
+ * and its siblings) out, which is the same call for the same reason.
+ */
+const PREVIEWED = ['components/dailygold/GoldenStory.jsx'];
+
 function resolveImport(spec: string, from: string): string | null {
   let base: string;
   if (spec.startsWith('@/')) base = join(ROOT, spec.slice(2));
@@ -96,7 +134,9 @@ function reachableFrom(entries: string[]): string[] {
     const source = readFileSync(file, 'utf8');
     for (const [, spec] of source.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
       const target = resolveImport(spec, file);
-      if (target && !target.includes('node_modules')) queue.push(target);
+      if (!target || target.includes('node_modules')) continue;
+      if (PREVIEWED.includes(relative(ROOT, target))) continue;
+      queue.push(target);
     }
   }
   return [...seen];
@@ -123,7 +163,7 @@ function stripCommentary(source: string): string {
 
 const SCOPE = reachableFrom([
   ...DG_ENTRIES,
-  ...FRONT_DOOR_DIRS.flatMap(filesUnder).map((f) => relative(ROOT, f)),
+  ...[...FRONT_DOOR_DIRS, ...ADMIN_DIRS].flatMap(filesUnder).map((f) => relative(ROOT, f)),
 ])
   .map((file) => relative(ROOT, file))
   // JSX lives in JSX files. This is not a shortcut — it is what keeps the
@@ -171,6 +211,13 @@ describe('Daily Gold and the front door use only ds primitives', () => {
     expect(SCOPE).toContain('components/dailygold/DGNavigationRail.jsx');
     expect(SCOPE).toContain('components/auth/AuthForm.tsx');
     expect(SCOPE).toContain('components/welcome/WelcomeWizard.tsx');
+    // The admin's five biggest screens, each of which used to carry its own
+    // copy of the button and the field.
+    expect(SCOPE).toContain('components/admin/DailyGoldDesk.tsx');
+    expect(SCOPE).toContain('components/admin/PeopleLibrary.tsx');
+    expect(SCOPE).toContain('components/admin/DayEditor.tsx');
+    expect(SCOPE).toContain('components/admin/AlmanacEditor.tsx');
+    expect(SCOPE).toContain('components/admin/PersonEditor.tsx');
     expect(SCOPE.length).toBeGreaterThan(40);
   });
 
@@ -195,6 +242,10 @@ describe('Daily Gold and the front door use only ds primitives', () => {
     // visible diff on this line with a reason beside it — not a quiet addition
     // that makes a failing suite pass.
     expect(COMPOSITE_EXCEPTIONS).toEqual(['components/ui/DatePicker.tsx']);
+    // Same rule for the one previewed module: a second entry has to be argued
+    // for on this line, not added quietly to make a red suite green.
+    expect(PREVIEWED).toEqual(['components/dailygold/GoldenStory.jsx']);
+    expect(existsSync(join(ROOT, PREVIEWED[0]))).toBe(true);
     // And it has to still be reachable: an exception for a file that no longer
     // lands on either surface is dead weight that would silently excuse a
     // future file of the same name.

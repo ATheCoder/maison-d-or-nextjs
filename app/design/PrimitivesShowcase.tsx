@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 import { THEME_KEYS, THEME_NAMES } from '@/lib/theme-keys';
 import OverlayDemo from './OverlayDemo';
 import {
   Button,
+  buttonClasses,
   Card,
   Container,
   Eyebrow,
@@ -210,9 +212,18 @@ function Specimen({ story }: { story: Story }) {
       <div className="flex flex-wrap items-center gap-4">
         <Button>{story.primary}</Button>
         <Button variant="ghost">{story.ghost}</Button>
+        {/* Ghost's shape, danger's ink — deliberately quieter than the
+            primary beside it, because the loud button on a screen should be
+            the one that makes something. Rest is a terracotta hairline over
+            nothing; hover fills. On the two interludes both turn to rose, the
+            same brightening the heart's wax does. */}
+        <Button variant="danger">Delete for ever</Button>
         <Button variant="link">Read the letter</Button>
         <Button disabled>Disabled</Button>
         <Button variant="ghost" disabled>
+          Disabled
+        </Button>
+        <Button variant="danger" disabled>
           Disabled
         </Button>
       </div>
@@ -225,6 +236,37 @@ function Specimen({ story }: { story: Story }) {
         <Button variant="link" loading>
           Gathering wonder
         </Button>
+      </div>
+
+      {/* The same coats at the tool scale. `size="sm"` is the admin desk's
+          row: caption type, tighter box, the smaller radius — and otherwise
+          the identical button, which is the point of stamping it directly
+          under the reading scale rather than on a page of its own. The fill,
+          the hover swap, the sheen, the lift and the spinner all re-scope per
+          surface exactly as they do above. */}
+      <div className="flex flex-wrap items-center gap-3">
+        <Button size="sm">{story.primary}</Button>
+        <Button variant="ghost" size="sm">
+          {story.ghost}
+        </Button>
+        <Button variant="link" size="sm">
+          Read the letter
+        </Button>
+        <Button size="sm" loading>
+          Working
+        </Button>
+        <Button variant="danger" size="sm">
+          Delete
+        </Button>
+        <Button variant="ghost" size="sm" disabled>
+          Disabled
+        </Button>
+        {/* And the coat on a next/link, via buttonClasses — the admin desk is
+            full of navigation shaped like an action, and this is the only way
+            it gets the real coat instead of a copy of it. */}
+        <Link href="#" className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
+          A link wearing the coat
+        </Link>
       </div>
 
       {/* The same coats on an anchor. `href` swaps the <button> for an <a>
@@ -312,6 +354,39 @@ function Specimen({ story }: { story: Story }) {
           type="password"
           placeholder="••••"
           hint="Its label is there — read the DOM, or tab to it with a screen reader on."
+        />
+      </div>
+
+      {/* The same field at the tool scale, matching the buttons above. The
+          admin desk asks thirty questions on one screen; `size="sm"` is how
+          it does that without either shrinking the coat by hand or giving
+          each answer a 44px box. Coat, label, message seat and the invalid
+          state are untouched — only the box moves. */}
+      <div className="grid gap-x-5 gap-y-4 sm:grid-cols-3">
+        <Field size="sm" label="Destination" defaultValue="Kyoto" />
+        <Field size="sm" as="select" label="Status" defaultValue="draft">
+          <option value="draft">Draft</option>
+          <option value="ready">Live</option>
+        </Field>
+        <Field
+          size="sm"
+          label="Country code"
+          defaultValue="JPN"
+          error="Two letters, not three."
+        />
+        {/* All three controls at the small size, not two. The gap is worth a
+            line of explanation: this page is what the admin desk is diffed
+            against, and a shape that is missing here cannot be found wrong
+            there — a small textarea shipped on two admin screens with nothing
+            to compare it to, which is exactly how the size once wandered off
+            the house's radius. If a surface uses it, it is stamped. */}
+        <Field
+          size="sm"
+          as="textarea"
+          label="What happened"
+          rows={2}
+          className="sm:col-span-3"
+          defaultValue="The rosemary came back on its own, taller than last year."
         />
       </div>
 

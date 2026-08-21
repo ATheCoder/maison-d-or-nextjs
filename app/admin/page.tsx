@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/dal';
 import SignOutButton from '@/components/auth/SignOutButton';
+import { Card, Eyebrow, Heading, Prose } from '@/components/ds';
 
 export const metadata = { title: 'Admin — Maison d\'Oré' };
 
@@ -24,48 +25,52 @@ export default async function AdminPage() {
   const session = await requireAdmin();
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#F5F0E7',
-      padding: '3rem clamp(1.5rem, 5vw, 4rem)',
-      fontFamily: 'Lato, sans-serif',
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '2rem' }}>
+    <div className="min-h-dvh px-6 py-12 sm:px-10 lg:px-16">
+      <div className="mb-8 flex flex-wrap items-baseline justify-between gap-4">
         <div>
-          <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#C9A96E', margin: '0 0 0.4rem' }}>
-            Maison d&apos;Oré — Administration
-          </p>
-          <h1 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontSize: '1.9rem', fontWeight: 600, color: '#241A0C', margin: 0 }}>
+          <Eyebrow rule={false}>Maison d&apos;Oré — Administration</Eyebrow>
+          {/* level 1: this is the admin's front page and its heading is the
+              page's, but at the section scale — the desk below is the content,
+              not this line. */}
+          <Heading level={1} variant="section" className="mt-1.5">
             Welcome, {session.user.name}
-          </h1>
+          </Heading>
         </div>
         <SignOutButton />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
         {SECTIONS.map((s) => {
-          const live = Boolean(s.href);
           const card = (
-            <div style={{
-              background: 'rgba(255,248,238,0.8)',
-              border: `1px solid ${live ? 'rgba(201,169,110,0.5)' : 'rgba(201,169,110,0.25)'}`,
-              borderRadius: 14,
-              padding: '1.5rem 1.25rem',
-              color: '#5C4A2A',
-              height: '100%',
-              boxSizing: 'border-box',
-            }}>
-              <h2 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontSize: '1.05rem', fontWeight: 600, margin: '0 0 0.4rem', color: '#241A0C' }}>
+            <Card
+              tone="raised"
+              elevation="card"
+              radius="lg"
+              className={`h-full${s.href ? '' : ' opacity-60'}`}
+            >
+              <Heading level={2} variant="story">
                 {s.title}
-              </h2>
-              <p style={{ fontSize: '0.78rem', margin: 0, color: '#8B7355' }}>
+              </Heading>
+              <Prose variant="caption" className="mt-1.5" measure={false}>
                 {s.blurb}
-              </p>
-            </div>
+              </Prose>
+            </Card>
           );
-          return s.href
-            ? <Link key={s.title} href={s.href} style={{ textDecoration: 'none' }}>{card}</Link>
-            : <div key={s.title}>{card}</div>;
+          return s.href ? (
+            // The whole card is the target, so the coat belongs to the card and
+            // the link brings only the navigation — no underline, no second
+            // ink. The focus ring is the card's outline, drawn on the anchor
+            // because that is what receives focus.
+            <Link
+              key={s.title}
+              href={s.href}
+              className="rounded-lg no-underline focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            >
+              {card}
+            </Link>
+          ) : (
+            <div key={s.title}>{card}</div>
+          );
         })}
       </div>
     </div>

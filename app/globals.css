@@ -168,6 +168,14 @@
   --btn-primary-fg-hover: var(--palette-ink);
   --btn-ghost-bg-hover: var(--palette-espresso);
   --btn-ghost-fg-hover: var(--palette-ink-on-dark);
+  /* Danger's coat. Only the hover pair is named, exactly as ghost's is: the
+     rest state is transparent with a --danger hairline and --danger-readable
+     ink, both of which already exist and already re-scope. Hover fills with
+     the full-strength danger and swaps the ink to whatever reads on it —
+     ivory over terracotta on light grounds (5.2), espresso/navy over rose on
+     the interludes (5.7 / 5.2), measured the same way the gold pairs were. */
+  --btn-danger-bg-hover: var(--palette-terracotta);
+  --btn-danger-fg-hover: var(--palette-ink-on-dark);
   /* Hover elevation, tuned against the Daily Gold buttons mock: a soft
      walnut drop on light grounds; the dark scopes repaint it as a
      candle-glow gold halo instead of a shadow (light radiates on dark). */
@@ -261,6 +269,8 @@
   --btn-primary-fg-hover: var(--palette-ink);
   --btn-ghost-bg-hover: var(--palette-gold-bright);
   --btn-ghost-fg-hover: var(--palette-espresso);
+  --btn-danger-bg-hover: var(--palette-rose);
+  --btn-danger-fg-hover: var(--palette-espresso);
   --btn-hover-shadow: 0 0 24px color-mix(in srgb, var(--palette-gold-bright) 45%, transparent);
   --heart-saved: var(--palette-rose);
   --danger: var(--palette-rose);
@@ -295,6 +305,8 @@
   --btn-primary-fg-hover: var(--palette-ink);
   --btn-ghost-bg-hover: var(--palette-gold-bright);
   --btn-ghost-fg-hover: var(--palette-navy);
+  --btn-danger-bg-hover: var(--palette-rose);
+  --btn-danger-fg-hover: var(--palette-navy);
   --btn-hover-shadow: 0 0 24px color-mix(in srgb, var(--palette-gold-bright) 45%, transparent);
   --heart-saved: var(--palette-rose);
   --danger: var(--palette-rose);
@@ -343,6 +355,8 @@
   --btn-primary-fg-hover: var(--palette-ink);
   --btn-ghost-bg-hover: var(--palette-espresso);
   --btn-ghost-fg-hover: var(--palette-ink-on-dark);
+  --btn-danger-bg-hover: var(--palette-terracotta);
+  --btn-danger-fg-hover: var(--palette-ink-on-dark);
   --btn-hover-shadow: 0 4px 12px color-mix(in srgb, var(--palette-walnut) 30%, transparent);
   --danger: var(--palette-terracotta);
   --danger-readable: var(--palette-terracotta-deep);
@@ -739,6 +753,33 @@ html[data-theme] body {
     border-color: var(--border-accent);
     background-color: var(--btn-ghost-bg-hover);
     color: var(--btn-ghost-fg-hover);
+  }
+}
+
+/* §4 — the destructive coat. Ghost's shape with danger's ink: a terracotta
+   hairline and terracotta-deep label at rest, filling to full terracotta on
+   hover. It is a ghost, not a primary, on purpose — the loud button on a
+   screen should be the one that MAKES something, and an admin desk that
+   paints "Delete this person" as boldly as "Publish" is a desk that gets
+   misclicked. The reason it is a coat here rather than a colour prop is the
+   §1.2 rule: a call site that wanted this had to reach for a raw
+   rgba(181,83,58,…) border, which is exactly what the admin's four private
+   stylesheets each did, four slightly different ways. */
+@utility btn-danger {
+  border: 1px solid color-mix(in srgb, var(--danger) 50%, transparent);
+  background-color: transparent;
+  color: var(--danger-readable);
+  @media (hover: hover) {
+    &:hover {
+      border-color: var(--danger);
+      background-color: var(--btn-danger-bg-hover);
+      color: var(--btn-danger-fg-hover);
+    }
+  }
+  &:active {
+    border-color: var(--danger);
+    background-color: var(--btn-danger-bg-hover);
+    color: var(--btn-danger-fg-hover);
   }
 }
 

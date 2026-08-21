@@ -1,10 +1,5 @@
 import { createElement, useId } from 'react';
-import type {
-  InputHTMLAttributes,
-  ReactNode,
-  SelectHTMLAttributes,
-  TextareaHTMLAttributes,
-} from 'react';
+import type { ComponentPropsWithRef, ReactNode } from 'react';
 
 /**
  * Field — §4 form field primitive. A labelled control with one message seat
@@ -45,19 +40,44 @@ import type {
  * clicked to focus the control). A real label, hidden, keeps all three.
  * The control loses its top margin with the label, since there is no longer
  * anything above it to sit under.
+ *
+ * ── size ─────────────────────────────────────────────────────────────────
+ * The same field at the two house scales, matching Button's: `md` is the
+ * reading scale every form on the front door is set in, and `sm` is the
+ * admin desk's, where a screen asks thirty questions at once and a 44px box
+ * for each is a screen nobody can see the shape of. Only the box and the
+ * type move — the coat, the label, the message seat, the focus halo and the
+ * aria-invalid behaviour are identical — corner included — because a small
+ * field is not a lesser one.
  */
+type FieldSize = 'md' | 'sm';
+
 type FieldShell = {
   label: string;
   labelHidden?: boolean;
   hint?: string;
   error?: string;
+  size?: FieldSize;
   className?: string;
 };
 
+/* `size` is omitted from the native attribute sets on purpose. <input> and
+   <select> both HAVE a native `size` — a character/row count nobody has ever
+   wanted here — and leaving it in would intersect `number` with our two-string
+   union down to `never`, quietly making every `size="sm"` a type error whose
+   message names `as`, not `size`. The house scale wins the name; a call site
+   that genuinely wants the native attribute has `htmlSize`-style options and
+   has never asked for one.
+
+   ComponentPropsWithRef rather than the bare HTMLAttributes for the same
+   reason Button uses it: React 19 passes `ref` as an ordinary prop, and the
+   image modal's file input is driven from a ref by the "Upload a file" button
+   in its footer. */
 type FieldProps =
-  | ({ as?: 'input' } & FieldShell & InputHTMLAttributes<HTMLInputElement>)
-  | ({ as: 'select'; children?: ReactNode } & FieldShell & SelectHTMLAttributes<HTMLSelectElement>)
-  | ({ as: 'textarea' } & FieldShell & TextareaHTMLAttributes<HTMLTextAreaElement>);
+  | ({ as?: 'input' } & FieldShell & Omit<ComponentPropsWithRef<'input'>, 'size'>)
+  | ({ as: 'select'; children?: ReactNode } & FieldShell &
+      Omit<ComponentPropsWithRef<'select'>, 'size'>)
+  | ({ as: 'textarea' } & FieldShell & ComponentPropsWithRef<'textarea'>);
 
 /* Per-tag additions to the shared `field` coat. Spelled out rather than
    interpolated: Tailwind v4 scans source text. */
@@ -67,6 +87,22 @@ const CONTROL: Record<'input' | 'select' | 'textarea', string> = {
   textarea: 'resize-y',
 };
 
+/* The box, per size — type, padding, and how far the control sits under its
+   label. Written out in full rather than composed, so both scales are readable
+   in one glance and Tailwind's source scan sees every class.
+
+   `rounded-md` is deliberately NOT in here: globals.css §3.4 gives one radius
+   to buttons, fields and cards, so a small field is the same corner in less
+   room, exactly as a small button is. It rides on every control below instead,
+   where neither size can move it. */
+const BOX: Record<FieldSize, { control: string; gap: string }> = {
+  md: { control: 'type-body-ui px-4 py-2.5', gap: 'mt-2' },
+  sm: {
+    control: 'font-sans text-[length:var(--type-caption)] leading-[1.5] px-3 py-2',
+    gap: 'mt-1.5',
+  },
+};
+
 export default function Field({
   label,
   labelHidden = false,
@@ -74,6 +110,7 @@ export default function Field({
   error,
   id,
   as = 'input',
+  size = 'md',
   className = '',
   ...rest
 }: FieldProps) {
@@ -99,7 +136,7 @@ export default function Field({
         id: inputId,
         'aria-invalid': error ? true : undefined,
         'aria-describedby': messageId,
-        className: `field type-body-ui ${labelHidden ? '' : 'mt-2 '}rounded-md px-4 py-2.5 ${CONTROL[as]}`.trim(),
+        className: `field rounded-md ${BOX[size].control} ${labelHidden ? '' : `${BOX[size].gap} `}${CONTROL[as]}`.trim(),
       })}
       {/* role="alert" only on the error branch: a hint is there from the
           start and announcing it would talk over the label, but an error

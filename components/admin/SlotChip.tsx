@@ -6,6 +6,7 @@
  * and stands in for every other single-image section.
  */
 import type { SlotView } from './imageSlots';
+import { Button } from '@/components/ds';
 import styles from './PersonEditor.module.css';
 
 const CHIP: Record<SlotView['status'], { cls: string; label: string }> = {
@@ -31,7 +32,7 @@ export default function SlotChip({ slot, hint, onOpen }: { slot: SlotView; hint?
         </div>
         <div className={styles.muted} style={{ fontSize: 12, marginTop: 5 }}>{hint ?? `${slot.blend} · ${slot.size.replace('x', '×')}`}</div>
       </div>
-      <button className={`${styles.btn} ${styles.btnSm}`} onClick={onOpen}>Open slot ▾</button>
+      <Button variant="ghost" size="sm" onClick={onOpen}>Open slot ▾</Button>
     </div>
   );
 }
