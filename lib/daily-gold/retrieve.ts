@@ -18,7 +18,7 @@
  * candidates into rows is app/admin/daily-gold/aiActions.ts's job.
  */
 import { runPromptDetailed, type ChatPrompt, type RunOptions } from '@/lib/golden-story/brief';
-import type { Citation } from '@/lib/golden-story/openrouter';
+import { parseJsonReply, type Citation } from '@/lib/golden-story/openrouter';
 import { DG_VOICE, DG_FIELDS } from './write';
 
 // ── The shape a candidate comes back in ──────────────────────────────────────
@@ -226,16 +226,14 @@ function provenanceOf(raw: Record<string, unknown>, citations: Citation[]): Prov
 }
 
 /** Parse a grounded reply's JSON, tolerating the odd fence the model adds. */
-function parseItems(text: string): Record<string, unknown>[] {
-  let s = text.trim();
-  if (s.startsWith('```')) s = s.replace(/^```[a-z]*\n?/i, '').replace(/```$/, '').trim();
-  const parsed = JSON.parse(s) as { items?: unknown };
+function parseItems(stage: string, text: string): Record<string, unknown>[] {
+  const parsed = parseJsonReply<{ items?: unknown }>(text, `The ${stage} reply`);
   return Array.isArray(parsed?.items) ? parsed.items as Record<string, unknown>[] : [];
 }
 
 async function retrieve(stage: string, prompt: ChatPrompt, maxTokens: number, web: RunOptions['web']) {
   const { text, citations } = await runPromptDetailed(prompt, { maxTokens, web });
-  const raw = parseItems(text);
+  const raw = parseItems(stage, text);
   return {
     raw,
     citations,

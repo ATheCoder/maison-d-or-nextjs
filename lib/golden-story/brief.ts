@@ -7,6 +7,7 @@
  */
 import {
   OPENROUTER, WRITER_MODEL, orHeaders, webPlugin, parseCitations,
+  jsonSchemaRequest, parseJsonReply,
   type Citation, type WebPluginOptions,
 } from './openrouter.ts';
 import { CHAPTERS, TIMELINE, TREASURES, LESSONS } from './prompts.ts';
@@ -118,10 +119,7 @@ export async function writeBrief(personName: string): Promise<Brief> {
       max_tokens: 16000,
       reasoning: { enabled: true },
       stream: true,
-      response_format: {
-        type: 'json_schema',
-        json_schema: { name: 'golden_story_brief', strict: true, schema: BRIEF_SCHEMA },
-      },
+      ...jsonSchemaRequest('golden_story_brief', BRIEF_SCHEMA),
       messages: [
         { role: 'system', content: WRITER_SYSTEM },
         { role: 'user', content: `Create the Golden Story brief for ${personName}.` },
@@ -149,7 +147,7 @@ export async function writeBrief(personName: string): Promise<Brief> {
     }
   }
   if (!text) throw new Error('no text in model response');
-  return JSON.parse(text) as Brief;
+  return parseJsonReply<Brief>(text, 'The story brief');
 }
 
 // ---------------------------------------------------------------------------
@@ -198,9 +196,7 @@ export async function runPromptDetailed(prompt: ChatPrompt, options: RunOptions 
         { role: 'system', content: prompt.system },
         { role: 'user', content: prompt.user },
       ],
-      ...(prompt.schema
-        ? { response_format: { type: 'json_schema', json_schema: { name: 'out', strict: true, schema: prompt.schema } } }
-        : {}),
+      ...(prompt.schema ? jsonSchemaRequest('out', prompt.schema) : {}),
       ...(options.web ? { plugins: [webPlugin(options.web)] } : {}),
     }),
   });

@@ -29,6 +29,7 @@ import {
   type JobProgress, type JobResult,
 } from '@/src/db/schema';
 import { runPromptDetailed } from '@/lib/golden-story/brief';
+import { parseJsonReply } from '@/lib/golden-story/openrouter';
 import { setJobProgress } from '@/lib/golden-story/jobs';
 import {
   MOMENT_PARK_FROM, MOMENT_RANKS, NEWS_DISPLAY_SLOTS, NEWS_PARK_FROM, nextParkingSlot,
@@ -291,7 +292,7 @@ async function runDayAsk(req: AskRequest, jobId: number): Promise<AskOutcome> {
     kept: 1,
     dropped: [],
   });
-  const draft = JSON.parse(raw) as DayDraft;
+  const draft = parseJsonReply<DayDraft>(raw, `The ${date} day draft`);
 
   await db.update(dailyGoldEdition).set({
     destinationCountry: draft.destination_country?.slice(0, 200) || null,

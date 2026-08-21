@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { completionText, parseCitations, webPlugin } from './openrouter';
+import { completionText, jsonSchemaRequest, parseCitations, parseJsonReply, webPlugin } from './openrouter';
 
 describe('webPlugin', () => {
   it('omits unset fields so OpenRouter applies its own defaults', () => {
@@ -91,5 +91,44 @@ describe('completionText', () => {
     expect(completionText(null)).toBe('');
     expect(completionText({ choices: [{ message: {} }] })).toBe('');
     expect(completionText({ choices: [{ message: { content: [{ type: 'text' }] } }] })).toBe('');
+  });
+});
+
+describe('jsonSchemaRequest', () => {
+  const schema = { type: 'object', properties: { a: { type: 'string' } } };
+
+  it('asks for the schema strictly', () => {
+    expect(jsonSchemaRequest('out', schema).response_format).toEqual({
+      type: 'json_schema',
+      json_schema: { name: 'out', strict: true, schema },
+    });
+  });
+
+  it('pins routing to endpoints that honour the schema', () => {
+    // Without this, OpenRouter may route to an endpoint that does not support
+    // structured outputs, drop the schema, and return prose.
+    expect(jsonSchemaRequest('out', schema).provider).toEqual({ require_parameters: true });
+  });
+});
+
+describe('parseJsonReply', () => {
+  it('reads a plain object', () => {
+    expect(parseJsonReply('{"a":1}', 'The reply')).toEqual({ a: 1 });
+  });
+
+  it('strips a fence', () => {
+    expect(parseJsonReply('```json\n{"a":1}\n```', 'The reply')).toEqual({ a: 1 });
+  });
+
+  it('salvages an object written after a sentence of preamble', () => {
+    const reply = 'Looking at the request, here is the edition:\n{"a":1}\nHope that helps.';
+    expect(parseJsonReply(reply, 'The reply')).toEqual({ a: 1 });
+  });
+
+  it('names the prose when there is no object at all', () => {
+    // The failure this replaces read "Unexpected token 'L'", which said
+    // nothing about what had gone wrong.
+    expect(() => parseJsonReply('Looking at the request, I would rather chat.', 'The day draft'))
+      .toThrow(/The day draft: the model replied with prose.*Looking at the request/);
   });
 });

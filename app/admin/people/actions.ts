@@ -24,7 +24,7 @@ import { requireAdmin } from '@/lib/dal';
 import { slugify, SLUG_RE } from '@/lib/slug';
 import { isValidIso2 } from '@/lib/countries';
 import { runPrompt, suggestPersons } from '@/lib/golden-story/brief';
-import { OPENROUTER, orHeaders } from '@/lib/golden-story/openrouter';
+import { OPENROUTER, orHeaders, parseJsonReply } from '@/lib/golden-story/openrouter';
 import { createJob, failJob, jobsForSlug, deleteJob, personSubject } from '@/lib/golden-story/jobs';
 import { initialBriefStages } from '@/lib/golden-story/textStore';
 import { inngest } from '@/lib/inngest/client';
@@ -579,7 +579,7 @@ export async function suggestPeople(monthDay: string, exclude: string[] = []):
   const names = Array.isArray(exclude) ? exclude.filter((n) => typeof n === 'string').slice(0, 400) : [];
   try {
     const raw = await runPrompt(suggestPersons(monthDay, names));
-    const parsed = JSON.parse(raw) as { suggestions?: PersonSuggestion[] };
+    const parsed = parseJsonReply<{ suggestions?: PersonSuggestion[] }>(raw, 'The suggestion list');
     return { ok: true, suggestions: Array.isArray(parsed?.suggestions) ? parsed.suggestions.slice(0, 8) : [] };
   } catch {
     return { ok: false, error: 'Could not fetch suggestions — try again.' };

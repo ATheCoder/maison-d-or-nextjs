@@ -142,3 +142,66 @@ export function completionText(completion: unknown): string {
   })?.choices?.[0]?.message?.content;
   return typeof content === 'string' ? content : '';
 }
+
+// ── Asking for JSON ──────────────────────────────────────────────────────────
+
+/**
+ * The request fields that ask for a JSON answer **and** keep the request on a
+ * provider that will honour the ask.
+ *
+ * `response_format` on its own is not enough. One model id is served by many
+ * endpoints, and they do not all support the same parameters: of the ten that
+ * serve `anthropic/claude-opus-4.8`, the three Google Vertex ones do not list
+ * `structured_outputs`. When the load balancer routes there the schema is
+ * dropped silently — the model answers in prose, the call returns 200, and the
+ * caller's `JSON.parse` dies on `Unexpected token 'L', "Looking at"...`. It is
+ * intermittent by construction: the same prompt succeeds on the other seven.
+ *
+ * `provider.require_parameters` is the fix — it routes only to endpoints that
+ * support every parameter sent. The cost is that a JSON ask fails outright
+ * ("No endpoints found") if every schema-capable endpoint is down, which is the
+ * better failure: an error that names itself rather than a reply that cannot be
+ * read.
+ *
+ * The routing table is public, if this ever needs re-checking:
+ *   curl https://openrouter.ai/api/v1/models/anthropic/claude-opus-4.8/endpoints
+ */
+export function jsonSchemaRequest(name: string, schema: unknown) {
+  return {
+    response_format: { type: 'json_schema', json_schema: { name, strict: true, schema } },
+    provider: { require_parameters: true },
+  };
+}
+
+/**
+ * Parse a model's JSON reply.
+ *
+ * Tolerant twice over, because a schema is a request and not a guarantee: the
+ * fence some models wrap the object in is stripped, and a reply that leads with
+ * a sentence before the object is salvaged from its outermost braces. What is
+ * *not* tolerated is a reply with no object in it — that throws with the
+ * opening of what the model actually said, so the log reads as "it wrote prose"
+ * instead of as a SyntaxError about a token 'L'.
+ */
+export function parseJsonReply<T>(text: string, what: string): T {
+  let s = text.trim();
+  if (s.startsWith('```')) s = s.replace(/^```[a-z]*\n?/i, '').replace(/```\s*$/, '').trim();
+
+  try {
+    return JSON.parse(s) as T;
+  } catch {
+    // Fall through to the salvage.
+  }
+
+  const start = s.indexOf('{');
+  const end = s.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    try {
+      return JSON.parse(s.slice(start, end + 1)) as T;
+    } catch {
+      // Not JSON either — report it as prose below.
+    }
+  }
+
+  throw new Error(`${what}: the model replied with prose, not JSON — ${JSON.stringify(s.slice(0, 200))}`);
+}
