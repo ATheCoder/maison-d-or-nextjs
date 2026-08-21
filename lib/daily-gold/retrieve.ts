@@ -227,8 +227,12 @@ function provenanceOf(raw: Record<string, unknown>, citations: Citation[]): Prov
 
 /** Parse a grounded reply's JSON, tolerating the odd fence the model adds. */
 function parseItems(stage: string, text: string): Record<string, unknown>[] {
-  const parsed = parseJsonReply<{ items?: unknown }>(text, `The ${stage} reply`);
-  return Array.isArray(parsed?.items) ? parsed.items as Record<string, unknown>[] : [];
+  const parsed = parseJsonReply<{ items?: unknown } | unknown[]>(text, `The ${stage} reply`);
+  // A reply that dropped the wrapper and returned the bare list is still an
+  // answer, and throwing the column away over the shape of its envelope would
+  // lose real retrieved news.
+  const items = Array.isArray(parsed) ? parsed : (parsed as { items?: unknown })?.items;
+  return Array.isArray(items) ? items as Record<string, unknown>[] : [];
 }
 
 async function retrieve(stage: string, prompt: ChatPrompt, maxTokens: number, web: RunOptions['web']) {

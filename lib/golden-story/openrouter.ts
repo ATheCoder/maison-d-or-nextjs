@@ -49,7 +49,7 @@ export function orHeaders(): Record<string, string> {
 export type WebEngine = 'native' | 'exa' | 'firecrawl' | 'parallel' | 'perplexity';
 
 export type WebPluginOptions = {
-  /** Leave undefined to let OpenRouter pick based on model support. */
+  /** Defaults to 'exa' — see `webPlugin` for why the engine is not left open. */
   engine?: WebEngine;
   /** Result count; OpenRouter defaults to 5. */
   maxResults?: number;
@@ -75,8 +75,15 @@ export type WebPlugin = {
  * its own defaults.
  */
 export function webPlugin(options: WebPluginOptions = {}): WebPlugin {
-  const plugin: WebPlugin = { id: 'web' };
-  if (options.engine) plugin.engine = options.engine;
+  // The engine is pinned rather than left to OpenRouter, because the two it
+  // picks between are not interchangeable here. `exa` searches and injects the
+  // results as text, and the reply comes back with `url_citation` annotations
+  // — which is the whole basis of verify-rather-than-trust (D10): no
+  // annotations means `verify()` returns false for every item and the admin is
+  // shown a column of *unverifiable* claims. `native` runs the search as the
+  // model's own tool, and returns no annotations at all. Left open, OpenRouter
+  // chooses per request, so the same ask is checkable one run and not the next.
+  const plugin: WebPlugin = { id: 'web', engine: options.engine ?? 'exa' };
   if (typeof options.maxResults === 'number') plugin.max_results = options.maxResults;
   if (options.searchPrompt?.trim()) plugin.search_prompt = options.searchPrompt.trim();
   if (options.includeDomains?.length) plugin.include_domains = options.includeDomains;
@@ -174,34 +181,81 @@ export function jsonSchemaRequest(name: string, schema: unknown) {
 }
 
 /**
- * Parse a model's JSON reply.
+ * Every complete JSON value in a string, in the order they appear, paired with
+ * the text each was read from.
  *
- * Tolerant twice over, because a schema is a request and not a guarantee: the
- * fence some models wrap the object in is stripped, and a reply that leads with
- * a sentence before the object is salvaged from its outermost braces. What is
- * *not* tolerated is a reply with no object in it — that throws with the
- * opening of what the model actually said, so the log reads as "it wrote prose"
- * instead of as a SyntaxError about a token 'L'.
+ * A grounded reply is not reliably one value. When the search runs as the
+ * model's own tool the answer arrives as several assistant segments
+ * concatenated into a single `content` string — an empty `{"items": []}`
+ * written before the results came back, then the real one — and either segment
+ * may be wrapped in a ```json fence or introduced by a sentence of commentary
+ * ("Looking at the sources, I'll select..."). Scanning for balanced values
+ * finds the JSON whichever of those shapes the reply took, without a fence
+ * rule, a preamble rule and a concatenation rule each guessing separately.
  */
-export function parseJsonReply<T>(text: string, what: string): T {
-  let s = text.trim();
-  if (s.startsWith('```')) s = s.replace(/^```[a-z]*\n?/i, '').replace(/```\s*$/, '').trim();
+function jsonValuesIn(text: string): { source: string; value: unknown }[] {
+  const out: { source: string; value: unknown }[] = [];
 
-  try {
-    return JSON.parse(s) as T;
-  } catch {
-    // Fall through to the salvage.
-  }
+  for (let i = 0; i < text.length; i++) {
+    const open = text[i];
+    if (open !== '{' && open !== '[') continue;
+    const close = open === '{' ? '}' : ']';
 
-  const start = s.indexOf('{');
-  const end = s.lastIndexOf('}');
-  if (start >= 0 && end > start) {
-    try {
-      return JSON.parse(s.slice(start, end + 1)) as T;
-    } catch {
-      // Not JSON either — report it as prose below.
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (let j = i; j < text.length; j++) {
+      const ch = text[j];
+
+      // Braces inside a string are text, not structure — a headline may
+      // legitimately contain one.
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (ch === '\\') escaped = true;
+        else if (ch === '"') inString = false;
+        continue;
+      }
+      if (ch === '"') { inString = true; continue; }
+      if (ch === open) { depth++; continue; }
+      if (ch !== close) continue;
+
+      depth--;
+      if (depth > 0) continue;
+
+      const source = text.slice(i, j + 1);
+      try {
+        out.push({ source, value: JSON.parse(source) });
+        i = j; // Resume past it: what is nested inside a value is not its own answer.
+      } catch {
+        // Balanced but not JSON — let the outer scan try the next opening brace.
+      }
+      break;
     }
   }
 
-  throw new Error(`${what}: the model replied with prose, not JSON — ${JSON.stringify(s.slice(0, 200))}`);
+  return out;
+}
+
+/**
+ * Parse a model's JSON reply.
+ *
+ * Tolerant, because a schema is a request and not a guarantee — `jsonValuesIn`
+ * above lists what a reply turns out to look like in practice. What is *not*
+ * tolerated is a reply with no JSON in it at all: that throws with the opening
+ * of what the model actually said, so the log reads as "it wrote prose"
+ * instead of as a SyntaxError about a token 'L'.
+ */
+export function parseJsonReply<T>(text: string, what: string): T {
+  const found = jsonValuesIn(text);
+  if (!found.length) {
+    throw new Error(`${what}: the model replied with prose, not JSON — ${JSON.stringify(text.trim().slice(0, 200))}`);
+  }
+
+  // The longest value is the answer. A multi-segment reply opens with the model
+  // clearing its throat — an empty `{"items": []}` written before the search
+  // came back — and taking the first would read as "found nothing", which this
+  // desk treats as a legitimate result rather than as a failure. Silently
+  // publishing an empty column is the one wrong answer here.
+  return found.reduce((best, v) => (v.source.length >= best.source.length ? v : best)).value as T;
 }

@@ -2,13 +2,17 @@ import { describe, it, expect } from 'vitest';
 import { completionText, jsonSchemaRequest, parseCitations, parseJsonReply, webPlugin } from './openrouter';
 
 describe('webPlugin', () => {
-  it('omits unset fields so OpenRouter applies its own defaults', () => {
-    expect(webPlugin()).toEqual({ id: 'web' });
+  it('pins the engine to exa, the one that returns citations', () => {
+    // Left to OpenRouter, a request may be served by `native`, which returns no
+    // url_citation annotations — and unverifiable is not the same answer.
+    expect(webPlugin()).toEqual({ id: 'web', engine: 'exa' });
+    expect(webPlugin({ engine: 'perplexity' }).engine).toBe('perplexity');
   });
 
   it('carries an outlet allowlist for good-news retrieval (R3.20)', () => {
     expect(webPlugin({ includeDomains: ['positive.news', '*.bbc.co.uk'], maxResults: 8 })).toEqual({
       id: 'web',
+      engine: 'exa',
       max_results: 8,
       include_domains: ['positive.news', '*.bbc.co.uk'],
     });
@@ -16,13 +20,13 @@ describe('webPlugin', () => {
 
   it('drops empty domain lists rather than sending an empty allowlist', () => {
     // An empty include_domains could be read as "allow nothing".
-    expect(webPlugin({ includeDomains: [], excludeDomains: [] })).toEqual({ id: 'web' });
+    expect(webPlugin({ includeDomains: [], excludeDomains: [] })).toEqual({ id: 'web', engine: 'exa' });
   });
 
   it('trims a blank search prompt away', () => {
-    expect(webPlugin({ searchPrompt: '   ' })).toEqual({ id: 'web' });
+    expect(webPlugin({ searchPrompt: '   ' })).toEqual({ id: 'web', engine: 'exa' });
     expect(webPlugin({ searchPrompt: ' find good news ' })).toEqual({
-      id: 'web', search_prompt: 'find good news',
+      id: 'web', engine: 'exa', search_prompt: 'find good news',
     });
   });
 });
@@ -123,6 +127,27 @@ describe('parseJsonReply', () => {
   it('salvages an object written after a sentence of preamble', () => {
     const reply = 'Looking at the request, here is the edition:\n{"a":1}\nHope that helps.';
     expect(parseJsonReply(reply, 'The reply')).toEqual({ a: 1 });
+  });
+
+  it('takes the real answer out of a concatenated multi-segment reply', () => {
+    // What the native search engine returns: an empty answer written before the
+    // results came back, then the real one. Taking the first reads as
+    // "found nothing" and would publish an empty column.
+    const reply = '{"items": []}{"items": [{"headline": "A turtle flew home"}]}';
+    expect(parseJsonReply(reply, 'The good news reply'))
+      .toEqual({ items: [{ headline: 'A turtle flew home' }] });
+  });
+
+  it('reads a fenced list introduced by commentary', () => {
+    const reply = 'Looking at the sources, I\'ll select the good ones.\n\n```json\n'
+      + '[\n {"headline": "A turtle flew home"},\n {"headline": "The forest grew back"}\n]\n```';
+    expect(parseJsonReply(reply, 'The good news reply'))
+      .toEqual([{ headline: 'A turtle flew home' }, { headline: 'The forest grew back' }]);
+  });
+
+  it('is not fooled by a brace inside a headline', () => {
+    expect(parseJsonReply('{"headline": "The } that got away"}', 'The reply'))
+      .toEqual({ headline: 'The } that got away' });
   });
 
   it('names the prose when there is no object at all', () => {
