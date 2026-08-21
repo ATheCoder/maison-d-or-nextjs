@@ -973,7 +973,7 @@ html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
-  background-color: var(--ivory);
+  background-color: var(--surface-page);
   color: var(--brown);
   font-family: var(--font-sans);
   font-weight: 300;
