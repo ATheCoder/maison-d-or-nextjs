@@ -332,16 +332,19 @@
    and gold mean "action" in every room. One dominant atmospheric accent
    per section — supporting colours only in imagery and very small details. */
 
-/* House-default resets for the light atmospheres. On a light page these
-   declarations are no-ops (they restate the :root values), but nested inside
-   a dark/navy THEME they are load-bearing: without them a pale sage aside on
-   a dark page would inherit ink-on-dark text, gold-bright button coats and
-   screen-blend grain onto a light ground. The family blocks below override
-   only their family-specific tokens on top of this. */
+/* House-default resets for parchment and the light atmospheres. On a light
+   page these declarations are no-ops (they restate the :root values), but
+   nested inside a dark/navy THEME they are load-bearing: without them a pale
+   sage aside on a dark page would inherit ink-on-dark text, gold-bright
+   button coats and screen-blend grain onto a light ground. Parchment rides
+   along for the same reason — it is the :root theme, but an element scoped to
+   it inside another theme still has to be told so. The family blocks below
+   override only their family-specific tokens on top of this. */
 [data-surface="sage"],
 [data-surface="rose"],
 [data-surface="lavender"],
 [data-surface="periwinkle"],
+[data-theme="parchment"],
 [data-theme="sage"],
 [data-theme="rose"],
 [data-theme="lavender"],
@@ -421,15 +424,30 @@
   --theme-swatch: var(--palette-periwinkle);
 }
 
-/* Page-wide themes. `parchment` is the default — the :root values ARE the
-   parchment theme, so its block exists only as an addressable marker (the
-   picker's swatch spans and the admin layout set data-theme="parchment"
-   explicitly). The other six themes live in the shared scope blocks above.
-   ThemeProvider mirrors the active key onto <html> post-hydration; the body
-   rule keeps the overscroll/behind-the-page area in the theme's ground on
-   dark and navy. */
+/* Page-wide themes. `parchment` is the house default, so the :root values
+   already ARE this theme — but this block must still DECLARE them rather than
+   lean on inheritance. Custom properties inherit, so an element scoped
+   [data-theme="parchment"] *inside* another theme (the picker's own parchment
+   swatch on a sage page, the admin layout under a reader's dark preference)
+   would otherwise inherit the ancestor's tokens and wear the wrong theme
+   entirely — the parchment dot painting itself in whatever theme was
+   selected. It sits in the light-atmosphere reset above for the house
+   defaults (text, buttons, danger, grain, shadows) and restates its own
+   family tokens here, exactly as sage/rose/lavender/periwinkle do. The other
+   six themes live in the shared scope blocks above. ThemeProvider mirrors the
+   active key onto <html> post-hydration; the body rule keeps the
+   overscroll/behind-the-page area in the theme's ground on dark and navy. */
 [data-theme="parchment"] {
-  /* intentionally empty: root defaults */
+  --surface-page: var(--palette-parchment);
+  --surface-raised: var(--palette-ivory);
+  --surface-tint: var(--palette-sand);
+  --accent: var(--palette-gold);
+  --accent-readable: var(--palette-gold-deep);
+  --accent-strong: var(--palette-gold);
+  --border-fine: color-mix(in srgb, var(--palette-walnut) 25%, transparent);
+  --border-accent: color-mix(in srgb, var(--palette-gold) 55%, transparent);
+  --focus-ring: var(--palette-gold-deep);
+  --theme-swatch: var(--palette-gold);
 }
 
 html[data-theme] body {
