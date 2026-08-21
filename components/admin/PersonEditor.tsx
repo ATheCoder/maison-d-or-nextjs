@@ -1269,10 +1269,30 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <CreditsChip credits={credits} error={creditsError} onRefresh={refreshCredits} />
-          <Button variant="ghost" size="sm"
-            style={{ color: 'var(--gold-deep)', borderColor: briefJob?.state === 'running' ? 'var(--gold-deep)' : 'var(--line2)', background: briefJob?.state === 'running' ? 'var(--gold-soft)' : undefined }}
+          {/* No inline colours. They used to force a gold-deep ink and a gold
+              hairline onto a ghost button, and inline styles outrank the coat:
+              on hover `btn-ghost` filled the box with espresso while the label
+              stayed gold-deep — 2.3:1, well under AA, on the one button that
+              spends money. The coat already knows what a ghost does in every
+              room; it only has to be left alone.
+
+              `loading` is deliberately not used for the running state either.
+              It disables the button by design, and this button is the DOOR to
+              the AI panel rather than the thing doing the work — you have to
+              be able to open it while a job runs, to watch it. So the state
+              rides on the label and on the house's own spinner glyph, which is
+              the same ✦ on the same keyframes that `loading` spins. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-busy={briefJob?.state === 'running' || undefined}
             onClick={() => setShowAI(true)}
-          >{briefJob?.state === 'running' ? '✦ Writing…' : '✦ Write with AI'}</Button>
+          >
+            <span aria-hidden className={briefJob?.state === 'running' ? 'btn-spinner' : undefined}>
+              &#x2726;
+            </span>
+            {briefJob?.state === 'running' ? 'Writing…' : 'Write with AI'}
+          </Button>
           <div className={styles.muted} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <span className={`${styles.saveDot} ${saveDotClass}`} />
             <span style={{ fontSize: 12 }}>{saveText}</span>
