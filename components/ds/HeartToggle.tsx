@@ -3,7 +3,7 @@
 import { useState, type ButtonHTMLAttributes, type CSSProperties } from 'react';
 
 /**
- * HeartToggle — §4 save/like toggle (docs/DesignSystemP1.md). An outline
+ * HeartToggle — save/like toggle. An outline
  * heart that fills with sealing wax (--heart-saved: terracotta on parchment,
  * rose on dark grounds) and bursts when saved — the X/Twitter like move gone
  * festival: the heart blooms in from nothing behind an ignition flash while

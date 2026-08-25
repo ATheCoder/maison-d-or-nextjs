@@ -1,5 +1,5 @@
 /**
- * The design-system primitives (docs/DesignSystemP1.md §4–§5). Import from
+ * The design-system primitives. Import from
  * the barrel — `import { Card, Heading, Prose } from '@/components/ds'` —
  * so a call site names what it uses rather than where it lives.
  *

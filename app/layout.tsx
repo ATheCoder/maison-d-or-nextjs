@@ -3,7 +3,7 @@ import { Fraunces, Instrument_Sans } from "next/font/google";
 import { BRAND_NAME } from "@/components/maison/MaisonBrandName";
 import "./globals.css";
 
-// §2 faces (docs/DesignSystemP1.md). next/font hashes its family names, so
+// Brand typefaces. next/font hashes its family names, so
 // these coexist with the legacy <link> below without collision. Nothing
 // consumes them directly — only via --face-display/--face-sans in globals.css.
 const fraunces = Fraunces({

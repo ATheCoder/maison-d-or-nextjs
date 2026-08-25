@@ -1,7 +1,7 @@
 import type { CSSProperties, ElementType, ReactNode } from 'react';
 
 /**
- * Eyebrow — §4 base primitive (docs/DesignSystemP1.md). label-editorial text
+ * Eyebrow — base primitive. label-editorial text
  * over the short gold rule. The label is small functional text, so it wears
  * accent-readable (bare gold fails AA on light grounds); the rule stays bare
  * accent — it is ornament. Both resolve per surface scope with no props:

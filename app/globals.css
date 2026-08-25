@@ -29,7 +29,7 @@
 }
 
 /* ============================================================
-   PHASE 1 DESIGN SYSTEM — docs/DesignSystemP1.md §1 + §6
+   PHASE 1 DESIGN SYSTEM — palette + semantic tokens
    Raw palette carries a --palette- prefix, deviating from the
    spec's bare names, because the legacy block above already owns
    --ivory and --gold with different values — and the Daily Gold
@@ -580,7 +580,7 @@ html[data-theme] body {
 }
 
 /* ============================================================
-   §3 TEXTURE — docs/DesignSystemP1.md
+   TEXTURE
    All opt-in: nothing below applies until markup asks for it,
    which is what keeps this phase visually inert (§7 checklist).
    The spec's alternative of a body::before grain would repaint

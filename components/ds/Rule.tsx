@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 
 /**
- * Rule — §4 base primitive (docs/DesignSystemP1.md). Fine or accent divider,
+ * Rule — base primitive. Fine or accent divider,
  * optionally interrupted by a centered ornament (default: small gold diamond
  * at 60% opacity, per spec).
  *

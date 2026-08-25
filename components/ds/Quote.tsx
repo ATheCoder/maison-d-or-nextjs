@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 
 /**
- * Quote — §4 base primitive (docs/DesignSystemP1.md). type-quote (Fraunces
+ * Quote — base primitive. type-quote (Fraunces
  * Italic) with a hanging gold opening mark: the glyph is absolutely
  * positioned into the left margin so the text block stays flush, and it is
  * aria-hidden — it is ornament, not punctuation. Attribution renders in

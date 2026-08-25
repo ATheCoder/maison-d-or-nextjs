@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 
 /**
- * SectionSurface — §4 base primitive (docs/DesignSystemP1.md). Owns the
+ * SectionSurface — base primitive. Owns the
  * data-surface scope and the vertical padding (globals.css §3.2 explicitly
  * leaves padding to this component). Grain arrives via texture-paper on
  * light and via .section-dark/.section-navy (which add the vignette) on the

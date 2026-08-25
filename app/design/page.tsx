@@ -94,7 +94,7 @@ export default function DesignPage() {
       <Container as="footer" className="pt-16">
         <Rule variant="accent" />
         <Prose variant="caption" measure={false} className="mt-4">
-          Phase 1 approval artifact &middot; docs/DesignSystemP1.md &middot; hex values live in
+          Phase 1 approval artifact &middot; hex values live in
           app/globals.css and are expected to be tuned here by eye.
         </Prose>
       </Container>
