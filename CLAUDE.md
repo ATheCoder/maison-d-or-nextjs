@@ -2,6 +2,24 @@
 
 Tailwind is version 4.
 
+# Golden Stories — read before writing or generating story content
+
+`docs/golden-stories-bible.md` is the editorial and visual standard for every
+Golden Story (the illustrated biographies behind Born Today and `/stories/<slug>`).
+It is the benchmark, not a suggestion, and it supersedes the editorial half of
+`docs/golden-story-specification.md` — that v1 doc now only owns the book's
+anatomy (spread count, illustration ratio, page pacing).
+
+- The house voice lives in ONE string: `WRITER_SYSTEM` in `lib/golden-story/brief.ts`.
+  Change the bible and that prompt together, never one alone.
+- Every narrative section carries a `fact` — the one thing a child could tell
+  somebody afterwards. A section with narrative and no fact is a defect the
+  editor flags; do not add narrative fields without one.
+- Fact-checking WARNS and never blocks publishing. Do not add a publish gate.
+- Stories generated before 2026-08-25 are deliberately not held to the bible.
+  Do not regenerate or "fix" them (see the bible's Standing decisions).
+
+
 # Design system — read before building any UI
 
 This app has ONE design language. Do not invent button/input/heading styles on new pages.

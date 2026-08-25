@@ -26,6 +26,7 @@ import { CSS as dndCSS } from '@dnd-kit/utilities';
 import GoldenStory, { spreadCount } from '@/components/dailygold/GoldenStory';
 import {
   savePerson, setPublished as setPublishedAction,
+  startFactCheck, getFactCheck,
   getPersonForEditor, getStoryBrief, getPersonJobs,
   generateBook, startRewrite, dismissJob, updateGoldenThread,
   getOpenRouterCredits,
@@ -33,13 +34,15 @@ import {
 } from '@/app/admin/people/actions';
 import { getSlotData, getSlotImages, generateImages } from '@/app/admin/people/imageActions';
 import type { Brief } from '@/lib/golden-story/brief';
-import type { Chapter, GenerationJobRow, SlotOverride } from '@/src/db/schema';
-import { deriveSections, type Section, type SectionStatus } from './personSections';
+import type { Chapter, GenerationJobRow, SlotOverride, FactCheckReport } from '@/src/db/schema';
+import { deriveSections, holdsToFactRule, type Section, type SectionStatus } from './personSections';
 import { withKeys, stripKeys, type DraftPerson, type Keyed } from './draftTypes';
 import { buildSlotViews, type SlotView } from './imageSlots';
 import { toImageSlot } from '@/lib/golden-story/slots';
 import DatePicker from '@/components/ui/DatePicker';
 import { Button, buttonClasses, Card, Field, Heading } from '@/components/ds';
+import FactCheckPanel, { FactCheckChip } from './FactCheckPanel';
+import { factCheckCounts } from '@/lib/golden-story/factCheckCounts';
 import ImageModal from './ImageModal';
 import SlotChip from './SlotChip';
 import ImageStatusBoard from './ImageStatusBoard';
@@ -313,7 +316,69 @@ function NarrativeField({ label, value, onChange, fieldPath, rw, disabled }: {
       />
       <div className={styles.muted} style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 11 }}>
         <span>Blank line = new stanza · single break = hard line</span>
-        <span style={{ marginLeft: 'auto' }} className={styles.chipInk + ' ' + styles.chip}>House rule: 40–70 words · 6–9 per line</span>
+        <span style={{ marginLeft: 'auto' }} className={styles.chipInk + ' ' + styles.chip}>House rule: 40–70 words · 6–14 per sentence</span>
+      </div>
+      {fieldPath && rw && rewrite && <RewriteReview fieldPath={fieldPath} rw={rw} rewrite={rewrite} liveValue={value} />}
+    </div>
+  );
+}
+
+/**
+ * The spread's fact — the one specific, true thing a child could tell somebody
+ * tomorrow (docs/golden-stories-bible.md).
+ *
+ * A separate control rather than another NarrativeField because it is a
+ * different kind of writing and the guidance has to say so: one sentence, no
+ * stanzas, a checkable fact and never a moral. The chip goes amber when it is
+ * missing, which is the whole enforcement — the bible's accuracy rules warn and
+ * never block (Standing decision 2), here and everywhere else.
+ *
+ * Empty is left un-nagged on a book that carries no facts at all: those are the
+ * pre-bible books, deliberately exempt. `expected` is the rail's own
+ * holdsToFactRule answer, passed down so the two agree.
+ */
+function FactField({ value, onChange, fieldPath, rw, disabled, expected }: {
+  value: string; onChange: (v: string) => void;
+  fieldPath?: string; rw?: RewriteApi; disabled?: boolean; expected?: boolean;
+}) {
+  const words = wordCount(value);
+  const empty = !value.trim();
+  const rewrite = fieldPath && rw ? rw.states[fieldPath] : undefined;
+  const canRewrite = !!(fieldPath && rw && value.trim()) && !disabled;
+  const tone = empty
+    ? (expected ? styles.chipAmber : styles.chipInk)
+    : words > 25 ? styles.chipAmber : styles.chipInk;
+  const chipText = empty
+    ? (expected ? 'No fact yet' : 'Optional here')
+    : words > 25 ? `Long for a fact · ${words} words` : `${words} words`;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <Kick>The fact</Kick>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {fieldPath && rw && (
+            <Button variant="link" size="sm"
+              disabled={!canRewrite || rw.busy || rewrite?.status === 'running'}
+              title={empty ? 'Write something first' : rw.busy ? 'Another rewrite is running' : 'Draft an alternative in the house style'}
+              onClick={() => rw.start(fieldPath, value)}
+            >✦ Rewrite</Button>
+          )}
+          <span className={`${styles.chip} ${tone}`}>{chipText}</span>
+        </div>
+      </div>
+      <Field
+        as="textarea"
+        label="The fact"
+        labelHidden
+        style={{ minHeight: 62, lineHeight: 1.6 }}
+        value={value}
+        disabled={disabled}
+        placeholder="He wrote his private notebooks in mirror writing, backwards, readable only in a mirror."
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <div className={styles.muted} style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 11 }}>
+        <span>One true, checkable thing — never a moral or a summary</span>
+        <span style={{ marginLeft: 'auto' }} className={styles.chipInk + ' ' + styles.chip}>House rule: 8–25 words · one sentence</span>
       </div>
       {fieldPath && rw && rewrite && <RewriteReview fieldPath={fieldPath} rw={rw} rewrite={rewrite} liveValue={value} />}
     </div>
@@ -844,11 +909,12 @@ function CreditsChip({ credits, error, onRefresh }: {
 
 // ── Editor ───────────────────────────────────────────────────────────────────
 
-export default function PersonEditor({ initialPerson, initialBrief, initialJobs, initialSlotData }: {
+export default function PersonEditor({ initialPerson, initialBrief, initialJobs, initialSlotData, initialFactCheck }: {
   initialPerson: EditorPerson;
   initialBrief: { goldenThread: string; characterSheet: string } | null;
-  initialJobs: { brief: GenerationJobRow | null; rewrites: GenerationJobRow[]; slot: GenerationJobRow | null; images: GenerationJobRow | null };
+  initialJobs: { brief: GenerationJobRow | null; rewrites: GenerationJobRow[]; slot: GenerationJobRow | null; images: GenerationJobRow | null; factcheck: GenerationJobRow | null };
   initialSlotData: { brief: Brief | null; overrides: Record<string, SlotOverride> };
+  initialFactCheck: FactCheckReport | null;
 }) {
   const slug = initialPerson.slug;
   const [draft, dispatch] = useReducer(draftReducer, initialPerson, withKeys);
@@ -902,6 +968,16 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   const [briefJob, setBriefJob] = useState<GenerationJobRow | null>(initialJobs.brief);
   const [rewrites, setRewrites] = useState<Record<string, RewriteState>>(() => rewriteMapFromRows(initialJobs.rewrites));
   const [genState, setGenState] = useState<{ error?: string; needsConfirm?: boolean }>({});
+  // ── Fact-check (docs/golden-stories-bible.md) ──
+  // The report lives on the person, so it survives the job row being dismissed;
+  // the job row is only what the panel polls while a pass is running.
+  const [factCheck, setFactCheck] = useState<FactCheckReport | null>(initialFactCheck);
+  const [factJob, setFactJob] = useState<GenerationJobRow | null>(initialJobs.factcheck);
+  const [showFactCheck, setShowFactCheck] = useState(false);
+  const [factError, setFactError] = useState<string | undefined>(undefined);
+  const [factPending, startFact] = useTransition();
+  const factJobRef = useRef(factJob);
+  useEffect(() => { factJobRef.current = factJob; }, [factJob]);
   const [genPending, startGen] = useTransition();
   const briefJobRef = useRef(briefJob);
   useEffect(() => { briefJobRef.current = briefJob; }, [briefJob]);
@@ -1044,7 +1120,8 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   const slotJobRef = useRef(slotJob); useEffect(() => { slotJobRef.current = slotJob; }, [slotJob]);
   const imagesJobRef = useRef(imagesJob); useEffect(() => { imagesJobRef.current = imagesJob; }, [imagesJob]);
   const polling = briefJob?.state === 'running' || rewriteRunning
-    || slotJob?.state === 'running' || imagesJob?.state === 'running';
+    || slotJob?.state === 'running' || imagesJob?.state === 'running'
+    || factJob?.state === 'running';
   useEffect(() => {
     if (!polling) return;
     let cancelled = false;
@@ -1070,10 +1147,39 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
       }
       setImagesJob(res.images);
       setSlotJob(res.slot);
+      // A finished check wrote its report onto the person, not onto the job, so
+      // the transition running → done is the signal to go and fetch it.
+      const prevFact = factJobRef.current;
+      if (prevFact?.state === 'running' && res.factcheck?.state === 'done') {
+        void getFactCheck(slug).then((r) => { if (!cancelled) setFactCheck(r); }).catch(() => {});
+      }
+      setFactJob(res.factcheck);
     };
     const iv = setInterval(poll, 2500);
     return () => { cancelled = true; clearInterval(iv); };
   }, [polling, slug, handleBriefDone, refreshSlotImages]);
+
+  /**
+   * Start (or re-run) the fact-check. The previous job row is cleared first so
+   * a finished or failed one cannot block the new run on the one-per-kind
+   * concurrency guard, and so the panel does not show the old outcome next to
+   * the new run.
+   */
+  const runFactCheck = useCallback(() => {
+    setFactError(undefined);
+    const previous = factJob;
+    setFactJob(null);
+    startFact(async () => {
+      if (previous) await dismissJob(previous.id).catch(() => {});
+      const res = await startFactCheck(slug);
+      if (res.ok) {
+        const j = await getPersonJobs(slug);
+        setFactJob(j.factcheck);
+      } else {
+        setFactError(res.error ?? 'Could not start the fact-check.');
+      }
+    });
+  }, [slug, factJob]);
 
   // On return, a brief job that finished while the tab was away: the person was
   // applied server-side (and initialBrief carried the panels), so just clear the
@@ -1140,12 +1246,15 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   // Apply an accepted rewrite to the right draft field (narratives only in P5).
   const applyRewriteToDraft = useCallback((fieldPath: string, value: string) => {
     if (fieldPath === 'story_childhood') edit({ type: 'field', key: 'story_childhood', value });
+    else if (fieldPath === 'story_childhood_fact') edit({ type: 'field', key: 'story_childhood_fact', value });
+    else if (fieldPath === 'modern.fact') edit({ type: 'objField', key: 'modern', field: 'fact', value });
+    else if (fieldPath === 'after_treasures.fact') edit({ type: 'objField', key: 'after_treasures', field: 'fact', value });
     else if (fieldPath === 'story_takeaway') edit({ type: 'field', key: 'story_takeaway', value });
     else if (fieldPath === 'modern.narrative') edit({ type: 'objField', key: 'modern', field: 'narrative', value });
     else if (fieldPath === 'after_treasures.narrative') edit({ type: 'objField', key: 'after_treasures', field: 'narrative', value });
     else {
-      const m = /^chapters\.(\d+)\.narrative$/.exec(fieldPath);
-      if (m) edit({ type: 'chapterField', index: Number(m[1]), key: 'narrative', value });
+      const m = /^chapters\.(\d+)\.(narrative|fact)$/.exec(fieldPath);
+      if (m) edit({ type: 'chapterField', index: Number(m[1]), key: m[2], value });
     }
   }, [edit]);
 
@@ -1230,6 +1339,10 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   };
 
   const born = bornLabel(draft.birth_date);
+  // Pre-bible books carry no facts anywhere and are exempt by decision, so the
+  // publish checklist must not count their empty fact fields as gaps — the same
+  // question the rail asks, from the same function.
+  const wantsFactsForPublish = holdsToFactRule(draft);
   const pageLabel = sections.find((s) => s.spreadIndex === page)?.label ?? 'Cover';
 
   const saveDotClass =
@@ -1292,6 +1405,20 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
               &#x2726;
             </span>
             {briefJob?.state === 'running' ? 'Writing…' : 'Write with AI'}
+          </Button>
+          {/* The accuracy pass sits beside the writer because that is the order
+              the work happens in: write the book, then check it. The chip
+              reports the worst thing found rather than a total, since that is
+              the only number that changes what the admin does next. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-busy={factJob?.state === 'running' || undefined}
+            onClick={() => setShowFactCheck(true)}
+          >
+            <span aria-hidden className={factJob?.state === 'running' ? 'btn-spinner' : undefined}>&#x2726;</span>
+            Fact-check
+            <FactCheckChip report={factCheck} running={factJob?.state === 'running'} />
           </Button>
           <div className={styles.muted} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <span className={`${styles.saveDot} ${saveDotClass}`} />
@@ -1489,14 +1616,99 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
         );
       })()}
 
+      {showFactCheck && (
+        <FactCheckPanel
+          personName={draft.name}
+          report={factCheck}
+          job={factJob}
+          bookUpdatedAt={save.savedAt}
+          running={factJob?.state === 'running'}
+          pending={factPending}
+          error={factError}
+          onRun={runFactCheck}
+          onDismiss={() => { const j = factJob; setFactJob(null); if (j) void dismissJob(j.id).catch(() => {}); }}
+          // A finding is one click from the field that has to change. The
+          // fieldPath is the same dotted path the rail's sections are keyed by,
+          // so the lookup is a prefix match and the preview follows along.
+          onGoToField={(fieldPath) => {
+            const chapter = /^chapters\.(\d+)\./.exec(fieldPath);
+            const id = chapter ? `chapter-${chapter[1]}`
+              : fieldPath.startsWith('modern') ? 'modern'
+              : fieldPath.startsWith('after_treasures') ? 'after-treasures'
+              : fieldPath.startsWith('story_childhood') ? 'childhood'
+              : fieldPath === 'timeline' ? 'timeline'
+              : fieldPath === 'treasures' ? 'treasures'
+              : 'cover';
+            const sec = sections.find((x) => x.id === id);
+            if (sec) { setSelectedId(sec.id); setPage(sec.spreadIndex); }
+            setShowFactCheck(false);
+          }}
+          onClose={() => setShowFactCheck(false)}
+        />
+      )}
+
       {/* ── Publish confirm ── */}
       {publishConfirm && (
         <div onClick={() => setPublishConfirm(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(36,26,12,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '1.5rem' }}>
-          <div onClick={(e) => e.stopPropagation()} className={styles.panel} style={{ background: 'var(--ground)', padding: 24, width: 'min(440px, 100%)' }}>
+          <div onClick={(e) => e.stopPropagation()} className={styles.panel} style={{ background: 'var(--ground)', padding: 24, width: 'min(520px, 100%)', maxHeight: '90vh', overflow: 'auto' }}>
             <Heading level={2} variant="story" className="mb-2.5">Publish to families?</Heading>
-            <p className={styles.muted} style={{ fontSize: 13, lineHeight: 1.55, margin: '0 0 18px' }}>
+            <p className={styles.muted} style={{ fontSize: 13, lineHeight: 1.55, margin: '0 0 16px' }}>
               <strong style={{ color: 'var(--ink)' }}>{draft.name}</strong> will go live immediately — appearing on their story page and in Born Today on {born ? born.replace('born ', '') : 'their birthday'}.
             </p>
+
+            {/* The seven questions, verbatim from docs/golden-stories-bible.md.
+                They are here rather than in a doc nobody opens because this is
+                the one moment they are actually about to matter, and reading
+                them takes ten seconds. Nothing here is a checkbox and nothing
+                gates the button: the bible's test is a judgement the admin
+                makes, and a tickbox ritual would only teach them to tick. */}
+            <div className={styles.panel} style={{ padding: '14px 16px', margin: '0 0 16px' }}>
+              <div className={styles.kick} style={{ marginBottom: 9 }}>Before it goes out</div>
+              <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12.5, lineHeight: 1.5, color: 'var(--brown)' }}>
+                <li>Would this feel at home beside <em>Little People, BIG DREAMS</em>?</li>
+                <li>Did we respect the child’s intelligence?</li>
+                <li>Is there something genuinely fascinating on every spread?</li>
+                <li>Will the child remember at least 2–3 things tomorrow?</li>
+                <li>Is every factual statement trustworthy?</li>
+                <li>Does it feel like Maison d’Oré rather than schoolwork?</li>
+                <li>Would a parent enjoy reading it too?</li>
+              </ol>
+              <div className={styles.muted} style={{ fontSize: 11.5, marginTop: 10, lineHeight: 1.5 }}>
+                If the answer isn’t yes, it isn’t finished.
+              </div>
+            </div>
+
+            {/* What the desk already knows, so question 3 and question 5 are not
+                asked from memory. Both are advisory; neither blocks. */}
+            {(() => {
+              const fc = factCheckCounts(factCheck);
+              const missingFacts = wantsFactsForPublish
+                ? sections.filter((x) => x.note?.includes('no fact')).length
+                : 0;
+              if (!missingFacts && !fc.checked) {
+                return (
+                  <div className={styles.callout} style={{ padding: '10px 12px', margin: '0 0 16px', fontSize: 12, color: 'var(--brown)', lineHeight: 1.5 }}>
+                    This book has not been fact-checked. That is your call — checking never blocks publishing —
+                    but question 5 is easier to answer with a pass behind it.
+                  </div>
+                );
+              }
+              if (!missingFacts && fc.checked && !fc.wrong && !fc.unsupported) return null;
+              return (
+                <div className={styles.callout} style={{ padding: '10px 12px', margin: '0 0 16px', fontSize: 12, color: 'var(--brown)', lineHeight: 1.5, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {missingFacts > 0 && (
+                    <span><strong style={{ color: 'var(--ink)' }}>{missingFacts}</strong> {missingFacts === 1 ? 'spread has' : 'spreads have'} no fact — question 3.</span>
+                  )}
+                  {fc.wrong > 0 && (
+                    <span>The last fact-check contradicted <strong style={{ color: 'var(--ink)' }}>{fc.wrong}</strong> {fc.wrong === 1 ? 'claim' : 'claims'} — question 5.</span>
+                  )}
+                  {fc.unsupported > 0 && (
+                    <span><strong style={{ color: 'var(--ink)' }}>{fc.unsupported}</strong> {fc.unsupported === 1 ? 'claim' : 'claims'} had nothing behind {fc.unsupported === 1 ? 'it' : 'them'} — question 5.</span>
+                  )}
+                </div>
+              );
+            })()}
+
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <Button variant="link" size="sm" onClick={() => setPublishConfirm(false)} disabled={pubPending}>Cancel</Button>
               <Button variant="primary" size="sm" onClick={() => applyPublish(true)} disabled={pubPending}>{pubPending ? 'Publishing…' : 'Publish now'}</Button>
@@ -1538,6 +1750,10 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
     );
   };
   const set = (key: keyof DraftPerson) => (value: string) => dispatch({ type: 'field', key, value });
+  // Whether this book answers to the fact-per-spread rule — the same question
+  // the rail asks, from the same function, so a section's amber "no fact" note
+  // and its field's amber chip can never disagree.
+  const wantsFacts = holdsToFactRule(draft);
   /* One cell of a repeated row (timeline year, treasure name, lesson text).
      The placeholder is the question, so it is also the hidden label — a row of
      five of these cannot carry five stacked labels, but each still has to be
@@ -1586,6 +1802,7 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
         <>
           <TextField label="Childhood page · title" value={draft.story_childhood_title ?? ''} onChange={set('story_childhood_title')} serif placeholder="A Little Boy in Vinci" />
           <NarrativeField label="Narrative" value={draft.story_childhood ?? ''} onChange={set('story_childhood')} fieldPath="story_childhood" rw={rw} />
+          <FactField value={draft.story_childhood_fact ?? ''} onChange={set('story_childhood_fact')} fieldPath="story_childhood_fact" rw={rw} expected={wantsFacts} />
           {slotChip('strip-childhood.png', 'Landscape strip · 1536×640 · dissolves into the page at the top.')}
         </>
       );
@@ -1615,10 +1832,13 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
           {artOnly && (
             <div className={styles.callout} style={{ padding: '10px 12px', fontSize: 11.5, color: 'var(--brown)' }}>
               This chapter is a wordless full-page illustration — its narrative is written but not shown.
+              New books no longer do this: every spread carries words and a fact. Switch the layout above to
+              <strong style={{ color: 'var(--ink)' }}> Single leaf</strong> to bring this one back into the book.
             </div>
           )}
           <TextField label="Chapter title" value={ch?.title ?? ''} onChange={(v) => dispatch({ type: 'chapterField', index: i, key: 'title', value: v })} serif disabled={artOnly} />
           <NarrativeField label="Narrative" value={ch?.narrative ?? ''} onChange={(v) => dispatch({ type: 'chapterField', index: i, key: 'narrative', value: v })} fieldPath={`chapters.${i}.narrative`} rw={rw} disabled={artOnly} />
+          <FactField value={ch?.fact ?? ''} onChange={(v) => dispatch({ type: 'chapterField', index: i, key: 'fact', value: v })} fieldPath={`chapters.${i}.fact`} rw={rw} disabled={artOnly} expected={wantsFacts} />
           {slotChip(`chapter-${i + 1}.png`)}
         </>
       );
@@ -1634,6 +1854,16 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
           />
           <TextField label={'“If … were 10 today” · title'} value={draft.modern?.title ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'modern', field: 'title', value: v })} serif />
           <NarrativeField label="Narrative" value={draft.modern?.narrative ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'modern', field: 'narrative', value: v })} fieldPath="modern.narrative" rw={rw} />
+          {/* This spread is the book's one piece of invention, and the reader is
+              told so on the page. Its fact is the true thing the daydream stands
+              on, printed under "But this is true:" — so it has to be a fact about
+              the real person, not about the imagining. */}
+          <div className={styles.callout} style={{ padding: '10px 12px', fontSize: 11.5, color: 'var(--brown)' }}>
+            The book prints <strong style={{ color: 'var(--ink)' }}>Let’s imagine</strong> above this title and
+            introduces the fact below with <strong style={{ color: 'var(--ink)' }}>But this is true:</strong> — so
+            write the fact about the real person, never about the daydream.
+          </div>
+          <FactField value={draft.modern?.fact ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'modern', field: 'fact', value: v })} fieldPath="modern.fact" rw={rw} expected={wantsFacts} />
           {slotChip('modern.png', 'Full-bleed spread · 1536×1024 · shown opaque.')}
         </>
       );
@@ -1642,6 +1872,7 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
         <>
           <TextField label="Gifts That Live On · title" value={draft.after_treasures?.title ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'after_treasures', field: 'title', value: v })} serif />
           <NarrativeField label="Narrative" value={draft.after_treasures?.narrative ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'after_treasures', field: 'narrative', value: v })} fieldPath="after_treasures.narrative" rw={rw} />
+          <FactField value={draft.after_treasures?.fact ?? ''} onChange={(v) => dispatch({ type: 'objField', key: 'after_treasures', field: 'fact', value: v })} fieldPath="after_treasures.fact" rw={rw} expected={wantsFacts} />
           {/* Rendered as a single leaf on the Treasures spread — only blend + wash apply. */}
           <div className={styles.panel} style={{ padding: 16, display: 'flex', gap: 26, flexWrap: 'wrap' }}>
             <div>

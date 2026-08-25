@@ -19,6 +19,7 @@ import {
   type Lesson,
   type RemarkablePersonRow,
   type GenerationJobRow,
+  type FactCheckReport,
 } from '@/src/db/schema';
 import { requireAdmin } from '@/lib/dal';
 import { slugify, SLUG_RE } from '@/lib/slug';
@@ -243,6 +244,9 @@ export type EditorPerson = {
   story_childhood_title: string | null;
   childhood_image_url: string | null;
   story_childhood: string | null;
+  // The childhood spread's fact — a column, unlike every other section's fact,
+  // which rides inside its own jsonb (docs/golden-stories-bible.md).
+  story_childhood_fact: string | null;
   story_takeaway: string | null;
   modern: StorySection | null;
   chapters: Chapter[];
@@ -270,6 +274,7 @@ function toEditorPerson(row: RemarkablePersonRow): EditorPerson {
     story_childhood_title: row.storyChildhoodTitle,
     childhood_image_url: row.childhoodImageUrl,
     story_childhood: row.storyChildhood,
+    story_childhood_fact: row.storyChildhoodFact,
     story_takeaway: row.storyTakeaway,
     modern: row.modern,
     chapters: row.chapters ?? [],
@@ -356,6 +361,7 @@ export async function savePerson(slug: string, record: Partial<EditorPerson>):
       storyChildhoodTitle: str(record?.story_childhood_title, 300),
       childhoodImageUrl: str(record?.childhood_image_url, 2000),
       storyChildhood: str(record?.story_childhood, 5000),
+      storyChildhoodFact: str(record?.story_childhood_fact, 500),
       storyTakeaway: str(record?.story_takeaway, 1000),
       modern: objOrNull<StorySection>(record?.modern),
       chapters: arr<Chapter>(record?.chapters),
@@ -509,6 +515,48 @@ export async function startRewrite(slug: string, fieldPath: string, currentText:
   return { ok: true, jobId: created.job.id };
 }
 
+/**
+ * Run the grounded fact-check over this person's whole book
+ * (docs/golden-stories-bible.md, "Factual accuracy is non-negotiable").
+ *
+ * It is a deliberate, admin-triggered spend: a dozen web-grounded requests, a
+ * few minutes, real OpenRouter credit. Nothing runs it automatically, and
+ * nothing it finds can stop a publish — the report warns, the admin decides
+ * (Standing decision 2).
+ */
+export async function startFactCheck(slug: string):
+  Promise<{ ok: true; jobId: number } | { ok: false; error?: string }> {
+  await requireAdmin();
+  if (typeof slug !== 'string' || !slug) return { ok: false, error: 'Missing slug.' };
+
+  const created = await createJob(personSubject(slug), 'factcheck', {
+    stages: [{ key: 'check', label: 'Reading the book', state: 'active' }],
+  });
+  if (!created.ok) return { ok: false, error: created.error };
+  try {
+    await inngest.send({ name: 'story/factcheck.requested', data: { slug, jobId: created.job.id } });
+  } catch {
+    await failJob(created.job.id, 'Could not reach Inngest to enqueue the fact-check.');
+    return { ok: false, error: 'Could not reach Inngest to enqueue the fact-check — is the dev server running?' };
+  }
+  return { ok: true, jobId: created.job.id };
+}
+
+/**
+ * The stored fact-check report, or null if this person has never been checked —
+ * a normal state, not an error, and the panel says so rather than nagging.
+ */
+export async function getFactCheck(slug: string): Promise<FactCheckReport | null> {
+  await requireAdmin();
+  if (typeof slug !== 'string' || !slug) return null;
+  const rows = await db
+    .select({ report: remarkablePerson.factCheck })
+    .from(remarkablePerson)
+    .where(eq(remarkablePerson.slug, slug))
+    .limit(1);
+  return rows[0]?.report ?? null;
+}
+
 /** Delete a job row — Reject/Accept/Dismiss on a rewrite, or clearing a job. */
 export async function dismissJob(jobId: number): Promise<{ ok: boolean }> {
   await requireAdmin();
@@ -525,15 +573,16 @@ export async function dismissJob(jobId: number): Promise<{ ok: boolean }> {
  * Accept/Revert) and the batch renderer (`images`, feeding the status board).
  */
 export async function getPersonJobs(slug: string):
-  Promise<{ brief: GenerationJobRow | null; rewrites: GenerationJobRow[]; slot: GenerationJobRow | null; images: GenerationJobRow | null }> {
+  Promise<{ brief: GenerationJobRow | null; rewrites: GenerationJobRow[]; slot: GenerationJobRow | null; images: GenerationJobRow | null; factcheck: GenerationJobRow | null }> {
   await requireAdmin();
-  if (typeof slug !== 'string' || !slug) return { brief: null, rewrites: [], slot: null, images: null };
+  if (typeof slug !== 'string' || !slug) return { brief: null, rewrites: [], slot: null, images: null, factcheck: null };
   const rows = await jobsForSlug(slug);
   return {
     brief: rows.find((r) => r.kind === 'brief') ?? null,
     rewrites: rows.filter((r) => r.kind === 'rewrite'),
     slot: rows.find((r) => r.kind === 'slot') ?? null,
     images: rows.find((r) => r.kind === 'images') ?? null,
+    factcheck: rows.find((r) => r.kind === 'factcheck') ?? null,
   };
 }
 

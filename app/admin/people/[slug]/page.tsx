@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/dal';
-import { getPersonForEditor, getStoryBrief, getPersonJobs } from '../actions';
+import { getPersonForEditor, getStoryBrief, getPersonJobs, getFactCheck } from '../actions';
 import { getSlotData } from '../imageActions';
 import PersonEditor from '@/components/admin/PersonEditor';
 
@@ -14,11 +14,22 @@ export default async function PersonEditorPage({ params }: { params: Promise<{ s
   const { slug } = await params;
   const person = await getPersonForEditor(slug);
   if (!person) notFound();
-  // The brief (golden thread / character sheet), any in-flight jobs, and the
-  // slot data (scenes + overrides) — so the editor picks up a generation
-  // started before a reload or in another tab and can build its image slots.
-  const [brief, jobs, slotData] = await Promise.all([
-    getStoryBrief(slug), getPersonJobs(slug), getSlotData(slug),
+  // The brief (golden thread / character sheet), any in-flight jobs, the slot
+  // data (scenes + overrides), and the stored fact-check report — so the editor
+  // picks up a generation started before a reload or in another tab, can build
+  // its image slots, and opens with the last accuracy pass already in hand
+  // (docs/golden-stories-bible.md). A null report is a normal state: most of
+  // the library predates the bible and is exempt by decision.
+  const [brief, jobs, slotData, factCheck] = await Promise.all([
+    getStoryBrief(slug), getPersonJobs(slug), getSlotData(slug), getFactCheck(slug),
   ]);
-  return <PersonEditor initialPerson={person} initialBrief={brief} initialJobs={jobs} initialSlotData={slotData} />;
+  return (
+    <PersonEditor
+      initialPerson={person}
+      initialBrief={brief}
+      initialJobs={jobs}
+      initialSlotData={slotData}
+      initialFactCheck={factCheck}
+    />
+  );
 }

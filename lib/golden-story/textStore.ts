@@ -54,9 +54,15 @@ function normalizeDeath(s: string | null | undefined): string | null {
 }
 
 // Map a brief onto the person's story columns, mirroring toStoryJson's layout
-// defaults (single-leaf chapters with the last one image-only, full-bleed
-// modern spread, single-leaf after-treasures). Existing image URLs are kept by
-// position so re-generating text never discards art.
+// defaults (single-leaf chapters, full-bleed modern spread, single-leaf
+// after-treasures). Existing image URLs are kept by position so re-generating
+// text never discards art.
+//
+// This and toStoryJson must stay in step: this is the editor's write path, that
+// is the CLI's, and the two produce the same book. In particular the last
+// chapter is no longer page_span 'image' with its narrative hidden — see the
+// long note in storyJson.ts and docs/golden-stories-bible.md Standing
+// decision 3.
 function briefToColumns(brief: Brief, existing: RemarkablePersonRow) {
   const last = brief.chapters.length - 1;
   const exCh = existing.chapters ?? [];
@@ -72,21 +78,32 @@ function briefToColumns(brief: Brief, existing: RemarkablePersonRow) {
     famousQuote: brief.famous_quote || null,
     storyChildhoodTitle: brief.story_childhood_title || null,
     storyChildhood: brief.story_childhood || null,
+    storyChildhoodFact: brief.story_childhood_fact || null,
     storyTakeaway: brief.story_takeaway || null,
     modern: {
       page_span: 'both', blend: 'normal',
       title: brief.modern.title, narrative: brief.modern.narrative,
+      fact: brief.modern.fact,
       image_url: existing.modern?.image_url ?? null,
     } as StorySection,
-    chapters: brief.chapters.map((c, i): Chapter => (i === last
-      ? { number: i + 1, page_span: 'image', blend: 'normal', image_url: exCh[i]?.image_url ?? null }
-      : { number: i + 1, page_span: 'single', title: c.title, narrative: c.narrative, image_url: exCh[i]?.image_url ?? null })),
+    chapters: brief.chapters.map((c, i): Chapter => ({
+      number: i + 1,
+      page_span: 'single',
+      // The final plate is opaque full-bleed art with the text washed over it;
+      // the rest are painted on white and multiply into the parchment.
+      ...(i === last ? { blend: 'normal', fade: true } : {}),
+      title: c.title,
+      narrative: c.narrative,
+      fact: c.fact,
+      image_url: exCh[i]?.image_url ?? null,
+    })),
     timeline: brief.timeline.map((t, i): TimelineEntry => ({
       year: t.year, caption: t.caption, blend: 'multiply', image_url: exTl[i]?.image_url ?? null,
     })),
     afterTreasures: {
       page_span: 'single', blend: existing.afterTreasures?.blend ?? 'multiply', fade: false,
       title: brief.after_treasures.title, narrative: brief.after_treasures.narrative,
+      fact: brief.after_treasures.fact,
       image_url: existing.afterTreasures?.image_url ?? null,
     } as StorySection,
     treasures: brief.treasures.map((t, i): Treasure => ({

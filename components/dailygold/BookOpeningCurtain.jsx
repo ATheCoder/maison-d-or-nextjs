@@ -64,8 +64,15 @@ export default function BookOpeningCurtain({ name, imgUrl = null, resume = false
           align-items: center; justify-content: center;
           gap: clamp(1.1rem, 3vh, 2rem);
           padding: 2rem;
-          background:
-            radial-gradient(ellipse 75% 60% at 50% 42%, rgba(62,42,22,0.94), rgba(11,7,3,0.975));
+          /* The same wooden table the story lands on (app/globals.css §3.1b,
+             docs/golden-stories-bible.md "The table"). It has to be this
+             surface and not a lookalike: the curtain and the stage are on
+             screen back to back — the curtain hands off mid-animation to
+             StorybookView's — so any difference reads as the ground changing
+             under the book. The blur still softens whatever the reader was
+             looking at through the very edges. */
+          background-color: var(--table-wood);
+          background-image: var(--table-surface);
           backdrop-filter: blur(8px);
           -webkit-backdrop-filter: blur(8px);
           animation: dgoFade 0.26s ease both;
@@ -93,7 +100,11 @@ export default function BookOpeningCurtain({ name, imgUrl = null, resume = false
           background:
             radial-gradient(ellipse 70% 60% at 30% 24%, rgba(255,252,242,0.9), transparent 62%),
             linear-gradient(160deg, #F6F1E5 0%, #EADFC6 100%);
-          box-shadow: inset 0 0 44px rgba(96,64,26,0.22), 0 24px 50px rgba(0,0,0,0.5);
+          /* Warm-tinted and tight: the volume here is ~250px, so the stage's
+             full --table-book-shadow would swamp it. Neutral black on walnut
+             goes sooty, hence the hue. */
+          box-shadow: inset 0 0 44px rgba(96,64,26,0.22),
+            0 2px 3px rgba(22,14,6,0.45), 0 18px 38px -8px rgba(14,9,4,0.6);
         }
         .dgo-rules {
           position: absolute; inset: 16% 12% 18% 18%;

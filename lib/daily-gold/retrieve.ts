@@ -196,24 +196,15 @@ function url(v: unknown): string | null {
 }
 
 /**
- * Cross the model's claimed source against what the engine actually cited.
- *
- * Matching is by origin + path, ignoring query strings and trailing slashes:
- * engines routinely append tracking parameters to the URL they hand the model,
- * and treating that as a different page would mark honest citations
- * unverifiable — which teaches the admin to ignore the flag.
+ * `verify` now lives beside the citation parser it crosses against
+ * (lib/golden-story/openrouter.ts), because it stopped being Daily Gold's:
+ * the Golden Stories fact-checker performs the same crossing on the same two
+ * fields, and a second copy of this would be a second definition of what
+ * "checkable" means. Re-exported here so this module still reads as the place
+ * provenance is decided.
  */
-export function verify(claimed: string | null, citations: Citation[]): boolean {
-  if (!claimed) return false;
-  const key = (u: string) => {
-    try {
-      const p = new URL(u);
-      return `${p.origin}${p.pathname.replace(/\/+$/, '')}`.toLowerCase();
-    } catch { return u.toLowerCase(); }
-  };
-  const want = key(claimed);
-  return citations.some((c) => key(c.url) === want);
-}
+import { verify } from '@/lib/golden-story/openrouter';
+export { verify };
 
 function provenanceOf(raw: Record<string, unknown>, citations: Citation[]): Provenance {
   const source_url = url(raw.source_url);

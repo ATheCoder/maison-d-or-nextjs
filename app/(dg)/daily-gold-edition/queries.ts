@@ -161,6 +161,10 @@ function personToRecord(row: RemarkablePersonRow) {
     story_childhood_title: row.storyChildhoodTitle,
     childhood_image_url: row.childhoodImageUrl,
     story_childhood: row.storyChildhood,
+    // The childhood spread's fact. Every other section's fact rides inside its
+    // own jsonb and arrives with it; this one is a column, so it has to be
+    // named here or the spread renders without it (docs/golden-stories-bible.md).
+    story_childhood_fact: row.storyChildhoodFact,
     story_takeaway: row.storyTakeaway,
     modern: row.modern,
     chapters: row.chapters ?? [],

@@ -155,6 +155,12 @@ export type Chapter = {
   fade?: boolean; // legibility wash behind overlaid text (single/both spans)
   title?: string;
   narrative?: string;
+  // The one specific, verifiable thing a child could tell somebody after this
+  // spread (docs/golden-stories-bible.md). Optional in the type because the
+  // stories written before the bible have none and are deliberately not
+  // backfilled — but a section with a narrative and no fact is a defect the
+  // editor flags, not a normal state.
+  fact?: string;
   image_url?: string | null;
 };
 
@@ -191,7 +197,51 @@ export type StorySection = {
   fade?: boolean;
   title?: string;
   narrative?: string;
+  fact?: string; // see Chapter.fact
   image_url?: string | null;
+};
+
+/**
+ * One checked claim out of a person's book, and the pass that produced it.
+ *
+ * The two provenance fields are deliberately not the same thing, exactly as in
+ * lib/daily-gold/retrieve.ts: `sourceUrl` is what the *model* said it was
+ * reporting from, and `verified` is whether that URL actually appeared in the
+ * *engine's* own citation list for the request. A claim the model sourced to a
+ * page it never read is the failure mode this crossing exists to catch, and it
+ * is surfaced as unverifiable rather than silently dropped.
+ *
+ * `verdict` is about the claim; `verified` is about the evidence. They are
+ * independent: a 'wrong' verdict backed by a real citation is the most useful
+ * row in the report, and a 'supported' verdict with verified false is the
+ * least trustworthy one.
+ */
+export type FactCheckClaim = {
+  /** Dotted path into the book, e.g. 'chapters.1.narrative' — where to go and fix it. */
+  fieldPath: string;
+  /** Human label for that field, e.g. 'Chapter 2 · narrative'. */
+  fieldLabel: string;
+  /** The claim as it appears in the book, quoted. */
+  claim: string;
+  verdict: 'supported' | 'unsupported' | 'wrong' | 'unverifiable';
+  /** One sentence: what the sources say, or why it could not be checked. */
+  note: string;
+  /** What the correct version would be — present only when verdict is 'wrong'. */
+  correction?: string | null;
+  sourceUrl: string | null;
+  sourceTitle: string | null;
+  /** True when sourceUrl appears in the request's own citation list. */
+  verified: boolean;
+};
+
+export type FactCheckReport = {
+  /** ISO timestamp of the pass. */
+  checkedAt: string;
+  /** The book's updated_at when it was checked, so a later edit can show the report as stale. */
+  bookUpdatedAt: string | null;
+  claims: FactCheckClaim[];
+  /** Every source the pass actually read, whether or not a claim cited it. */
+  sources: { url: string; title: string | null }[];
 };
 
 export const remarkablePerson = pgTable('remarkable_person', {
@@ -224,6 +274,10 @@ export const remarkablePerson = pgTable('remarkable_person', {
   storyChildhoodTitle: text('story_childhood_title'),
   childhoodImageUrl: text('childhood_image_url'),
   storyChildhood: text('story_childhood'),
+  // The childhood spread's fact. A column rather than a jsonb key because the
+  // childhood page is flat columns; every other section carries its fact
+  // inside its own jsonb (Chapter.fact / StorySection.fact).
+  storyChildhoodFact: text('story_childhood_fact'),
   storyTakeaway: text('story_takeaway'),
 
   modern: jsonb('modern').$type<StorySection>(),
@@ -232,6 +286,13 @@ export const remarkablePerson = pgTable('remarkable_person', {
   afterTreasures: jsonb('after_treasures').$type<StorySection>(),
   treasures: jsonb('treasures').$type<Treasure[]>().notNull().default([]),
   lessons: jsonb('lessons').$type<Lesson[]>().notNull().default([]),
+
+  // The last fact-check pass over this person's book (docs/golden-stories-bible.md,
+  // "Factual accuracy is non-negotiable"). Null means never checked, which is
+  // a normal state and NOT an error — checking warns, it never gates
+  // publishing (Standing decision 2). Kept on the person rather than in the
+  // job row so the verdicts survive the job being dismissed.
+  factCheck: jsonb('fact_check').$type<FactCheckReport>(),
 
   // Draft/Published gate for the editor. New rows start unpublished; public
   // readers (getPersonBySlug, the Born Today query) filter on it, admin
@@ -288,7 +349,9 @@ export type NewStoryBrief = typeof storyBrief.$inferInsert;
 // month-day's history, its top ten. The other four keep their meanings: a
 // person's book ('brief'), a batch of slots ('images'), one slot ('slot'), one
 // field ('rewrite'), all of which Daily Gold subjects now reuse as they are.
-export const generationJobKind = pgEnum('generation_job_kind', ['brief', 'images', 'slot', 'rewrite', 'ask']);
+// 'factcheck' is the grounded pass over a person's finished book; its verdicts
+// land on remarkablePerson.factCheck, not in the job's own result.
+export const generationJobKind = pgEnum('generation_job_kind', ['brief', 'images', 'slot', 'rewrite', 'ask', 'factcheck']);
 export const generationJobState = pgEnum('generation_job_state', ['running', 'done', 'failed']);
 
 // Staged progress for a brief job; per-slot progress for image jobs. A rewrite

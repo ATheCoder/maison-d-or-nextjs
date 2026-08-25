@@ -1,9 +1,18 @@
 /**
  * The writer: the "Golden Story" brief schema, the house-style system prompt,
- * and the streamed OpenRouter call that produces a brief — ported verbatim
- * from scripts/generate-story-openrouter.mjs. Also the prompt builders for the
- * editor's two smaller writing flows (suggest a person, rewrite one field),
- * consumed in Phase 5.
+ * and the streamed OpenRouter call that produces a brief. Also the prompt
+ * builders for the editor's two smaller writing flows (suggest a person,
+ * rewrite one field), consumed in Phase 5.
+ *
+ * WRITER_SYSTEM below is the ONLY place the house voice is written down, and
+ * it is the executable half of docs/golden-stories-bible.md — the bible is the
+ * standard, this is the standard as the model receives it. Change one and you
+ * must change the other; a rule that lives in only one of them is a rule that
+ * is not actually in force.
+ *
+ * (It began as a verbatim port of the prompt inside
+ * scripts/generate-story-openrouter.mjs. It is no longer that prompt — the CLI
+ * imports writeBrief from here, so there is exactly one copy.)
  */
 import {
   OPENROUTER, WRITER_MODEL, orHeaders, webPlugin, parseCitations,
@@ -29,10 +38,17 @@ export type Brief = {
   story_childhood: string;
   childhood_scene: string;
   story_takeaway: string;
-  chapters: { title: string; narrative: string; scene: string }[];
-  modern: { title: string; narrative: string; scene: string };
+  // The one tellable thing on the childhood spread. See `fact` below.
+  story_childhood_fact: string;
+  // `fact` is the bible's fact-per-spread rule made structural: one specific,
+  // verifiable thing a child could repeat at dinner, carried beside the
+  // narrative rather than buried in it. A section that has narrative and no
+  // fact is a spread with nothing to take away, which is the exact failure the
+  // bible exists to prevent — so it is a required field, not an optional one.
+  chapters: { title: string; narrative: string; fact: string; scene: string }[];
+  modern: { title: string; narrative: string; fact: string; scene: string };
   timeline: { year: string; caption: string; scene: string }[];
-  after_treasures: { title: string; narrative: string; scene: string };
+  after_treasures: { title: string; narrative: string; fact: string; scene: string };
   treasures: { name: string; scene: string }[];
   lessons: { icon_name: string; lesson: string }[];
 };
@@ -65,45 +81,77 @@ export const BRIEF_SCHEMA = obj({
   cover_scene: str,
   story_childhood_title: str,
   story_childhood: str,
+  story_childhood_fact: str,
   childhood_scene: str,
   story_takeaway: str,
-  chapters: { type: 'array', items: obj({ title: str, narrative: str, scene: str }) },
-  modern: obj({ title: str, narrative: str, scene: str }),
+  chapters: { type: 'array', items: obj({ title: str, narrative: str, fact: str, scene: str }) },
+  modern: obj({ title: str, narrative: str, fact: str, scene: str }),
   timeline: { type: 'array', items: obj({ year: str, caption: str, scene: str }) },
-  after_treasures: obj({ title: str, narrative: str, scene: str }),
+  after_treasures: obj({ title: str, narrative: str, fact: str, scene: str }),
   treasures: { type: 'array', items: obj({ name: str, scene: str }) },
   lessons: { type: 'array', items: obj({ icon_name: str, lesson: str }) },
 });
 
-export const WRITER_SYSTEM = `You write "Golden Story" picture-book biographies for Maison d'Ore (ages 5-10, read aloud at bedtime).
+export const WRITER_SYSTEM = `You write "Golden Story" picture-book biographies for Maison d'Ore.
 
-Writing rules (from the house specification):
-- Every story page is 40-70 words, never more than 75. Sentences of 6-9 words, never more than 12. One small idea per page, never two.
-- Break narratives into short stanzas with \\n and \\n\\n line breaks, like a picture book (see rhythm example below).
-- Vocabulary a 6-8 year old understands; explain any hard word naturally.
-- Never use dashes — no em dashes (—), en dashes (–) or hyphens used as punctuation — anywhere in story text. Use a comma, a period or a new sentence instead. (Hyphens inside real compound words like "twenty-three" are fine.)
+THE BENCHMARK
+The standard is Little People, BIG DREAMS: beautiful, emotionally engaging, intelligent, memorable, and simple enough for a child to follow — but never dumbed down and never babyish. Write so an 8-year-old understands it, a 12-year-old genuinely enjoys it, and the parent reading over the child's shoulder learns something too.
+
+Your goal is NOT to give the child a lot of information. It is to make them want to know more.
+
+WHAT MAKES A PAGE GOOD
+- Better words, not more words. Every page stays short; the work goes into choosing what to say.
+- Every page carries at least one specific, surprising thing a child could repeat to somebody the next day. Aim for a regular "Wait — really?" beat.
+- Never write a generic sentence. "She wrote a great book", "He was very brave", "She loved nature" say nothing and are forbidden. Show what made this person extraordinary through the specific detail: the actual book and what was strange about it, the actual danger and what they did in it, the actual thing in nature they noticed that nobody else had.
+- Reach for the strange, human, small detail — a tiny invention, a failure, a secret, an odd habit, a childhood idea, an obstacle, the shape of the world they lived in. That is what children remember; sweeping summaries are what they forget.
 - Never lecture, never "you should". Invite wonder instead.
+
+VOICE AND SHAPE
+- 40-70 words per story page, never more than 75. That budget is the point: it forces the best detail to the front.
+- Sentences of 6-14 words. Vary them; a very short sentence after two longer ones is the rhythm of a read-aloud book.
+- The language stays simple but the IDEAS do not. One genuinely interesting word per page is welcome as long as the sentence around it makes the meaning obvious.
+- One small idea per page, never two.
+- Break narratives into short stanzas with \n and \n\n line breaks, like a picture book (see rhythm example below).
+- Never use dashes — no em dashes (—), en dashes (–) or hyphens used as punctuation — anywhere in story text. Use a comma, a period or a new sentence instead. (Hyphens inside real compound words like "twenty-three" are fine.)
 - Pick one "golden thread" — a single defining human quality (Leonardo: curiosity; Curie: perseverance) — and let it quietly shape every page.
-- Emotional curve across the chapters: wonder → curiosity → challenge → hope → achievement.
-- Exactly ${CHAPTERS} chapters, ${TIMELINE} timeline milestones (chronological, real years), ${TREASURES} treasures (their most famous works/contributions), ${LESSONS} lessons (icon_name is one lowercase word like "curiosity").
 
-Rhythm example (a chapter narrative):
-"Leonardo noticed things\\nothers did not see.\\n\\nThe patterns in leaves.\\nThe shape of clouds.\\n\\nSometimes people thought\\nhe was strange.\\nHe didn't mind."
+THE ARC
+The book is a story, not an encyclopedia entry. Across the chapters it must move:
+childhood → the curiosity or problem that gripped them → the moments that mattered → the obstacle that nearly stopped them → the breakthrough or the thing they gave the world → what they left behind.
+The emotional curve that rides on it: wonder → curiosity → challenge → hope → achievement.
+Exactly ${CHAPTERS} chapters, ${TIMELINE} timeline milestones (chronological, real years), ${TREASURES} treasures (their most famous works/contributions), ${LESSONS} lessons (icon_name is one lowercase word like "curiosity").
 
-Field meanings:
+FACTUAL ACCURACY IS NON-NEGOTIABLE
+- Every date, quote, relationship, achievement and anecdote must be true and checkable against the historical record.
+- Never invent dialogue. Never present speculation, legend or a disputed story as fact. If a famous anecdote is doubted by historians, either leave it out or write it as what people say rather than what happened.
+- When you are not certain of a detail, choose a different detail you ARE certain of. There is always another true thing worth telling.
+- The "modern" page is the single exception, and it is imagination by design: it is clearly framed as imagining and must never blur into biography.
+
+THE FACT FIELD
+Every narrative section carries a "fact" alongside its narrative: ONE specific, verifiable thing from that part of the person's life that a child could tell somebody at dinner.
+- 8-25 words, a single sentence, no line breaks.
+- It must be a FACT, not a moral, a feeling or a summary. "He was determined" is not a fact. "He wrote his notes in mirror writing, backwards, so they read normally only in a mirror" is.
+- It must not simply restate a sentence already in that section's narrative. It is the extra thing the page has room for because the narrative stayed short.
+- It must be true. If you cannot name a real one for a section, give the most surprising true detail you know about that period of their life rather than inventing one.
+
+FIELD MEANINGS
 - role: short poetic epithet, e.g. "Painter, Inventor & Endless Dreamer".
-- story_childhood_title: e.g. "A Little Boy in Vinci". story_childhood: the birth/childhood page.
-- story_takeaway: one line, e.g. "Stay curious, and the whole world becomes your workshop."
-- modern: "If {Name} Were 10 Today" page — 2 short paragraphs imagining them as a child now.
+- story_childhood_title: e.g. "A Little Boy in Vinci". story_childhood: the birth/childhood page. story_childhood_fact: that page's fact.
+- story_takeaway: the book's beautiful final line. One line, e.g. "Stay curious, and the whole world becomes your workshop."
+- modern: the "If {Name} Were 10 Today" page — 2 short paragraphs imagining them as a child now. Its fact is a true fact about the real person that the imagining is built on, so the spread still teaches something real.
 - after_treasures: the legacy page introducing the treasures ("Gifts That Live On").
 - character_sheet: ONE sentence fixing the protagonist's look as a child — age, hair, eyes, clothing authentic to their era, e.g. "Marie as a 10-year-old girl with braided dark blonde hair, grey eyes, a simple charcoal wool dress with a white collar."
 
-Scene descriptions (cover_scene, childhood_scene, chapters[].scene, modern.scene, timeline[].scene, after_treasures.scene, treasures[].scene) are SUBJECT blocks for an image model:
+Rhythm example (a chapter narrative):
+"Leonardo noticed things\nothers did not see.\n\nThe patterns in leaves.\nThe shape of clouds.\n\nSometimes people thought\nhe was strange.\nHe didn't mind."
+
+SCENE DESCRIPTIONS
+cover_scene, childhood_scene, chapters[].scene, modern.scene, timeline[].scene, after_treasures.scene and treasures[].scene are SUBJECT blocks for an image model. The illustration must show what THIS spread is about — it supports the story being told on the page, it is never generic decoration.
 - 1-2 sentences, concrete nouns, one emotional moment, era-authentic clothing, objects and architecture.
 - NO style words (no "watercolor", "storybook", "warm palette" — a fixed style block is added separately). No text or lettering in the scene.
 - Whenever the protagonist appears as a child, start the scene with the character_sheet sentence VERBATIM, then the action. For adult scenes, describe the same person grown up, keeping hair/eye color consistent.
 - childhood_scene: a wide figure-less landscape of their birthplace region. modern.scene: the same child in today's world. treasures[].scene: the object/work itself, no people. timeline scenes: small vignette moments.
-- The LAST chapter is rendered as a wordless full-page painting (its narrative is written but not displayed): make its scene the single most dramatic, emotional image of the story, carrying the challenge-into-hope turn on from the chapter before it.`;
+- The LAST chapter is rendered as full-bleed art with its text laid over it: make its scene the single most dramatic, emotional image of the story, carrying the challenge-into-hope turn on from the chapter before it, and keep its narrative and fact as strong as any other page — this spread is read, not just looked at.`;
 
 // ---------------------------------------------------------------------------
 // OpenRouter chat completions (streamed SSE, so long generations don't hit
@@ -230,7 +278,13 @@ export function suggestPersons(monthDay: string, excludeNames: string[] = []): C
     ? `\n\nDo NOT suggest anyone already covered: ${excludeNames.join(', ')}.`
     : '';
   return {
-    system: `You curate "Born Today" for Maison d'Ore, a children's almanac (ages 5-10). Suggest historically remarkable people — scientists, artists, explorers, humanitarians — whose lives make a warm, wondrous bedtime biography. Prefer widely documented figures with a clear "golden thread". Give the birth_date as a real "Month D, YYYY".`,
+    system: `You curate "Born Today" for Maison d'Ore, a children's almanac. Suggest historically remarkable people — scientists, artists, explorers, humanitarians — whose lives make a warm, wondrous illustrated biography for a child of about 8 to 12.
+
+Choose for STORY, not for fame. The best candidate is someone whose life holds specific, surprising, tellable things: a strange habit, a stubborn obstacle, a small invention, a childhood idea that grew up. A famous name with nothing concrete to show a child is a worse pick than a lesser-known one with three unforgettable details.
+
+Prefer figures whose lives are well enough documented that every date, quote and anecdote can be checked — accuracy is non-negotiable in these books, so a person known mostly through legend is a poor choice.
+
+In "why", name the single most fascinating true detail about them, not a summary of their importance. Give the birth_date as a real "Month D, YYYY".`,
     user: `Suggest people born on the month-day ${monthDay} (any year) who would make a wonderful Golden Story.${exclude}`,
     schema: SUGGESTIONS_SCHEMA,
   };
@@ -254,9 +308,15 @@ export type RewriteSeed = Pick<Brief, 'name' | 'golden_thread' | 'character_shee
 export function rewriteField(brief: RewriteSeed, fieldPath: string, currentOverride?: string): ChatPrompt {
   const current = currentOverride ?? getFieldValue(brief as Brief, fieldPath);
   const isScene = fieldPath.endsWith('scene') || fieldPath.endsWith('_scene');
+  const isFact = fieldPath === 'story_childhood_fact' || fieldPath.endsWith('.fact') || fieldPath.endsWith('_fact');
+  // Three kinds of field, three different jobs. A fact rewritten under the
+  // story-text rules comes back as a stanza, and story text rewritten under
+  // the fact rules comes back as a one-liner, so the branch is load-bearing.
   const guidance = isScene
-    ? `This is an image SUBJECT scene: 1-2 sentences, concrete nouns, one emotional moment, era-authentic detail, NO style words, no text in the scene. If the protagonist appears as a child, start with the character sheet sentence VERBATIM.`
-    : `This is story text: 40-70 words (never over 75), short 6-9 word sentences, one small idea, broken into short stanzas with \\n and \\n\\n line breaks, vocabulary a 6-8 year old understands. Never lecture. Never use dashes as punctuation; use a comma, a period or a new sentence instead.`;
+    ? `This is an image SUBJECT scene: 1-2 sentences, concrete nouns, one emotional moment, era-authentic detail, NO style words, no text in the scene. The illustration must show what this spread is about. If the protagonist appears as a child, start with the character sheet sentence VERBATIM.`
+    : isFact
+      ? `This is the spread's FACT: one specific, verifiable thing a child could tell somebody at dinner. 8-25 words, a single sentence, no line breaks. A fact, never a moral, a feeling or a summary ("He was determined" is not a fact). It must be true, and it must not simply restate a sentence already in the narrative.`
+      : `This is story text: 40-70 words (never over 75), sentences of 6-14 words, one small idea, broken into short stanzas with \\n and \\n\\n line breaks. Simple language, intelligent ideas — an 8-year-old should follow it and a 12-year-old should still enjoy it. No generic sentences ("she wrote a great book", "he was very brave"); show the specific, surprising thing instead. Never lecture. Never use dashes as punctuation; use a comma, a period or a new sentence instead.`;
   return {
     system: WRITER_SYSTEM,
     user: `Golden thread: ${brief.golden_thread}

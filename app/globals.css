@@ -622,6 +622,82 @@ html[data-theme] body {
   }
 }
 
+/* §3.1b — the wooden table a Golden Story lies open on.
+
+   docs/golden-stories-bible.md ("The table"): the open book rests on an
+   elegant, natural, understated wooden surface — warm, slightly aged,
+   sophisticated; never orange, rustic or busy. The book stays the hero, so
+   everything here is quiet by construction: the wood is desaturated walnut,
+   the grain never rises above 16% alpha, and a soft pool of light sits just
+   above centre with the corners falling away, which is what makes a flat
+   surface read as a lit table rather than a texture swatch.
+
+   Built from gradients and two feTurbulence tiles rather than a photograph:
+   no payload, no decode, and it stays sharp at any viewport and any zoom —
+   the stage is full-screen on a phone and on a 5K display alike.
+
+   --table-surface is the whole layered background-image list in one token so
+   the three surfaces that must agree can consume it without duplicating the
+   recipe: .book-stage (GoldenStory.module.css), .stage (PersonEditor.module.css,
+   so the admin preview matches what families see) and the opening curtain's
+   scrim (BookOpeningCurtain.jsx — without it the book opens onto one surface
+   and lands on another). Layer order is top-down: grain over figure over
+   light over vignette over the wood itself. background-repeat is left at its
+   default: the gradient layers have no background-size, so they fill the box
+   and "repeat" is a no-op for them, which is what lets one token carry both
+   tiled and untiled layers. */
+:root {
+  /* Walnut. The base has to start richer than the finished surface reads:
+     every layer above it is a tint, and tints only ever take saturation away. */
+  --table-wood: #46341f;
+  --table-wood-lit: #5e4629;
+  --table-wood-deep: #1c1409;
+
+  /* Fine fibre. baseFrequency is deliberately anisotropic — slow across x,
+     fast down y — so the noise stretches into long horizontal fibres instead
+     of looking like sand. The feFuncR/G/B intercepts are the important part:
+     they tint the noise to a deep warm brown before it lands. Plain black
+     grain (the obvious way to write this) greys the walnut out into driftwood
+     — the darker parts of real wood are a deeper brown, not a darker grey. */
+  --table-grain-fine: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='wf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.02 0.9' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0' intercept='0.15'/%3E%3CfeFuncG type='linear' slope='0' intercept='0.09'/%3E%3CfeFuncB type='linear' slope='0' intercept='0.03'/%3E%3CfeFuncA type='linear' slope='0.15'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23wf)'/%3E%3C/svg%3E");
+
+  /* The same fibre catching the light — warm cream rather than white, a
+     different seed. Wood with no light streak reads as dirt on brown paper;
+     this is the sheen. Kept under 6% or the surface goes chalky. */
+  --table-grain-sheen: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='ws'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.015 0.85' numOctaves='3' seed='29' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0' intercept='1'/%3E%3CfeFuncG type='linear' slope='0' intercept='0.93'/%3E%3CfeFuncB type='linear' slope='0' intercept='0.82'/%3E%3CfeFuncA type='linear' slope='0.055'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23ws)'/%3E%3C/svg%3E");
+
+  /* The figure — the broad wandering bands a plank has beneath its fibre.
+     Very slow across x, medium down y, so it bands horizontally with the
+     grain. This is the layer that separates walnut from brushed laminate:
+     without it the fibre alone reads as a machined surface. Warm-tinted for
+     the same reason as the fibre. */
+  --table-grain-figure: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1100' height='1100'%3E%3Cfilter id='wb'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0012 0.02' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0' intercept='0.09'/%3E%3CfeFuncG type='linear' slope='0' intercept='0.05'/%3E%3CfeFuncB type='linear' slope='0' intercept='0.015'/%3E%3CfeFuncA type='linear' slope='0.28'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23wb)'/%3E%3C/svg%3E");
+
+  --table-surface:
+    var(--table-grain-sheen),
+    var(--table-grain-fine),
+    var(--table-grain-figure),
+    radial-gradient(ellipse 46% 42% at 50% 32%, rgba(255, 231, 196, 0.14), transparent 74%),
+    radial-gradient(ellipse 112% 92% at 50% 44%, transparent 30%, rgba(13, 9, 5, 0.72) 100%),
+    linear-gradient(174deg, var(--table-wood-lit) 0%, var(--table-wood) 44%, var(--table-wood-deep) 100%);
+
+  /* What a heavy book resting on that table casts. Three stacked shadows,
+     warm-black rather than neutral: a tight contact line so the edge sits ON
+     the wood, a mid shadow for the volume's thickness, and a wide ambient
+     pool. Neutral black over walnut goes sooty, which is why every layer is
+     tinted toward the wood's own hue. */
+  --table-book-shadow:
+    0 2px 2px rgba(22, 14, 6, 0.5),
+    0 10px 18px -6px rgba(22, 14, 6, 0.45),
+    0 44px 90px -18px rgba(14, 9, 4, 0.62);
+}
+
+/* The class form, for surfaces that reach the table from JSX rather than from
+   a CSS module (the opening curtain). Modules consume the tokens directly. */
+.wood-table {
+  background-color: var(--table-wood);
+  background-image: var(--table-surface);
+}
 /* §3.2 — dark section treatment. Token re-scoping lives up in the
    [data-surface] blocks these classes are grafted onto; here is only
    what the attribute alone doesn't do: paint the surface, grain it,

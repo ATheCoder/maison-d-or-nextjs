@@ -25,8 +25,12 @@ export const SINGLE_BLEED = `The painting is anchored to the bottom-right of the
 // The cover: fully opaque, the CSS gradient overlay carries the title.
 export const COVER_BLEED = `Full-bleed scene filling the entire frame edge to edge, rich background detail, muted warm tones, darker toward the top and bottom edges. No blank margins, no vignette, no frame, no border, no text, no signature.`;
 
-// Other blend:"normal" slots (modern spread, final image-only chapter):
-// opaque edge-to-edge art shown as-is.
+// Other blend:"normal" slots (modern spread, final chapter): opaque
+// edge-to-edge art shown as-is. The final chapter is no longer wordless —
+// docs/golden-stories-bible.md Standing decision 3 — so its text now sits over
+// this art behind the legibility wash. The prompt is unchanged by that: rich
+// detail everywhere is still what the spread wants, and reserving a corner for
+// the words (as SINGLE_BLEED does) would cost the drama the spread is for.
 export const OPAQUE = `Full-bleed scene filling the entire frame edge to edge with rich detail everywhere — no blank margins, no vignette, no frame, no border, no text, no lettering, no signature.`;
 
 // Spot art (timeline, treasures) rendered with the multiply blend: subject on

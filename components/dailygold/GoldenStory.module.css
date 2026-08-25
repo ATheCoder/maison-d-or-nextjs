@@ -29,7 +29,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 50% 35%, #3c2c1d 0%, #1c130c 68%, #110a05 100%);
+  /* The wooden table the book lies open on — docs/golden-stories-bible.md,
+     "The table". The recipe is one token in app/globals.css so this stage,
+     the editor's preview stage and the opening curtain cannot drift apart. */
+  background-color: var(--table-wood);
+  background-image: var(--table-surface);
   font-family: var(--sans);
 }
 
@@ -57,7 +61,11 @@
   inset: -28px;
   border-radius: 16px;
   background: linear-gradient(135deg, #3a281c 0%, var(--leather) 55%, #170f0a 100%);
-  box-shadow: 0 46px 100px rgba(0, 0, 0, .62), inset 0 1px 0 rgba(255, 255, 255, .05);
+  /* Sitting ON the wood, not floating over black: a tight contact shadow, the
+     volume's own mid shadow and a wide ambient pool, all tinted toward the
+     table's hue (neutral black over walnut goes sooty). The inset hairline is
+     the light catching the top edge of the binding. */
+  box-shadow: var(--table-book-shadow), inset 0 1px 0 rgba(255, 255, 255, .06);
 }
 
 .book-leather::after {
@@ -241,6 +249,105 @@
   color: var(--head);
 }
 
+/* The spread's fact — the one specific, tellable thing a child could repeat
+   the next day (docs/golden-stories-bible.md). It is the book's own voice, not
+   an information box bolted to the page: a gold hairline, the house star, and
+   the display face in italic. Deliberately quieter than .tr-stamp, which is a
+   framed callout — a fact on nearly every spread has to recede or the book
+   starts to feel like a worksheet.
+
+   flex: 0 0 auto and the auto top margin place it at the foot of whatever text
+   column it sits in, above a bottom-pinned strip plate but below the prose. */
+.fact {
+  flex: 0 0 auto;
+  margin: 14px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(185, 151, 90, .38);
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.fact b {
+  flex: 0 0 auto;
+  color: var(--gold);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.fact p {
+  margin: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: var(--type-caption);
+  line-height: 1.62;
+  color: var(--head-deep);
+}
+
+/* On a single full-bleed leaf the words sit on a spread-wide wash that fades
+   out horizontally, and the fact is the one run of text that would cross it:
+   the narratives never reach that far because their stanzas carry hard line
+   breaks, but a fact is one unbroken sentence. Two things fix it together — a
+   measure short enough to stay in the lit half, and the fact's own tail of
+   parchment carrying the light a little further so the last words land on
+   paper rather than on the painting. The tail is a gradient with no edge, so
+   it reads as more light on the page and never as a box; a boxed fact on
+   nearly every spread would make the book feel like a worksheet.
+
+   The 'both' span and the modern spread need none of this: their overlays
+   already carry a shrink-wrapped wash pseudo (see below), and the fact wraps
+   inside it. */
+.page-chapter-single .chapter-overlay .fact {
+  max-width: 76%;
+  margin-left: -14px;
+  padding: 10px 22% 6px 14px;
+  border-top-color: rgba(185, 151, 90, .3);
+  background: linear-gradient(90deg,
+    rgba(244, 236, 214, .92) 0%,
+    rgba(244, 236, 214, .88) 62%,
+    rgba(244, 236, 214, 0) 100%);
+}
+
+/* The kicker only the "If they were 10 today" spread wears. That page is
+   imagination, and the bible forbids imagination from blurring into
+   biography — so its fact is introduced as the true thing the daydream is
+   built on, in as many words. */
+.fact em {
+  font-family: var(--sans);
+  font-style: normal;
+  font-weight: 700;
+  font-size: var(--type-label-editorial);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-right: 8px;
+  white-space: nowrap;
+}
+
+/* The other half of the same promise: the spread says it is imagining BEFORE
+   the child reads a word of it. */
+.imagine {
+  font-family: var(--serif);
+  font-size: var(--type-label-editorial);
+  font-weight: 560;
+  letter-spacing: .26em;
+  text-transform: uppercase;
+  color: var(--gold);
+  /* The eyebrow takes over the title's top margin, because the rule below
+     zeroes the title's own. 44px is .pg-title's; the overlay override further
+     down is .chapter-overlay .pg-title's 30px. Get this wrong and the whole
+     block jumps up into the page number. */
+  margin: 44px 0 6px;
+}
+
+.imagine+.pg-title {
+  margin-top: 0;
+}
+
+.chapter-overlay .imagine {
+  margin-top: 30px;
+}
+
 .plate {
   position: relative;
   display: flex;
@@ -416,6 +523,32 @@
   mask-image: none;
   background: none;
   display: block;
+}
+
+/* …unless the page also carries a fact, in which case the strip has to give
+   some height back.
+
+   The childhood leaf was already close to full: the landscape strip takes over
+   half of it, and a 43-word narrative — comfortably inside the house's 40-70
+   — plus a fact overflows the text column, which then scrolls. A leaf a child
+   has to scroll is a leaf whose last line is lost, so the fact cannot simply be
+   added and hoped for.
+
+   What the strip gives up is the top of its own fade. STRIP_BLEED (see
+   lib/golden-story/prompts.ts) has the painting dissolve to pure flat white at
+   the top edge, so cropping from the top removes empty paper and never paint —
+   which is why the crop is anchored to the bottom, where the art is finished
+   and bleeding off the page. Scoped with :has() so the books written before the
+   bible, which have no fact, keep their strip at full height. */
+.page:has(.fact) .plate-strip {
+  max-height: 45%;
+  overflow: hidden;
+}
+
+.page:has(.fact) .plate-strip .plate-img {
+  height: 100%;
+  object-fit: cover;
+  object-position: bottom;
 }
 
 /* Let the image drive its own height (full page width, natural aspect ratio,

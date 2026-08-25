@@ -225,6 +225,13 @@
       "when": 1787143004431,
       "tag": "0031_wet_tombstone",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1787656996567,
+      "tag": "0032_golden_stories_bible",
+      "breakpoints": true
     }
   ]
 }

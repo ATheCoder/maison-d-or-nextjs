@@ -93,8 +93,11 @@
 
 .callout { border-left: 2px solid var(--gold); background: var(--gold-soft); border-radius: 0 8px 8px 0; }
 
-/* The dark parchment stage the live book sits on. */
-.stage { background: radial-gradient(circle at 50% 30%, #3c2c1d 0%, #1c130c 70%, #110a05 100%); }
+/* The wooden table the live book sits on — the same surface families see, from
+   the same token (app/globals.css §3.1b). The editor's whole promise is that
+   the preview IS the book, so this must never be a lookalike of the reader's
+   stage: when the table changes, both change. */
+.stage { background-color: var(--table-wood); background-image: var(--table-surface); }
 
 /* Amber banner + top-bar tint while editing a Published person. */
 .publishedBar { background: rgba(192, 138, 46, 0.1); border-bottom: 1px solid rgba(192, 138, 46, 0.35); color: #8a5f18; }

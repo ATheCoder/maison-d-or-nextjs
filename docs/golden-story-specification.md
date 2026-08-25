@@ -1,3 +1,21 @@
+> **Superseded (2026-08-25) — read [`golden-stories-bible.md`](./golden-stories-bible.md) first.**
+>
+> The Golden Stories Bible now owns the **editorial standard**: reading level,
+> voice, the fact-per-spread rule, the narrative arc, factual accuracy, and the
+> approval test. Where this v1 document disagrees with the bible, the bible wins
+> — in particular its "Target age / Reading psychology" section below, whose
+> 5–10 framing the bible deliberately raises.
+>
+> What v1 still owns, and what is still true: the **book's anatomy** — ten
+> double-page spreads, the per-page structure, the 60–75% illustration ratio,
+> and the 15–25 seconds-per-page pacing. Those are unchanged and are still the
+> reference for how a Golden Story is laid out.
+>
+> One thing specced here was never built: the page-10 "Did you know? — 3–6
+> fascinating facts" spread. The bible's fact-per-spread rule (a `fact` field on
+> every narrative section) covers the same need across the whole book instead.
+> Restoring the dedicated spread is still open.
+
 Maison d’Ore Daily Gold Storybook Specification (v1)
 
 Target age

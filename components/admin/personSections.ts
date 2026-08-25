@@ -30,10 +30,36 @@ export type Section = {
 const hasText = (s: unknown): boolean => typeof s === 'string' && s.trim().length > 0;
 const hasImg = (u: unknown): boolean => typeof u === 'string' && u.trim().length > 0;
 
+/**
+ * Does this book answer to the fact-per-spread rule?
+ *
+ * The bible applies going forward only (Standing decision 1): the books written
+ * before it carry no facts anywhere and are deliberately not backfilled, so
+ * flagging every one of their sections would paint the rail amber for a book
+ * nobody intends to change — and a warning nobody can act on is a warning that
+ * teaches the eye to ignore warnings.
+ *
+ * A book that carries a fact ANYWHERE was written under the bible, so a section
+ * missing one there is a real gap worth showing. A book with none anywhere is
+ * pre-bible and left alone. The two populations do not overlap, because the
+ * writer's schema makes a fact required on every narrative section — a bible-era
+ * book arrives with all of them or the generation failed.
+ */
+export function holdsToFactRule(draft: DraftPerson): boolean {
+  return hasText(draft.story_childhood_fact)
+    || draft.chapters.some((c) => hasText(c.fact))
+    || hasText(draft.modern?.fact)
+    || hasText(draft.after_treasures?.fact);
+}
+
 export function deriveSections(draft: DraftPerson): Section[] {
   const first = (draft.name || '').trim().split(/\s+/)[0] || 'they';
   const at = (id: string) => spreadIndexFor(draft, id);
   const out: Section[] = [];
+  // Captured once: every section below asks the same question of the same book.
+  const wantsFacts = holdsToFactRule(draft);
+  const status = (text: unknown, img: unknown, fact: unknown) =>
+    textArtStatus(text, img, wantsFacts ? fact : 'n/a');
 
   // Cover — always has a title; the "content" that can be missing is the art.
   out.push({
@@ -44,7 +70,7 @@ export function deriveSections(draft: DraftPerson): Section[] {
   // Childhood page.
   out.push({
     id: 'childhood', label: 'Childhood page', kind: 'childhood', spreadIndex: at('childhood'),
-    ...textArtStatus(draft.story_childhood, draft.childhood_image_url),
+    ...status(draft.story_childhood, draft.childhood_image_url, draft.story_childhood_fact),
   });
 
   // Chapters (one row each).
@@ -52,14 +78,15 @@ export function deriveSections(draft: DraftPerson): Section[] {
     const number = c.number ?? i + 1;
     const title = (c.title || '').trim();
     const label = title ? `Chapter ${number} · ${title}` : `Chapter ${number}`;
-    let status: ReturnType<typeof textArtStatus>;
+    let rowStatus: ReturnType<typeof textArtStatus>;
     if (c.page_span === 'image') {
-      // Art-only closing chapter: no text expected.
-      status = hasImg(c.image_url) ? { status: 'done' } : { status: 'empty' };
+      // Art-only chapter: no text and so no fact expected. Only pre-bible books
+      // still have one (Standing decision 3 retired the wordless final plate).
+      rowStatus = hasImg(c.image_url) ? { status: 'done' } : { status: 'empty' };
     } else {
-      status = textArtStatus(c.title || c.narrative, c.image_url);
+      rowStatus = status(c.title || c.narrative, c.image_url, c.fact);
     }
-    out.push({ id: `chapter-${i}`, label, kind: 'chapter', chapterIndex: i, dndKey: c._key, spreadIndex: at(`chapter-${i}`), ...status });
+    out.push({ id: `chapter-${i}`, label, kind: 'chapter', chapterIndex: i, dndKey: c._key, spreadIndex: at(`chapter-${i}`), ...rowStatus });
   });
 
   // The rows below follow the book's spread order (see GoldenStory's build
@@ -74,13 +101,13 @@ export function deriveSections(draft: DraftPerson): Section[] {
   // After-treasures ("Gifts That Live On") — the treasures spread's right leaf.
   out.push({
     id: 'after-treasures', label: 'Gifts That Live On', kind: 'after', spreadIndex: at('after-treasures'),
-    ...textArtStatus(draft.after_treasures?.narrative, draft.after_treasures?.image_url),
+    ...status(draft.after_treasures?.narrative, draft.after_treasures?.image_url, draft.after_treasures?.fact),
   });
 
   // Modern ("If X were 10 today").
   out.push({
     id: 'modern', label: `If ${first} were 10 today`, kind: 'modern', spreadIndex: at('modern'),
-    ...textArtStatus(draft.modern?.narrative, draft.modern?.image_url),
+    ...status(draft.modern?.narrative, draft.modern?.image_url, draft.modern?.fact),
   });
 
   // Lessons — text only, no art; the band under Modern on the same spread.
@@ -99,11 +126,19 @@ export function deriveSections(draft: DraftPerson): Section[] {
   return out;
 }
 
-// Text present + art present → done; text but no art → warn ("no art");
-// nothing → empty.
-function textArtStatus(text: unknown, img: unknown): { status: SectionStatus; note?: string } {
+// Text present + art present + fact present → done; text but something missing
+// → warn, naming what; nothing → empty.
+//
+// A missing fact is a warning and never a block: publishing is never gated on
+// any of this (docs/golden-stories-bible.md, Standing decision 2). Callers that
+// do not hold this book to the fact rule pass a non-empty sentinel for `fact`.
+function textArtStatus(text: unknown, img: unknown, fact: unknown = 'n/a'):
+  { status: SectionStatus; note?: string } {
   if (!hasText(text)) return { status: 'empty' };
-  if (!hasImg(img)) return { status: 'warn', note: 'no art' };
+  const missing: string[] = [];
+  if (!hasImg(img)) missing.push('no art');
+  if (!hasText(fact)) missing.push('no fact');
+  if (missing.length) return { status: 'warn', note: missing.join(' · ') };
   return { status: 'done' };
 }
 

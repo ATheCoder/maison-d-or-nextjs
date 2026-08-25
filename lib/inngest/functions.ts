@@ -10,7 +10,7 @@
 import {
   inngest,
   type ImagesBatchRequested, type ImageSlotRequested,
-  type BriefRequested, type RewriteRequested,
+  type BriefRequested, type RewriteRequested, type FactCheckRequested,
   type DgSlotRequested, type DgImagesBatchRequested,
   type DgAskRequested, type DgRewriteRequested,
 } from './client';
@@ -20,6 +20,7 @@ import { db } from '@/src/db';
 import { analyticsEvent } from '@/src/db/schema';
 import { renderSlotToCanonical, renderSlotToStaging } from '@/lib/golden-story/imageStore';
 import { runBriefJob, runRewriteJob } from '@/lib/golden-story/textStore';
+import { runFactCheckJob } from '@/lib/golden-story/factcheckStore';
 import { setSlotProgress, finishJob, failJob } from '@/lib/golden-story/jobs';
 import { renderDgSlotToCanonical, renderDgSlotToStaging } from '@/lib/daily-gold/imageStore';
 import { runAsk } from '@/lib/daily-gold/askStore';
@@ -151,6 +152,44 @@ export const rewriteField = inngest.createFunction(
     const { slug, jobId, fieldPath, current } = event.data as RewriteRequested;
     try {
       const result = await step.run('draft rewrite', () => runRewriteJob(slug, fieldPath, current));
+      await step.run('finish job', () => finishJob(jobId, result));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await step.run('mark failed', () => failJob(jobId, message));
+    }
+    return { done: true };
+  },
+);
+
+/**
+ * The fact-checker as an Inngest function (docs/golden-stories-bible.md,
+ * "Factual accuracy is non-negotiable").
+ *
+ * One retryable step runs the whole grounded pass — a dozen searches, minutes
+ * of wall clock — and writes the report onto the person; the job row carries
+ * only the progress the editor's panel polls. `concurrency: 1` is deliberate:
+ * each unit inside the pass is already its own web-grounded request, and
+ * letting two books check at once turns a considered spend of the admin's
+ * OpenRouter credit into a stampede.
+ *
+ * Nothing here refreshes a reader cache, because nothing families can see has
+ * changed: the report is an admin-only column.
+ */
+export const checkFacts = inngest.createFunction(
+  {
+    id: 'check-facts',
+    triggers: [{ event: 'story/factcheck.requested' }],
+    retries: 1,
+    concurrency: 1,
+    onFailure: async ({ event }) => {
+      const { jobId } = (event.data.event.data ?? {}) as Partial<FactCheckRequested>;
+      if (jobId) await failJob(jobId, 'The fact-check failed unexpectedly.');
+    },
+  },
+  async ({ event, step }) => {
+    const { slug, jobId } = event.data as FactCheckRequested;
+    try {
+      const result = await step.run('check the book', () => runFactCheckJob(slug, jobId));
       await step.run('finish job', () => finishJob(jobId, result));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

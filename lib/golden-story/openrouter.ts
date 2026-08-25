@@ -100,6 +100,34 @@ export type Citation = {
 };
 
 /**
+ * Cross a claimed source against what the engine actually cited.
+ *
+ * A grounded reply carries two different things that are easy to mistake for
+ * one: the source URL the *model* says it is reporting from, and the citation
+ * list the *engine* recorded for the request. This crosses them, and it is what
+ * separates "checked" from "said it checked" — a claim attributed to a page the
+ * request never fetched is the failure mode worth catching, in retrieved news
+ * (lib/daily-gold/retrieve.ts) and in a fact-checked biography
+ * (lib/golden-story/factcheck.ts) alike.
+ *
+ * Matching is by origin + path, ignoring query strings and trailing slashes:
+ * engines routinely append tracking parameters to the URL they hand the model,
+ * and treating that as a different page would mark honest citations
+ * unverifiable — which teaches the admin to ignore the flag.
+ */
+export function verify(claimed: string | null, citations: Citation[]): boolean {
+  if (!claimed) return false;
+  const key = (u: string) => {
+    try {
+      const p = new URL(u);
+      return `${p.origin}${p.pathname.replace(/\/+$/, '')}`.toLowerCase();
+    } catch { return u.toLowerCase(); }
+  };
+  const want = key(claimed);
+  return citations.some((c) => key(c.url) === want);
+}
+
+/**
  * Pull `url_citation` annotations out of a chat completion.
  *
  * Tolerant by design: an item with no usable citation is a real outcome that

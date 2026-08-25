@@ -27,6 +27,13 @@ const cx = (...names) => names.filter(Boolean).join(' ');
 
 const SHAPES = [styles['sh-circle'], styles['sh-diamond'], styles['sh-tri'], styles['sh-square']];
 const STAR = '✦'; // ✦
+// The "If they were 10 today" spread is the book's one piece of invention, and
+// the bible is explicit that imagination must never be readable as biography.
+// Two devices carry that, and they are on the page rather than in a footnote:
+// the spread says it is imagining before the child reads a word of it, and its
+// fact is introduced as the true thing the daydream is built on.
+const IMAGINE = 'Let’s imagine';
+const TRUE_ANCHOR = 'But this is true:';
 const BOOK_W = 1300;
 const BOOK_H = 866;
 // Shortest spread we still lay out for. A phone held sideways is much wider
@@ -77,6 +84,10 @@ function toChapter(c, i) {
     number: c.number ?? i + 1,
     title: c.title || '',
     paras: splitParas(c.narrative),
+    // The spread's one tellable fact (docs/golden-stories-bible.md). Absent on
+    // every story written before the bible, which is why nothing here treats
+    // its absence as a problem — <Fact> simply renders nothing.
+    fact: (c.fact || '').trim(),
     art: `Scene — ${c.title || `Chapter ${i + 1}`}`,
     src: c.image_url || null,
     // Page layout for the chapter (`page_span` in the data):
@@ -128,6 +139,23 @@ function Plate({ className = '', art, src, vignette = true }) {
       {src
         ? <img className={styles['plate-img']} src={src} alt={art || ''} />
         : <span className={styles['ph-tag']}>{art}</span>}
+    </div>
+  );
+}
+
+// The one thing from this spread a child could tell somebody tomorrow — the
+// bible's fact-per-spread rule, as it appears on the page. Renders nothing
+// without a fact, so the four books written before the bible are unchanged.
+//
+// `label` is used by one spread only: "If they were 10 today" is imagination,
+// and its fact is the true thing the daydream stands on, introduced as such so
+// the two can never be read as the same kind of claim.
+function Fact({ text, label = null }) {
+  if (!text) return null;
+  return (
+    <div className={styles.fact}>
+      <b>{STAR}</b>
+      <p>{label && <em>{label}</em>}{text}</p>
     </div>
   );
 }
@@ -227,6 +255,7 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
   const quote = cleanQuote(story?.famous_quote);
   const childhood = story?.story_childhood || '';
   const childhoodTitle = story?.story_childhood_title || 'Where the Story Begins';
+  const childhoodFact = (story?.story_childhood_fact || '').trim();
   const takeaway = cleanQuote(story?.story_takeaway);
 
   const birthLabel = story?.birth_date
@@ -309,6 +338,7 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
           <div className={styles['pg-body']}>
             {splitParas(childhood).map((para, j) => <Para key={j} text={para} />)}
           </div>
+          <Fact text={childhoodFact} />
           <Plate className={styles['plate-strip']} art={`Soft landscape of ${story?.country || 'home'}`} src={story?.childhood_image_url || null} />
         </div>
       </>
@@ -335,6 +365,7 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
               <div className={styles['pg-body']}>
                 {ch.paras.map((para, j) => <Para key={j} text={para} />)}
               </div>
+              <Fact text={ch.fact} />
             </div>
           </>
         )}
@@ -381,6 +412,7 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
             <div className={styles['pg-body']}>
               {ch.paras.map((para, j) => <Para key={j} text={para} />)}
             </div>
+            <Fact text={ch.fact} />
           </div>
         </div>
       ), 1);
@@ -401,6 +433,7 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
           <div className={cx(styles['pg-body'], styles.dropcap)}>
             {ch.paras.map((para, j) => <Para key={j} text={para} />)}
           </div>
+          <Fact text={ch.fact} />
         </div>
         <div className={cx(styles.page, styles['page-image'])}>
           <span className={cx(styles['pg-num'], styles['pg-num-r'])}>{rNum}</span>
@@ -489,11 +522,13 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
           // Classic two-column top: narrative left, illustration right.
           <div className={styles['ls-top']}>
             <div className={styles['ls-left']}>
+              <p className={styles.imagine}>{IMAGINE}</p>
               <h2 className={styles['pg-title']}>{modernChapter.title || `If ${first} Were 10 Today`}</h2>
               <Ornament />
               <div className={styles['pg-body']}>
                 {modernChapter.paras.map((para, j) => <Para key={j} text={para} />)}
               </div>
+              <Fact text={modernChapter.fact} label={TRUE_ANCHOR} />
             </div>
             <div className={styles['ls-right']}>
               <Plate art={`${first} as a modern ten-year-old explorer`} src={modernChapter.src} />
@@ -510,11 +545,13 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
               <>
                 {modernChapter.fade && <div className={styles['chapter-wash']} />}
                 <div className={styles['chapter-overlay']}>
+                  <p className={styles.imagine}>{IMAGINE}</p>
                   <h2 className={styles['pg-title']}>{modernChapter.title || `If ${first} Were 10 Today`}</h2>
                   <Ornament />
                   <div className={styles['pg-body']}>
                     {modernChapter.paras.map((para, j) => <Para key={j} text={para} />)}
                   </div>
+                  <Fact text={modernChapter.fact} label={TRUE_ANCHOR} />
                 </div>
               </>
             )}
@@ -698,7 +735,13 @@ export default function GoldenStory({ story, page, onPageChange, embedded = fals
       const availH = box ? box.clientHeight : window.innerHeight;
       const tall = availW < availH * PORTRAIT_RATIO;
       const short = !tall && availH < SHORT_H;
-      const gut = tall ? 24 : short ? 16 : 40;
+      // How much of the table is left showing around the book. The spread
+      // gutter is generous on purpose: the book is meant to read as lying ON
+      // a wooden table (docs/golden-stories-bible.md, "The table"), and at the
+      // old 40 the wood was a sliver on a laptop — the surface has to be seen
+      // for the depth to land. Compact and portrait keep tight gutters; there
+      // the screen is the constraint and the reading size wins.
+      const gut = tall ? 24 : short ? 16 : 76;
       const w = Math.max(1, availW - gut);
       const h = Math.max(1, availH - gut);
       let bw = BOOK_W;

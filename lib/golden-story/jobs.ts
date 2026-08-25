@@ -85,6 +85,7 @@ const KIND_NOUN: Record<JobKind, string> = {
   slot: 'A painting is already rendering',
   rewrite: 'A rewrite is already running',
   ask: 'An ask is already running',
+  factcheck: 'A fact-check is already running',
 };
 
 /**

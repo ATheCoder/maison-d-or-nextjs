@@ -40,6 +40,14 @@ export type RewriteRequested = {
   current: string;
 };
 
+// The event startFactCheck sends and the fact-checker consumes. No payload
+// beyond the subject: the checker re-reads the book itself, so a retried run
+// checks what is on the page now rather than what was there when it was queued.
+export type FactCheckRequested = {
+  slug: string;
+  jobId: number;
+};
+
 // ── Daily Gold (Phase 8) ─────────────────────────────────────────────────────
 // Separate events rather than a subject field on the four above: the bodies
 // share nothing — different tables, different prompts, different failure modes
