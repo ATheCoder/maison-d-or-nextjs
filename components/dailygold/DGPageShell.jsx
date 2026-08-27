@@ -134,7 +134,6 @@ export const NAV_SHELL_CSS = `
     width: 32px; height: 32px;
     font-size: 1rem;
   }
-  .dg-rail-av-key { background: var(--surface-tint); }
   .dg-rail-id-label {
     display: flex;
     flex-direction: column;

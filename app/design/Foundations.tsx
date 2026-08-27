@@ -1,7 +1,7 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import { Button, Card, HeartToggle, Prose, Swatch, TextLink } from '@/components/ds';
+import { Button, Card, Code, HeartToggle, Prose, Swatch, TextLink } from '@/components/ds';
 
 /**
  * §5 addendum — the decided third of the §7 foundations list, written down:
@@ -123,13 +123,26 @@ export default function Foundations() {
           <Button loading>Gathering wonder</Button>
           <HeartToggle variant="chip" aria-label="Save this" />
         </div>
+        <p className="type-body-ui mt-8 text-primary">Gold shimmer</p>
+        <Prose variant="caption" className="mt-1 mb-4">
+          One ambient motion, and the only one the house runs unprompted:{' '}
+          <Code>.gold-shimmer</Code> sweeps the accent across
+          the glyphs of the gold half of a phrase — the landing wordmark, the Daily
+          Gold rail&rsquo;s, and the accented word in the gallery entrance heading.
+          Both stops are tokens, so it re-grounds with the surface; put it on a span
+          around the shimmering words only, never the whole phrase.
+        </Prose>
+        <p className="type-display-section text-primary">
+          Today the world is in <span className="gold-shimmer">Bergen</span>
+        </p>
         <Prose variant="caption" className="mt-5">
           This browser is currently asking for{' '}
           <span className="text-primary">{reducedMotion ? 'reduced' : 'full'}</span>{' '}
           motion. Under reduced motion nothing goes dead — state changes still land,
           they just stop travelling: transitions collapse to 0s, the lift and press
           stop moving, the primary&rsquo;s sheen and the heart&rsquo;s burst are
-          withheld, and the loading star stops turning and winks instead.
+          withheld, the loading star stops turning and winks instead, and the
+          shimmer settles onto flat accent ink.
         </Prose>
       </div>
     </div>
