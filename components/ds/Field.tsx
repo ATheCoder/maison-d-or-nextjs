@@ -1,5 +1,6 @@
-import { createElement, useId } from 'react';
+import { createElement } from 'react';
 import type { ComponentPropsWithRef, ReactNode } from 'react';
+import FieldShell from './FieldShell';
 
 /**
  * Field — §4 form field primitive. A labelled control with one message seat
@@ -15,6 +16,15 @@ import type { ComponentPropsWithRef, ReactNode } from 'react';
  * The label wears the editorial label in secondary ink — deliberately
  * quieter than an Eyebrow: accent-readable is the page's wayfinding, not
  * the form's. aria-describedby points at whichever message is showing.
+ *
+ * ── What lives here, and what lives in FieldShell ─────────────────────────
+ * The label, the sr-only branch, the message seat, the role="alert" and the
+ * three wiring attributes are ALL FieldShell's now — this component is the
+ * coat and the tag dispatch, and nothing else. That split exists because the
+ * house has one control Field cannot host (DatePicker, a composite), and the
+ * screens that use it were hand-copying the label classes above rather than
+ * going without them. There is one seat with two front doors; read
+ * FieldShell.tsx for the argument in full.
  *
  * `as` picks the control. All three wear the same coat, the same label and
  * the same message seat, because to a person filling in a form they are the
@@ -52,7 +62,7 @@ import type { ComponentPropsWithRef, ReactNode } from 'react';
  */
 type FieldSize = 'md' | 'sm';
 
-type FieldShell = {
+type FieldShellPart = {
   label: string;
   labelHidden?: boolean;
   hint?: string;
@@ -74,10 +84,10 @@ type FieldShell = {
    image modal's file input is driven from a ref by the "Upload a file" button
    in its footer. */
 type FieldProps =
-  | ({ as?: 'input' } & FieldShell & Omit<ComponentPropsWithRef<'input'>, 'size'>)
-  | ({ as: 'select'; children?: ReactNode } & FieldShell &
+  | ({ as?: 'input' } & FieldShellPart & Omit<ComponentPropsWithRef<'input'>, 'size'>)
+  | ({ as: 'select'; children?: ReactNode } & FieldShellPart &
       Omit<ComponentPropsWithRef<'select'>, 'size'>)
-  | ({ as: 'textarea' } & FieldShell & ComponentPropsWithRef<'textarea'>);
+  | ({ as: 'textarea' } & FieldShellPart & ComponentPropsWithRef<'textarea'>);
 
 /* Per-tag additions to the shared `field` coat. Spelled out rather than
    interpolated: Tailwind v4 scans source text. */
@@ -87,20 +97,19 @@ const CONTROL: Record<'input' | 'select' | 'textarea', string> = {
   textarea: 'resize-y',
 };
 
-/* The box, per size — type, padding, and how far the control sits under its
-   label. Written out in full rather than composed, so both scales are readable
-   in one glance and Tailwind's source scan sees every class.
+/* The box, per size — type and padding. Written out in full rather than
+   composed, so both scales are readable in one glance and Tailwind's source
+   scan sees every class. The drop under the label is NOT here: that is the
+   seat's spacing, not the control's, and it lives in FieldShell so a
+   DatePicker gets the identical gap without a margin of its own.
 
-   `rounded-md` is deliberately NOT in here: globals.css §3.4 gives one radius
-   to buttons, fields and cards, so a small field is the same corner in less
-   room, exactly as a small button is. It rides on every control below instead,
-   where neither size can move it. */
-const BOX: Record<FieldSize, { control: string; gap: string }> = {
-  md: { control: 'type-body-ui px-4 py-2.5', gap: 'mt-2' },
-  sm: {
-    control: 'font-sans text-[length:var(--type-caption)] leading-[1.5] px-3 py-2',
-    gap: 'mt-1.5',
-  },
+   `rounded-md` is deliberately NOT in here either: globals.css §3.4 gives one
+   radius to buttons, fields and cards, so a small field is the same corner in
+   less room, exactly as a small button is. It rides on every control below
+   instead, where neither size can move it. */
+const BOX: Record<FieldSize, string> = {
+  md: 'type-body-ui px-4 py-2.5',
+  sm: 'font-sans text-[length:var(--type-caption)] leading-[1.5] px-3 py-2',
 };
 
 export default function Field({
@@ -114,39 +123,28 @@ export default function Field({
   className = '',
   ...rest
 }: FieldProps) {
-  const autoId = useId();
-  const inputId = id ?? autoId;
-  const message = error ?? hint;
-  const messageId = message ? `${inputId}-message` : undefined;
   return (
-    <div className={className}>
-      <label
-        htmlFor={inputId}
-        className={labelHidden ? 'sr-only' : 'type-label-editorial block text-secondary'}
-      >
-        {label}
-      </label>
+    <FieldShell
+      label={label}
+      labelHidden={labelHidden}
+      hint={hint}
+      error={error}
+      size={size}
+      id={id}
+      className={className}
+    >
       {/* createElement rather than three near-identical JSX branches: the
           props above have already been narrowed by the union, and the only
           thing that varies below is the tag name. The cast is the one place
           that union collapses — TypeScript cannot see that `rest` and `as`
           came from the same member of it. */}
-      {createElement(as, {
-        ...(rest as Record<string, unknown>),
-        id: inputId,
-        'aria-invalid': error ? true : undefined,
-        'aria-describedby': messageId,
-        className: `field rounded-md ${BOX[size].control} ${labelHidden ? '' : `${BOX[size].gap} `}${CONTROL[as]}`.trim(),
-      })}
-      {/* role="alert" only on the error branch: a hint is there from the
-          start and announcing it would talk over the label, but an error
-          arrives in response to something the person just did and has to be
-          heard, not merely rendered. */}
-      {message && (
-        <p id={messageId} role={error ? 'alert' : undefined} className="type-caption mt-1.5">
-          {error ? <span className="text-danger-readable">{error}</span> : hint}
-        </p>
-      )}
-    </div>
+      {(control) =>
+        createElement(as, {
+          ...(rest as Record<string, unknown>),
+          ...control,
+          className: `field rounded-md ${BOX[size]} ${CONTROL[as]}`.trim(),
+        })
+      }
+    </FieldShell>
   );
 }

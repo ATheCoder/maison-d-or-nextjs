@@ -56,6 +56,19 @@ const SPECIMENS: { token: string; spec: string; className: string; copy: string 
     className: 'type-caption',
     copy: 'The harbour at Essaouira, photographed a little after dawn.',
   },
+  // The third face, and the only one that is not a voice. Nothing editorial
+  // is ever set in it: it carries the strings a person has to check character
+  // by character — a one-time invite link, a slug retyped to confirm a
+  // deletion — where l/1/I and 0/O being indistinguishable is a real failure.
+  // Caption-sized on purpose (a mono face reads larger than the sans beside
+  // it at the same nominal size), and text-primary rather than the caption's
+  // secondary, because these strings ARE the content at that moment.
+  {
+    token: 'mono',
+    spec: 'System mono · --type-caption · never editorial',
+    className: 'type-mono text-primary',
+    copy: 'https://maisondore.example/invite/9f3c1a7e-4b28-4d51-bb90-6e2a0c7d51f4',
+  },
 ];
 
 export default function TypeSpecimen() {

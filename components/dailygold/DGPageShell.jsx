@@ -124,14 +124,14 @@ export const NAV_SHELL_CSS = `
     border-top: 1px solid var(--border-fine);
   }
   .dg-rail-id-btn { min-height: 48px; padding: 6px 8px; }
+  /* Size only. The circle, the ring, the centring and the glyph size are the
+     Avatar primitive's now (components/ds/Avatar). What stays here is the one
+     thing that genuinely belongs to this stylesheet: the rail shrinks its
+     mark at the narrow breakpoint below, and a primitive should not carry a
+     breakpoint that belongs to one call site. This rule is UNLAYERED, so it
+     wins over Avatar's layered size utility without an !important. */
   .dg-rail-av {
     width: 32px; height: 32px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    border: 1.5px solid color-mix(in srgb, var(--accent) 50%, transparent);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     font-size: 1rem;
   }
   .dg-rail-av-key { background: var(--surface-tint); }

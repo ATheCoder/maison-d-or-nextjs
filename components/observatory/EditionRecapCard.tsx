@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { Chip, selectPillClasses } from '@/components/ds';
 import type { ObservatoryData } from '@/app/(dg)/parent-observatory/actions';
 import { weekdayForKey } from '@/lib/family-time';
 import { formatMinutes } from '@/lib/observatory/format';
 import { EmptyNote } from './EmptyNote';
+import { LedgerCard, LedgerCardHead } from './LedgerCard';
 import styles from './observatory.module.css';
 
 /**
@@ -13,6 +15,12 @@ import styles from './observatory.module.css';
  * both the cheapest way to honour "no new API routes" and the strictest reading
  * of aggregates-only — the page holds exactly one day's worth of detail at a
  * time.
+ *
+ * Being links is also why they are not `Chip`, which is inert by design. They
+ * are `SelectPill` in its `offer` variant — the unchosen days are dashed and
+ * faint because they are days you could open rather than peers of the one you
+ * are on, which is exactly what the mock's dashed edge was saying. The chips
+ * below them, which only state a figure, ARE Chips.
  *
  * The denominator is what was *printed* that day, so a paper with no Good News
  * column counts out of eight rather than nine and the child is not shown as
@@ -30,13 +38,13 @@ export function EditionRecapCard({
   const { availableDays, selected } = recap;
 
   return (
-    <section className={`${styles.card} ${styles.cardWide}`}>
+    <LedgerCard variant="wide">
       <div className={styles.recapHead}>
         <div>
-          <p className={styles.cardkick}>Edition recap</p>
-          <h2 className={styles.cardtitle}>
-            {selected ? `${weekdayForKey(selected.day)}’s paper` : 'The paper'}
-          </h2>
+          <LedgerCardHead
+            kick="Edition recap"
+            title={selected ? `${weekdayForKey(selected.day)}’s paper` : 'The paper'}
+          />
         </div>
         {availableDays.length > 0 ? (
           <nav className={styles.dayChips} aria-label="Choose an edition">
@@ -47,7 +55,7 @@ export function EditionRecapCard({
                 <Link
                   key={day.day}
                   href={`/parent-observatory/${childId}?edition=${day.day}`}
-                  className={`${styles.chip} ${isOn ? styles.chipOn : styles.chipDim}`}
+                  className={selectPillClasses({ variant: 'offer' })}
                   aria-current={isOn ? 'page' : undefined}
                 >
                   {day.label}
@@ -60,16 +68,16 @@ export function EditionRecapCard({
 
       {selected ? (
         <>
-          <p className={styles.cardnote}>
+          <p className={`type-caption ${styles.cardnote}`}>
             {childName} opened {selected.visited} of {selected.total} sections
             {selected.opened.length > 0 ? ', and lingered on:' : '.'}
           </p>
           {selected.opened.length > 0 ? (
             <div className={styles.chips}>
               {selected.opened.map((item) => (
-                <span key={item.key} className={styles.chip}>
+                <Chip key={item.key} className={styles.chip}>
                   {item.label} · {formatMinutes(item.ms)}
-                </span>
+                </Chip>
               ))}
             </div>
           ) : null}
@@ -77,6 +85,6 @@ export function EditionRecapCard({
       ) : (
         <EmptyNote>No editions opened yet.</EmptyNote>
       )}
-    </section>
+    </LedgerCard>
   );
 }

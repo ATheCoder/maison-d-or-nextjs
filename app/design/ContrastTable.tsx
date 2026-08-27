@@ -62,6 +62,7 @@ const TOKENS = [
   '--heart-saved',
   '--danger',
   '--danger-readable',
+  '--success-readable',
 ] as const;
 
 // floor: 4.5 = body/functional text (AA), 3 = metadata & non-text (1.4.11),
@@ -101,6 +102,14 @@ const PAIRS: { fg: string; bg: string; use: string; floor: 4.5 | 3 | 0; scopes: 
   { fg: '--danger-readable', bg: '--surface-page', use: 'Error message under a field', floor: 4.5, scopes: SCOPES },
   { fg: '--danger', bg: '--surface-raised', use: 'Invalid field border on its fill (non-text)', floor: 3, scopes: SCOPES },
   { fg: '--danger', bg: '--surface-page', use: 'Invalid field border on the page (non-text)', floor: 3, scopes: SCOPES },
+  // Confirmations are functional small text on the same terms errors are, and
+  // they get the same house-wide treatment: one token per scope, forest on the
+  // light five and sage on the two interludes where forest disappears. There
+  // is no non-text tier to grade because there is no success BORDER anywhere
+  // in the house — see the token's own note in globals.css §1. Both grounds
+  // are measured because a "Saved." line lands on a card as often as on paint.
+  { fg: '--success-readable', bg: '--surface-page', use: 'Confirmation message', floor: 4.5, scopes: SCOPES },
+  { fg: '--success-readable', bg: '--surface-raised', use: 'Confirmation on a raised card', floor: 4.5, scopes: SCOPES },
 ];
 
 function parseColor(value: string): Rgb | null {

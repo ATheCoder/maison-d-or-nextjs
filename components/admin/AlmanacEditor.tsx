@@ -41,7 +41,7 @@ import {
 import {
   acceptCandidate, getDgJobs, rejectAllCandidates, rejectCandidate,
 } from '@/app/admin/daily-gold/aiActions';
-import { Button, buttonClasses, Field, Heading, TextLink } from '@/components/ds';
+import { Button, buttonClasses, Field, Heading, Meter, TextLink } from '@/components/ds';
 
 const CSS = `
 .alm {
@@ -109,8 +109,9 @@ const CSS = `
 .alm .ev:hover { background:rgba(201,169,110,.1); }
 .alm .ev.on { background:#fffdf8; border-color:var(--line2); color:var(--brown); box-shadow:0 2px 10px rgba(40,26,12,.06); }
 .alm .ev .n { color:var(--brown3); font-weight:700; flex:0 0 auto; }
-.alm .prog { height:5px; border-radius:3px; background:rgba(92,74,42,.1); overflow:hidden; }
-.alm .prog > i { display:block; height:100%; background:linear-gradient(90deg,#d8bd86,#c9a96e); }
+/* .prog was here — the ds Meter primitive now, along with the last two raw
+   hexes this stylesheet was mixing a gradient from. (No backticks in this
+   block: it is a template literal, and one would end the string.) */
 
 .alm .fgroup { display:flex; flex-direction:column; gap:8px; }
 .alm .flbl { display:flex; align-items:center; justify-content:space-between; gap:10px; }
@@ -319,7 +320,10 @@ export default function AlmanacEditor({ day }: { day: AlmanacDay }) {
                   ? ` — ${publishedEvents} published, ${allEvents.length - publishedEvents} awaiting review.`
                   : '.'}
               </div>
-              <div className="prog"><i style={{ width: `${Math.round((covered / bandYears.length) * 100)}%` }} /></div>
+              <Meter
+                label="Years in this band with something to tell"
+                value={bandYears.length ? Math.round((covered / bandYears.length) * 100) : 0}
+              />
               <div className="note">
                 A year with nothing worth telling a seven-year-old is finished, not pending.
               </div>

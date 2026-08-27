@@ -40,7 +40,7 @@ import { withKeys, stripKeys, type DraftPerson, type Keyed } from './draftTypes'
 import { buildSlotViews, type SlotView } from './imageSlots';
 import { toImageSlot } from '@/lib/golden-story/slots';
 import DatePicker from '@/components/ui/DatePicker';
-import { Button, buttonClasses, Card, Field, Heading } from '@/components/ds';
+import { Button, buttonClasses, Card, Field, Heading, Meter } from '@/components/ds';
 import FactCheckPanel, { FactCheckChip } from './FactCheckPanel';
 import { factCheckCounts } from '@/lib/golden-story/factCheckCounts';
 import ImageModal from './ImageModal';
@@ -758,7 +758,13 @@ function AIPanel({
                 <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--ink)' }}>Drafting…</span>
                 <span className={`${styles.chip} ${styles.chipAmber}`}>running</span>
               </div>
-              <div className={styles.prog}><i className={styles.progFill} style={{ width: `${stages.length ? (stages.filter((s) => s.state === 'done').length / stages.length) * 100 : 0}%` }} /></div>
+              {/* Real progress, so it carries a label and becomes an announced
+                  progressbar — the distinction Meter is built around. Someone
+                  waiting on a draft is exactly who needs to hear it. */}
+              <Meter
+                label="Drafting progress"
+                value={stages.length ? (stages.filter((s) => s.state === 'done').length / stages.length) * 100 : 0}
+              />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 14 }}>
                 {stages.map((s) => (
                   <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
@@ -1488,7 +1494,10 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
                 {illus.filled}<span className={styles.muted} style={{ fontSize: 12 }}> / {illus.total}</span>
               </span>
             </div>
-            <div className={styles.prog}><i className={styles.progFill} style={{ width: `${illus.total ? (illus.filled / illus.total) * 100 : 0}%` }} /></div>
+            <Meter
+              label="Illustrations painted"
+              value={illus.total ? (illus.filled / illus.total) * 100 : 0}
+            />
             {illus.failed > 0 && (
               <Button variant="primary" size="sm" onClick={() => startImagesBatch(illus.failedFiles)} disabled={illus.batchRunning}>Retry failed ({illus.failed})</Button>
             )}

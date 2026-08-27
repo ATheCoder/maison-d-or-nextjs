@@ -1,10 +1,37 @@
 'use client';
 /**
  * The /family management surface (auth-plan phase 2): rename the family,
- * see guardians, create/revoke co-guardian invites. Invite links are shown
- * once at creation (only the hash is stored) with a copy button.
+ * set the day boundary, keep the children, see guardians, create/revoke
+ * co-guardian invites. Invite links are shown once at creation (only the hash
+ * is stored) with a copy button.
+ *
+ * ── On the primitives (2026-08-27) ────────────────────────────────────────
+ * This room used to open with a private palette — `C.gold`, `C.ivory`,
+ * `C.ink` — and five style objects (`card`, `h2`, `input`, `buttonGold`,
+ * `smallLink`) built on top of it, which is the exact pattern the admin
+ * desk's five private stylesheets were deleted for. It is now composed
+ * entirely from components/ds, like the front door and the desk, and the
+ * contract test guards it.
+ *
+ * The most visible thing that fixed: this page painted its own ivory ground
+ * at 100vh *inside* the (dg) shell, which was already painting
+ * --surface-page. The rail's theme picker is mounted on every destination in
+ * the group, including this one, so a grown-up could switch the house to
+ * espresso and watch every room but this one follow. There is no ground here
+ * any more — the shell's is the ground, and all seven [data-theme] scopes
+ * reach the cards, fields, buttons and hairlines below.
+ *
+ * ── The primitives this room asked for ───────────────────────────────────
+ * Migrating it turned up eight things the house kept hand-rolling, worked
+ * around here for one commit and then built: Avatar, Note, ListRow, Code,
+ * FieldShell, Confirm and PageHeader in components/ds, and --success-readable
+ * in globals.css §1. All of them are stamped on /design. Nothing in this file
+ * is a local copy of a primitive any more — the only thing still private is
+ * `Section`, which is a Card with a Heading in it and belongs to this room's
+ * five cards rather than to the house.
  */
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   getFamilyOverview,
   renameFamily,
@@ -24,14 +51,23 @@ import { ageOnDay, birthDateBounds, formatBirthDate, normalizeBirthDate } from '
 import DatePicker from '@/components/ui/DatePicker';
 import SignOutButton from '@/components/auth/SignOutButton';
 import { authClient } from '@/lib/auth-client';
-
-const C = {
-  gold: '#C9A96E',
-  ivory: '#F5F0E7',
-  ink: '#241A0C',
-  brown: '#5C4A2A',
-  muted: '#8B7355',
-};
+import {
+  Avatar,
+  Button,
+  Card,
+  Code,
+  Confirm,
+  Container,
+  Eyebrow,
+  Field,
+  FieldShell,
+  Heading,
+  ListRow,
+  Note,
+  PageHeader,
+  Prose,
+  TextLink,
+} from '@/components/ds';
 
 /**
  * Every zone the runtime knows, with UTC guaranteed present: a family that has
@@ -45,46 +81,36 @@ const TIME_ZONES: string[] = (() => {
   return Array.from(new Set(['UTC', ...supported]));
 })();
 
-const card: React.CSSProperties = {
-  background: 'rgba(255,248,238,0.8)',
-  border: '1px solid rgba(201,169,110,0.25)',
-  borderRadius: 14,
-  padding: '1.5rem',
-  marginBottom: '1.25rem',
-};
+/**
+ * A card in the ledger: the title, then whatever the section asks. Every one
+ * of the five is the same shape, and the title is a Heading rather than a raw
+ * <h2> — Heading renders <p role="heading" aria-level>, so the outline is
+ * real without the room owning six type sizes.
+ */
+function Section({ title, className = '', children }: { title: string; className?: string; children: React.ReactNode }) {
+  return (
+    <Card as="section" padding="md" className={`mb-5 ${className}`}>
+      <Heading level={2} variant="story" className="mb-4">
+        {title}
+      </Heading>
+      {children}
+    </Card>
+  );
+}
 
-const h2: React.CSSProperties = {
-  fontFamily: '"Playfair Display", Georgia, serif',
-  fontSize: '1.1rem',
-  fontWeight: 600,
-  color: C.ink,
-  margin: '0 0 1rem',
-};
-
-const input: React.CSSProperties = {
-  padding: '0.6rem 0.8rem',
-  borderRadius: 10,
-  border: '1px solid rgba(201,169,110,0.45)',
-  background: '#FFFDF9',
-  fontFamily: 'Lato, sans-serif',
-  fontSize: '0.85rem',
-  color: C.ink,
-  outline: 'none',
-};
-
-const buttonGold: React.CSSProperties = {
-  padding: '0.6rem 1.2rem',
-  borderRadius: 10,
-  border: 'none',
-  background: C.gold,
-  color: '#FFF',
-  fontFamily: 'Lato, sans-serif',
-  fontSize: '0.75rem',
-  fontWeight: 700,
-  letterSpacing: '0.08em',
-  textTransform: 'uppercase',
-  cursor: 'pointer',
-};
+/**
+ * What went wrong with whatever was just attempted. role="alert" because it
+ * arrives in answer to something the grown-up did — the field-level messages
+ * get theirs from Field, which is where an error about ONE answer belongs.
+ */
+function FormError({ error }: { error: string | null }) {
+  if (!error) return null;
+  return (
+    <Prose variant="caption" tone="none" measure={false} role="alert" className="mt-2.5 text-danger-readable">
+      {error}
+    </Prose>
+  );
+}
 
 function ChildrenSection({ overview, refresh }: { overview: FamilyOverview; refresh: () => Promise<void> }) {
   const bounds = birthDateBounds();
@@ -95,6 +121,8 @@ function ChildrenSection({ overview, refresh }: { overview: FamilyOverview; refr
   const [pinDraft, setPinDraft] = useState('');
   const [dobEditFor, setDobEditFor] = useState<string | null>(null);
   const [dobDraft, setDobDraft] = useState('');
+  const [deleting, setDeleting] = useState<FamilyOverview['children'][number] | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -107,6 +135,8 @@ function ChildrenSection({ overview, refresh }: { overview: FamilyOverview; refr
   const [gatePin, setGatePin] = useState('');
   const [gatePassword, setGatePassword] = useState('');
   const [gateMsg, setGateMsg] = useState<string | null>(null);
+  const [gateOk, setGateOk] = useState(false);
+  const [gatePending, setGatePending] = useState(false);
 
   async function addChild() {
     if (pending) return;
@@ -148,164 +178,241 @@ function ChildrenSection({ overview, refresh }: { overview: FamilyOverview; refr
     await refresh();
   }
 
+  async function confirmDelete() {
+    if (!deleting || deletePending) return;
+    setDeletePending(true);
+    await deleteChildProfile(deleting.id);
+    setDeletePending(false);
+    setDeleting(null);
+    await refresh();
+  }
+
   async function saveGatePin() {
+    if (gatePending) return;
+    setGatePending(true);
     setGateMsg(null);
     const res = await setGuardianPin(gatePin, gatePassword);
+    setGatePending(false);
+    setGateOk(res.ok);
     setGateMsg(res.ok ? 'Parent PIN saved.' : res.error ?? null);
     if (res.ok) { setGatePin(''); setGatePassword(''); await refresh(); }
   }
 
   return (
     <>
-      <section style={card}>
-        <h2 style={h2}>Children</h2>
-
-        {overview.children.map((c) => {
-          const a = AVATARS[c.avatar as AvatarKey] ?? AVATARS.sun;
-          return (
-            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.55rem 0', borderBottom: '1px solid rgba(201,169,110,0.15)' }}>
-              <div style={{ width: 38, height: 38, borderRadius: '50%', background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
-                {a.emoji}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: '0.88rem', color: C.ink }}>{c.displayName}</span>
-                <span style={{ fontSize: '0.72rem', color: C.muted, marginLeft: 8 }}>
-                  age {ageOnDay(c.birthDate) ?? '—'} · born {formatBirthDate(c.birthDate) ?? 'unknown'}
-                  {c.hasPin ? ' · PIN set 🔒' : ''}
-                </span>
-              </div>
-              {dobEditFor === c.id ? (
-                <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  <DatePicker
-                    value={dobDraft} min={bounds.min} max={bounds.max}
-                    onChange={setDobDraft}
-                    aria-label={`${c.displayName}'s date of birth`}
-                    invalid={dobDraft !== '' && !normalizeBirthDate(dobDraft).ok}
-                    style={{ width: 186 }}
-                    autoFocus
-                  />
-                  <button onClick={() => saveBirthday(c)} style={{ ...buttonGold, padding: '0.45rem 0.8rem' }}>Save</button>
-                  <button onClick={() => { setDobEditFor(null); setDobDraft(''); }} style={smallLink}>Cancel</button>
-                </span>
-              ) : pinEditFor === c.id ? (
-                <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                  <input
-                    type="password" inputMode="numeric" maxLength={4} placeholder="4 digits"
-                    value={pinDraft}
-                    onChange={(e) => setPinDraft(e.target.value.replace(/\D/g, ''))}
-                    style={{ ...input, width: 90, textAlign: 'center' }}
-                    autoFocus
-                  />
-                  <button onClick={() => savePin(c.id)} style={{ ...buttonGold, padding: '0.45rem 0.8rem' }}>Save</button>
-                  <button onClick={() => { setPinEditFor(null); setPinDraft(''); }} style={smallLink}>Cancel</button>
-                </span>
-              ) : (
-                <span style={{ display: 'flex', gap: '0.7rem' }}>
-                  <button onClick={() => { setDobEditFor(c.id); setDobDraft(c.birthDate); }} style={smallLink}>
-                    Birthday
-                  </button>
-                  <button onClick={() => { setPinEditFor(c.id); setPinDraft(''); }} style={smallLink}>
-                    {c.hasPin ? 'Change PIN' : 'Set PIN'}
-                  </button>
-                  {c.hasPin && (
-                    <button onClick={async () => { await removeChildPin(c.id); await refresh(); }} style={smallLink}>
-                      Remove PIN
-                    </button>
-                  )}
-                  <button
-                    onClick={async () => { if (confirm(`Delete ${c.displayName}'s profile?`)) { await deleteChildProfile(c.id); await refresh(); } }}
-                    style={{ ...smallLink, color: '#A4442E' }}
-                  >
-                    Delete
-                  </button>
-                </span>
-              )}
+      <Section title="Children">
+        {overview.children.map((c) => (
+          <ListRow key={c.id}>
+            <Avatar avatar={c.avatar} />
+            <div className="min-w-0 flex-1">
+              <span className="type-body-ui text-primary">{c.displayName}</span>
+              <span className="type-caption ml-2">
+                age {ageOnDay(c.birthDate) ?? '—'} · born {formatBirthDate(c.birthDate) ?? 'unknown'}
+                {c.hasPin ? ' · PIN set 🔒' : ''}
+              </span>
             </div>
-          );
-        })}
+            {dobEditFor === c.id ? (
+              <span className="flex flex-wrap items-center justify-end gap-2">
+                {/* No FieldShell here on purpose: this picker replaces a
+                    value already written beside it, so the row IS the label,
+                    and a second one would say the child's name twice. The
+                    add-child picker below asks a fresh question and gets the
+                    full seat. */}
+                <DatePicker
+                  value={dobDraft} min={bounds.min} max={bounds.max}
+                  onChange={setDobDraft}
+                  aria-label={`${c.displayName}'s date of birth`}
+                  invalid={dobDraft !== '' && !normalizeBirthDate(dobDraft).ok}
+                  style={{ width: 186 }}
+                  autoFocus
+                />
+                <Button size="sm" onClick={() => saveBirthday(c)}>Save</Button>
+                <Button variant="link" size="sm" onClick={() => { setDobEditFor(null); setDobDraft(''); }}>
+                  Cancel
+                </Button>
+              </span>
+            ) : pinEditFor === c.id ? (
+              <span className="flex items-center gap-2">
+                <Field
+                  size="sm"
+                  label={`${c.displayName}'s PIN`}
+                  labelHidden
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="4 digits"
+                  value={pinDraft}
+                  onChange={(e) => setPinDraft(e.target.value.replace(/\D/g, ''))}
+                  className="w-24"
+                  style={{ textAlign: 'center' }}
+                  autoFocus
+                />
+                <Button size="sm" onClick={() => savePin(c.id)}>Save</Button>
+                <Button variant="link" size="sm" onClick={() => { setPinEditFor(null); setPinDraft(''); }}>
+                  Cancel
+                </Button>
+              </span>
+            ) : (
+              <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5">
+                <Button variant="link" size="sm" onClick={() => { setDobEditFor(c.id); setDobDraft(c.birthDate); }}>
+                  Birthday
+                </Button>
+                <Button variant="link" size="sm" onClick={() => { setPinEditFor(c.id); setPinDraft(''); }}>
+                  {c.hasPin ? 'Change PIN' : 'Set PIN'}
+                </Button>
+                {c.hasPin && (
+                  <Button variant="link" size="sm" onClick={async () => { await removeChildPin(c.id); await refresh(); }}>
+                    Remove PIN
+                  </Button>
+                )}
+                {/* The house coat for a destructive verb on a row — the same
+                    one the admin desk wears — rather than a red underlined
+                    word that looked like the three beside it. */}
+                <Button variant="danger" size="sm" onClick={() => setDeleting(c)}>Delete</Button>
+              </span>
+            )}
+          </ListRow>
+        ))}
 
         {/* Add child */}
-        <div style={{ marginTop: '1rem' }}>
-          <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '0.6rem', flexWrap: 'wrap' }}>
-            <input placeholder="Child's name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} style={{ ...input, flex: '1 1 9rem', minWidth: 0 }} />
-            <DatePicker
-              value={birthDate} min={bounds.min} max={bounds.max}
-              onChange={setBirthDate}
-              invalid={birthDate !== '' && !born.ok}
-              aria-label="Date of birth"
-              style={{ width: 186 }}
+        <div className="mt-5">
+          {/* items-start, not items-end: the birthday carries a message seat
+              under it and the other two do not, so aligning bottoms would hang
+              Add off the hint line instead of the control line. */}
+          <div className="mb-3 flex flex-wrap items-start gap-3">
+            <Field
+              label="Child's name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={40}
+              placeholder="Amélie"
+              className="min-w-0 flex-[1_1_9rem]"
             />
-            <button
-              onClick={addChild}
-              disabled={pending || !canAdd}
-              style={{ ...buttonGold, opacity: pending || !canAdd ? 0.5 : 1, cursor: pending || !canAdd ? 'default' : 'pointer' }}
+            {/* The one control Field cannot host, wearing Field's label and
+                Field's message seat anyway. The hint doubles as the validity
+                line: an empty box says what a birthday is for, a good one
+                reads the date back, a bad one takes the error branch. */}
+            <FieldShell
+              label="Their birthday"
+              hint={born.ok || birthDate === ''
+                ? birthDate === ''
+                  ? 'So the paper can choose stories that fit.'
+                  : `${formatBirthDate(birthDate)} — that makes them ${ageOnDay(birthDate)}.`
+                : undefined}
+              error={birthDate !== '' && !born.ok ? born.error : undefined}
             >
-              Add
-            </button>
+              {({ id, 'aria-describedby': describedBy, 'aria-invalid': isInvalid }) => (
+                <DatePicker
+                  id={id}
+                  aria-describedby={describedBy}
+                  invalid={!!isInvalid}
+                  value={birthDate} min={bounds.min} max={bounds.max}
+                  onChange={setBirthDate}
+                  style={{ width: 186 }}
+                />
+              )}
+            </FieldShell>
+            {/* The button sits on the CONTROL line, which means clearing the
+                height of a label and its gap first. Written as an empty label
+                wearing the real label's classes rather than as a margin: the
+                two can then never drift apart, because they are the same two
+                rules Field and FieldShell use. */}
+            <div>
+              <span aria-hidden className="type-label-editorial block text-secondary">&nbsp;</span>
+              <div className="mt-2">
+                <Button onClick={addChild} disabled={!canAdd} loading={pending}>Add</Button>
+              </div>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+
+          <span className="type-label-editorial block text-secondary">Their emblem</span>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
             {(Object.keys(AVATARS) as AvatarKey[]).map((k) => (
-              <button
+              // `bare` brings the focus ring the raw <button> never had;
+              // Avatar brings the circle and the choice mark, which is
+              // --accent and therefore follows the room.
+              <Button
                 key={k}
+                variant="bare"
                 onClick={() => setAvatar(k)}
-                style={{
-                  width: 36, height: 36, borderRadius: '50%', fontSize: '1.05rem', cursor: 'pointer',
-                  background: AVATARS[k].bg,
-                  border: avatar === k ? `2.5px solid ${C.gold}` : '2.5px solid transparent',
-                }}
+                aria-pressed={avatar === k}
+                aria-label={k}
+                className="rounded-full"
               >
-                {AVATARS[k].emoji}
-              </button>
+                <Avatar avatar={k} selected={avatar === k} />
+              </Button>
             ))}
           </div>
-          {birthDate !== '' && !born.ok && (
-            <p style={{ fontSize: '0.78rem', color: '#A4442E', margin: '0.6rem 0 0' }}>{born.error}</p>
-          )}
-          {error && <p style={{ fontSize: '0.78rem', color: '#A4442E', margin: '0.6rem 0 0' }}>{error}</p>}
+
+          <FormError error={error} />
         </div>
-      </section>
+      </Section>
+
+      {deleting && (
+        // No requireTyped: a reader's profile is recoverable in the ways that
+        // matter — their name and birthday live in the grown-up's head — and
+        // making someone retype a name on every delete teaches them to stop
+        // reading the dialog. See Confirm's docstring.
+        <Confirm
+          title={`Delete ${deleting.displayName}'s profile?`}
+          confirmLabel="Delete profile"
+          cancelLabel="Keep them"
+          pending={deletePending}
+          onCancel={() => setDeleting(null)}
+          onConfirm={confirmDelete}
+        >
+          Their reading history, saved pages and flag collection go with them.
+          This cannot be undone.
+        </Confirm>
+      )}
 
       {/* Guardian gate PIN */}
-      <section style={card}>
-        <h2 style={h2}>Your parent PIN</h2>
-        <p style={{ fontSize: '0.78rem', color: C.muted, margin: '0 0 0.8rem' }}>
+      <Section title="Your parent PIN">
+        <Prose variant="caption" measure={false} className="mb-3.5">
           {overview.guardianHasPin
             ? 'Used at the grown-ups gate and to unlock child profiles. Enter your password to change it.'
             : 'A quick 4-digit code for the grown-ups gate, instead of typing your password on a shared device.'}
-        </p>
-        <div style={{ display: 'flex', gap: '0.6rem' }}>
-          <input
-            type="password" inputMode="numeric" maxLength={4} placeholder="New PIN"
-            value={gatePin} onChange={(e) => setGatePin(e.target.value.replace(/\D/g, ''))}
-            style={{ ...input, width: 100, textAlign: 'center' }}
+        </Prose>
+        <div className="flex items-end gap-3">
+          <Field
+            label="New PIN"
+            labelHidden
+            type="password"
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="New PIN"
+            value={gatePin}
+            onChange={(e) => setGatePin(e.target.value.replace(/\D/g, ''))}
+            className="w-28"
+            style={{ textAlign: 'center' }}
           />
-          <input
-            type="password" placeholder="Your password"
-            value={gatePassword} onChange={(e) => setGatePassword(e.target.value)}
-            style={{ ...input, flex: 1 }}
+          <Field
+            label="Your password"
+            labelHidden
+            type="password"
+            placeholder="Your password"
+            autoComplete="current-password"
+            value={gatePassword}
+            onChange={(e) => setGatePassword(e.target.value)}
+            className="min-w-0 flex-1"
           />
-          <button onClick={saveGatePin} style={buttonGold}>Save</button>
+          <Button onClick={saveGatePin} loading={gatePending}>Save</Button>
         </div>
         {gateMsg && (
-          <p style={{ fontSize: '0.78rem', color: gateMsg === 'Parent PIN saved.' ? '#5C7A4A' : '#A4442E', margin: '0.6rem 0 0' }}>
+          <Prose
+            variant="caption"
+            tone="none"
+            measure={false}
+            role="alert"
+            className={`mt-2.5 ${gateOk ? 'text-success-readable' : 'text-danger-readable'}`}
+          >
             {gateMsg}
-          </p>
+          </Prose>
         )}
-      </section>
+      </Section>
     </>
   );
 }
-
-const smallLink: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  color: '#8B7355',
-  fontFamily: 'Lato, sans-serif',
-  fontSize: '0.72rem',
-  cursor: 'pointer',
-  textDecoration: 'underline',
-  padding: 0,
-};
 
 /**
  * The verify-your-email nag (auth-plan §9.4). Deliberately a note and not a
@@ -327,32 +434,22 @@ function VerifyEmailNote({ email }: { email: string }) {
   }
 
   return (
-    <div style={{
-      background: 'rgba(201,169,110,0.12)',
-      border: '1px dashed rgba(201,169,110,0.5)',
-      borderRadius: 12,
-      padding: '0.9rem 1rem',
-      marginBottom: '1.25rem',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.9rem',
-      flexWrap: 'wrap',
-    }}>
-      <span style={{ fontSize: '1.1rem' }}>✉️</span>
-      <p style={{ flex: 1, minWidth: 200, fontSize: '0.8rem', lineHeight: 1.6, color: C.brown, margin: 0 }}>
-        {state === 'sent'
-          ? <>A fresh confirmation link is on its way to <strong>{email}</strong>.</>
-          : state === 'failed'
-            ? 'We could not send that just now — please try again in a moment.'
-            : <>Confirm <strong>{email}</strong> so you can recover your account if you ever forget your password.</>}
-      </p>
-      {state !== 'sent' && (
-        <button onClick={resend} style={{ ...buttonGold, padding: '0.45rem 0.9rem' }}>
-          {state === 'sending' ? 'Sending…' : 'Resend'}
-        </button>
-      )}
-      <button onClick={() => setDismissed(true)} style={smallLink} aria-label="Dismiss">Not now</button>
-    </div>
+    <Note className="mb-5">
+      <div className="flex flex-wrap items-center gap-3.5">
+        <span aria-hidden className="text-lg">✉️</span>
+        <Prose variant="caption" measure={false} className="min-w-50 flex-1">
+          {state === 'sent'
+            ? <>A fresh confirmation link is on its way to <strong>{email}</strong>.</>
+            : state === 'failed'
+              ? 'We could not send that just now — please try again in a moment.'
+              : <>Confirm <strong>{email}</strong> so you can recover your account if you ever forget your password.</>}
+        </Prose>
+        {state !== 'sent' && (
+          <Button size="sm" onClick={resend} loading={state === 'sending'}>Resend</Button>
+        )}
+        <Button variant="link" size="sm" onClick={() => setDismissed(true)}>Not now</Button>
+      </div>
+    </Note>
   );
 }
 
@@ -400,142 +497,131 @@ export default function FamilyManager({ initialOverview }: { initialOverview: Fa
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: C.ivory,
-      padding: '3rem clamp(1.5rem, 5vw, 4rem)',
-      fontFamily: 'Lato, sans-serif',
-    }}>
-      <div style={{ maxWidth: 640, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '2rem' }}>
-          <div>
-            <p style={{ fontSize: '0.6rem', letterSpacing: '0.3em', textTransform: 'uppercase', color: C.gold, margin: '0 0 0.4rem' }}>
-              Maison d&apos;Oré — Your family
-            </p>
-            <h1 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontSize: '1.9rem', fontWeight: 600, color: C.ink, margin: 0 }}>
-              {overview.name}
-            </h1>
-          </div>
-          <span style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <a href="/profiles" style={{ fontSize: '0.75rem', color: C.muted, textDecoration: 'underline' }}>Profiles</a>
+    /* No ground of its own. The (dg) shell paints --surface-page behind this
+       and the rail's theme picker re-scopes it; a background here would be a
+       second page painted over the first, which is what it used to be. */
+    <Container width="prose" className="pt-6 pb-24">
+      <PageHeader
+        className="mb-8"
+        eyebrow={<>Maison d&rsquo;Or&eacute; &mdash; Your family</>}
+        title={overview.name}
+        actions={
+          <>
+            <TextLink as={Link} href="/profiles" className="type-caption">Profiles</TextLink>
             <SignOutButton />
-          </span>
+          </>
+        }
+      />
+
+      {!overview.emailVerified && selfEmail && <VerifyEmailNote email={selfEmail} />}
+
+      {/* Family name */}
+      <Section title="Family name">
+        <div className="flex items-end gap-3">
+          <Field
+            label="Family name"
+            labelHidden
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            maxLength={80}
+            className="min-w-0 flex-1"
+          />
+          <Button onClick={handleRename}>Save</Button>
+        </div>
+      </Section>
+
+      {/* Timezone. The explanation is the field's hint rather than a paragraph
+          above it — it is about this answer, so it belongs in the message seat
+          where a screen reader reads it with the control. */}
+      <Section title="Timezone">
+        <Field
+          as="select"
+          label="Where your days begin and end"
+          labelHidden
+          value={overview.timezone}
+          onChange={(e) => handleTimezone(e.target.value)}
+          hint="Where your days begin and end. Today's reading is counted in this zone on the Parent Observatory and on your child's own For Parents card."
+          className="max-w-85"
+        >
+          {TIME_ZONES.map((zone) => (
+            <option key={zone} value={zone}>{zone.replace(/_/g, ' ')}</option>
+          ))}
+        </Field>
+      </Section>
+
+      {/* Children */}
+      <ChildrenSection overview={overview} refresh={refresh} />
+
+      {/* Guardians */}
+      <Section title="Parents & guardians">
+        {overview.members.map((m) => (
+          <ListRow key={m.id} className="justify-between">
+            <span className="type-body-ui text-primary">
+              {m.name}{m.isSelf ? ' (you)' : ''}
+            </span>
+            <span className="type-caption">{m.email}</span>
+          </ListRow>
+        ))}
+      </Section>
+
+      {/* Invites */}
+      <Section title="Invite a co-guardian">
+        <div className="mb-3.5 flex items-end gap-3">
+          <Field
+            label="Their email"
+            labelHidden
+            type="email"
+            placeholder="their@email.com"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            className="min-w-0 flex-1"
+          />
+          <Button onClick={handleInvite} disabled={!inviteEmail} loading={pending}>Invite</Button>
         </div>
 
-        {!overview.emailVerified && selfEmail && <VerifyEmailNote email={selfEmail} />}
+        <FormError error={error} />
 
-        {/* Family name */}
-        <section style={card}>
-          <h2 style={h2}>Family name</h2>
-          <div style={{ display: 'flex', gap: '0.6rem' }}>
-            <input
-              value={nameDraft}
-              onChange={(e) => setNameDraft(e.target.value)}
-              maxLength={80}
-              style={{ ...input, flex: 1 }}
-            />
-            <button onClick={handleRename} style={buttonGold}>Save</button>
-          </div>
-        </section>
-
-        {/* Timezone */}
-        <section style={card}>
-          <h2 style={h2}>Timezone</h2>
-          <p style={{ fontSize: '0.8rem', color: C.muted, margin: '0 0 0.9rem', lineHeight: 1.6 }}>
-            Where your days begin and end. Today&apos;s reading is counted in this zone on the
-            Parent Observatory and on your child&apos;s own For Parents card.
-          </p>
-          <select
-            value={overview.timezone}
-            onChange={(e) => handleTimezone(e.target.value)}
-            style={{ ...input, width: '100%', maxWidth: 340 }}
-          >
-            {TIME_ZONES.map((zone) => (
-              <option key={zone} value={zone}>{zone.replace(/_/g, ' ')}</option>
-            ))}
-          </select>
-        </section>
-
-        {/* Children */}
-        <ChildrenSection overview={overview} refresh={refresh} />
-
-        {/* Guardians */}
-        <section style={card}>
-          <h2 style={h2}>Parents & guardians</h2>
-          {overview.members.map((m) => (
-            <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid rgba(201,169,110,0.15)' }}>
-              <span style={{ fontSize: '0.88rem', color: C.ink }}>
-                {m.name}{m.isSelf ? ' (you)' : ''}
-              </span>
-              <span style={{ fontSize: '0.8rem', color: C.muted }}>{m.email}</span>
+        {newInvite && (
+          <Note className="my-3.5">
+            <Prose variant="caption" measure={false} className="mb-2">
+              Share this link with <strong>{newInvite.email}</strong> — it is shown only once and expires in 7 days:
+            </Prose>
+            <div className="flex items-center gap-2">
+              <Code break className="flex-1">{newInvite.url}</Code>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => { await navigator.clipboard.writeText(newInvite.url); setCopied(true); }}
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </Button>
             </div>
-          ))}
-        </section>
+          </Note>
+        )}
 
-        {/* Invites */}
-        <section style={card}>
-          <h2 style={h2}>Invite a co-guardian</h2>
-          <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '0.9rem' }}>
-            <input
-              type="email"
-              placeholder="their@email.com"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              style={{ ...input, flex: 1 }}
-            />
-            <button onClick={handleInvite} disabled={pending} style={{ ...buttonGold, opacity: pending ? 0.6 : 1 }}>
-              {pending ? '…' : 'Invite'}
-            </button>
-          </div>
-
-          {error && <p style={{ fontSize: '0.8rem', color: '#A4442E', margin: '0 0 0.75rem' }}>{error}</p>}
-
-          {newInvite && (
-            <div style={{
-              background: 'rgba(201,169,110,0.12)',
-              border: '1px dashed rgba(201,169,110,0.5)',
-              borderRadius: 10,
-              padding: '0.9rem 1rem',
-              marginBottom: '0.9rem',
-            }}>
-              <p style={{ fontSize: '0.78rem', color: C.brown, margin: '0 0 0.5rem' }}>
-                Share this link with <strong>{newInvite.email}</strong> — it is shown only once and expires in 7 days:
-              </p>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <code style={{ fontSize: '0.72rem', color: C.ink, wordBreak: 'break-all', flex: 1 }}>{newInvite.url}</code>
-                <button
-                  onClick={async () => { await navigator.clipboard.writeText(newInvite.url); setCopied(true); }}
-                  style={{ ...buttonGold, padding: '0.4rem 0.8rem' }}
-                >
-                  {copied ? 'Copied' : 'Copy'}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {overview.invites.length > 0 && (
-            <>
-              <p style={{ fontSize: '0.62rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: C.muted, margin: '0 0 0.4rem' }}>
-                Pending invites
-              </p>
-              {overview.invites.map((inv) => (
-                <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.45rem 0', borderBottom: '1px solid rgba(201,169,110,0.15)' }}>
-                  <span style={{ fontSize: '0.85rem', color: C.ink }}>{inv.email}</span>
-                  <span style={{ fontSize: '0.72rem', color: C.muted }}>
+        {overview.invites.length > 0 && (
+          <>
+            <Eyebrow rule={false} tone="faint" className="mt-4 mb-1">Pending invites</Eyebrow>
+            {overview.invites.map((inv) => (
+              <ListRow key={inv.id} className="justify-between">
+                <span className="type-body-ui text-primary">{inv.email}</span>
+                <span className="flex items-center gap-3">
+                  <span className="type-caption">
                     expires {new Date(inv.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                    <button
-                      onClick={async () => { await revokeInvite(inv.id); await refresh(); }}
-                      style={{ marginLeft: 12, background: 'none', border: 'none', color: '#A4442E', fontSize: '0.72rem', cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                      Revoke
-                    </button>
                   </span>
-                </div>
-              ))}
-            </>
-          )}
-        </section>
-      </div>
-    </div>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={async () => { await revokeInvite(inv.id); await refresh(); }}
+                  >
+                    Revoke
+                  </Button>
+                </span>
+              </ListRow>
+            ))}
+          </>
+        )}
+      </Section>
+    </Container>
   );
 }

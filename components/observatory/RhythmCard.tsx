@@ -1,6 +1,8 @@
+import { Prose } from '@/components/ds';
 import type { ObservatoryData } from '@/app/(dg)/parent-observatory/actions';
 import { RHYTHM_BANDS } from '@/lib/observatory/constants';
 import { EmptyNote } from './EmptyNote';
+import { LedgerCard, LedgerCardHead } from './LedgerCard';
 import styles from './observatory.module.css';
 
 const LEVEL = ['', '', styles.bandL2, styles.bandL3];
@@ -16,17 +18,21 @@ const LEVEL = ['', '', styles.bandL2, styles.bandL3];
  */
 export function RhythmCard({ rhythm }: { rhythm: ObservatoryData['rhythm'] }) {
   return (
-    <section className={styles.card + ' ' + styles.cardTight}>
-      <p className={styles.cardkick}>Reading rhythm</p>
+    <LedgerCard variant="tight">
+      <LedgerCardHead kick="Reading rhythm" />
 
       {rhythm ? (
         <>
-          <p className={styles.rhythmLine}>{rhythm.sentence}</p>
+          <Prose variant="body-ui" tone="primary" measure={false} className={styles.rhythmLine}>
+            {rhythm.sentence}
+          </Prose>
           <div className={styles.bandGrid}>
             {rhythm.bands.map((band) => (
               <div key={band.key} className={styles.band}>
                 <div className={`${styles.bandbar} ${LEVEL[band.level]}`} />
-                <span className={styles.bandlab}>{band.label}</span>
+                <span className={`type-label-editorial text-secondary ${styles.bandlab}`}>
+                  {band.label}
+                </span>
               </div>
             ))}
           </div>
@@ -38,12 +44,14 @@ export function RhythmCard({ rhythm }: { rhythm: ObservatoryData['rhythm'] }) {
             {RHYTHM_BANDS.map((band) => (
               <div key={band.key} className={styles.band}>
                 <div className={styles.bandbar} />
-                <span className={styles.bandlab}>{band.label}</span>
+                <span className={`type-label-editorial text-secondary ${styles.bandlab}`}>
+                  {band.label}
+                </span>
               </div>
             ))}
           </div>
         </>
       )}
-    </section>
+    </LedgerCard>
   );
 }

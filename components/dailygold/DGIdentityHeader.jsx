@@ -23,7 +23,7 @@ import { useInstrumentation } from '@/components/dailygold/instrumentation/DGIns
 import { DG_SHELF, DGIcon } from '@/components/dailygold/dgNavConfig';
 import ChildSwitcherOverlay from '@/components/dailygold/ChildSwitcherOverlay';
 import SwitchCurtain, { useProfileSwitch } from '@/components/dailygold/ProfileSwitchCurtain';
-import { AVATARS } from '@/lib/avatars';
+import { Avatar } from '@/components/ds';
 
 export default function DGIdentityHeader({ child = null, viewer = null }) {
   const router = useRouter();
@@ -34,7 +34,6 @@ export default function DGIdentityHeader({ child = null, viewer = null }) {
   const { switching, handleSwitched: landSwitch } = useProfileSwitch(!!child);
 
   if (!child && !viewer) return null;
-  const avatar = child ? (AVATARS[child.avatar] || AVATARS.sun) : { emoji: '🗝️', bg: 'var(--surface-tint)' };
 
   const handleSwitched = (kind, profile) => {
     setShowSwitcher(false);
@@ -65,14 +64,10 @@ export default function DGIdentityHeader({ child = null, viewer = null }) {
             minWidth: 0,
           }}
         >
-          <span aria-hidden="true" style={{
-            width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-            background: avatar.bg, border: '1.5px solid color-mix(in srgb, var(--accent) 50%, transparent)',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '0.9rem',
-          }}>
-            {avatar.emoji}
-          </span>
+          {/* No child means a grown-up in a room with no reader in it, and
+              Avatar answers that with the house key — the fallback this
+              header used to open-code as its own literal. */}
+          <Avatar avatar={child?.avatar} size="sm" ring />
           <span className="type-caption font-display italic" style={{
             whiteSpace: 'nowrap',
             overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,

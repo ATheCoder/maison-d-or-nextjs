@@ -1,20 +1,31 @@
+import { Suspense } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { THEME_KEYS, THEME_NAMES } from '@/lib/theme-keys';
+import ConfirmDemo from './ConfirmDemo';
+import FieldShellDemo from './FieldShellDemo';
 import OverlayDemo from './OverlayDemo';
 import {
+  Avatar,
   Button,
   buttonClasses,
   Card,
+  Code,
   Container,
   Eyebrow,
   Field,
   HeartToggle,
   Heading,
+  ListRow,
+  Meter,
+  Note,
+  PageHeader,
   Prose,
   Quote,
   Rule,
   SectionSurface,
+  SelectPill,
+  Stat,
   TextLink,
   ThemeDot,
 } from '@/components/ds';
@@ -390,6 +401,40 @@ function Specimen({ story }: { story: Story }) {
         />
       </div>
 
+      {/* The seat with no Field in it — the same label, gap and message seat
+          the eleven controls above wear, around the one control the house
+          cannot put inside Field. DatePicker is a 697-line ARIA combobox with
+          a coat of its own (the composite exception the contract test argues
+          for), and every screen that asks for a birthday used to hand-copy
+          these label classes by eye. Now there is one seat with two front
+          doors. See FieldShellDemo for what the error side proves. */}
+      {/* Behind a boundary because DatePicker reads the clock while it renders
+          (its empty calendar has to know what "today" is), and under Cache
+          Components the clock is request data: a render with no other request
+          data raises next-prerender-current-time. Every real caller — the
+          wizard, /family, the admin desk — is already past an auth read when
+          it mounts this, so the clock there is honest request-time work.
+          /design reads nothing at all, which is the same corner the homepage's
+          copyright line was in (see components/maison/CopyrightYear). */}
+      <Suspense fallback={<div className="h-24" />}>
+        <FieldShellDemo />
+      </Suspense>
+
+      {/* The two functional inks, side by side, because the pair is the point:
+          an error and a confirmation must be told apart WITHOUT reading them,
+          on every one of these grounds. Terracotta and forest on the light
+          five; rose and sage on the two interludes, where both of the light
+          inks vanish. Neither dresses for the room — an error is an error in
+          the garden too. Graded live in §07. */}
+      <div className="flex flex-wrap gap-x-8 gap-y-2">
+        <Prose variant="caption" tone="none" measure={false} className="text-danger-readable">
+          That address will not reach anyone &mdash; check it once more.
+        </Prose>
+        <Prose variant="caption" tone="none" measure={false} className="text-success-readable">
+          Saved. The gate will remember it from tonight.
+        </Prose>
+      </div>
+
       <div className="flex flex-wrap gap-6">
         {/* The tinted aside — surface-tint as the ground's deeper wash: the
             family tint in the atmospheres, sand on parchment, a step into
@@ -408,6 +453,143 @@ function Specimen({ story }: { story: Story }) {
             <p className="type-caption text-faint">{story.card.caption}</p>
           </div>
         </Card>
+      </div>
+
+      {/* Avatar, in its three readings: a child's chosen emblem, a monogram
+          for a name with no emblem behind it, and the key that stands for the
+          grown-up in a room with no reader in it. The emblem grounds are the
+          one thing on this page that does NOT re-scope, and that is the
+          decision, not an oversight — they are content, like a photograph.
+          What does re-scope is everything around them: the ring at --accent
+          50%, the choice mark at solid --accent, and the monogram's own
+          ground and ink. Compare the ring here against the ring seven
+          sections down. */}
+      <div className="flex flex-wrap items-center gap-4">
+        <Avatar avatar="fox" size="lg" />
+        <Avatar avatar="whale" ring />
+        <Avatar avatar="moon" selected />
+        <Avatar avatar="leaf" size="sm" ring />
+        <Avatar name="Am&eacute;lie" ring />
+        <Avatar ring />
+        <Prose variant="caption" measure={false}>
+          emblem &middot; ring &middot; selected &middot; small &middot; monogram &middot; nobody
+        </Prose>
+      </div>
+
+      {/* The dashed aside, and the mono token inside it. A solid edge on this
+          ground reads as another section of the form; a dashed one reads as a
+          remark about it. Code is deliberately text-primary rather than the
+          caption's secondary — a link you have to copy IS the content of the
+          panel it sits in. */}
+      <Note>
+        <Prose variant="caption" measure={false} className="mb-2">
+          Share this with <strong>the gardener</strong>{' '}&mdash; it is shown
+          once and expires in seven days:
+        </Prose>
+        <div className="flex items-center gap-2">
+          <Code break>https://maisondore.example/invite/9f3c1a7e-4b28-4d51-bb90-6e2a0c7d51f4</Code>
+          <Button variant="ghost" size="sm">Copy</Button>
+        </div>
+      </Note>
+
+      {/* The roster row. Two of them, so the hairline between and the hairline
+          under are both visible — and the second one carries verbs, which is
+          the case the four utilities kept being retyped for. */}
+      <div>
+        <ListRow>
+          <Avatar avatar="owl" size="sm" />
+          <span className="type-body-ui flex-1 text-primary">The tortoise</span>
+          <span className="type-caption">resident, lower garden</span>
+        </ListRow>
+        <ListRow>
+          <Avatar name="Beatrice" size="sm" />
+          <span className="type-body-ui flex-1 text-primary">Beatrice</span>
+          <Button variant="link" size="sm">Rename</Button>
+          <Button variant="danger" size="sm">Remove</Button>
+        </ListRow>
+      </div>
+
+      {/* Stat, at both scales. The unit is its own slot — "of 7", "/ 366", the
+          "m" in "4h 20m" — set a step down in secondary ink, because it is the
+          denominator, not the reading. Below, the desk scale: a kicker above,
+          a caption under, and `tone="accent"` for the one figure that is a
+          queue rather than an achievement. Watch that tone across the seven
+          surfaces — it is accent-READABLE, the AA tier, because unlike a rule
+          or a fill this is text somebody has to read. */}
+      <div className="grid grid-cols-3 gap-4 text-center">
+        <Stat figure="4h" unit="20m" label="with the paper this week" />
+        <Stat figure="6" unit="of 7" label="editions opened" />
+        <Stat figure="3" label="editions in a row" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Stat
+          size="sm"
+          eyebrow="Live to families"
+          eyebrowTone="secondary"
+          figure={214}
+          label="dates a family can open"
+        />
+        <Stat
+          size="sm"
+          eyebrow="In draft"
+          eyebrowTone="secondary"
+          figure={38}
+          unit="/ 52"
+          label="started, not yet published"
+        />
+        <Stat
+          size="sm"
+          tone="accent"
+          eyebrow="Uncovered days"
+          figure={41}
+          label="days with nobody yet — your queue"
+        />
+      </div>
+
+      {/* Meter. The last three are the whole argument for the component: a
+          value under half a percent still draws a sliver (minVisible), because
+          a real reading that renders as an empty track is indistinguishable
+          from no data; `faint` is a reading that has receded, and it is the
+          ink scale rather than --danger, because a thing set aside is not an
+          error; and only the LAST one has a label, which is what promotes it
+          from decoration to an announced progressbar. Tab a screen reader
+          through these: three say nothing, one says 62 percent. If you cannot
+          write the label, you do not have a progressbar. */}
+      <div className="max-w-sm space-y-4">
+        <Meter value={72} />
+        <Meter value={0.4} minVisible={4} />
+        <Meter value={28} tone="faint" />
+        <Meter value={62} label="Illustrations painted" />
+      </div>
+
+      {/* SelectPill — one choice in a row of choices, and the primitive that
+          exists because Chip is inert and Button will not take a pill corner.
+          There is no `selected` prop: the coat paints itself from aria-current
+          / aria-pressed, so a pill cannot look chosen without saying it is.
+          Two variants: `peer`, where the unchosen members are simply not
+          chosen, and `offer`, where they are things on offer — dashed and
+          faint — rather than peers of where you are. */}
+      <div className="flex flex-wrap items-center gap-2.5">
+        <SelectPill aria-pressed>
+          <Avatar name="Am&eacute;lie" size="sm" className="size-[26px]" ring />
+          Am&eacute;lie
+        </SelectPill>
+        <SelectPill>
+          <Avatar avatar="fox" size="sm" className="size-[26px]" ring />
+          Beatrice
+        </SelectPill>
+        <SelectPill>The third child</SelectPill>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <SelectPill variant="offer" href="#">
+          Mon 24
+        </SelectPill>
+        <SelectPill variant="offer" href="#">
+          Tue 25
+        </SelectPill>
+        <SelectPill variant="offer" href="#" aria-current="page">
+          Today
+        </SelectPill>
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
@@ -466,15 +648,16 @@ function ThemeGallery() {
   );
 }
 
-/* The three primitives the seven environment stamps deliberately do NOT carry.
-   A dialog is page-level rather than surface-level, `variant="none"` is a
+/* The primitives the seven environment stamps deliberately do NOT carry.
+   A dialog is page-level rather than surface-level, a page header is a whole
+   room's masthead and there is only one room per page, `variant="none"` is a
    mechanism rather than a colour, and glass over flat paint demonstrates
    nothing — stamping these seven times would pad the page without proving
    anything. They are stamped once each, on the ground that shows them. */
 function Interactive() {
   return (
     <Container width="prose" className="space-y-10">
-      <Eyebrow>The rest of the set · dialog, glass, bare semantics</Eyebrow>
+      <Eyebrow>The rest of the set · dialogs, mastheads, glass, bare semantics</Eyebrow>
 
       <div className="space-y-4">
         <Heading level={3} variant="story">
@@ -490,6 +673,56 @@ function Interactive() {
           stayed there.
         </Prose>
         <OverlayDemo />
+      </div>
+
+      <div className="space-y-4">
+        <Heading level={3} variant="story">
+          Confirm
+        </Heading>
+        <Prose>
+          &ldquo;Are you sure?&rdquo;, in the house&rsquo;s own voice. It
+          replaced two things: <code>window.confirm()</code>, which /family used
+          to delete a reader &mdash; unthemeable, unfocusable, and reading as
+          though the BROWSER were asking, which is the wrong authority for
+          &ldquo;this deletes your child&rsquo;s reading history&rdquo; &mdash;
+          and the hand-composed version, which the admin&rsquo;s people library
+          had already built out of Overlay, Heading, Prose and a button pair
+          before /family started building a second one.
+        </Prose>
+        <ConfirmDemo />
+      </div>
+
+      <div className="space-y-4">
+        <Heading level={3} variant="story">
+          PageHeader
+        </Heading>
+        <Prose>
+          What a room says before it says anything else: where you are, whose
+          it is, and the verbs that belong to the room rather than to any
+          section of it. Stamped once because there is one masthead per page.
+          The title defaults to <code>variant=&quot;section&quot;</code> and
+          not the level&rsquo;s own hero &mdash; a hero runs to 4.75rem, which
+          opens a story rather than introducing a working screen, and both call
+          sites had already overridden it the same way.
+        </Prose>
+        <Card tone="tint" padding="lg">
+          <PageHeader
+            eyebrow="Maison d&rsquo;Or&eacute; &mdash; Your family"
+            title="The Beaumont Family"
+            actions={
+              <>
+                <TextLink href="#" className="type-caption">Profiles</TextLink>
+                <Button variant="ghost" size="sm">Sign out</Button>
+              </>
+            }
+          />
+        </Card>
+        <Prose variant="caption">
+          The observatory keeps its own masthead on purpose: it is centred, it
+          carries a week line and a child-pill nav underneath, and bending this
+          to fit would mean two layout modes and an alignment prop one caller
+          uses.
+        </Prose>
       </div>
 
       <div className="space-y-4">

@@ -29,13 +29,10 @@
  * curtain over the wait.
  */
 import { useState, useEffect, useRef } from 'react';
-import { Button, Field } from '@/components/ds';
+import { Avatar, Button, Field } from '@/components/ds';
 import { DGEyebrow } from '@/components/dailygold/DGSectionHeader';
 import { getProfilesForPicker, enterChildProfile, enterChildProfileAsGuardian, passGrownUpGate } from '@/app/profiles/actions';
 import { authClient } from '@/lib/auth-client';
-import { AVATARS } from '@/lib/avatars';
-
-const ERROR_RED = 'var(--danger-readable)';
 
 export default function ChildSwitcherOverlay({ currentChildId = null, viewer = null, onSwitched, onClose, align = 'left', placement = 'bottom' }) {
   const isAdminViewer = viewer?.role === 'admin';
@@ -158,8 +155,8 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
         ...(placement === 'top' ? { bottom: 'calc(100% + 8px)' } : { top: 'calc(100% + 8px)' }),
         ...(align === 'right' ? { right: 0 } : { left: 0 }),
         background: 'var(--surface-raised)',
-        border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
-        borderRadius: 14,
+        border: '1px solid var(--border-fine)',
+        borderRadius: 'var(--radius-md)',
         boxShadow: 'var(--shadow-modal)',
         minWidth: 220,
         maxWidth: 'min(320px, calc(100vw - 2rem))',
@@ -206,37 +203,42 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
             }}
           />
           <div style={{ display: 'flex', gap: 6, marginTop: '0.6rem' }}>
-            <Button variant="bare"
+            {/* The house coats, not two hand-rolled ones. This pair used to
+                be `bare` buttons painting their own fill: --accent under
+                --surface-raised ink, which is a pairing no scope guarantees —
+                on parchment and in the four atmospheres --surface-raised is
+                the ivory, so "Open" was ivory text on gold — and an --accent
+                30% hairline for the second. `primary` and `ghost` re-scope
+                both halves per theme (espresso-on-ivory here, gold-bright on
+                the dark grounds), bring the house corner (--radius-md, not
+                the 8px this had) and the 44.5px control height, and `loading`
+                is the ellipsis and the hand-dimmed opacity done properly: it
+                keeps the full coat and says aria-busy. */}
+            <Button
               onClick={submitCredential}
-              disabled={pending || pin.length < (guardianCredential ? 1 : 4)}
-              className="type-body-ui"
-              style={{
-                flex: 1, padding: '0.6rem', borderRadius: 8, cursor: 'pointer', minHeight: 40,
-                color: 'var(--surface-raised)', background: 'var(--accent)', border: 'none',
-                opacity: pending || pin.length < (guardianCredential ? 1 : 4) ? 0.5 : 1,
-              }}
+              disabled={pin.length < (guardianCredential ? 1 : 4)}
+              loading={pending}
+              style={{ flex: 1 }}
             >
-              {pending ? '…' : 'Open'}
+              Open
             </Button>
-            <Button variant="bare"
-              onClick={closeCredentialForm}
-              className="type-body-ui"
-              style={{
-                padding: '0.6rem 0.8rem', borderRadius: 8, cursor: 'pointer', minHeight: 40,
-                color: 'var(--text-secondary)', background: 'transparent', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
-              }}
-            >
+            <Button variant="ghost" onClick={closeCredentialForm}>
               Back
             </Button>
           </div>
+          {/* `link` at the caption size, rather than a bare button wearing an
+              underline and no ink: the coat is accent-readable (the AA tier
+              small functional text is meant to sit in) and the underline comes
+              with it. `size="sm"` is what carries --type-caption here — the old
+              `type-caption` class also set --text-secondary, so the link's
+              colour would have depended on which utility Tailwind emitted
+              last. */}
           {pinFor && !asGuardian && (
-            <Button variant="bare"
+            <Button
+              variant="link"
+              size="sm"
               onClick={() => { setAsGuardian(true); setPin(''); setError(null); }}
-              className="type-caption"
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer', padding: '0.6rem 0 0',
-                textDecoration: 'underline', display: 'block',
-              }}
+              style={{ marginTop: '0.6rem' }}
             >
               Forgot it? Ask a grown-up
             </Button>
@@ -249,7 +251,6 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
       ) : (
         <>
           {children.map(kid => {
-            const avatar = AVATARS[kid.avatar] || AVATARS.sun;
             const isCurrent = kid.id === currentChildId;
             return (
               <Button variant="bare"
@@ -269,17 +270,21 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
                 onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 6%, transparent)'; }}
                 onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background = 'transparent'; }}
               >
-                <div aria-hidden="true" style={{
-                  width: 30, height: 30, borderRadius: '50%',
-                  background: avatar.bg, flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.9rem',
-                  border: `1.5px solid color-mix(in srgb, var(--accent) ${isCurrent ? '70%' : '30%'}, transparent)`,
-                }}>
-                  {avatar.emoji}
-                </div>
+                {/* The ring used to be 30% here and 70% for the current
+                    reader — three strengths of one hairline across the app,
+                    which nobody was reading as information. Avatar's two
+                    states say the same thing louder. */}
+                <Avatar avatar={kid.avatar} size="sm" ring={!isCurrent} selected={isCurrent} />
                 <div style={{ textAlign: 'left' }}>
-                  <p className="type-caption font-display" style={{ fontWeight: isCurrent ? 700 : 400, color: 'var(--text-primary)', margin: 0 }}>
+                  {/* type-body-ui, which is the token the house sets a
+                      roster row's name in (FamilyManager's children,
+                      guardians and invites all wear exactly this pair). It
+                      was `type-caption font-display` at weight 700/400 —
+                      a sans token wearing the serif face, at two weights the
+                      scale does not contain, to say "current". The row's
+                      accent wash, Avatar's `selected` ring and the dot on the
+                      right already say it three times over. */}
+                  <p className="type-body-ui" style={{ color: 'var(--text-primary)', margin: 0 }}>
                     {kid.displayName}
                   </p>
                   {kid.age > 0 && (
@@ -291,13 +296,13 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
                 {isCurrent ? (
                   <div aria-hidden="true" style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
                 ) : kid.hasPin ? (
-                  <span style={{ marginLeft: 'auto', fontSize: '0.7rem', opacity: 0.55 }} role="img" aria-label="PIN protected">🔒</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 'var(--type-label-editorial)', opacity: 0.55 }} role="img" aria-label="PIN protected">🔒</span>
                 ) : null}
               </Button>
             );
           })}
           {error && (
-            <p role="alert" className="type-caption" style={{ color: ERROR_RED, margin: 0, padding: '0.5rem 1rem' }}>
+            <p role="alert" className="type-caption" style={{ color: 'var(--danger-readable)', margin: 0, padding: '0.5rem 1rem' }}>
               {error}
             </p>
           )}
@@ -309,16 +314,13 @@ export default function ChildSwitcherOverlay({ currentChildId = null, viewer = n
               className="type-body-ui"
               style={actionRowStyle}
             >
-              <span aria-hidden="true" style={{
-                width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-                background: 'var(--surface-tint)',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '0.9rem', border: '1.5px solid color-mix(in srgb, var(--accent) 30%, transparent)',
-              }}>
-                🗝️
-              </span>
+              {/* Avatar with no emblem and no name IS the grown-up's key —
+                  🗝️ on --surface-tint behind the house ring. This was a
+                  hand-drawn copy of it at 30px with a 30% ring, one of the
+                  seven the primitive's docstring names. */}
+              <Avatar size="sm" ring />
               <span>Switch to parent</span>
-              <span style={{ marginLeft: 'auto', fontSize: '0.7rem', opacity: 0.55 }} role="img" aria-label="Requires the parent PIN or password">🔒</span>
+              <span style={{ marginLeft: 'auto', fontSize: 'var(--type-label-editorial)', opacity: 0.55 }} role="img" aria-label="Requires the parent PIN or password">🔒</span>
             </Button>
           )}
           {!inChildMode && viewer && (

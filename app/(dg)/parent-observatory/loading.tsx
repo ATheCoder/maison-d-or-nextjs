@@ -1,3 +1,4 @@
+import { Rule } from '@/components/ds';
 import { MastheadSkeleton, LedgerBodySkeleton } from '@/components/observatory/ObservatorySkeletons';
 import styles from '@/components/observatory/observatory.module.css';
 
@@ -21,7 +22,7 @@ export default function Loading() {
     <div className={styles.obs}>
       <div className={styles.shell} style={{ animation: 'mdoSkelFade 0.3s ease-out' }}>
         <MastheadSkeleton />
-        <hr className={`${styles.hairline} ${styles.mastheadRule}`} />
+        <Rule className={styles.mastheadRule} />
         <LedgerBodySkeleton />
       </div>
     </div>

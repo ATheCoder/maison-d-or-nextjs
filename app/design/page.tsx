@@ -57,7 +57,7 @@ export default function DesignPage() {
 
       <PageSection
         eyebrow="03 · Type scale"
-        lede="Eight tokens, real copy. Squint test: hero, section, body and label must be unmistakably different in grayscale."
+        lede="Nine tokens, real copy. Squint test: hero, section, body and label must be unmistakably different in grayscale. Eight of them are voices; mono is not — it carries the strings a person has to check character by character, and nothing editorial is ever set in it."
       >
         <TypeSpecimen />
       </PageSection>
@@ -71,7 +71,7 @@ export default function DesignPage() {
 
       <PageSection
         eyebrow="05 · Primitives"
-        lede="Eyebrow, Button, Field, TextLink, Rule, SectionSurface, Quote and the heart — every variant, stamped once per surface, and every stamp a full environment: parchment, then sage for the garden, rose for the family, lavender for the evening, periwinkle for the sky, then the two cinematic interludes. One dominant atmospheric accent per section; gold keeps meaning action and errors keep their terracotta (rose on the interludes) in every room. Sections butt with the fine rule; no shadows between them. Three primitives are stamped once rather than seven times, at the end: Overlay, because a dialog is page-level rather than surface-level; Heading without a size, because that is a mechanism and not a colour; and the glass Card, on the photograph it exists for. This page is the whole inventory of components/ds by design — if a primitive is not stamped here, the rooms have no business using it."
+        lede="Eyebrow, Button, Field, FieldShell, TextLink, Rule, SectionSurface, Quote, Avatar, Note, ListRow, Code and the heart — every variant, stamped once per surface, and every stamp a full environment: parchment, then sage for the garden, rose for the family, lavender for the evening, periwinkle for the sky, then the two cinematic interludes. One dominant atmospheric accent per section; gold keeps meaning action, errors keep their terracotta and confirmations their forest (rose and sage on the interludes) in every room. Sections butt with the fine rule; no shadows between them. Four things are stamped once rather than seven times, at the end: Overlay and Confirm, because a dialog is page-level rather than surface-level; PageHeader, because there is one masthead per page; Heading without a size, because that is a mechanism and not a colour; and the glass Card, on the photograph it exists for. One thing on this page deliberately does not re-scope — Avatar’s emblem grounds, which are content rather than palette. This page is the whole inventory of components/ds by design — if a primitive is not stamped here, the rooms have no business using it."
         bleed
       >
         <PrimitivesShowcase />

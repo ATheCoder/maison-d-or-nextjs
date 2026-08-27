@@ -1,18 +1,32 @@
+import { Chip, Meter, Prose } from '@/components/ds';
 import type { ShelfBook, ShelfState } from '@/lib/observatory/derive';
 import { EmptyNote } from './EmptyNote';
+import { LedgerCard, LedgerCardHead } from './LedgerCard';
 import styles from './observatory.module.css';
 
-/** The mock gives each state its own spine and fill; state, not index, picks them. */
+/*
+ * The mock coded the three states gold / sage / terracotta. The token system
+ * names exactly two colour meanings — --accent for action and attention, and
+ * --danger for errors — and "set aside" is emphatically not an error; the
+ * docstring below is entirely about not turning it into one. So the states are
+ * told apart by WEIGHT rather than by hue: finished is the accent at full
+ * strength, reading is the accent held back, set aside recedes into the faint
+ * ink. That reads on all seven themes, which a hardcoded sage did not.
+ */
 const SPINE: Record<ShelfState, string> = {
   reading: '',
-  finished: styles.spineSage,
-  set_aside: styles.spineTerracotta,
+  finished: styles.spineStrong,
+  set_aside: styles.spineFaded,
 };
 
-const FILL: Record<ShelfState, string> = {
-  reading: '',
-  finished: styles.fillSage,
-  set_aside: styles.fillFaded,
+/* Only two fills, not three: `reading` and `finished` were already the same
+   colour — the accent at full strength — and the weight that tells them apart
+   lives on the spine. A third entry that duplicated the first was a variant
+   pretending to be information. */
+const FILL: Record<ShelfState, 'accent' | 'faint'> = {
+  reading: 'accent',
+  finished: 'accent',
+  set_aside: 'faint',
 };
 
 /**
@@ -32,9 +46,8 @@ const FILL: Record<ShelfState, string> = {
  */
 export function BookshelfCard({ books, childName }: { books: ShelfBook[]; childName: string }) {
   return (
-    <section className={`${styles.card} ${styles.span2}`}>
-      <p className={styles.cardkick}>Growth insights</p>
-      <h2 className={styles.cardtitle}>The bookshelf</h2>
+    <LedgerCard className={styles.span2}>
+      <LedgerCardHead kick="Growth insights" title="The bookshelf" />
 
       {books.length === 0 ? (
         <EmptyNote>The bookshelf is waiting for a first story.</EmptyNote>
@@ -56,32 +69,34 @@ export function BookshelfCard({ books, childName }: { books: ShelfBook[]; childN
                 ) : null}
               </div>
               <div className={styles.bkbody}>
-                <p className={styles.bktitle}>{book.title}</p>
-                <p className={styles.bkmeta}>{book.meta}</p>
-                <div className={`${styles.track} ${styles.bktrack}`}>
-                  <div
-                    className={`${styles.fill} ${FILL[book.state]}`}
-                    style={{ width: `${book.fill}%` }}
-                    // The bar is not progress, so it must not claim to be one to
-                    // a screen reader either.
-                    role="presentation"
-                  />
-                </div>
+                {/* The small-Fraunces idiom: a type token's size with the display
+                    face, which is what the house does where the scale has no
+                    entry of its own. */}
+                <p className={`type-body-ui font-display text-primary ${styles.bktitle}`}>
+                  {book.title}
+                </p>
+                <p className={`type-caption ${styles.bkmeta}`}>{book.meta}</p>
+                {/* No `label`, and that is the whole point of the Meter API:
+                    a labelled meter becomes an announced progressbar, and this
+                    bar is a book's share of this child's reading time, not
+                    progress through the book. There is no denominator to
+                    divide by, so there is nothing honest to announce. */}
+                <Meter value={book.fill} tone={FILL[book.state]} className={styles.bktrack} />
               </div>
-              <span className={`${styles.state} ${book.state === 'finished' ? styles.stateFin : ''}`}>
+              <Chip className={`${styles.state} ${book.state === 'finished' ? styles.stateFin : ''}`}>
                 {book.stateLabel}
-              </span>
+              </Chip>
             </div>
           ))}
         </div>
       )}
 
       {books.length > 0 ? (
-        <p className={styles.cardnote} style={{ marginTop: 14 }}>
+        <Prose variant="caption" measure={false} className={styles.cardnote} style={{ marginTop: 14 }}>
           Bars compare how much of {childName}&apos;s reading time each book has held — a book&apos;s
           total length isn&apos;t something the paper can know.
-        </p>
+        </Prose>
       ) : null}
-    </section>
+    </LedgerCard>
   );
 }

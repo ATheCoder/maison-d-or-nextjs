@@ -2,46 +2,40 @@
  * The Parent Observatory — "The Ledger".
  *
  * Ported from the approved mock (Claude Design project
- * 245ea279-673a-4509-be15-90b6d859f0d6, option 1a). Every colour, size and
- * radius below is the mock's; what the mock has none of — media queries and
- * hover states — is added at the bottom and marked as such.
+ * 245ea279-673a-4509-be15-90b6d859f0d6, option 1a), then migrated onto the
+ * house design system on 2026-08-27: this file now owns GEOMETRY ONLY. Every
+ * colour is a semantic token from app/globals.css and every type decision is a
+ * `type-*` utility applied in the components — the same split the Daily Gold
+ * gallery made when GALLERY_CSS kept the wall and components/ds took the
+ * controls.
  *
- * The palette lives here as custom properties on the root class rather than in
- * a sibling .ts file, following GoldenStory.module.css and
- * PersonEditor.module.css: one source of truth, so a colour cannot drift
- * between a stylesheet and a JS copy of itself.
+ * Two consequences worth stating, because they are easy to undo by accident:
  *
- * Fonts are NOT imported here. app/globals.css already loads Playfair Display,
- * Lato and Dancing Script, and an external @import url() inside a CSS module is
- * silently dropped by Turbopack (see GoldenStory.module.css:6-8).
+ * 1. THERE IS NO PALETTE HERE. The old block of --canvas/--card/--ink/--gold
+ *    literals is gone. A colour that is missing is a missing token in
+ *    globals.css, never a hex added back to this file.
  *
- * Light only: this is the grown-ups' room and the mock defines no dark mode.
+ * 2. NO font-family and NO font-size below. CSS modules are UNLAYERED and
+ *    Tailwind's utilities are layered, so a `font-size` here would silently
+ *    beat the `type-*` class the component wears — and the bug would look like
+ *    "the token didn't apply", which is a bad afternoon. Two properties are
+ *    still set, and neither is a type decision:
+ *      - letter-spacing, in the handful of places listed below — the
+ *        documented tracking overrides (the DGEyebrow precedent);
+ *      - `.rhythmLine strong`, which is the weight of an <strong> inside a
+ *        sentence, not the size of the sentence.
+ *
+ * The room follows the ambient theme. It renders inside DGAppChrome's
+ * ThemeProvider, so all seven [data-theme] scopes are correct with no props
+ * and no data-surface of its own — a guardian reading on navy gets a navy
+ * observatory. That is a change from the original "light only, the grown-ups'
+ * room paints its own chrome"; it is what moving onto the tokens buys.
  */
 
 .obs {
-  --canvas: #f5f0e7;
-  --card: #fbf8f1;
-  --champagne: #f3e9d8;
-  --ink: #4a3b2a;
-  --clay: #8b7355;
-  --gold: #c8a96b;
-  --sage: #7c8770;
-  --terracotta: #c46d46;
-  --dim: #b3a48d;
-
-  --line: rgba(200, 169, 107, 0.28);
-  --line-soft: rgba(200, 169, 107, 0.2);
-  --line-strong: rgba(200, 169, 107, 0.45);
-
-  --serif: 'Playfair Display', Georgia, serif;
-  --sans: Lato, system-ui, sans-serif;
-  --script: 'Dancing Script', cursive;
-
   min-height: 100vh;
-  background: var(--canvas);
-  color: var(--ink);
-  font-family: var(--sans);
-  font-weight: 300;
+  background: var(--surface-page);
+  color: var(--text-primary);
   box-sizing: border-box;
 
   /*
@@ -81,28 +75,22 @@
   text-align: center;
 }
 
+/* The mock's wide masthead tracking, kept as this file's one override of
+   type-label-editorial's 0.14em — the same latitude DGEyebrow's three-tier
+   scale takes, and for the same reason: the kicker is doing wayfinding, not
+   labelling a field. */
 .kick {
-  font-size: 10px;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--sage);
-  font-weight: 400;
+  letter-spacing: 0.25em;
   margin: 0;
 }
 
 .title {
-  font-family: var(--serif);
-  font-size: 42px;
-  font-weight: 500;
   margin: 0;
-  letter-spacing: 0.01em;
 }
 
 .weekline {
   margin: 0;
-  font-size: 13px;
   letter-spacing: 0.04em;
-  color: var(--clay);
 }
 
 .pills {
@@ -113,47 +101,20 @@
   margin-top: 10px;
 }
 
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 34px;
-  padding: 4px 18px;
-  border-radius: 30px;
-  border: 1px solid var(--line-strong);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  color: var(--ink);
-  background: transparent;
-  text-decoration: none;
-  transition: background 150ms ease, border-color 150ms ease;
-}
-
-.pillOn {
-  background: rgba(200, 169, 107, 0.14);
-  border-color: var(--gold);
-  font-weight: 400;
-}
-
+/*
+ * The pill's mark is the ds `Avatar`, which brings its own circle, ground, ring,
+ * display face and ink. All that is left here is the mock's 26px — smaller than
+ * Avatar's `sm` (32px), because a 32px mark turns a 34px pill into a 40px one.
+ *
+ * Resizing it from a stylesheet is the sanctioned move, not a workaround:
+ * Avatar sets its sizes as Tailwind classes (which are layered) expressly so an
+ * unlayered rule like this one can win, the same way the nav rail's
+ * `.dg-rail-av` shrinks it at its own breakpoint. Do NOT add a font-size here —
+ * the mark's type comes with its size class.
+ */
 .avi {
   width: 26px;
   height: 26px;
-  border-radius: 50%;
-  background: rgba(200, 169, 107, 0.22);
-  border: 1px solid rgba(200, 169, 107, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--serif);
-  font-size: 13px;
-  color: var(--clay);
-  flex: none;
-}
-
-.hairline {
-  border: none;
-  border-top: 1px solid rgba(200, 169, 107, 0.3);
-  margin: 0;
 }
 
 .mastheadRule {
@@ -167,26 +128,6 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 24px;
   text-align: center;
-}
-
-.num {
-  font-family: var(--serif);
-  font-size: 34px;
-  font-weight: 500;
-  color: var(--ink);
-  line-height: 1;
-}
-
-.numSub {
-  font-size: 20px;
-  color: var(--clay);
-}
-
-.numlab {
-  font-size: 11px;
-  color: var(--clay);
-  letter-spacing: 0.08em;
-  margin-top: 6px;
 }
 
 /* ── Layout ───────────────────────────────────────────────────────────────── */
@@ -208,11 +149,10 @@
 
 /* ── Cards ────────────────────────────────────────────────────────────────── */
 
+/* Ground, hairline, radius and shadow are the ds Card primitive's now; what is
+   left here is the mock's editorial padding, which is wider than any of Card's
+   four steps (28px/32px against p-5's 20px and p-8's 32px). */
 .card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: 0 2px 8px rgba(44, 36, 22, 0.04);
   padding: 28px 32px;
   min-width: 0;
 }
@@ -227,35 +167,21 @@
 }
 
 .cardkick {
-  font-size: 10px;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  color: var(--sage);
+  letter-spacing: 0.22em;
   margin: 0 0 4px;
 }
 
 .cardtitle {
-  font-family: var(--serif);
-  font-size: 20px;
-  font-weight: 500;
-  color: var(--ink);
   margin: 0;
 }
 
 .cardnote {
-  font-size: 12px;
-  color: var(--clay);
   margin: 4px 0 0;
-  line-height: 1.6;
 }
 
 /* The honest empty line every module falls back to. Never a placeholder number. */
 .empty {
-  font-size: 13px;
-  color: var(--dim);
-  font-style: italic;
   margin: 14px 0 0;
-  line-height: 1.6;
 }
 
 /* ── F1 bars ──────────────────────────────────────────────────────────────── */
@@ -264,7 +190,7 @@
   display: flex;
   align-items: flex-end;
   gap: 18px;
-  height: 110px;
+  height: 118px;
   margin-top: 24px;
 }
 
@@ -296,24 +222,16 @@
 .bar {
   width: 26px;
   border-radius: 4px 4px 2px 2px;
-  background: rgba(200, 169, 107, 0.42);
+  background: color-mix(in srgb, var(--accent) 42%, transparent);
   flex: none;
 }
 
 .barHi {
-  background: var(--gold);
+  background: var(--accent);
 }
 
 .barday {
-  font-size: 10px;
   letter-spacing: 0.12em;
-  color: var(--clay);
-  text-transform: uppercase;
-}
-
-.barmin {
-  font-size: 10px;
-  color: var(--clay);
 }
 
 .rule {
@@ -332,13 +250,11 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  font-size: 13px;
 }
 
 .sname {
-  width: 128px;
+  width: 132px;
   flex: none;
-  color: var(--ink);
 }
 
 /*
@@ -353,31 +269,6 @@
   min-width: 44px;
   white-space: nowrap;
   text-align: right;
-  color: var(--clay);
-  font-size: 12px;
-}
-
-.track {
-  height: 5px;
-  border-radius: 3px;
-  background: rgba(200, 169, 107, 0.18);
-  overflow: hidden;
-  flex: 1;
-  min-width: 0;
-}
-
-.fill {
-  height: 100%;
-  border-radius: 3px;
-  background: var(--gold);
-}
-
-.fillSage {
-  background: var(--sage);
-}
-
-.fillFaded {
-  opacity: 0.5;
 }
 
 /* ── F3 curiosity ─────────────────────────────────────────────────────────── */
@@ -389,43 +280,21 @@
   margin-top: 12px;
 }
 
+/* The pill corner again (see .pill): ds Chip is --radius-sm, and these keep the
+   mock's rounded end while wearing the primitive's ink and hairline. */
 .chip {
-  display: inline-block;
-  padding: 6px 14px;
   border-radius: 20px;
-  border: 1px solid rgba(200, 169, 107, 0.4);
-  font-size: 11.5px;
-  color: var(--ink);
-  text-decoration: none;
-  transition: background 150ms ease, border-color 150ms ease;
-}
-
-.chipDim {
-  color: var(--dim);
-  border-style: dashed;
-  border-color: rgba(200, 169, 107, 0.3);
-}
-
-.chipOn {
-  background: rgba(200, 169, 107, 0.14);
-  border-color: var(--gold);
-  border-style: solid;
-  color: var(--ink);
+  padding: 5px 14px;
 }
 
 .more {
   margin-top: 14px;
-  font-size: 12px;
-  color: var(--clay);
 }
 
 .more > summary {
   cursor: pointer;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.14em;
   list-style: none;
-  color: var(--sage);
-  text-transform: uppercase;
-  font-size: 10px;
 }
 
 .more > summary::-webkit-details-marker {
@@ -454,7 +323,7 @@
 }
 
 .bkrow + .bkrow {
-  border-top: 1px solid var(--line-soft);
+  border-top: 1px solid var(--border-fine);
 }
 
 .spine {
@@ -462,18 +331,30 @@
   height: 48px;
   border-radius: 3px 6px 6px 3px;
   flex: none;
-  border: 1px solid rgba(200, 169, 107, 0.55);
-  background: linear-gradient(105deg, rgba(200, 169, 107, 0.3), rgba(200, 169, 107, 0.12));
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--accent) 30%, transparent),
+    color-mix(in srgb, var(--accent) 12%, transparent)
+  );
 }
 
-.spineSage {
-  border-color: rgba(124, 135, 112, 0.55);
-  background: linear-gradient(105deg, rgba(124, 135, 112, 0.3), rgba(124, 135, 112, 0.1));
+.spineStrong {
+  border-color: var(--accent);
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--accent) 55%, transparent),
+    color-mix(in srgb, var(--accent) 28%, transparent)
+  );
 }
 
-.spineTerracotta {
-  border-color: rgba(196, 109, 70, 0.5);
-  background: linear-gradient(105deg, rgba(196, 109, 70, 0.24), rgba(196, 109, 70, 0.08));
+.spineFaded {
+  border-color: color-mix(in srgb, var(--text-faint) 45%, transparent);
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--text-faint) 24%, transparent),
+    color-mix(in srgb, var(--text-faint) 8%, transparent)
+  );
 }
 
 /* A book with real cover art wears it. The state's painted fill is covered up,
@@ -481,7 +362,7 @@
    at a glance the way the mock intended. */
 .spineCover {
   overflow: hidden;
-  box-shadow: 0 3px 9px rgba(40, 26, 12, 0.18);
+  box-shadow: var(--shadow-card);
 }
 
 .spineImg {
@@ -497,48 +378,46 @@
 }
 
 .bktitle {
-  font-family: var(--serif);
-  font-size: 15px;
-  color: var(--ink);
   margin: 0 0 3px;
 }
 
 .bkmeta {
-  font-size: 11.5px;
-  color: var(--clay);
   margin: 0;
 }
 
+/* The bookshelf's Meter is narrower than a full-width one — a row's bar sits
+   under the title rather than spanning the card. */
 .bktrack {
   width: 220px;
   max-width: 100%;
   margin-top: 8px;
 }
 
+/*
+ * The state badge is a ds Chip; only its corner and its box are ours.
+ *
+ * It used to be a 9.5px UPPERCASE label tracked at 0.18em. Chip carries one
+ * type token (type-body-ui) and has no size or label variant, so the badge is
+ * now sentence case at the primitive's own size — the labels were already
+ * written that way ("Reading", "Finished", "Set aside"); only a text-transform
+ * was shouting them. See the "Chip has no size" gap in the migration notes.
+ */
 .state {
-  display: inline-block;
-  font-size: 9.5px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  padding: 4px 10px;
   border-radius: 20px;
-  border: 1px solid var(--line-strong);
-  color: var(--clay);
+  padding: 2px 12px;
   flex: none;
+  color: var(--text-secondary);
 }
 
 .stateFin {
-  background: rgba(200, 169, 107, 0.16);
-  border-color: var(--gold);
-  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: var(--accent);
+  color: var(--text-primary);
 }
 
 /* ── F2 rhythm ────────────────────────────────────────────────────────────── */
 
 .rhythmLine {
-  font-size: 14px;
-  color: var(--ink);
-  line-height: 1.5;
   margin: 6px 0 0;
 }
 
@@ -564,22 +443,19 @@
   width: 100%;
   height: 7px;
   border-radius: 4px;
-  background: rgba(200, 169, 107, 0.15);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .bandL2 {
-  background: rgba(200, 169, 107, 0.45);
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 .bandL3 {
-  background: var(--gold);
+  background: var(--accent);
 }
 
 .bandlab {
-  font-size: 9.5px;
   letter-spacing: 0.1em;
-  color: var(--clay);
-  text-transform: uppercase;
   text-align: center;
 }
 
@@ -602,26 +478,25 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--gold);
+  background: var(--accent);
   flex: none;
   position: relative;
   top: 3px;
 }
 
-.mdotSage {
-  background: var(--sage);
+/* The second milestone kind. Same reasoning as the shelf states above: the
+   mock's sage has no token, so the two kinds are told apart by fill vs ring
+   rather than by hue — categorical, and correct on every theme. */
+.mdotRing {
+  background: transparent;
+  border: 1.5px solid var(--accent);
 }
 
 .mtext {
-  font-size: 13px;
-  color: var(--ink);
-  line-height: 1.5;
   margin: 0;
 }
 
 .mwhen {
-  font-size: 10.5px;
-  color: var(--clay);
   letter-spacing: 0.06em;
 }
 
@@ -634,24 +509,21 @@
   margin-top: 12px;
 }
 
+/* Ground and hairline are the ds Card's (tone="tint", bordered); the corner and
+   the padding are the mock's. */
 .note {
-  background: var(--champagne);
-  border: 1px solid rgba(200, 169, 107, 0.35);
   border-radius: 12px;
   padding: 16px 18px;
 }
 
+/* Was Dancing Script at 21px. §2.1 admits no third face — the same argument
+   that deleted the Great Vibes flourish from /signup — so a starter is now
+   type-quote, the house's Fraunces Italic. */
 .notetext {
-  font-family: var(--script);
-  font-size: 21px;
-  color: var(--ink);
-  line-height: 1.35;
   margin: 0;
 }
 
 .notewhy {
-  font-size: 10.5px;
-  color: var(--clay);
   margin: 8px 0 0;
   letter-spacing: 0.04em;
 }
@@ -675,60 +547,21 @@
 /* ── Zero-children invite ─────────────────────────────────────────────────── */
 
 .invite {
-  background: var(--champagne);
-  border: 1px solid rgba(200, 169, 107, 0.35);
-  border-radius: 14px;
   padding: 40px 42px;
   margin-top: 32px;
   text-align: center;
 }
 
 .inviteText {
-  font-size: 14px;
-  color: var(--ink);
-  line-height: 1.7;
   margin: 0 0 20px;
 }
 
-.inviteLink {
-  display: inline-flex;
-  align-items: center;
-  min-height: 38px;
-  padding: 6px 24px;
-  border-radius: 30px;
-  border: 1px solid var(--gold);
-  background: rgba(200, 169, 107, 0.14);
-  color: var(--ink);
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  text-decoration: none;
-}
+/* ── Interaction ──────────────────────────────────────────────────────────────
+   Once the pills, the chips and the meters became primitives, this section
+   emptied out: each of them brings the house hover, press and focus ring with
+   its coat. What is left is the disclosure, which has no primitive behind it —
+   /design stamps no <details>, so its ring is still stated here. */
 
-/* ── Interaction (not in the mock — every one of these is a navigation) ───── */
-
-.pill:hover,
-.chip:hover,
-.inviteLink:hover {
-  background: rgba(200, 169, 107, 0.22);
-  border-color: var(--gold);
-}
-
-.pill:focus-visible,
-.chip:focus-visible,
-.inviteLink:focus-visible,
-.more > summary:focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pill,
-  .chip,
-  .inviteLink {
-    transition: none;
-  }
-}
 
 /* ── Responsive (also absent from the mock, which is a fixed 1120px canvas) ──
    Container queries, not media queries — see the note on .obs. The widths are
@@ -757,10 +590,6 @@
   .span2 {
     grid-column: 1 / -1;
   }
-
-  .title {
-    font-size: 34px;
-  }
 }
 
 @container (max-width: 480px) {
@@ -778,45 +607,30 @@
     padding: 22px 20px;
   }
 
-  .title {
-    font-size: 28px;
-  }
-
   .trio {
     gap: 12px;
-  }
-
-  .num {
-    font-size: 26px;
-  }
-
-  .numSub {
-    font-size: 15px;
-  }
-
-  .numlab {
-    font-size: 10px;
-    letter-spacing: 0.04em;
   }
 
   /* The mock's own tighter bar variant, applied at phone width. */
   .bars {
     gap: 6px;
-    height: 92px;
+    height: 100px;
   }
 
   .bar {
     width: 16px;
   }
 
-  .sname {
-    width: 96px;
-    font-size: 12px;
+  /* Seven columns in ~390px leaves each about 48px, and "TODAY" set in
+     type-label-editorial at the token's own 0.14em runs wider than that — the
+     labels ran into each other. The tracking is what gives, not the size: this
+     page no longer states a font-size anywhere. */
+  .barday {
+    letter-spacing: 0.02em;
   }
 
-  .smin {
-    min-width: 40px;
-    font-size: 11px;
+  .sname {
+    width: 104px;
   }
 
   .spine {
@@ -825,16 +639,10 @@
   }
 
   .state {
-    font-size: 8.5px;
-    padding: 3px 8px;
-    letter-spacing: 0.14em;
+    padding: 2px 8px;
   }
 
   .bkrow {
     gap: 12px;
-  }
-
-  .notetext {
-    font-size: 19px;
   }
 }

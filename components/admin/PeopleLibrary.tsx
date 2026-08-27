@@ -23,7 +23,7 @@ import {
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { CSS as dndCSS } from '@dnd-kit/utilities';
 import DatePicker from '@/components/ui/DatePicker';
-import { Button, buttonClasses, Field, Heading, Overlay, Prose } from '@/components/ds';
+import { Button, buttonClasses, Code, Confirm, Field, Heading, Overlay, Stat } from '@/components/ds';
 import { slugify, SLUG_RE } from '@/lib/slug';
 import { flagEmoji } from '@/lib/countries';
 import { createPerson, deletePerson, reorderBornToday, suggestPeople, type PersonListItem, type PersonSuggestion } from '@/app/admin/people/actions';
@@ -68,10 +68,10 @@ const CSS = `
 .lib .seg > button.on { background:#fffdf8; color:var(--ink); box-shadow:0 1px 6px rgba(40,26,12,.1); }
 
 .lib .statrow { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
-.lib .stat { padding:15px 18px; display:flex; flex-direction:column; gap:4px; }
-.lib .stat .num { font-family:var(--serif); font-size:30px; font-weight:600; line-height:1; color:var(--ink); }
-.lib .stat .num.warn { color:var(--gold-deep); }
-.lib .stat .lbl { font-size:11.5px; color:var(--brown2); }
+/* The tile's padding only — the rest is the ds Stat primitive. This block and
+   the one in DailyGoldDesk were the same four rules twice, which is what got
+   the primitive written. */
+.lib .stat { padding:15px 18px; }
 
 .lib .calgrid { display:grid; grid-template-columns:104px repeat(31,minmax(0,1fr)); gap:4px; align-items:center; }
 .lib .mlabel { display:block; width:100%; font:700 11px/1 var(--sans); letter-spacing:.12em; text-transform:uppercase; color:var(--brown); text-align:right; padding:0 12px 0 0; background:none; border:none; transition:color .1s ease; }
@@ -419,13 +419,26 @@ function CreateDialog({ onClose, existingNames, initialDate }: {
 
 // ── Delete dialog ────────────────────────────────────────────────────────────
 
+/**
+ * This used to be forty lines of Overlay, Heading, Prose, Field and a button
+ * pair — the second hand-composed confirm in the house, and the reason there
+ * is a `Confirm` primitive at all. The type-to-confirm gate stays because a
+ * person and their story brief genuinely cannot be rebuilt from anything else
+ * the house holds, which is the bar `requireTyped` documents. Two details
+ * quietly improved on the way: the slug is a `Code` (the mono face is a token
+ * now, not the `monospace` keyword), and the dead `autoFocus` is gone —
+ * Overlay focuses its own panel after React applies it, so it never did
+ * anything.
+ */
 function DeleteDialog({ person, onClose }: { person: PersonListItem; onClose: () => void }) {
   const router = useRouter();
-  const [typed, setTyped] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
-  function confirm() {
+  // The typed string comes back from Confirm and goes straight to the
+  // server, which re-checks it: the disabled button is an affordance, the
+  // server call is the guard.
+  function remove(typed: string) {
     setError(null);
     start(async () => {
       const res = await deletePerson(person.slug, typed);
@@ -435,34 +448,21 @@ function DeleteDialog({ person, onClose }: { person: PersonListItem; onClose: ()
   }
 
   return (
-    <Overlay onClose={onClose} label={`Delete ${person.name}?`} maxWidth={460}>
-      {/* No second `.lib` wrapper: the dialog renders inside the library's
-          own root, so the scoped stylesheet above already reaches it. Only
-          the padding the old `.modal` carried is needed here. */}
-      <div style={{ padding: 26 }}>
-        <Heading level={2} variant="story">Delete {person.name}?</Heading>
-        <Prose variant="body-ui" className="mt-2.5 mb-4" measure={false}>
-          This removes the person and their story brief. Art files in storage are left in place.
-          Type <code style={{ color: 'var(--ink)' }}>{person.slug}</code> to confirm.
-        </Prose>
-        <Field
-          autoFocus
-          label={`Type ${person.slug} to confirm`}
-          labelHidden
-          style={{ fontFamily: 'monospace' }}
-          value={typed}
-          onChange={(e) => setTyped(e.target.value)}
-          placeholder={person.slug}
-          error={error ?? undefined}
-        />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 9, marginTop: 22 }}>
-          <Button variant="link" size="sm" onClick={onClose} disabled={pending}>Cancel</Button>
-          <Button variant="danger" size="sm" onClick={confirm} disabled={typed !== person.slug} loading={pending}>
-            {pending ? 'Deleting…' : 'Delete permanently'}
-          </Button>
-        </div>
-      </div>
-    </Overlay>
+    <Confirm
+      title={`Delete ${person.name}?`}
+      confirmLabel={pending ? 'Deleting…' : 'Delete permanently'}
+      pending={pending}
+      error={error ?? undefined}
+      requireTyped={{ value: person.slug }}
+      maxWidth={460}
+      onCancel={onClose}
+      onConfirm={remove}
+    >
+      <>
+        This removes the person and their story brief. Art files in storage are left in place.
+        Type <Code>{person.slug}</Code> to confirm.
+      </>
+    </Confirm>
   );
 }
 
@@ -735,21 +735,34 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
 
         {/* Stat tiles */}
         <div className="statrow">
-          <div className="panel stat">
-            <span className="kick" style={{ color: 'var(--brown)' }}>Live to families</span>
-            <span className="num">{publishedCount}</span>
-            <span className="lbl">books families can read right now</span>
-          </div>
-          <div className="panel stat">
-            <span className="kick" style={{ color: 'var(--brown)' }}>In draft</span>
-            <span className="num">{draftCount}</span>
-            <span className="lbl">started, not yet published</span>
-          </div>
-          <div className="panel stat" style={{ background: 'var(--gold-soft)', borderColor: 'var(--line2)' }}>
-            <span className="kick" style={{ color: 'var(--gold-deep)' }}>Uncovered days</span>
-            <span className="num warn">{uncovered}</span>
-            <span className="lbl">days with nobody for Born&nbsp;Today — your queue</span>
-          </div>
+          <Stat
+            className="panel stat"
+            size="sm"
+            eyebrow="Live to families"
+            eyebrowTone="secondary"
+            figure={publishedCount}
+            label="books families can read right now"
+          />
+          <Stat
+            className="panel stat"
+            size="sm"
+            eyebrow="In draft"
+            eyebrowTone="secondary"
+            figure={draftCount}
+            label="started, not yet published"
+          />
+          {/* tone="accent" is exactly what `.num.warn` meant here — the label
+              says "your queue" in as many words, which is the tone's whole
+              definition. */}
+          <Stat
+            className="panel stat"
+            size="sm"
+            tone="accent"
+            eyebrow="Uncovered days"
+            figure={uncovered}
+            label={<>days with nobody for Born&nbsp;Today — your queue</>}
+            style={{ background: 'var(--gold-soft)', borderColor: 'var(--line2)' }}
+          />
         </div>
 
         {/* Calendar coverage */}

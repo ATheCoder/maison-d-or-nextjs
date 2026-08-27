@@ -72,6 +72,7 @@ target must have a reachable database at build time, not just at runtime.
 | `OPENROUTER_API_KEY` | Golden Story generation (`/admin/people`, the story writer and illustrator) |
 | `S3_API`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_DOMAIN` | media uploads to R2 — story art, flag assets |
 | `BASE44_APP_ID` / `BASE44_API_KEY` | the one-time `import:daily-gold` migration only |
+| `PRODUCTION_DATABASE_URL` | `import:prod-db` — the Neon connection string, direct endpoint (put it in `.env.local`) |
 
 `.env.local` overrides `.env` for the scripts (`--env-file-if-exists`).
 
@@ -90,7 +91,31 @@ target must have a reachable database at build time, not just at runtime.
 | `npm run backfill:country-codes` | populate `remarkable_person.country_code` |
 | `npm run generate:story:openrouter` | write a Golden Story from the CLI |
 | `npm run upload:story-media` / `rewrite:story-media-urls` / `compress:story` | story art pipeline (`docs/golden-story-art-pipeline.md`) |
+| `npm run import:prod-db` | **wipe the local database and restore it from production** (see below) |
 | `npm run sync:db` / `sync:flags` | local database and flag-asset sync helpers |
+
+## Working from production data
+
+```bash
+# .env.local — the direct Neon endpoint, not the -pooler one
+PRODUCTION_DATABASE_URL=postgresql://...@ep-xxxx.eu-central-1.aws.neon.tech/neondb?sslmode=require
+```
+
+```bash
+npm run import:prod-db -- --dry-run   # connect, compare versions, count rows, write nothing
+npm run import:prod-db                # then do it
+```
+
+This **replaces** the local database: `pg_dump` from Neon, drop every schema in
+`mydb` (`public` and drizzle's), restore. Local rows, local migrations and the admin
+from `seed:admin` do not survive — sign in with a production account afterwards. It
+refuses to run against a target that isn't on this machine, and asks you to type the
+database name first. `--schema-only`, `--data-only`, `--dump-file`, `--from-dump` and
+`--yes` are there when you need them; `node scripts/import-prod-db.mjs --help` is the
+header comment of the script.
+
+To go the other way — top a database up with rows the other one has, changing nothing
+that already exists — that's `npm run sync:db`, which never drops or overwrites.
 
 ## Things worth knowing before you edit
 

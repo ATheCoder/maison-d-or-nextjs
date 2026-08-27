@@ -38,7 +38,7 @@ import { dgDestinationsFor, DG_SHELF, DGIcon, isNavItemActive } from '@/componen
 import ChildSwitcherOverlay from '@/components/dailygold/ChildSwitcherOverlay';
 import DGThemeSwitcher from '@/components/dailygold/DGThemeSwitcher';
 import SwitchCurtain, { useProfileSwitch } from '@/components/dailygold/ProfileSwitchCurtain';
-import { AVATARS } from '@/lib/avatars';
+import { Avatar } from '@/components/ds';
 
 export default function DGNavigationRail({ child = null, viewer = null }) {
   const pathname = usePathname();
@@ -47,7 +47,6 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
   const { track } = useInstrumentation();
   const [showSwitcher, setShowSwitcher] = useState(false);
 
-  const avatar = child ? (AVATARS[child.avatar] || AVATARS.sun) : null;
   const destinations = dgDestinationsFor(child);
 
   const isActive = (item) => isNavItemActive(item, pathname);
@@ -158,9 +157,7 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
             aria-expanded={showSwitcher}
             aria-label={`Reading as ${child.name}. Switch reader`}
           >
-            <span className="dg-rail-av" aria-hidden="true" style={{ background: avatar.bg }}>
-              {avatar.emoji}
-            </span>
+            <Avatar avatar={child.avatar} size="sm" ring className="dg-rail-av" />
             <span className="dg-rail-id-label" aria-hidden="true">
               <b className="dg-rail-id-name">{child.name}</b>
               <small className="dg-rail-id-meta">

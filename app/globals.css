@@ -139,6 +139,21 @@
   --border-fine: color-mix(in srgb, var(--palette-walnut) 25%, transparent);
   --border-accent: color-mix(in srgb, var(--palette-gold) 55%, transparent);
 
+  /* semantic — the trough a Meter's fill runs in. Derived from --accent rather
+     than stated per scope, for the reason --surface-overlay derives from
+     --surface-page: var() substitutes at the element, so this re-scopes into
+     each atmosphere's family tone and into gold-bright on the interludes with
+     no per-scope copy to keep in step. Non-text, and it sits UNDER the fill
+     rather than carrying meaning of its own, so it has no contrast floor —
+     what has to read is the fill against it, and --accent at full strength
+     against itself at 18% clears that everywhere.
+
+     18% is the observatory's value, kept over the two admin troughs it
+     replaces (ink at 10%, walnut at 10%): a warm trough belongs to the same
+     family as the fill, and an ink-tinted one read as a groove cut into the
+     page. */
+  --meter-track: color-mix(in srgb, var(--accent) 18%, transparent);
+
   /* semantic — interaction. The ring wears the readable gold, not bare gold:
      a focus indicator is functional, and bare gold sits below even the 3.0
      non-text floor on parchment. Dark scopes re-scope it to gold-bright. */
@@ -153,6 +168,20 @@
      alone: an error does not dress for the room. */
   --danger: var(--palette-terracotta);
   --danger-readable: var(--palette-terracotta-deep);
+
+  /* semantic — success. Deliberately ONE tier, not danger's two. --danger
+     splits because an invalid field draws a border, and a border is non-text
+     held to 3:1; nothing in this house draws a success border, so a --success
+     mark tier would be a token with no consumer and no measured floor. What a
+     confirmation actually needs is ink for one line of small text, and that is
+     what this is: forest, AA 4.5 on every light ground (8.78 on parchment,
+     7.40 on sand, 7.74 on sage-pale).
+     The dark scopes swap it to sage for the same reason they swap terracotta
+     to rose — forest disappears on espresso (HeartToggle's spark list already
+     names it as the one accent left out of the dark). Like danger, the
+     atmosphere scopes leave it alone: a confirmation does not dress for the
+     room either. Measured live in §07 of /design. */
+  --success-readable: var(--palette-forest);
 
   /* §4 — Button coats. Same scoping story as every token above: the dark
      blocks below repaint these, so one <Button> wears a different coat per
@@ -211,6 +240,15 @@
      legacy loaded faces. */
   --face-display: var(--font-fraunces, 'Playfair Display', Georgia, serif);
   --face-sans: var(--font-instrument-sans, 'Lato', system-ui, sans-serif);
+  /* The third face, added 2026-08-27, and the one exception to §2.1's "no
+     third font": it is not a third VOICE. Nothing editorial is ever set in
+     it — it exists for strings a person has to check character by character
+     (a one-time invite link, a slug you must retype to confirm a deletion),
+     where l/1/I and 0/O being indistinguishable is a real failure. The house
+     was already reaching for `font-family: monospace` by hand in three
+     places; this gives that reach a token. A system stack on purpose: no
+     webfont, no request, no bytes. */
+  --face-mono: ui-monospace, SFMono-Regular, Menlo, "Cascadia Mono", "Segoe UI Mono", monospace;
 
   /* §2.2 — type scale sizes (fluid via clamp) */
   --type-display-hero: clamp(2.75rem, 6vw, 4.75rem);
@@ -275,6 +313,14 @@
   --heart-saved: var(--palette-rose);
   --danger: var(--palette-rose);
   --danger-readable: var(--palette-rose);
+  /* Forest vanishes on this ground, so this is its dark tier — the same
+     brightening danger does into rose. Bare --palette-sage was the obvious
+     answer and §07 rejected it: it clears the page ground but lands at 3.68
+     here and 3.33 on navy against --surface-raised, which is exactly where a
+     confirmation renders (inside a card, under the field it answers). Lifted
+     45% toward sage-pale, which clears both grounds in both interludes and is
+     still unmistakably green rather than off-white. */
+  --success-readable: color-mix(in srgb, var(--palette-sage) 55%, var(--palette-sage-pale));
   /* Elevation flips from tinted drop to black depth (shadows barely read on
      dark unless they go truly dark). */
   --shadow-card: 0 2px 8px color-mix(in srgb, black 20%, transparent);
@@ -311,6 +357,14 @@
   --heart-saved: var(--palette-rose);
   --danger: var(--palette-rose);
   --danger-readable: var(--palette-rose);
+  /* Forest vanishes on this ground, so this is its dark tier — the same
+     brightening danger does into rose. Bare --palette-sage was the obvious
+     answer and §07 rejected it: it clears the page ground but lands at 3.68
+     here and 3.33 on navy against --surface-raised, which is exactly where a
+     confirmation renders (inside a card, under the field it answers). Lifted
+     45% toward sage-pale, which clears both grounds in both interludes and is
+     still unmistakably green rather than off-white. */
+  --success-readable: color-mix(in srgb, var(--palette-sage) 55%, var(--palette-sage-pale));
   --shadow-card: 0 2px 8px color-mix(in srgb, black 20%, transparent);
   --shadow-raised: 0 4px 16px color-mix(in srgb, black 30%, transparent);
   --shadow-modal: 0 12px 32px color-mix(in srgb, black 40%, transparent);
@@ -363,6 +417,7 @@
   --btn-hover-shadow: 0 4px 12px color-mix(in srgb, var(--palette-walnut) 30%, transparent);
   --danger: var(--palette-terracotta);
   --danger-readable: var(--palette-terracotta-deep);
+  --success-readable: var(--palette-forest);
   --heart-saved: var(--palette-terracotta);
   --grain-opacity: 0.06;
   --grain-blend: multiply;
@@ -475,6 +530,7 @@ html[data-theme] body {
 
   --color-fine: var(--border-fine);
   --color-focus-ring: var(--focus-ring);
+  --color-meter-track: var(--meter-track);
 }
 
 /* --accent is deliberately NOT mapped as --color-accent: that would
@@ -503,6 +559,10 @@ html[data-theme] body {
 @utility text-danger-readable {
   color: var(--danger-readable);
 }
+/* Confirmation ink. One tier only — see the token's note in §1. */
+@utility text-success-readable {
+  color: var(--success-readable);
+}
 
 /* §2/§6 font mapping. Two cascade facts make this safe and correct:
    (1) Tailwind still emits --font-sans in @layer theme (its default
@@ -517,6 +577,7 @@ html[data-theme] body {
 @theme inline {
   --font-display: var(--face-display);
   --font-sans: var(--face-sans);
+  --font-mono: var(--face-mono);
 }
 
 /* §2.2 type scale — one composite utility per token (size + face + weight
@@ -577,6 +638,19 @@ html[data-theme] body {
   font-weight: 400;
   /* semantic var resolves at the element → correct inside [data-surface] */
   color: var(--text-secondary);
+}
+/* §2.2 — the mono token. Caption-sized on purpose: everything set in it is
+   functional small text sitting beside prose that is already at that scale,
+   and a monospace face at the same nominal size reads LARGER than the sans
+   next to it, so matching the number is what makes the two look level.
+   No ink of its own — unlike type-caption, the strings this carries are
+   primary content (a link you must copy, a slug you must match), so the call
+   site says text-primary rather than inheriting a secondary. */
+@utility type-mono {
+  font-family: var(--face-mono);
+  font-size: var(--type-caption);
+  font-weight: 400;
+  line-height: 1.5;
 }
 
 /* ============================================================
@@ -847,6 +921,101 @@ html[data-theme] body {
     border-color: var(--border-accent);
     background-color: var(--btn-ghost-bg-hover);
     color: var(--btn-ghost-fg-hover);
+  }
+}
+
+/* §4 — the selectable pill. One of a set of choices, worn by a control that
+   navigates or filters: the observatory's child switcher and its edition-day
+   chips today.
+
+   It is NOT a Button variant, and the reason is the corner. --radius-md is the
+   house's one roundness for "buttons, fields, cards", and Button keeps it
+   outside its size scale on purpose — "a button with a different corner is a
+   different button". A pill IS a different thing: it is a token in a row of
+   tokens, and the round end is what says the row is a set rather than a stack
+   of actions. So it gets its own coat rather than bending that rule.
+
+   ── The selected look rides the ARIA state, not a class ──────────────────
+   The fill and the accent edge are keyed to `aria-current` / `aria-pressed`,
+   the way the `field` coat keys its error dress to `aria-invalid`. That makes
+   the common bug unbuildable: a pill cannot LOOK chosen without SAYING it is,
+   so a screen reader and a sighted reader can no longer disagree about which
+   one is on. `[aria-current]:not([aria-current='false'])` rather than a bare
+   attribute test, because `aria-current="false"` is the spec's way of writing
+   "not this one" and it must not light up.
+
+   The hover is btn-ghost's move at a lighter weight — the accent wash rather
+   than the full espresso fill — because these sit in a row and a row that goes
+   solid black under the pointer reads as a mode change rather than a hover.
+   Timing, lift and press come from `btn-motion`, which the call site pairs
+   with this. */
+@utility select-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 34px;
+  padding: 0.25rem 1rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border-accent);
+  background-color: transparent;
+  color: var(--text-primary);
+  text-decoration: none;
+  @media (hover: hover) {
+    &:hover {
+      background-color: color-mix(in srgb, var(--accent) 22%, transparent);
+      border-color: var(--accent);
+    }
+  }
+  &:active {
+    background-color: color-mix(in srgb, var(--accent) 22%, transparent);
+    border-color: var(--accent);
+  }
+  &[aria-current]:not([aria-current='false']),
+  &[aria-pressed='true'] {
+    background-color: color-mix(in srgb, var(--accent) 14%, transparent);
+    border-color: var(--accent);
+  }
+}
+
+/* §4 — the same pill for a set whose unchosen members are OFFERS rather than
+   peers: the edition recap's other days, which exist and can be opened but are
+   not where you are. A dashed edge and faint ink is the mock's way of saying
+   "also available"; solid and full ink is where you are.
+
+   Deliberately a whole second coat rather than a modifier layered over the
+   first. Two @utility rules in the same layer have no guaranteed order, so a
+   modifier that only overrode three properties would win or lose depending on
+   emission order — a class that works until Tailwind reshuffles is worse than
+   a little duplication. The component picks exactly one of these. */
+@utility select-pill-offer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 34px;
+  padding: 0.25rem 1rem;
+  border-radius: 9999px;
+  border: 1px dashed var(--border-fine);
+  background-color: transparent;
+  color: var(--text-faint);
+  text-decoration: none;
+  @media (hover: hover) {
+    &:hover {
+      background-color: color-mix(in srgb, var(--accent) 22%, transparent);
+      border-color: var(--accent);
+      color: var(--text-primary);
+    }
+  }
+  &:active {
+    background-color: color-mix(in srgb, var(--accent) 22%, transparent);
+    border-color: var(--accent);
+    color: var(--text-primary);
+  }
+  &[aria-current]:not([aria-current='false']),
+  &[aria-pressed='true'] {
+    border-style: solid;
+    background-color: color-mix(in srgb, var(--accent) 14%, transparent);
+    border-color: var(--accent);
+    color: var(--text-primary);
   }
 }
 

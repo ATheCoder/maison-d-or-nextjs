@@ -55,3 +55,6 @@ __pycache__/
 # local scratch, not the app: a Base44 CSV export and a usage log
 /DailyGoldEdition_export.csv
 /claude-usage.md
+
+# Local python venv for scripts/prepare-art.py (docs/golden-story-art-pipeline.md)
+.venv-art/

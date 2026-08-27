@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
+import { Rule } from '@/components/ds';
 import { getObservatory, getObservatoryIndex } from '@/app/(dg)/parent-observatory/actions';
 import { Masthead } from './Masthead';
 import { MastheadSkeleton, LedgerBodySkeleton } from './ObservatorySkeletons';
@@ -38,8 +39,12 @@ import styles from './observatory.module.css';
  * effects are involved in a surface whose entire job is to render numbers
  * that were already computed on the server.
  *
- * No ThemeProvider either: this is the grown-ups' room, not the child's paper,
- * and it follows the /family and /gate precedent of painting its own chrome.
+ * No ThemeProvider of its own — and, since 2026-08-27, no palette of its own
+ * either. The room is built from the semantic tokens, so it re-scopes with
+ * whatever [data-theme] the (dg) shell puts around it: all seven themes are
+ * correct here with no props and no data-surface. That replaces the original
+ * "the grown-ups' room paints its own chrome, light only", which could not
+ * follow a guardian who reads on navy.
  */
 export function ObservatoryLedger({ childId, edition }: { childId?: string; edition?: string }) {
   // One promise, shared by both stages — the pills and the "first child"
@@ -54,7 +59,7 @@ export function ObservatoryLedger({ childId, edition }: { childId?: string; edit
           <MastheadStage index={index} activeChildId={childId} />
         </Suspense>
 
-        <hr className={`${styles.hairline} ${styles.mastheadRule}`} />
+        <Rule className={styles.mastheadRule} />
 
         <Suspense fallback={<LedgerBodySkeleton />}>
           <LedgerBody index={index} childId={childId} edition={edition} />

@@ -35,7 +35,7 @@ import { AVATARS, type AvatarKey } from '@/lib/avatars';
 import { ageOnDay, birthDateBounds, formatBirthDate, normalizeBirthDate } from '@/lib/child-birth-date';
 import { THEME_KEYS, THEME_NAMES, type ThemeKey } from '@/lib/theme-keys';
 import DatePicker from '@/components/ui/DatePicker';
-import { Button, Card, Eyebrow, Field, Heading, Prose } from '@/components/ds';
+import { Avatar, Button, Card, Code, Eyebrow, Field, FieldShell, Heading, Note, Prose } from '@/components/ds';
 
 /**
  * Every zone the runtime knows, with UTC guaranteed present — the same list
@@ -102,20 +102,6 @@ function StepError({ error }: { error: string | null }) {
     <Prose variant="caption" tone="none" measure={false} role="alert" className="mb-4 text-danger-readable">
       {error}
     </Prose>
-  );
-}
-
-/**
- * A panel set off from the form — a reassurance, or the result of something
- * just done. The dashed gold edge is what marks it as an aside rather than
- * another field; Card has no `dashed` prop and should not grow one for this,
- * so the border style is stated here over a bordered={false} tint.
- */
-function NotePanel({ className = '', children }: { className?: string; children: React.ReactNode }) {
-  return (
-    <Card tone="tint" bordered={false} padding="sm" className={`border border-dashed border-accent ${className}`}>
-      {children}
-    </Card>
   );
 }
 
@@ -334,34 +320,36 @@ export default function WelcomeWizard({
               autoFocus
             />
 
-            <div style={{ marginBottom: '1.2rem' }}>
-              {/* DatePicker is a compound widget, not a ds primitive — it owns
-                  a popover, a calendar grid and its own .mdo-dp-* coat — so the
-                  label is written out here rather than coming from Field. It
-                  wears Field's exact label classes so the three controls on
-                  this step read as one set. */}
-              <label htmlFor="birthDate" className="type-label-editorial block text-secondary">
-                Their birthday
-              </label>
-              <DatePicker
-                id="birthDate"
-                value={birthDate}
-                min={bounds.min}
-                max={bounds.max}
-                onChange={setBirthDate}
-                autoComplete="bday"
-                invalid={birthDate !== '' && !born.ok}
-                aria-describedby="birthDateHint"
-                style={{ width: '100%', maxWidth: 240 }}
-              />
-              <Prose id="birthDateHint" variant="caption" measure={false} className="mt-1.5">
-                {birthDate === ''
+            {/* DatePicker is a compound widget, not a ds primitive — it owns
+                a popover, a calendar grid and its own .mdo-dp-* coat — so it
+                cannot go inside Field. FieldShell is Field with the input
+                taken out: the same label, the same gap, the same message seat
+                and, crucially, the same three wiring attributes, which this
+                step used to reconstruct by hand from Field's classes. */}
+            <FieldShell
+              label="Their birthday"
+              className="mb-5"
+              hint={born.ok || birthDate === ''
+                ? birthDate === ''
                   ? 'This helps us choose stories that feel right for their age and remember their birthday, of course.'
-                  : born.ok
-                    ? `${formatBirthDate(birthDate)} — that makes them ${ageOnDay(birthDate)}.`
-                    : born.error}
-              </Prose>
-            </div>
+                  : `${formatBirthDate(birthDate)} — that makes them ${ageOnDay(birthDate)}.`
+                : undefined}
+              error={birthDate !== '' && !born.ok ? born.error : undefined}
+            >
+              {({ id, 'aria-describedby': describedBy, 'aria-invalid': isInvalid }) => (
+                <DatePicker
+                  id={id}
+                  aria-describedby={describedBy}
+                  invalid={!!isInvalid}
+                  value={birthDate}
+                  min={bounds.min}
+                  max={bounds.max}
+                  onChange={setBirthDate}
+                  autoComplete="bday"
+                  style={{ width: '100%', maxWidth: 240 }}
+                />
+              )}
+            </FieldShell>
 
             <div style={{ marginBottom: '1.2rem' }}>
               <span className="type-label-editorial block text-secondary">Their emblem</span>
@@ -373,13 +361,9 @@ export default function WelcomeWizard({
                     onClick={() => setAvatar(k)}
                     aria-pressed={avatar === k}
                     aria-label={k}
-                    style={{
-                      width: 40, height: 40, borderRadius: '50%', fontSize: '1.1rem',
-                      background: AVATARS[k].bg,
-                      border: avatar === k ? '2.5px solid var(--accent)' : '2.5px solid transparent',
-                    }}
+                    className="rounded-full"
                   >
-                    {AVATARS[k].emoji}
+                    <Avatar avatar={k} selected={avatar === k} />
                   </Button>
                 ))}
               </div>
@@ -422,12 +406,12 @@ export default function WelcomeWizard({
               </div>
             </div>
 
-            <NotePanel className="mb-5">
+            <Note className="mb-5">
               <Prose variant="caption" measure={false}>
                 Your child never has an account, an email, or a password — just a nickname and a
                 reading history you control.
               </Prose>
-            </NotePanel>
+            </Note>
 
             <StepError error={error} />
 
@@ -468,13 +452,13 @@ export default function WelcomeWizard({
             </div>
 
             {sentInvite && (
-              <NotePanel className="mb-4">
+              <Note className="mb-4">
                 <Prose variant="caption" measure={false} className="mb-2">
                   Invitation sent 🤍
 We&apos;ve sent it to <strong>{sentInvite.email}</strong>. You can also share their private invitation link below. It will be available here once and expires in 7 days.
                 </Prose>
                 <div className="flex items-center gap-2">
-                  <code className="type-caption min-w-0 flex-1 break-all text-primary">{sentInvite.url}</code>
+                  <Code break className="flex-1">{sentInvite.url}</Code>
                   {/* Ghost rather than a third gold button: two primaries in
                       one panel is two calls to action, and the one that
                       matters here is Enter Maison d'Oré below. */}
@@ -485,7 +469,7 @@ We&apos;ve sent it to <strong>{sentInvite.email}</strong>. You can also share th
                     {copied ? 'Copied' : 'Copy link'}
                   </Button>
                 </div>
-              </NotePanel>
+              </Note>
             )}
 
             <StepError error={error} />

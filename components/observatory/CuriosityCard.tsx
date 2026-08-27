@@ -1,7 +1,9 @@
+import { Chip, Meter, Rule } from '@/components/ds';
 import type { ObservatoryData, SectionMeter } from '@/app/(dg)/parent-observatory/actions';
 import { TOP_CONTENT_VISIBLE } from '@/lib/observatory/constants';
 import { formatMinutes } from '@/lib/observatory/format';
 import { EmptyNote } from './EmptyNote';
+import { LedgerCard, LedgerCardHead } from './LedgerCard';
 import styles from './observatory.module.css';
 
 type TopContent = ObservatoryData['themes']['topContent'];
@@ -18,7 +20,10 @@ type TopContent = ObservatoryData['themes']['topContent'];
  * reads this now.) It is built entirely from the mock's own vocabulary.
  *
  * The expansion is a native <details>, so the full list ships with the page and
- * costs no client JavaScript — consistent with the no-new-API-routes rule.
+ * costs no client JavaScript — consistent with the no-new-API-routes rule. It
+ * is the one control on this page with no primitive behind it: /design stamps
+ * no disclosure, so the summary borrows the house label token and the shared
+ * --focus-ring and nothing else.
  */
 export function CuriosityCard({
   sections,
@@ -31,9 +36,8 @@ export function CuriosityCard({
   const rest = topContent.slice(TOP_CONTENT_VISIBLE);
 
   return (
-    <section className={`${styles.card} ${styles.span2}`}>
-      <p className={styles.cardkick}>Curiosity themes</p>
-      <h2 className={styles.cardtitle}>Where the month went</h2>
+    <LedgerCard className={styles.span2}>
+      <LedgerCardHead kick="Curiosity themes" title="Where the month went" />
 
       {sections.length === 0 && topContent.length === 0 ? (
         <EmptyNote>Themes appear once there is a month of reading to look back on.</EmptyNote>
@@ -43,11 +47,9 @@ export function CuriosityCard({
         <div className={styles.meters} style={{ marginTop: 20 }}>
           {sections.map((meter) => (
             <div key={meter.section} className={styles.srow}>
-              <span className={styles.sname}>{meter.label}</span>
-              <div className={styles.track}>
-                <div className={styles.fill} style={{ width: `${Math.max(4, meter.share)}%` }} />
-              </div>
-              <span className={styles.smin}>{meter.share}%</span>
+              <span className={`type-body-ui text-primary ${styles.sname}`}>{meter.label}</span>
+              <Meter value={meter.share} minVisible={4} />
+              <span className={`type-caption ${styles.smin}`}>{meter.share}%</span>
             </div>
           ))}
         </div>
@@ -55,29 +57,31 @@ export function CuriosityCard({
 
       {visible.length > 0 ? (
         <>
-          {sections.length > 0 ? <hr className={`${styles.hairline} ${styles.rule}`} /> : null}
-          <p className={styles.cardnote}>Opened most often</p>
+          {sections.length > 0 ? <Rule className={styles.rule} /> : null}
+          <p className={`type-caption ${styles.cardnote}`}>Opened most often</p>
           <div className={styles.chips}>
             {visible.map((item) => (
-              <span key={item.key} className={styles.chip}>
+              <Chip key={item.key} className={styles.chip}>
                 {item.label} · {formatMinutes(item.ms)}
-              </span>
+              </Chip>
             ))}
           </div>
           {rest.length > 0 ? (
             <details className={styles.more}>
-              <summary>{rest.length} more</summary>
+              <summary className="type-label-editorial text-accent-readable">
+                {rest.length} more
+              </summary>
               <div className={styles.chips}>
                 {rest.map((item) => (
-                  <span key={item.key} className={styles.chip}>
+                  <Chip key={item.key} className={styles.chip}>
                     {item.label} · {formatMinutes(item.ms)}
-                  </span>
+                  </Chip>
                 ))}
               </div>
             </details>
           ) : null}
         </>
       ) : null}
-    </section>
+    </LedgerCard>
   );
 }

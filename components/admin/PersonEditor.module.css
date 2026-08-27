@@ -88,8 +88,10 @@
 .saveDotSaving { background: var(--gold); }
 .saveDotError { background: var(--red); }
 
-.prog { height: 5px; border-radius: 999px; background: rgba(36, 26, 12, 0.1); overflow: hidden; }
-.progFill { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-deep)); border-radius: 999px; }
+/* .prog / .progFill were here. They are the ds `Meter` primitive now — the
+   ink-tinted trough and the gold gradient went with them, because neither
+   could re-scope and the gradient was one of three different ones the house
+   had for the same 5px bar. */
 
 .callout { border-left: 2px solid var(--gold); background: var(--gold-soft); border-radius: 0 8px 8px 0; }
 

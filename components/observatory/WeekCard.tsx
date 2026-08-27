@@ -1,7 +1,9 @@
+import { Meter, Rule } from '@/components/ds';
 import type { SectionMeter } from '@/app/(dg)/parent-observatory/actions';
 import type { WeekBar } from '@/lib/observatory/derive';
 import { formatMinutes } from '@/lib/observatory/format';
 import { EmptyNote } from './EmptyNote';
+import { LedgerCard, LedgerCardHead } from './LedgerCard';
 import styles from './observatory.module.css';
 
 /**
@@ -17,9 +19,8 @@ export function WeekCard({ bars, sections }: { bars: WeekBar[]; sections: Sectio
   const hasReading = bars.some((bar) => bar.ms > 0);
 
   return (
-    <section className={`${styles.card} ${styles.span2}`}>
-      <p className={styles.cardkick}>Exploration summary</p>
-      <h2 className={styles.cardtitle}>This week</h2>
+    <LedgerCard className={styles.span2}>
+      <LedgerCardHead kick="Exploration summary" title="This week" />
 
       {hasReading ? (
         <>
@@ -27,7 +28,7 @@ export function WeekCard({ bars, sections }: { bars: WeekBar[]; sections: Sectio
             {bars.map((bar) => (
               <div key={bar.day} className={styles.barcol}>
                 {/* A quiet day shows no number rather than a "0" it would have to defend. */}
-                <span className={styles.barmin}>{bar.ms > 0 ? bar.minutes || '<1' : ''}</span>
+                <span className="type-caption">{bar.ms > 0 ? bar.minutes || '<1' : ''}</span>
                 <div className={styles.bartrack}>
                   <div
                     className={`${styles.bar} ${bar.isHighlight ? styles.barHi : ''}`}
@@ -36,22 +37,25 @@ export function WeekCard({ bars, sections }: { bars: WeekBar[]; sections: Sectio
                     style={{ height: bar.ms > 0 ? `${Math.max(3, bar.height)}%` : '0%' }}
                   />
                 </div>
-                <span className={styles.barday}>{bar.label}</span>
+                <span className={`type-label-editorial text-secondary ${styles.barday}`}>
+                  {bar.label}
+                </span>
               </div>
             ))}
           </div>
 
-          <hr className={`${styles.hairline} ${styles.rule}`} />
+          <Rule className={styles.rule} />
 
           {sections.length > 0 ? (
             <div className={styles.meters}>
               {sections.map((meter) => (
                 <div key={meter.section} className={styles.srow}>
-                  <span className={styles.sname}>{meter.label}</span>
-                  <div className={styles.track}>
-                    <div className={styles.fill} style={{ width: `${Math.max(4, meter.share)}%` }} />
-                  </div>
-                  <span className={styles.smin}>{formatMinutes(meter.ms)}</span>
+                  <span className={`type-body-ui text-primary ${styles.sname}`}>{meter.label}</span>
+                  {/* Decorative on purpose: the minutes beside it are the
+                      reading, and a second voice announcing "42 percent" would
+                      be the same fact told twice in a unit nobody asked for. */}
+                  <Meter value={meter.share} minVisible={4} />
+                  <span className={`type-caption ${styles.smin}`}>{formatMinutes(meter.ms)}</span>
                 </div>
               ))}
             </div>
@@ -62,6 +66,6 @@ export function WeekCard({ bars, sections }: { bars: WeekBar[]; sections: Sectio
       ) : (
         <EmptyNote>No reading yet this week.</EmptyNote>
       )}
-    </section>
+    </LedgerCard>
   );
 }

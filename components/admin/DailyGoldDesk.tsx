@@ -15,7 +15,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Button, buttonClasses, Field, Heading, TextLink } from '@/components/ds';
+import { Button, buttonClasses, Field, Heading, Stat, TextLink } from '@/components/ds';
 import {
   deleteEditionRow, prepareDate, prepareWeek,
   type AlmanacCell, type DeskCoverage, type DuplicateEdition, type WeekDay,
@@ -70,10 +70,10 @@ const CSS = `
 .dgd .b-green { background:rgba(125,138,78,.1); border:1px solid rgba(125,138,78,.38); color:#4f5a2e; }
 
 .dgd .statrow { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
-.dgd .stat { padding:15px 18px; display:flex; flex-direction:column; gap:4px; }
-.dgd .stat .num { font-family:var(--serif); font-size:30px; font-weight:600; line-height:1; color:var(--ink); }
-.dgd .stat .num.warn { color:var(--gold-deep); }
-.dgd .stat .lbl { font-size:11.5px; color:var(--brown2); }
+/* The tile's padding only. The kicker, the figure, its unit and the label are
+   the ds Stat primitive now — this block used to hold a copy of it that was
+   identical, byte for byte, to the one in PeopleLibrary. */
+.dgd .stat { padding:15px 18px; }
 
 .dgd .week { display:grid; grid-template-columns:repeat(7,1fr); gap:10px; }
 .dgd .day { padding:13px; display:flex; flex-direction:column; gap:10px; }
@@ -276,29 +276,44 @@ export default function DailyGoldDesk({ coverage, week, duplicates, credit, toda
 
         {/* ── Stat tiles ───────────────────────────────────────────── */}
         <div className="statrow">
-          <div className="panel stat">
-            <span className="kick" style={{ color: 'var(--brown)' }}>Live to families</span>
-            <span className="num">{coverage.liveDates}</span>
-            <span className="lbl">dates a family can open</span>
-          </div>
-          <div className="panel stat" style={readyThisWeek === 0
-            ? { background: 'rgba(181,83,58,.06)', borderColor: 'rgba(181,83,58,.3)' }
-            : undefined}>
-            <span className="kick" style={{ color: readyThisWeek === 0 ? '#96402b' : 'var(--brown)' }}>
-              Next seven days ready
-            </span>
-            <span className="num" style={{ color: readyThisWeek === 0 ? '#96402b' : undefined }}>
-              {readyThisWeek} <span className="muted" style={{ fontSize: 15 }}>/ 7</span>
-            </span>
-            <span className="lbl">the only number with a deadline attached</span>
-          </div>
-          <div className="panel stat" style={{ background: 'var(--gold-soft)', borderColor: 'var(--line2)' }}>
-            <span className="kick">Almanac days covered</span>
-            <span className="num warn">
-              {coverage.almanacDaysCovered} <span className="muted" style={{ fontSize: 15 }}>/ 366</span>
-            </span>
-            <span className="lbl">On&nbsp;This&nbsp;Day and Greatest&nbsp;Moments recur every year</span>
-          </div>
+          <Stat
+            className="panel stat"
+            size="sm"
+            eyebrow="Live to families"
+            eyebrowTone="secondary"
+            figure={coverage.liveDates}
+            label="dates a family can open"
+          />
+          {/* The one tile that can turn: an empty week is the desk's only real
+              alarm. The alarm is the PANEL — a danger wash and a danger edge —
+              and the figure stays in the primary ink, because Stat's accent
+              tone means "this is a queue" and a week with nothing in it is
+              past being a queue. */}
+          <Stat
+            className="panel stat"
+            size="sm"
+            eyebrow="Next seven days ready"
+            eyebrowTone="secondary"
+            figure={readyThisWeek}
+            unit="/ 7"
+            label="the only number with a deadline attached"
+            style={readyThisWeek === 0
+              ? {
+                  background: 'color-mix(in srgb, var(--danger) 6%, transparent)',
+                  borderColor: 'color-mix(in srgb, var(--danger) 30%, transparent)',
+                }
+              : undefined}
+          />
+          <Stat
+            className="panel stat"
+            size="sm"
+            tone="accent"
+            eyebrow="Almanac days covered"
+            figure={coverage.almanacDaysCovered}
+            unit="/ 366"
+            label={<>On&nbsp;This&nbsp;Day and Greatest&nbsp;Moments recur every year</>}
+            style={{ background: 'var(--gold-soft)', borderColor: 'var(--line2)' }}
+          />
         </div>
 
         {/* ── The week ahead ───────────────────────────────────────── */}

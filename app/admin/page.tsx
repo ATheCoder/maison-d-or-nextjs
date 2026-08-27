@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/dal';
 import SignOutButton from '@/components/auth/SignOutButton';
-import { Card, Eyebrow, Heading, Prose } from '@/components/ds';
+import { Card, Heading, PageHeader, Prose } from '@/components/ds';
 
 export const metadata = { title: 'Admin — Maison d\'Oré' };
 
@@ -26,18 +26,15 @@ export default async function AdminPage() {
 
   return (
     <div className="min-h-dvh px-6 py-12 sm:px-10 lg:px-16">
-      <div className="mb-8 flex flex-wrap items-baseline justify-between gap-4">
-        <div>
-          <Eyebrow rule={false}>Maison d&apos;Oré — Administration</Eyebrow>
-          {/* level 1: this is the admin's front page and its heading is the
-              page's, but at the section scale — the desk below is the content,
-              not this line. */}
-          <Heading level={1} variant="section" className="mt-1.5">
-            Welcome, {session.user.name}
-          </Heading>
-        </div>
-        <SignOutButton />
-      </div>
+      {/* level 1 at the section scale: this is the admin's front page and the
+          heading is the page's, but the desk below is the content, not this
+          line. PageHeader defaults to exactly that, which is why it exists. */}
+      <PageHeader
+        className="mb-8"
+        eyebrow={<>Maison d&apos;Or&eacute; &mdash; Administration</>}
+        title={`Welcome, ${session.user.name}`}
+        actions={<SignOutButton />}
+      />
 
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
         {SECTIONS.map((s) => {
