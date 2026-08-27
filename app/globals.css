@@ -1405,6 +1405,49 @@ body {
   100% { background-position: 0% 50%; }
 }
 
+/* ── GOLD SHIMMER ──
+   The house's one moving gold: a slow sweep clipped to the glyphs, worn by
+   the half of a phrase that is the gold half. It is the landing wordmark's
+   effect (components/maison/MaisonBrandName.tsx, where it was born inline),
+   the "Oré" in the Daily Gold rail, and the accented word in the gallery
+   entrance heading — one declaration, so a retune moves all three.
+
+   Both stops are §1 tokens, never a raw palette value: the sweep runs from
+   --accent-readable through a whitened --accent and back, so the gold is
+   whichever gold the surface is currently scoped to. The darker ends are
+   what keep it legible at wordmark sizes; at hero size the bright peak is
+   what carries it.
+
+   Apply to a span around the words that shimmer, not to the whole phrase —
+   the static half should keep the ink it inherits. */
+.gold-shimmer {
+  display: inline-block;
+  background-image: linear-gradient(
+    90deg,
+    var(--accent-readable),
+    color-mix(in srgb, var(--accent) 70%, white),
+    var(--accent-readable)
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s ease-in-out infinite;
+}
+
+/* Asked for calm: the gold stays, the movement goes. Parking the sweep would
+   leave a gradient mid-stroke on the words; dropping back to flat
+   --accent-readable is the same colour the static half of every one of these
+   phrases already wears. */
+@media (prefers-reduced-motion: reduce) {
+  .gold-shimmer {
+    animation: none;
+    background-image: none;
+    -webkit-text-fill-color: currentColor;
+    color: var(--accent-readable);
+  }
+}
+
 /* ============================================================
    MAISON DATE PICKER — components/ui/DatePicker.tsx
    The whole look of the control lives here rather than inline,

@@ -102,9 +102,15 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
 
       {/* The house mark. Two spellings of the same name: the rail writes it
           out, the 76px post writes its initial. Both are decorative — the
-          <nav> above is what carries the accessible name. */}
+          <nav> above is what carries the accessible name.
+
+          "Oré" is split off so it can wear `.gold-shimmer` (globals.css) —
+          the same sweep the landing wordmark and the gallery entrance
+          heading wear; the rest of the mark keeps the rail's ink. */}
       <div className="dg-rail-mark" aria-hidden="true">
-        <span className="dg-rail-mark-full font-display">Maison d&rsquo;Or&eacute;</span>
+        <span className="dg-rail-mark-full font-display">
+          Maison d&rsquo;<span className="gold-shimmer">Or&eacute;</span>
+        </span>
         <span className="dg-rail-mark-short font-display">M</span>
         <DGEyebrow as="span" tracking="wide" tone="faint" className="dg-rail-mark-sub">
           Daily Gold

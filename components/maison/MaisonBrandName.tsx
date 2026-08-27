@@ -26,30 +26,16 @@ export const BRAND_NAME = "Maison d'Ore";
  * for the sweep, so the gold is the room's gold (bright on the espresso and
  * navy interludes, the family tone inside an atmosphere).
  *
- * The sweep runs between --accent-readable and a whitened --accent rather
- * than between two decorative golds: at the header and footer sizes this is
- * small text, and the darker stops are what keep it legible there. At hero
- * size the bright peak is what carries it. Neither end names a raw palette
- * value, so a retune in globals.css moves the wordmark with the house.
+ * The sweep itself is no longer written here. It is `.gold-shimmer` in
+ * globals.css, worn by the two other places the house shows a gold half of a
+ * phrase — the Daily Gold rail's wordmark and the gallery entrance heading.
+ * This component is just the one that names which letters get it.
  */
 export default function MaisonBrandName() {
   return (
     <span style={{ display: 'inline-block' }}>
       <span style={{ color: 'currentColor' }}>Maison d&apos;</span>
-      <span
-        style={{
-          backgroundImage:
-            'linear-gradient(90deg, var(--accent-readable), color-mix(in srgb, var(--accent) 70%, white), var(--accent-readable))',
-          backgroundSize: '200% 100%',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-          animation: 'shimmer 4s ease-in-out infinite',
-          display: 'inline-block',
-        }}
-      >
-        Ore
-      </span>
+      <span className="gold-shimmer">Ore</span>
     </span>
   );
 }

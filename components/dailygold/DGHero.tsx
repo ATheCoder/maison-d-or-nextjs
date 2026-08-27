@@ -74,13 +74,20 @@ export default function DGHero({
             alongside its rule would mean two declarations competing to set the
             same property. Heading is here for the semantics — it renders
             <p role="heading" aria-level="1">, which is why the stylesheet
-            targets [role="heading"] rather than h1. */}
+            targets [role="heading"] rather than h1.
+
+            The <em> is the gold word — the place, or what the day is doing
+            instead of naming one — and it wears `.gold-shimmer` (globals.css),
+            the same sweep as the two wordmarks. It is the largest type in the
+            house to carry it, which is the size the bright middle stop was
+            put there for. GALLERY_CSS still sets the em's colour: that is the
+            ground the sweep falls back to under reduced motion. */}
         {place ? (
-          <Heading level={1} variant="none" tone="none">Today the world<br />is in <em>{place}</em></Heading>
+          <Heading level={1} variant="none" tone="none">Today the world<br />is in <em className="gold-shimmer">{place}</em></Heading>
         ) : hasEdition ? (
-          <Heading level={1} variant="none" tone="none">Today&rsquo;s wall<br />is being <em>hung</em></Heading>
+          <Heading level={1} variant="none" tone="none">Today&rsquo;s wall<br />is being <em className="gold-shimmer">hung</em></Heading>
         ) : (
-          <Heading level={1} variant="none" tone="none">The walls<br />are <em>bare</em> today</Heading>
+          <Heading level={1} variant="none" tone="none">The walls<br />are <em className="gold-shimmer">bare</em> today</Heading>
         )}
 
         <p className="sub">
