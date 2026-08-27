@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties, ElementType, ReactNode } from 'react';
 
 /**
  * SectionSurface — base primitive. Owns the
@@ -11,6 +11,13 @@ import type { CSSProperties, ReactNode } from 'react';
  * Deliberately NOT owned here: horizontal padding/max-width (composition's
  * job) and the fine gold rule between butting sections — baking that in
  * would double it between two dark neighbours (see globals.css §3.2 note).
+ *
+ * `as` takes the tag, for the same reason Container, Card, Prose and Chip
+ * have one: a page's closing band is a <footer> and its opening band can be a
+ * <header>, and both are grounds in exactly the sense this primitive means.
+ * Without it the only ways to give a landmark a surface scope were to nest a
+ * <section> inside it (two boxes, one ground) or to hand-copy the class map
+ * onto the landmark — which is how a surface stops being a token.
  */
 type Surface = 'light' | 'sage' | 'rose' | 'lavender' | 'periwinkle' | 'dark' | 'navy';
 
@@ -36,23 +43,25 @@ const PADDING: Record<'default' | 'none', string> = {
 export default function SectionSurface({
   surface = 'light',
   padding = 'default',
+  as: Tag = 'section' as ElementType,
   children,
   className = '',
   style,
 }: {
   surface?: Surface;
   padding?: 'default' | 'none';
+  as?: ElementType;
   children: ReactNode;
   className?: string;
   style?: CSSProperties;
 }) {
   return (
-    <section
+    <Tag
       data-surface={surface}
       className={`${SURFACE[surface]} ${PADDING[padding]} ${className}`}
       style={style}
     >
       {children}
-    </section>
+    </Tag>
   );
 }

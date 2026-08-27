@@ -3,9 +3,10 @@ import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, resolve, relative } from 'node:path';
 
 /**
- * The rule this suite holds: on the Daily Gold page, on the front door and
- * across the admin desk, every button, every form control, every heading and
- * every anchor is a components/ds primitive. Not "mostly", and not "unless it
+ * The rule this suite holds: on the Daily Gold page, on the front door, across
+ * the admin desk, on the landing page and in the family room, every button,
+ * every form control,
+ * every heading and every anchor is a components/ds primitive. Not "mostly", and not "unless it
  * looked easier" — those surfaces were migrated wholesale, and the only thing
  * standing between that and a slow drift back is a test that fails.
  *
@@ -35,12 +36,33 @@ const DG_ENTRIES = [
 /**
  * The front door is derived the same way, from its route files, and for a
  * sharper reason than symmetry: `components/auth/` is NOT the front door.
- * It also holds FamilyManager (/family), GateForm (/gate) and ProfilePicker
- * (/profiles) — three grown-up rooms that were never part of this migration
- * and still carry their own controls. Scanning the directory swept all three
- * in and failed on them, which is how this list stopped being a directory.
+ * It also holds GateForm (/gate) and ProfilePicker (/profiles) — two grown-up
+ * rooms that were never part of this migration and still carry their own
+ * controls. Scanning the directory swept them in and failed on them, which is
+ * how this list stopped being a directory.
+ *
+ * (FamilyManager used to be the third name in that sentence. /family was
+ * migrated on 2026-08-27 and is now in scope through FAMILY_ENTRIES below.)
  */
 const FRONT_DOOR_DIRS = ['app/(front-door)'];
+
+/**
+ * The family room, migrated on 2026-08-27 and derived from its route for the
+ * same reason the front door is not derived from `components/auth/`: the
+ * directory holds two rooms that have NOT been migrated, and a directory scan
+ * would sweep them in.
+ *
+ * It is the surface that makes the theming half of the rule concrete. This
+ * room opened with a private five-colour palette (`C.gold`, `C.ivory`, `C.ink`,
+ * …) and painted its own ivory ground at 100vh *inside* the (dg) shell, which
+ * was already painting --surface-page — so it was the one destination in the
+ * group that ignored the rail's theme picker entirely. Fourteen raw <button>s,
+ * six raw <input>s, a raw <select>, five raw <h2>s and a raw <a> went with it.
+ *
+ * `app/(dg)/layout.tsx` is already walked via DG_ENTRIES, so this adds exactly
+ * the page, FamilyManager and what only it reaches.
+ */
+const FAMILY_ENTRIES = ['app/(dg)/family/page.tsx'];
 
 /**
  * The admin desk, derived from its routes for the same reason the Daily Gold
@@ -57,6 +79,43 @@ const FRONT_DOOR_DIRS = ['app/(front-door)'];
  * back one convenient button at a time.
  */
 const ADMIN_DIRS = ['app/admin'];
+
+/**
+ * The landing page, added when it was redrawn onto the primitives
+ * (2026-08-27). Derived from its route group like the others, which sweeps in
+ * exactly the three components only this page mounts — MaisonHeader,
+ * MaisonFooter and the wordmark/seal/plate they share — and nothing else,
+ * because nothing else imports them.
+ *
+ * It is the surface that shows why the rule is worth having twice over: this
+ * page was 265 lines of inline `style={{ fontFamily: 'var(--font-serif)',
+ * fontSize: 'clamp(…)', color: 'var(--brown)' }}` against the LEGACY base44
+ * palette — a raw <input> and a raw <button> in the newsletter form, a raw
+ * <a> dressed as a gold-bordered CTA in the Goldprint band, and five <h2>s
+ * sharing one hand-written `h2style` object. Every one of those is the exact
+ * shape the assertions below are written against.
+ */
+const SITE_DIRS = ['app/(site)'];
+
+/**
+ * The Parent Observatory, added when it was moved onto the primitives
+ * (2026-08-27). Derived from its three route files, which is what sweeps in the
+ * whole of `components/observatory/` — and stops there, because nothing else in
+ * the app imports the ledger.
+ *
+ * It was the last surface in `app/(dg)` still running a design system of its
+ * own: a private palette block at the top of observatory.module.css (--canvas,
+ * --card, --ink, --gold, --sage, --terracotta), roughly twenty-five hardcoded
+ * `rgba(200, 169, 107, α)` gold literals, its own Playfair/Lato/Dancing-Script
+ * face stack, and every type size stated in px. None of that could be
+ * re-scoped, which is why the room stayed light while the rail beside it
+ * themed. It is tokens and primitives now, and this is what keeps it that way.
+ */
+const OBSERVATORY_ENTRIES = [
+  'app/(dg)/parent-observatory/page.tsx',
+  'app/(dg)/parent-observatory/[childId]/page.tsx',
+  'app/(dg)/parent-observatory/loading.tsx',
+];
 
 /**
  * The primitives themselves. A <button> inside components/ds/Button.tsx is
@@ -163,7 +222,11 @@ function stripCommentary(source: string): string {
 
 const SCOPE = reachableFrom([
   ...DG_ENTRIES,
-  ...[...FRONT_DOOR_DIRS, ...ADMIN_DIRS].flatMap(filesUnder).map((f) => relative(ROOT, f)),
+  ...FAMILY_ENTRIES,
+  ...OBSERVATORY_ENTRIES,
+  ...[...FRONT_DOOR_DIRS, ...ADMIN_DIRS, ...SITE_DIRS]
+    .flatMap(filesUnder)
+    .map((f) => relative(ROOT, f)),
 ])
   .map((file) => relative(ROOT, file))
   // JSX lives in JSX files. This is not a shortcut — it is what keeps the
@@ -202,7 +265,7 @@ const BANNED: Array<{ pattern: RegExp; element: string; use: string }> = [
   { pattern: /<a[\s>]/g, element: '<a>', use: 'TextLink, Button href, or next/link' },
 ];
 
-describe('Daily Gold and the front door use only ds primitives', () => {
+describe('Daily Gold, the front door, the admin desk, the landing page and /family use only ds primitives', () => {
   it('finds the surfaces it is supposed to be guarding', () => {
     // A resolver that silently returns nothing would make every assertion
     // below pass. Anchor on files that must be in scope for the suite to mean
@@ -218,6 +281,17 @@ describe('Daily Gold and the front door use only ds primitives', () => {
     expect(SCOPE).toContain('components/admin/DayEditor.tsx');
     expect(SCOPE).toContain('components/admin/AlmanacEditor.tsx');
     expect(SCOPE).toContain('components/admin/PersonEditor.tsx');
+    // The observatory's ledger and its skeleton — the surface migrated last,
+    // and the one whose stylesheet used to carry a palette of its own.
+    expect(SCOPE).toContain('components/observatory/ObservatoryLedger.tsx');
+    expect(SCOPE).toContain('components/observatory/ObservatorySkeletons.tsx');
+    // The landing page and the two pieces of chrome only it mounts.
+    expect(SCOPE).toContain('app/(site)/page.tsx');
+    expect(SCOPE).toContain('components/maison/MaisonHeader.tsx');
+    expect(SCOPE).toContain('components/maison/MaisonFooter.tsx');
+    // The family room, whose whole point is that it is reached from the (dg)
+    // rail rather than from any directory this suite scans.
+    expect(SCOPE).toContain('components/auth/FamilyManager.tsx');
     expect(SCOPE.length).toBeGreaterThan(40);
   });
 
@@ -229,7 +303,6 @@ describe('Daily Gold and the front door use only ds primitives', () => {
     for (const outsider of [
       'components/dailygold/GoldenStory.jsx',    // /stories/[name]
       'components/dailygold/StorybookView.jsx',  // /stories/[name]
-      'components/auth/FamilyManager.tsx',       // /family
       'components/auth/GateForm.tsx',            // /gate
       'components/auth/ProfilePicker.tsx',       // /profiles
     ]) {

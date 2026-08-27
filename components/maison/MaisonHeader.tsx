@@ -1,17 +1,33 @@
 'use client';
 
 /**
- * MaisonHeader
- * Top navigation bar for Maison d'Ore, recreated from the design
- * reference. Sits sticky at the top of every page (mounted in the
- * root layout). Styled entirely with the shared brand tokens from
- * globals.css so it stays in visual harmony with the editorial pages.
+ * MaisonHeader — the homepage's top bar, redrawn onto components/ds alongside
+ * the landing page it sits on (this is the only route that mounts it).
  *
- * Layout:  wordmark  ·  primary nav  ·  search + actions
+ * Everything it says is what it said before. What changed is that it no longer
+ * says it in hexes: the wordmark, the six nav labels, the search affordance,
+ * the "Classic Maison" link and the sign-up call are the same controls, now
+ * wearing the §2.2 type tokens, the §1 semantic colours and the Button coat
+ * instead of a private ladder of `fontSize: '0.6rem'` / `color: var(--taupe)`
+ * declarations against the legacy palette.
+ *
+ * ⚠ Two things in here still point at nothing, both inherited and both left
+ * alone on purpose so this stayed a redesign rather than an edit:
+ *
+ *   · The six nav routes — /family-tracker, /academy, /rituals, /journal,
+ *     /almanac, /village — are all 404s in this project. The footer and the
+ *     landing page below already dropped their links to the cut features
+ *     ("no control that goes nowhere"); this bar never did. When that is
+ *     decided, the real destinations are the five in MaisonFooter's NAV_LINKS.
+ *   · The ⌘K search opens nothing. It is an affordance for a command palette
+ *     that does not exist yet.
+ *
+ * Deleting either is an editorial call, not a styling one — make it
+ * deliberately, in its own change.
  */
 import { useEffect, useState } from 'react';
-import type { CSSProperties } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ds';
 import MaisonBrandName from './MaisonBrandName';
 
 // Nav labels from the design, mapped to the app's real routes.
@@ -24,17 +40,14 @@ const NAV_LINKS = [
   { label: 'Village', path: '/village' },
 ];
 
-const navLink: CSSProperties = {
-  fontFamily: 'var(--font-sans)',
-  fontSize: '0.62rem',
-  letterSpacing: '0.2em',
-  textTransform: 'uppercase',
-  color: 'var(--taupe)',
-  textDecoration: 'none',
-  fontWeight: 400,
-  transition: 'color 0.25s ease',
-  whiteSpace: 'nowrap',
-};
+/* A next/link is not a raw anchor, so the nav keeps client navigation and
+   still gets the house's link ink. Written out rather than composed from
+   TextLink because these are wayfinding labels, not prose: no underline at
+   rest, and the editorial label size. */
+const NAV_LINK =
+  'type-label-editorial text-secondary whitespace-nowrap transition-colors duration-300 ' +
+  'hover:text-accent-readable ' +
+  'focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-focus-ring';
 
 export default function MaisonHeader() {
   const [scrolled, setScrolled] = useState(false);
@@ -65,116 +78,76 @@ export default function MaisonHeader() {
 
   return (
     <header
+      className="text-primary sticky top-0 z-50 backdrop-blur-[10px] backdrop-saturate-[1.05] transition-[background-color,border-color] duration-300"
       style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 'clamp(1rem, 3vw, 2.5rem)',
-        padding: 'clamp(0.9rem, 2vw, 1.3rem) clamp(1.5rem, 5vw, 3.5rem)',
-        background: scrolled ? 'rgba(250,247,242,0.92)' : 'rgba(250,247,242,0.6)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-        borderBottom: `1px solid ${scrolled ? 'var(--border)' : 'transparent'}`,
-        transition: 'background 0.3s ease, border-color 0.3s ease',
+        /* The frosted ground, derived from --surface-page the same way
+           --surface-overlay is, so the bar follows its theme for free. It
+           firms up rather than appears: 66% → 94% of the page ground. */
+        backgroundColor: `color-mix(in srgb, var(--surface-page) ${scrolled ? 94 : 66}%, transparent)`,
+        borderBottom: `1px solid ${scrolled ? 'var(--border-fine)' : 'transparent'}`,
       }}
     >
-      {/* ── Wordmark ── */}
-      <Link href="/" aria-label="Maison d'Ore — home" style={{ textDecoration: 'none', flexShrink: 0 }}>
-        <span style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.1rem, 2vw, 1.4rem)', fontWeight: 400, letterSpacing: '0.04em' }}>
-          <MaisonBrandName />
-        </span>
-      </Link>
-
-      {/* ── Primary nav ── */}
-      <nav
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'clamp(1.2rem, 2.5vw, 2.4rem)',
-          overflowX: 'auto',
-        }}
-      >
-        {NAV_LINKS.map(link => (
-          <Link
-            key={link.label}
-            href={link.path}
-            style={navLink}
-            className="mdo-nav-link"
-          >
-            {link.label}
-          </Link>
-        ))}
-      </nav>
-
-      {/* ── Search + actions ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(0.6rem, 1.2vw, 1rem)', flexShrink: 0 }}>
-        <button
-          type="button"
-          onClick={openSearch}
-          aria-label="Search (Command K)"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.45rem',
-            padding: '7px 14px',
-            border: '1px solid var(--border)',
-            borderRadius: 999,
-            background: 'transparent',
-            color: 'var(--taupe)',
-            fontFamily: 'var(--font-sans)',
-            fontSize: '0.6rem',
-            letterSpacing: '0.08em',
-            cursor: 'pointer',
-            transition: 'border-color 0.25s ease',
-          }}
-        >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <circle cx="11" cy="11" r="7" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <span>Cmd K</span>
-        </button>
-
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-3 px-6 py-3.5 lg:flex-nowrap">
+        {/* ── Wordmark ── */}
         <Link
           href="/"
-          style={{
-            padding: '7px 16px',
-            border: '1px solid var(--border)',
-            borderRadius: 999,
-            color: 'var(--taupe)',
-            fontFamily: 'var(--font-sans)',
-            fontSize: '0.6rem',
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            textDecoration: 'none',
-            whiteSpace: 'nowrap',
-            transition: 'border-color 0.25s ease',
-          }}
+          aria-label="Maison d'Ore — home"
+          className="type-display-story shrink-0 focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
         >
-          Classic Maison
+          <MaisonBrandName />
         </Link>
 
-        <Link
-          href="/signup"
-          style={{
-            padding: '8px 18px',
-            border: '1px solid var(--brown)',
-            color: 'var(--brown)',
-            fontFamily: 'var(--font-sans)',
-            fontSize: '0.6rem',
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
-            textDecoration: 'none',
-            whiteSpace: 'nowrap',
-            transition: 'background 0.25s ease, color 0.25s ease',
-          }}
-          className="mdo-signin"
+        {/* ── Search + actions ──
+            Ahead of the nav in source order on purpose: on a narrow screen the
+            bar is two rows, and the row that must never wrap away is the one
+            with the wordmark and the sign-up. `order-*` puts the nav back in
+            the middle from `lg` up, where everything fits on one line. */}
+        <div className="ml-auto flex shrink-0 items-center gap-2 lg:order-3">
+          {/* The hiding is on a WRAPPER, not on the Button. `hidden` and the
+              coat's own `inline-flex` are both display utilities, and which
+              one wins is decided by Tailwind's output order rather than by
+              the order they are written in — so `className="hidden"` on a
+              Button is a coin toss that came up heads-on-phones here. A span
+              has no display of its own to argue with. */}
+          <span className="hidden sm:block">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={openSearch}
+              aria-label="Search (Command K)"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <span>Cmd K</span>
+            </Button>
+          </span>
+
+          <Link href="/" className={`${NAV_LINK} hidden px-2 md:inline-block`}>
+            Classic Maison
+          </Link>
+
+          <Button href="/signup" size="sm">
+            Sign Up
+          </Button>
+        </div>
+
+        {/* ── Primary nav ── */}
+        <nav
+          aria-label="Maison"
+          className="order-last flex w-full items-center gap-6 overflow-x-auto lg:order-2 lg:w-auto lg:justify-center lg:gap-7 xl:gap-9"
+          /* The bar is one line from `lg` up and this never scrolls there;
+             below it, the scrollbar would be a grey slab across the header on
+             every phone. The labels are duplicated in the footer's own nav. */
+          style={{ scrollbarWidth: 'none' }}
         >
-          Sign Up
-        </Link>
+          {NAV_LINKS.map((link) => (
+            <Link key={link.label} href={link.path} className={NAV_LINK}>
+              {link.label}
+            </Link>
+          ))}
+        </nav>
       </div>
     </header>
   );
