@@ -18,3 +18,14 @@ export async function getSavedItems(): Promise<unknown[]> {
 export async function getSavedKeys(): Promise<string[] | null> {
   return null;
 }
+
+export type SavedItemDetail =
+  | { kind: 'news'; headline: string; description: string | null; location: string | null; image_url: string | null }
+  | { kind: 'moment'; year: number; headline: string | null; story: string | null; location: string | null; image_url: string | null; rank: number | null }
+  | { kind: 'destination'; name: string | null; continent: string | null; atmosphere: string | null; story: string | null; image_url: string | null }
+  | { kind: 'phrase'; language: string | null; translation: string | null }
+  | null;
+
+export async function getSavedItemDetail(): Promise<SavedItemDetail> {
+  return null;
+}

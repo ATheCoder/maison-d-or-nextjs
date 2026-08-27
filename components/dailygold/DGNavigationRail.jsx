@@ -196,9 +196,12 @@ export default function DGNavigationRail({ child = null, viewer = null }) {
             aria-expanded={showSwitcher}
             aria-label={`Signed in as ${viewer.name} (${roleWord.toLowerCase()}). Account menu`}
           >
-            <span className="dg-rail-av dg-rail-av-key" aria-hidden="true">
-              🗝️
-            </span>
+            {/* No emblem and no monogram: Avatar's third face is the
+                grown-up's key, on --surface-tint behind the house ring —
+                the same disc the reader above wears, so the two identities
+                sit on one line. This used to be a bare <span>, which meant
+                the key kept the glyph but lost the circle and the ring. */}
+            <Avatar size="sm" ring className="dg-rail-av" />
             <span className="dg-rail-id-label" aria-hidden="true">
               <b className="dg-rail-id-name">{viewer.name}</b>
               <small className="dg-rail-id-meta">
