@@ -4,7 +4,7 @@
  * the per-slot overrides and any running image jobs into the per-slot state the
  * slot card (screen ②), the status board (screen ④) and the rail panel render.
  */
-import type { Brief } from '@/lib/golden-story/brief';
+import type { AnyBrief } from '@/lib/golden-story/brief';
 import type { GenerationJobRow, SlotOverride } from '@/src/db/schema';
 import {
   slotDescriptors, sceneFor, promptFor, copyPayload, includesCharacterSheet, slotStatus,
@@ -41,7 +41,7 @@ function jobStateFor(file: string, slot: GenerationJobRow | null, images: Genera
 
 export function buildSlotViews(
   person: SlotPerson,
-  brief: Brief | null,
+  brief: AnyBrief | null,
   overrides: Record<string, SlotOverride>,
   jobs: { slot: GenerationJobRow | null; images: GenerationJobRow | null },
 ): SlotView[] {
@@ -77,8 +77,10 @@ function readImage(person: SlotPerson, personPath: string): string | null {
   if (personPath === 'childhood_image_url') return person.childhood_image_url ?? null;
   if (personPath === 'modern.image_url') return person.modern?.image_url ?? null;
   if (personPath === 'after_treasures.image_url') return person.after_treasures?.image_url ?? null;
-  const m = /^(chapters|timeline|treasures)\.(\d+)\.image_url$/.exec(personPath);
+  const m = /^(chapters|timeline|treasures|fun_facts)\.(\d+)\.image_url$/.exec(personPath);
   if (!m) return null;
-  const arr = person[m[1] as 'chapters' | 'timeline' | 'treasures'];
+  const arr = m[1] === 'fun_facts'
+    ? person.fun_facts ?? []
+    : person[m[1] as 'chapters' | 'timeline' | 'treasures'];
   return arr[Number(m[2])]?.image_url ?? null;
 }

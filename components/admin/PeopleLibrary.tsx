@@ -28,6 +28,21 @@ import { slugify, SLUG_RE } from '@/lib/slug';
 import { flagEmoji } from '@/lib/countries';
 import { createPerson, deletePerson, reorderBornToday, suggestPeople, type PersonListItem, type PersonSuggestion } from '@/app/admin/people/actions';
 
+// The two Golden Story designs, in the order the create dialog offers them —
+// the going-forward one first. See StoryFormat in src/db/schema.ts.
+const FORMAT_OPTIONS: { value: 'edition' | 'classic'; name: string; hint: string }[] = [
+  {
+    value: 'edition',
+    name: 'Book Edition',
+    hint: 'A scrolling illustrated read: portrait, six chapters, fun facts, a treasure gallery and a life timeline.',
+  },
+  {
+    value: 'classic',
+    name: 'Classic flip-book',
+    hint: 'The leather storybook of spreads you page through, with the childhood strip and the treasures leaf.',
+  },
+];
+
 // ── House stylesheet (scoped under .lib) ─────────────────────────────────────
 const CSS = `
 .lib {
@@ -190,7 +205,16 @@ function PersonCard({ p, now, onDelete }: { p: PersonListItem; now: Date; onDele
   } else {
     badges.push(<span key="done" className="chip chip-green">✓ Complete · {p.totalImages} / {p.totalImages} art</span>);
   }
-  if (!p.coverUrl) badges.push(<span key="nocov" className="chip chip-amber">No cover</span>);
+  // Same column either way — the flip-book's cover and the Book Edition's hero
+  // portrait are both `image_url` — but they are not the same picture, and the
+  // badge should name the one the admin will go and paint.
+  if (!p.coverUrl) {
+    badges.push(
+      <span key="nocov" className="chip chip-amber">
+        {p.storyFormat === 'edition' ? 'No hero portrait' : 'No cover'}
+      </span>,
+    );
+  }
   // Its absence costs the child a flag chip silently, which is why it is a
   // badge rather than something you only notice on the reader (R5.3).
   if (p.missingCountryCode) {
@@ -244,6 +268,12 @@ function PersonCard({ p, now, onDelete }: { p: PersonListItem; now: Date; onDele
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 'auto', flexWrap: 'wrap' }}>
           <span className="chip chip-ink">b. {p.monthDay ? dayMonthLabel(p.monthDay) : '—'}</span>
+          {/* Which design this person is. Worth a chip because the two are read
+              in different components and count as complete at different chapter
+              and art totals — the badges below mean nothing without it. */}
+          <span className="chip chip-ink">
+            {p.storyFormat === 'edition' ? 'Book Edition' : 'Flip-book'}
+          </span>
           {meta && <span className="muted" style={{ fontSize: 11 }}>{flag && `${flag} `}{meta}</span>}
         </div>
 
@@ -273,6 +303,12 @@ function CreateDialog({ onClose, existingNames, initialDate }: {
   const [suggestions, setSuggestions] = useState<PersonSuggestion[] | null>(null);
   const [sugError, setSugError] = useState<string | null>(null);
   const [sugPending, startSug] = useTransition();
+  // Which of the two designs this person will be written and read in. Chosen
+  // here because it is chosen ONCE: the format decides the writer prompt, the
+  // slot table and the reader, so the editor treats it as fixed and a person
+  // changes it only by being created again. New books default to the Book
+  // Edition.
+  const [format, setFormat] = useState<'edition' | 'classic'>('edition');
 
   function runSuggest(dateStr: string) {
     setSugError(null);
@@ -305,7 +341,7 @@ function CreateDialog({ onClose, existingNames, initialDate }: {
   function submit(overwrite: boolean) {
     setError(null);
     start(async () => {
-      const res = await createPerson({ name, slug: effectiveSlug, overwrite });
+      const res = await createPerson({ name, slug: effectiveSlug, overwrite, format });
       // On success the action redirects to the editor; only failures return.
       if (res?.collision) { setCollision(res.collision); return; }
       if (res?.error) { setError(res.error); setCollision(null); }
@@ -343,6 +379,32 @@ function CreateDialog({ onClose, existingNames, initialDate }: {
             ? 'Lowercase letters, numbers and single dashes only.'
             : undefined}
         />
+
+        <div style={{ marginTop: 18 }}>
+          <p className="kick" style={{ margin: '0 0 9px' }}>Design</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {FORMAT_OPTIONS.map((o) => (
+              <Button
+                key={o.value}
+                variant="bare"
+                onClick={() => setFormat(o.value)}
+                aria-pressed={format === o.value}
+                className="block w-full rounded-md border px-3 py-2.5 text-left"
+                style={{
+                  borderColor: format === o.value ? 'var(--gold-deep)' : 'var(--line)',
+                  background: format === o.value ? 'var(--gold-soft)' : 'var(--surface-raised)',
+                }}
+              >
+                <span style={{ fontWeight: 700, color: 'var(--ink)', fontSize: 13 }}>{o.name}</span>
+                <span style={{ display: 'block', color: 'var(--brown)', fontSize: 12, marginTop: 3 }}>{o.hint}</span>
+              </Button>
+            ))}
+          </div>
+          <p className="muted" style={{ fontSize: 11.5, margin: '9px 0 0' }}>
+            Set once, here. The two designs are written from different prompts and hold
+            different fields, so a book changes design only by being created again.
+          </p>
+        </div>
 
         <div className="panel" style={{ marginTop: 18, padding: '14px 15px', background: 'var(--gold-soft)' }}>
           <p className="kick" style={{ margin: 0 }}>✦ Suggest a person born on a date</p>

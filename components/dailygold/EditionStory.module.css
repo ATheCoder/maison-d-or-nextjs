@@ -1,0 +1,828 @@
+/* EditionStory — scoped styles for the Book Edition (see EditionStory.tsx),
+   ported from the Maison d'Oré design canvas
+   ("Story - Elizabeth II (Book Edition).dc.html").
+
+   WHY THIS FILE CARRIES ITS OWN COLOURS
+   The house rule is that components take colour from the semantic tokens in
+   app/globals.css and never from hex. This file is the same deliberate
+   exception GoldenStory.module.css is, for the same reason: a Golden Story is
+   not app chrome, it is a PRINTED OBJECT. Its paper stocks are content — the
+   cream leaf the story is set on, the sage room the lessons are printed in, the
+   lilac room the gallery is printed in, the dark board the book closes on — and
+   they must not re-scope with the reader's [data-theme] any more than the paint
+   inside an illustration re-scopes. A Book Edition read in the evening room is
+   the same book, on the same paper, as one read at breakfast.
+
+   What is NOT excepted: the two faces. --serif and --sans resolve to the house
+   faces through --face-display / --face-sans, which are already Fraunces and
+   Instrument Sans — the exact pair the design was drawn in. No font is loaded
+   here.
+
+   Everything below is written mobile-first, because the design is: its preview
+   is 460×900 and the 1040px page is what it grows into, not what it shrinks
+   from. The reading measure is a constant 700px, held by the padding formula
+   `max(<gutter>, calc((100% - 700px) / 2))` — below 700px wide the gutter wins
+   and the column is fluid; above it, the column locks and the page grows margin
+   instead of line length. */
+
+.edition {
+  /* ── Paper stocks ── */
+  --paper: #fbf7f0;         /* the leaf the story is printed on */
+  --paper-warm: #f5efe4;    /* pull-quotes and fun-fact cards */
+  --paper-sage: #eff3ec;    /* the Life Lessons room */
+  --paper-lilac: #f2eef6;   /* the Gallery room */
+  --paper-card: #fbfcfa;    /* a card lifted off the sage room */
+  --paper-card-lilac: #fbfafd;
+  --board: #2a211b;         /* the dark board the book closes on */
+  --backdrop-top: #3a2c22;  /* the table the page lies on */
+  --backdrop: #241c16;
+
+  /* ── Inks ── */
+  --ink: #2b241e;
+  --ink-soft: #5d5348;
+  --ink-mute: #8c8275;
+  --cream: #f5efe4;         /* type on the dark board */
+  --cream-soft: rgba(245, 239, 228, 0.86);
+  --cream-mute: rgba(245, 239, 228, 0.6);
+
+  /* ── Accents, one per room ── */
+  --gold-deep: #8a6d12;     /* eyebrows and kickers on paper */
+  --gold: #c9a227;          /* rules, progress, timeline fill */
+  --gold-bright: #e8c24a;   /* the same accent, read on the dark board */
+  --sage-deep: #3c5a3a;     /* the Life Lessons room's own accent */
+  --lilac-deep: #5c4e86;    /* the Gallery room's own accent */
+
+  --line: rgba(43, 36, 30, 0.14);
+  --line-soft: rgba(43, 36, 30, 0.1);
+
+  --serif: var(--face-display);
+  --sans: var(--face-sans);
+
+  /* The design's single easing. Everything that moves uses it, so the page
+     reads as one mechanism rather than a pile of animations. */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* The reading measure, and the gutter that protects it on a phone. */
+  --measure: 700px;
+  --gutter: clamp(20px, 5.5vw, 28px);
+  --pad-x: max(var(--gutter), calc((100% - var(--measure)) / 2));
+
+  min-height: 100vh;
+  background: radial-gradient(120% 80% at 50% 0%, var(--backdrop-top), var(--backdrop) 70%);
+  padding-bottom: clamp(40px, 8vw, 80px);
+  font-family: var(--sans);
+  color: var(--ink);
+}
+
+/* In the editor the book is one pane of a workbench, not the window: it scrolls
+   inside its own box and stops just short of the full-bleed drama it has on the
+   reader, so the admin can see the page edges they are editing. */
+.embedded {
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* The tab nav and the hero parallax both measure against this box when it is
+     the scroller, which only works if it is also the containing block. */
+  position: relative;
+}
+
+.page {
+  width: min(100%, 1040px);
+  margin: 0 auto;
+  background: var(--paper);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+  position: relative;
+}
+
+/* ── Hero ─────────────────────────────────────────────────────────────────── */
+
+.hero {
+  position: relative;
+  height: clamp(380px, 68vh, 640px);
+  overflow: hidden;
+  background: var(--board);
+}
+
+/* The parallax plate is inset beyond the frame on the vertical axis so it has
+   somewhere to travel without ever showing an edge. */
+.heroArt {
+  position: absolute;
+  inset: -12% 0;
+  background-size: cover;
+  background-position: center;
+  will-change: transform;
+}
+
+/* No art yet: the same woven placeholder the design ships, so an unpainted book
+   still reads as a book rather than as a hole. */
+.heroArt.placeholder {
+  background-image: repeating-linear-gradient(140deg, #4a3a2c 0 18px, #3e3025 18px 36px);
+}
+
+/* Two jobs in one layer: lift the title off the art, and land the bottom edge
+   exactly on the paper so the hero dissolves into the page instead of ending. */
+.heroScrim {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(90% 70% at 50% 22%, rgba(255, 238, 196, 0.16), transparent 65%),
+    linear-gradient(180deg, rgba(20, 15, 11, 0.62) 0%, rgba(20, 15, 11, 0.06) 34%,
+      rgba(20, 15, 11, 0.72) 78%, var(--paper) 100%);
+}
+
+.heroPlaceholderLabel {
+  position: absolute;
+  top: 44%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font: 400 10px/1.4 ui-monospace, Menlo, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(245, 239, 228, 0.62);
+  text-align: center;
+  padding: 0 12%;
+}
+
+.heroChrome {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(14px, 4vw, 20px);
+}
+
+.roundBtn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(28, 21, 16, 0.32);
+  backdrop-filter: blur(6px);
+  color: var(--cream);
+  font-size: 17px;
+  cursor: pointer;
+  transition: background 140ms var(--ease);
+}
+
+.roundBtn:hover { background: rgba(28, 21, 16, 0.5); }
+
+.heroTitle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0 var(--pad-x) clamp(22px, 6vw, 40px);
+}
+
+.name {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 560;
+  font-size: clamp(34px, 7vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  color: #f8f2e6;
+  text-shadow: 0 2px 18px rgba(20, 15, 11, 0.5);
+  text-wrap: balance;
+}
+
+.role {
+  margin-top: 6px;
+  font: 400 clamp(15px, 4vw, 17px)/1.4 var(--sans);
+  color: rgba(248, 242, 230, 0.86);
+}
+
+.born {
+  margin-top: 14px;
+  font: 450 12.5px/1.4 var(--sans);
+  color: rgba(248, 242, 230, 0.72);
+  font-variant-numeric: tabular-nums;
+}
+
+.origin {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font: 450 12.5px/1 var(--sans);
+  color: rgba(248, 242, 230, 0.8);
+}
+
+.flag { font-size: 15px; line-height: 1; }
+
+/* ── Sticky section nav ───────────────────────────────────────────────────── */
+
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 0 max(0px, calc((100% - var(--measure)) / 2));
+  background: rgba(251, 247, 240, 0.94);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-height: 64px;
+  padding: 11px 4px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-mute);
+  cursor: pointer;
+  transition: color 140ms var(--ease), background 140ms var(--ease);
+}
+
+.tabOn {
+  color: var(--gold-deep);
+  background: rgba(201, 162, 39, 0.07);
+}
+
+.tabLabel {
+  font: 560 10px/1 var(--sans);
+  letter-spacing: 0.06em;
+}
+
+.tabTrack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: rgba(43, 36, 30, 0.1);
+}
+
+/* How far the reader is through THIS section, not through the book. It is the
+   one piece of chrome that answers "how much of this is left", which a scroll
+   bar cannot when four rooms share one scroll. */
+.tabBar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 0;
+  background: var(--gold);
+}
+
+/* ── Rooms ────────────────────────────────────────────────────────────────── */
+
+.section {
+  padding: clamp(30px, 7vw, 52px) var(--pad-x) clamp(24px, 6vw, 44px);
+}
+
+.roomSage { background: var(--paper-sage); border-top: 1px solid var(--line); }
+.roomPaper { background: var(--paper); border-top: 1px solid var(--line); }
+.roomLilac { background: var(--paper-lilac); border-top: 1px solid var(--line); }
+
+.eyebrow {
+  margin: 0 0 10px;
+  font: 560 10.5px/1.4 var(--sans);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+}
+
+.eyebrowSage { color: var(--sage-deep); }
+.eyebrowLilac { color: var(--lilac-deep); }
+.eyebrowGold { color: var(--gold-bright); }
+
+.roomTitle {
+  margin: 0 0 20px;
+  font-family: var(--serif);
+  font-weight: 560;
+  font-size: clamp(25px, 5vw, 38px);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+/* ── Chapters ─────────────────────────────────────────────────────────────── */
+
+/* The first chapter's headline is the book's opening line and is set at room
+   scale; the rest step down so the eye reads them as chapters within it. */
+.chapterLead { margin: 0 0 18px; }
+
+/* `flow-root`, not a ::after clearfix. A clearfix runs at the END of a block,
+   which is the wrong end of the problem: what breaks the page is the PREVIOUS
+   chapter's floated figure still occupying the right margin when the next
+   chapter's headline is laid out, so the headline sets in a narrow column and
+   then jumps wide halfway down. A block that establishes its own formatting
+   context contains its float completely, and the next chapter starts on clean
+   paper. */
+.chapterBlock {
+  display: flow-root;
+  margin: clamp(28px, 7vw, 40px) 0 0;
+}
+
+.chapterBlock:first-child { margin-top: 0; }
+
+.chapterTitle {
+  margin: 0 0 16px;
+  font-family: var(--serif);
+  font-weight: 540;
+  font-size: clamp(21px, 4vw, 30px);
+  line-height: 1.25;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.prose {
+  display: flow-root;
+  font: 400 clamp(16.5px, 1.4vw, 18px)/1.68 var(--sans);
+  color: var(--ink);
+}
+
+.prose p { margin: 0 0 16px; text-wrap: pretty; }
+.prose p:last-child { margin-bottom: 0; }
+
+/* ── Figures ──────────────────────────────────────────────────────────────── */
+
+/* Every plate is opaque and fills its frame; these masks are what shape it.
+   That is the whole art contract of this format — see prompts.ts. */
+
+.figTall {
+  float: right;
+  width: 44%;
+  margin: 4px 0 12px 18px;
+}
+
+.figRound {
+  float: left;
+  width: 40%;
+  margin: 4px 16px 10px 0;
+}
+
+.figBand { margin: clamp(22px, 5vw, 30px) 0 0; }
+
+.plate {
+  position: relative;
+  overflow: hidden;
+  background: #efe6d6;
+}
+
+.plateImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.plateWeave {
+  position: absolute;
+  inset: -8% 0;
+  background: repeating-linear-gradient(140deg, #f1e8d9 0 14px, #e6dbc7 14px 28px);
+}
+
+.plateLabel {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 14%;
+  text-align: center;
+  font: 400 9px/1.35 ui-monospace, Menlo, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  text-wrap: balance;
+}
+
+.plateTall {
+  aspect-ratio: 3 / 4;
+  -webkit-mask-image: radial-gradient(115% 100% at 45% 45%, #000 52%, transparent 100%);
+  mask-image: radial-gradient(115% 100% at 45% 45%, #000 52%, transparent 100%);
+}
+
+.plateRound {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  -webkit-mask-image: radial-gradient(closest-side, #000 72%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 72%, transparent 100%);
+}
+
+/* Two masks intersected, so the band feathers on all four edges at once — a
+   single gradient can only fade one axis. */
+.plateBand {
+  height: clamp(180px, 34vw, 210px);
+  -webkit-mask-image:
+    linear-gradient(180deg, transparent 0, #000 22%, #000 82%, transparent 100%),
+    linear-gradient(90deg, transparent 0, #000 12%, #000 88%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(180deg, transparent 0, #000 22%, #000 82%, transparent 100%),
+    linear-gradient(90deg, transparent 0, #000 12%, #000 88%, transparent 100%);
+  mask-composite: intersect;
+}
+
+.caption {
+  margin: 8px 0 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+/* ── Pull-quote ───────────────────────────────────────────────────────────── */
+
+.quote {
+  margin: clamp(26px, 6vw, 36px) 0 0;
+  padding: clamp(20px, 5vw, 26px);
+  background: var(--paper-warm);
+  border-radius: 10px;
+}
+
+.quoteText {
+  margin: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 460;
+  font-size: clamp(17px, 4.6vw, 20px);
+  line-height: 1.45;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+
+.quoteFooter {
+  margin-top: 12px;
+  font: 450 12.5px/1.4 var(--sans);
+  color: var(--gold-deep);
+}
+
+/* ── Life lessons ─────────────────────────────────────────────────────────── */
+
+.lessonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.lessonCard {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: var(--paper-card);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
+.lessonGlyph {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--paper-sage);
+  color: var(--sage-deep);
+  font-size: 15px;
+}
+
+.lessonName {
+  font: 560 12px/1.3 var(--sans);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sage-deep);
+}
+
+.lessonText {
+  margin-top: 5px;
+  font: 400 16px/1.55 var(--sans);
+  color: var(--ink);
+  text-wrap: pretty;
+}
+
+.modernCard {
+  margin-top: clamp(24px, 6vw, 32px);
+  background: var(--paper-card);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  padding: clamp(18px, 5vw, 22px);
+}
+
+.modernBody {
+  margin: 10px 0 0;
+  font: 400 16px/1.6 var(--sans);
+  color: var(--ink);
+  text-wrap: pretty;
+}
+
+/* The true thing the daydream is built on, and it has to look different from
+   the daydream or the page has quietly blurred invention into biography. */
+.modernFact {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+  font: 400 14.5px/1.6 var(--sans);
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+.modernFactLabel {
+  font-weight: 560;
+  color: var(--sage-deep);
+}
+
+.traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.trait {
+  padding: 7px 12px;
+  border-radius: 6px;
+  background: var(--paper-sage);
+  font: 450 12.5px/1 var(--sans);
+  color: var(--sage-deep);
+}
+
+/* ── Fun facts ────────────────────────────────────────────────────────────── */
+
+.factCard {
+  background: var(--paper-warm);
+  border-radius: 10px;
+  padding: clamp(18px, 5vw, 22px);
+}
+
+.factCard + .factCard { margin-top: 10px; }
+
+.factHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 560 11px/1 var(--sans);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+}
+
+.factBody {
+  font: 400 16px/1.6 var(--sans);
+  color: var(--ink);
+  margin-top: 12px;
+}
+
+.factBody p { margin: 0; text-wrap: pretty; }
+
+/* Same reason as .chapterBlock: the card contains its own round spot rather
+   than clearing after it. */
+.factCard { display: flow-root; }
+
+.figFact {
+  float: right;
+  width: 38%;
+  margin: 2px 0 10px 16px;
+}
+
+.plateFact {
+  aspect-ratio: 1;
+  -webkit-mask-image: radial-gradient(closest-side, #000 68%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 68%, transparent 100%);
+}
+
+/* ── Gallery ──────────────────────────────────────────────────────────────── */
+
+.galleryIntro {
+  margin: 0 0 20px;
+  font: 400 16px/1.6 var(--sans);
+  color: var(--ink);
+  text-wrap: pretty;
+}
+
+.galleryTitle { margin-bottom: 14px; }
+
+.treasureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(48%, 190px), 1fr));
+  gap: 10px;
+}
+
+.treasureCard {
+  display: block;
+  background: var(--paper-card-lilac);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.treasureArt {
+  position: relative;
+  aspect-ratio: 1;
+  background: #e6e1ee;
+  overflow: hidden;
+}
+
+.treasureWeave {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(140deg, #ebe6f2 0 12px, #e1dbea 12px 24px);
+}
+
+.treasureLabel {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 12%;
+  text-align: center;
+  font: 400 8.5px/1.3 ui-monospace, Menlo, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lilac-deep);
+  text-wrap: balance;
+}
+
+.treasureText { padding: 12px 13px 14px; }
+
+.treasureKicker {
+  font: 560 9.5px/1 var(--sans);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+}
+
+.treasureName {
+  margin-top: 7px;
+  font-family: var(--serif);
+  font-weight: 540;
+  font-size: 15.5px;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.treasureDesc {
+  margin-top: 5px;
+  font: 400 12.5px/1.5 var(--sans);
+  color: var(--ink-soft);
+}
+
+/* ── Timeline ─────────────────────────────────────────────────────────────── */
+
+.timelineWrap { margin-top: clamp(30px, 7vw, 42px); }
+
+.timeline {
+  position: relative;
+  margin-top: 18px;
+  padding-left: 34px;
+}
+
+.timelineRail {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: rgba(43, 36, 30, 0.18);
+}
+
+/* Fills as the reader scrolls the years — the life being lived, rather than a
+   decoration that is already complete when you arrive. */
+.timelineFill {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 1px;
+  height: 0;
+  background: var(--gold);
+}
+
+.milestone { position: relative; padding-bottom: 22px; }
+.milestone:last-child { padding-bottom: 0; }
+
+.milestoneNode {
+  position: absolute;
+  left: -34px;
+  top: 4px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--paper-lilac);
+  border: 1px solid var(--gold);
+}
+
+.milestoneNodeLast { background: var(--gold); }
+
+.milestoneYear {
+  font: 600 11.5px/1 var(--sans);
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold-deep);
+}
+
+.milestoneCaption {
+  margin-top: 6px;
+  font: 400 15.5px/1.55 var(--sans);
+  color: var(--ink);
+  text-wrap: pretty;
+}
+
+/* ── The closing board ────────────────────────────────────────────────────── */
+
+.closing {
+  background: var(--board);
+  padding: clamp(34px, 8vw, 60px) var(--pad-x) clamp(38px, 9vw, 68px);
+}
+
+.legacyHeadline {
+  margin: 0 0 18px;
+  font-family: var(--serif);
+  font-weight: 540;
+  font-size: clamp(23px, 6.2vw, 29px);
+  line-height: 1.25;
+  color: var(--cream);
+  text-wrap: balance;
+}
+
+.legacyBody {
+  margin: 0 0 16px;
+  font: 400 16px/1.68 var(--sans);
+  color: var(--cream-soft);
+  text-wrap: pretty;
+}
+
+.takeaway {
+  margin: 0;
+  font: 400 16px/1.68 var(--sans);
+  color: var(--cream-soft);
+  text-wrap: pretty;
+}
+
+.colophon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: clamp(28px, 7vw, 40px);
+  padding-top: 16px;
+  border-top: 1px solid rgba(245, 239, 228, 0.16);
+}
+
+.colophonMark {
+  font: 400 10.5px/1.6 var(--sans);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cream-mute);
+}
+
+.topBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 11px 17px;
+  border: 1px solid rgba(232, 194, 74, 0.5);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gold-bright);
+  font: 560 10.5px/1 var(--sans);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 220ms var(--ease), border-color 220ms var(--ease);
+}
+
+.topBtn:hover {
+  background: rgba(232, 194, 74, 0.12);
+  border-color: var(--gold-bright);
+}
+
+/* ── Reveal ───────────────────────────────────────────────────────────────── */
+
+/* The rest state. `.shown` is added by the observer; with JS off or the
+   observer unavailable the component renders everything already shown, so the
+   book is never invisible because an effect did not run. */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 620ms var(--ease), transform 620ms var(--ease);
+}
+
+.shown { opacity: 1; transform: translateY(0); }
+
+/* One reader's setting turns off every moving part at once: the fade-ups, the
+   hero parallax and the timeline fill are all inert, and the page is simply
+   there. The tab progress bars stay — they report position, they do not
+   animate. */
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .heroArt { transform: none !important; }
+  .timelineFill { transition: none; }
+}

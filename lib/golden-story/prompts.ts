@@ -37,6 +37,53 @@ export const OPAQUE = `Full-bleed scene filling the entire frame edge to edge wi
 // flat pure white so only the paint prints onto the page.
 export const PAPER = `Painted directly on a plain white background: a single uniform flat color (#FFFFFF) with no paper texture, no gradients and no shadows in the empty areas. The scene fills almost the entire frame; only at the outer edges does the paint break up and dissolve into untouched white with soft, irregular, feathered watercolor edges — never a circle, oval, or any geometric medallion shape, and never a small image floating in empty space. No frame, no border, no text, no lettering, no signature.`;
 
+// ── The Book Edition ─────────────────────────────────────────────────────────
+// A second design (StoryFormat 'edition') read as a scrolling editorial
+// longread rather than a flip-book, so its art is a different job.
+//
+// The flip-book asks the painter to do the feathering: most of its plates are
+// painted on flat white and multiplied into the parchment, and the bleed blocks
+// above spend most of their words telling the model where to dissolve. The Book
+// Edition asks for the opposite. Every plate here is OPAQUE and fills its frame
+// edge to edge; the page then cuts the shape with a CSS mask — a soft radial
+// for the tall figure, a circle for the round one, a feathered band for the
+// strip. A model that leaves white margins under those masks produces a pale
+// bruise on cream paper, so "no blank margins" is the load-bearing sentence in
+// every block below and the reason none of them is `PAPER`.
+//
+// The register shifts with it. The flip-book is a picture book; the Book
+// Edition is a collectible magazine — bigger type, longer reading, one
+// photograph-scaled image at a time — so its style block asks for a heavier,
+// more cinematic paint than the storybook washes. The two are deliberately
+// different products and must not be reconciled into one string.
+
+export const EDITION_STYLE = `Cinematic painted editorial illustration in the manner of a collectible biography: oil and gouache worked over a warm toned ground, visible brush and palette-knife texture, fine drybrush detail on faces and hands. Strong directional light with deep warm shadow and a single clear focal point. Restrained, aged palette — chestnut and umber, terracotta, ochre and old gold, sage and olive, dusty slate blue, bone cream. Painterly and tactile, never photographic, never digital-looking, never line art, never monochrome or sepia.`;
+
+// The hero portrait behind the title. The page lays a dark scrim over the top
+// and bottom and prints the name across the foot, so the face wants to sit high
+// and the lower third wants to be quiet — busy detail down there fights the
+// title. Deliberately NOT a cover in the flip-book sense: there is no medallion,
+// no frame, and the art is cropped hard on both phone and desktop.
+export const HERO_BLEED = `Full-bleed portrait filling the entire frame edge to edge with no blank margins, no vignette, no frame and no border. Compose it as a tall portrait: the subject's head and shoulders sit in the upper half of the frame and the lower third is quiet — background, atmosphere or plain shadow — because the title is printed across it. Keep the top and bottom edges naturally darker than the middle. The image is cropped on both sides at some viewing sizes, so nothing that matters may sit at the extreme left or right edge. No text, no lettering, no signature.`;
+
+// The tall figure floated into the running text (3:4, soft radial mask). The
+// mask eats the corners, so the subject has to be centred and the corners have
+// to be expendable.
+export const VIGNETTE_TALL = `Full-bleed upright scene filling the entire frame edge to edge with no blank margins, no white background, no vignette, no frame and no border. The subject sits centred and slightly high in the frame with generous painted atmosphere all around it; the four corners carry only background, because they are softly faded away when the picture is printed. No text, no lettering, no signature.`;
+
+// The round spot floated into the text (1:1, circular mask). Everything outside
+// the inscribed circle is discarded, which is the one thing the model must know.
+export const VIGNETTE_ROUND = `Full-bleed square scene filling the entire frame edge to edge with no blank margins, no white background, no frame and no border. The picture is printed as a CIRCLE cut from the middle of the square, so the whole subject must sit well inside the central circular area and the four corners must carry nothing but background — anything painted into a corner is cut away. One clear subject, close in, richly painted. No text, no lettering, no signature.`;
+
+// The full-width band between two chapters (wide, feathered on all four edges,
+// with an italic caption under it). It is a horizontal slice of a scene, so it
+// wants a wide subject and a middle-weighted composition.
+export const BAND_BLEED = `Full-bleed wide horizontal scene filling the entire frame edge to edge with no blank margins, no white background, no vignette, no frame and no border. Compose it as a wide panoramic slice: the subject and all the detail that matters sit across the middle band of the frame, and the top, bottom, left and right edges carry only background, because all four are softly faded away when the picture is printed. No text, no lettering, no signature.`;
+
+// A treasure card's square plate. Unmasked and hard-cropped by the card, so
+// this is the one block that wants the subject to run right to the edges.
+export const CARD_FILL = `Full-bleed square image filling the entire frame edge to edge with no blank margins, no white background, no vignette, no frame and no border. A single object or place, painted large and close so it fills the frame and touches all four edges, lit from one side, set against a simple painted background that does not compete with it. No people unless the subject itself is a person. No text, no lettering, no signature.`;
+
 // Story brief counts — enforced by instruction in WRITER_SYSTEM (structured
 // outputs can't express minItems).
 export const CHAPTERS = 4;
@@ -44,10 +91,37 @@ export const TIMELINE = 5;
 export const TREASURES = 6;
 export const LESSONS = 4;
 
+// The Book Edition's own counts. Six chapters rather than four because the
+// design carries the whole life in one scroll instead of pacing it across
+// spreads, and it prints its chapter eyebrows as words ("Chapter one" …
+// "Chapter six"), so the number is part of the layout rather than a knob.
+// FUN_FACTS is new to this format — the flip-book keeps its facts inside the
+// spreads that earned them; the Book Edition also gives three of them a room.
+export const EDITION_CHAPTERS = 6;
+export const EDITION_TIMELINE = 5;
+export const EDITION_TREASURES = 6;
+export const EDITION_LESSONS = 4;
+export const EDITION_FUN_FACTS = 3;
+export const EDITION_TRAITS = 3;
+
+// Which chapters carry a figure, and which shape. Fixed by the design rather
+// than chosen per story: the mock alternates a right-floated tall figure, a
+// full-width band and a left-floated circle so the eye is never pulled to the
+// same margin twice running, and chapters five and six run as unbroken text to
+// let the story close without interruption. slotDescriptors reads this table,
+// so a person with more or fewer chapters than EDITION_CHAPTERS simply gets
+// figures where the table has entries.
+export const EDITION_CHAPTER_FIGURES: readonly ('tall' | 'round' | 'band' | 'none')[] =
+  ['tall', 'band', 'none', 'round', 'none', 'none'];
+
 // How the art meets the page — the fixed bleed block used and the compositing
 // blend the site renders it with (GoldenStory defaults to 'multiply' unless
 // blend is 'normal'/'none').
-export type SlotPlacement = 'cover' | 'strip' | 'single' | 'opaque' | 'paper';
+export type SlotPlacement =
+  // Flip-book placements.
+  | 'cover' | 'strip' | 'single' | 'opaque' | 'paper'
+  // Book Edition placements — all opaque; the page's CSS masks do the shaping.
+  | 'hero' | 'vignette-tall' | 'vignette-round' | 'band' | 'card';
 export type SlotBlend = 'normal' | 'multiply';
 
 // One image slot: the assembled prompt plus the display metadata screens ②/④

@@ -11,9 +11,14 @@
  * from the person's own layout hints so the prompt's bleed block and the
  * "needs white bg" rule match what the book actually renders.
  */
-import { STYLE, COVER_BLEED, STRIP_BLEED, SINGLE_BLEED, OPAQUE, PAPER, type SlotPlacement, type SlotBlend } from './prompts.ts';
-import type { Brief } from './brief.ts';
-import type { SlotOverride } from '@/src/db/schema';
+import {
+  STYLE, COVER_BLEED, STRIP_BLEED, SINGLE_BLEED, OPAQUE, PAPER,
+  EDITION_STYLE, HERO_BLEED, VIGNETTE_TALL, VIGNETTE_ROUND, BAND_BLEED, CARD_FILL,
+  EDITION_CHAPTER_FIGURES,
+  type SlotPlacement, type SlotBlend,
+} from './prompts.ts';
+import type { AnyBrief } from './brief.ts';
+import type { SlotOverride, StoryFormat } from '@/src/db/schema';
 import type { ImageQuality, ImageSlot, SlotTreatment } from '@/lib/daily-gold/slots.ts';
 
 /**
@@ -28,13 +33,20 @@ export const BOOK_IMAGE_QUALITY: ImageQuality = 'low';
 // The person shape this reads — a structural subset of EditorPerson, declared
 // locally so the module stays free of the server actions' types.
 export type SlotPerson = {
+  /**
+   * Which book this person is — it decides the whole slot table, not a detail
+   * of it. Absent means 'classic', so every caller that predates the Book
+   * Edition (and every flip-book row) keeps the table it always had.
+   */
+  story_format?: StoryFormat | null;
   image_url?: string | null;
   childhood_image_url?: string | null;
   modern?: { image_url?: string | null; blend?: string } | null;
   after_treasures?: { image_url?: string | null; blend?: string } | null;
-  chapters: { image_url?: string | null; page_span?: string; blend?: string }[];
+  chapters: { image_url?: string | null; page_span?: string; blend?: string; figure?: string }[];
   timeline: { image_url?: string | null }[];
   treasures: { image_url?: string | null }[];
+  fun_facts?: { image_url?: string | null }[];
 };
 
 export type SlotStatus = 'empty' | 'prompt-ready' | 'generating' | 'generated' | 'uploaded' | 'failed';
@@ -59,12 +71,110 @@ const TAIL: Record<SlotPlacement, string> = {
   single: SINGLE_BLEED,
   opaque: OPAQUE,
   paper: PAPER,
+  hero: HERO_BLEED,
+  'vignette-tall': VIGNETTE_TALL,
+  'vignette-round': VIGNETTE_ROUND,
+  band: BAND_BLEED,
+  card: CARD_FILL,
+};
+
+// Which style block a placement is painted under. The two books are different
+// products with different paint (see prompts.ts), and the placement is what
+// tells them apart — there is no placement either book shares.
+const STYLE_FOR: Record<SlotPlacement, string> = {
+  cover: STYLE, strip: STYLE, single: STYLE, opaque: STYLE, paper: STYLE,
+  hero: EDITION_STYLE, 'vignette-tall': EDITION_STYLE, 'vignette-round': EDITION_STYLE,
+  band: EDITION_STYLE, card: EDITION_STYLE,
 };
 
 const isNormalBlend = (blend?: string): boolean => blend === 'normal' || blend === 'none';
 
-/** The ordered slot descriptors for a person — one per image the book holds. */
+/**
+ * The ordered slot descriptors for a person — one per image their book holds,
+ * in the order the book shows them.
+ *
+ * Which table you get is decided by the person's own `story_format`, not by an
+ * argument, so a caller cannot accidentally paint a Book Edition with flip-book
+ * plates: the descriptors carry the file names, the sizes, the placements and
+ * the style block, and the two sets have no file name in common.
+ */
 export function slotDescriptors(person: SlotPerson): SlotDescriptor[] {
+  return person.story_format === 'edition' ? editionSlotDescriptors(person) : classicSlotDescriptors(person);
+}
+
+/**
+ * The Book Edition's slots. Every one is opaque and full-frame — the page's CSS
+ * masks do the feathering the flip-book asks the painter for — so nothing here
+ * is `multiply` and nothing needs a white background.
+ *
+ * The chapter figures are the interesting part. Their shape comes from the
+ * chapter's own `figure` field when it has one (the editor lets an admin move a
+ * picture from the right margin to the left, or drop it entirely), and falls
+ * back to EDITION_CHAPTER_FIGURES by position for a chapter that has never been
+ * told. A chapter whose figure is 'none' gets NO slot at all — it is a stretch
+ * of unbroken text by design, and offering art for it would put a painting on
+ * the page that the page has nowhere to put.
+ */
+function editionSlotDescriptors(person: SlotPerson): SlotDescriptor[] {
+  const out: SlotDescriptor[] = [
+    {
+      file: 'hero.png', label: 'Hero portrait', shortLabel: 'Hero',
+      personPath: 'image_url', briefField: 'hero_scene',
+      size: '1024x1536', placement: 'hero', blend: 'normal', showsProtagonist: true,
+    },
+  ];
+
+  person.chapters.forEach((c, i) => {
+    const shape = figureShape(c.figure, i);
+    if (shape === 'none') return;
+    const placement: SlotPlacement =
+      shape === 'band' ? 'band' : shape === 'round' ? 'vignette-round' : 'vignette-tall';
+    out.push({
+      file: `chapter-${i + 1}.png`,
+      label: `Chapter ${i + 1} · ${FIGURE_LABEL[shape]}`,
+      shortLabel: `Chapter ${i + 1}`,
+      personPath: `chapters.${i}.image_url`,
+      briefField: `chapters.${i}.scene`,
+      size: shape === 'band' ? '1536x1024' : shape === 'round' ? '1024x1024' : '1024x1536',
+      placement,
+      blend: 'normal',
+      showsProtagonist: true,
+    });
+  });
+
+  (person.fun_facts ?? []).forEach((_, i) => out.push({
+    file: `fun-fact-${i + 1}.png`, label: `Fun fact ${i + 1} · spot`, shortLabel: `Fact ${i + 1}`,
+    personPath: `fun_facts.${i}.image_url`, briefField: `fun_facts.${i}.scene`,
+    size: '1024x1024', placement: 'vignette-round', blend: 'normal', showsProtagonist: false,
+  }));
+
+  person.treasures.forEach((_, i) => out.push({
+    file: `treasure-${i + 1}.png`, label: `Treasure ${i + 1} · card`, shortLabel: `Treas ${i + 1}`,
+    personPath: `treasures.${i}.image_url`, briefField: `treasures.${i}.scene`,
+    size: '1024x1024', placement: 'card', blend: 'normal', showsProtagonist: false,
+  }));
+
+  // No timeline art and no modern art on purpose: the design draws the
+  // timeline as a scroll-filled rule of years, and prints the "if they were ten
+  // today" daydream as a card with no picture, so that the one invented page in
+  // the book is also the one page with nothing illustrated to look real.
+  return out;
+}
+
+/** A chapter's figure shape: its own choice, else the design's by position. */
+export function figureShape(figure: string | undefined, index: number): 'tall' | 'round' | 'band' | 'none' {
+  if (figure === 'tall' || figure === 'round' || figure === 'band' || figure === 'none') return figure;
+  return EDITION_CHAPTER_FIGURES[index] ?? 'none';
+}
+
+const FIGURE_LABEL: Record<'tall' | 'round' | 'band', string> = {
+  tall: 'figure (right margin)',
+  round: 'spot (left margin)',
+  band: 'wide band',
+};
+
+/** The flip-book's slots — the original table, unchanged. */
+function classicSlotDescriptors(person: SlotPerson): SlotDescriptor[] {
   const out: SlotDescriptor[] = [
     { file: 'cover.png', label: 'Cover', shortLabel: 'Cover', personPath: 'image_url', briefField: 'cover_scene', size: '1024x1536', placement: 'cover', blend: 'normal', showsProtagonist: true },
     { file: 'strip-childhood.png', label: 'Childhood strip', shortLabel: 'Childhood', personPath: 'childhood_image_url', briefField: 'childhood_scene', size: '1536x640', placement: 'strip', blend: 'multiply', showsProtagonist: false },
@@ -118,7 +228,7 @@ export function readPath(source: unknown, path: string): string {
 }
 
 /** The slot's SUBJECT scene from the brief (empty when there is no brief). */
-export function sceneFor(brief: Brief | null, briefField: string): string {
+export function sceneFor(brief: AnyBrief | null, briefField: string): string {
   return brief ? readPath(brief, briefField) : '';
 }
 
@@ -131,7 +241,7 @@ export function sceneFor(brief: Brief | null, briefField: string): string {
 export function promptFor(scene: string, placement: SlotPlacement, override?: SlotOverride): string {
   if (override?.fullPrompt) return override.fullPrompt;
   if (!scene.trim()) return '';
-  return `${STYLE}\n\nNew scene: ${scene}\n\n${TAIL[placement]}`;
+  return `${STYLE_FOR[placement]}\n\nNew scene: ${scene}\n\n${TAIL[placement]}`;
 }
 
 /**
@@ -139,7 +249,7 @@ export function promptFor(scene: string, placement: SlotPlacement, override?: Sl
  * as a read-only preamble (the scene is the editable part between them).
  */
 export function fixedBlocksFor(placement: SlotPlacement): { style: string; composition: string } {
-  return { style: STYLE, composition: TAIL[placement] };
+  return { style: STYLE_FOR[placement], composition: TAIL[placement] };
 }
 
 /**
@@ -201,7 +311,7 @@ export function toImageSlot(d: SlotDescriptor): ImageSlot {
     shortLabel: d.shortLabel,
     size: d.size,
     quality: BOOK_IMAGE_QUALITY,
-    style: STYLE,
+    style: STYLE_FOR[d.placement],
     composition: TAIL[d.placement],
     treatment: treatmentFor(d.blend),
     sceneSource: d.briefField,

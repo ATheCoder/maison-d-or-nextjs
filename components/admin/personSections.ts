@@ -5,6 +5,7 @@
  * every edit so the rail and preview stay in lockstep.
  */
 import { spreadIndexFor } from '@/components/dailygold/GoldenStory';
+import { figureShape } from '@/lib/golden-story/slots';
 import type { DraftPerson } from './draftTypes';
 
 export type SectionStatus = 'done' | 'part' | 'empty' | 'warn';
@@ -18,7 +19,12 @@ export type Section = {
   spreadIndex: number;
   // Which editor the center panel shows. Row-based sections (timeline,
   // treasures, lessons) get their full editors in Phase 4.
-  kind: 'cover' | 'childhood' | 'chapter' | 'modern' | 'timeline' | 'treasures' | 'lessons' | 'after' | 'takeaway';
+  kind:
+    // Shared, and the flip-book's own.
+    | 'cover' | 'childhood' | 'chapter' | 'modern' | 'timeline' | 'treasures'
+    | 'lessons' | 'after' | 'takeaway'
+    // The Book Edition's own rooms.
+    | 'fun-facts' | 'legacy';
   chapterIndex?: number;
   // Chapter rows only: the draft's stable per-chapter `_key`, used as the
   // dnd-kit sortable id so the reorder animation tracks the chapter itself
@@ -46,13 +52,137 @@ const hasImg = (u: unknown): boolean => typeof u === 'string' && u.trim().length
  * book arrives with all of them or the generation failed.
  */
 export function holdsToFactRule(draft: DraftPerson): boolean {
+  // Every Book Edition is bible-era by construction — the format postdates the
+  // bible and its writer makes a fact required on every chapter — so the
+  // "is this book exempt" question does not arise for one, and an empty fact
+  // there is always a real gap rather than a pre-bible absence.
+  if (draft.story_format === 'edition') return true;
   return hasText(draft.story_childhood_fact)
     || draft.chapters.some((c) => hasText(c.fact))
     || hasText(draft.modern?.fact)
     || hasText(draft.after_treasures?.fact);
 }
 
+/**
+ * The rail for whichever book this person is. The two lists are genuinely
+ * different — the Book Edition has no childhood spread and no takeaway row, and
+ * has a fun-facts room and a legacy panel the flip-book has never heard of — so
+ * this dispatches rather than branching field by field inside one builder.
+ */
 export function deriveSections(draft: DraftPerson): Section[] {
+  return draft.story_format === 'edition' ? deriveEditionSections(draft) : deriveClassicSections(draft);
+}
+
+/**
+ * The Book Edition's rail, in page order: cover, the six chapters, the fun
+ * facts, the treasure gallery, the timeline, the lessons, the "if they were ten
+ * today" card and the closing panel.
+ *
+ * `spreadIndex` carries a different meaning here and it is deliberate: the Book
+ * Edition has no spreads, so the number is only ever handed back to the editor
+ * as an opaque ordinal (it drives the "Section n of m" readout, and the preview
+ * scrolls by section id instead). It is kept on the type rather than made
+ * optional so the rail, the reducer and the centre panel all stay one shape.
+ */
+function deriveEditionSections(draft: DraftPerson): Section[] {
+  const first = (draft.name || '').trim().split(/\s+/)[0] || 'they';
+  const out: Section[] = [];
+  let n = 0;
+  const next = () => n++;
+
+  // The hero portrait carries the title, the role and the dates: the text is
+  // always there, so what can be missing is the art.
+  out.push({
+    id: 'cover', label: 'Hero & identity', kind: 'cover', spreadIndex: next(),
+    ...(hasImg(draft.image_url) ? { status: 'done' as const } : { status: 'warn' as const, note: 'no art' }),
+  });
+
+  draft.chapters.forEach((c, i) => {
+    const number = c.number ?? i + 1;
+    const eyebrow = (c.title || '').trim();
+    const label = eyebrow ? `Chapter ${number} · ${eyebrow}` : `Chapter ${number}`;
+    // A chapter that runs as unbroken text is not missing a picture — the
+    // design says it has none. Only a chapter with a figure shape is judged on
+    // its art, which is why this asks slots.ts rather than guessing.
+    const wantsArt = figureShape(c.figure, i) !== 'none';
+    out.push({
+      id: `chapter-${i}`, label, kind: 'chapter', chapterIndex: i, dndKey: c._key, spreadIndex: next(),
+      ...editionChapterStatus(c, wantsArt),
+    });
+  });
+
+  out.push({
+    id: 'fun-facts', label: 'Fun facts', kind: 'fun-facts', spreadIndex: next(),
+    ...listStatus(draft.fun_facts, (f) => hasText(f.title) || hasText(f.detail)),
+  });
+
+  out.push({
+    id: 'treasures', label: 'Treasures', kind: 'treasures', spreadIndex: next(),
+    ...listStatus(draft.treasures, (t) => hasText(t.name)),
+  });
+
+  // The gallery's own opening lines, on the same rail row as nothing else —
+  // they are the words above the treasure grid.
+  out.push({
+    id: 'after-treasures', label: 'Gallery opening', kind: 'after', spreadIndex: next(),
+    status: hasText(draft.after_treasures?.headline) || hasText(draft.after_treasures?.narrative) ? 'done' : 'empty',
+  });
+
+  // No art on the timeline in this design, so it is scored on its text.
+  const dated = draft.timeline.filter((t) => hasText(t.year) || hasText(t.caption)).length;
+  out.push({
+    id: 'timeline', label: 'Life timeline', kind: 'timeline', spreadIndex: next(),
+    ...(draft.timeline.length === 0
+      ? { status: 'empty' as const }
+      : dated === draft.timeline.length
+        ? { status: 'done' as const }
+        : { status: 'part' as const, count: `${dated} / ${draft.timeline.length}` }),
+  });
+
+  const lessonCount = draft.lessons.filter((l) => hasText(l.lesson)).length;
+  out.push({
+    id: 'lessons', label: 'Life lessons', kind: 'lessons', spreadIndex: next(),
+    status: lessonCount > 0 ? 'done' : 'empty',
+  });
+
+  // The daydream card. It has no art in this design, and its fact is the true
+  // thing it stands on — so a missing fact is a real gap here even though a
+  // missing picture is not.
+  out.push({
+    id: 'modern', label: `If ${first} were 10 today`, kind: 'modern', spreadIndex: next(),
+    ...(hasText(draft.modern?.narrative)
+      ? (hasText(draft.modern?.fact) ? { status: 'done' as const } : { status: 'warn' as const, note: 'no fact' })
+      : { status: 'empty' as const }),
+  });
+
+  out.push({
+    id: 'legacy', label: 'Legacy & takeaway', kind: 'legacy', spreadIndex: next(),
+    ...(hasText(draft.legacy?.headline) && hasText(draft.story_takeaway)
+      ? { status: 'done' as const }
+      : hasText(draft.legacy?.headline) || hasText(draft.legacy?.narrative) || hasText(draft.story_takeaway)
+        ? { status: 'warn' as const, note: 'unfinished' }
+        : { status: 'empty' as const }),
+  });
+
+  return out;
+}
+
+// A Book Edition chapter is scored on four things, not three: it needs a
+// headline (the line that carries the page), a narrative, a fact, and art only
+// where the layout gives it a picture.
+function editionChapterStatus(c: DraftPerson['chapters'][number], wantsArt: boolean):
+  { status: SectionStatus; note?: string } {
+  if (!hasText(c.narrative) && !hasText(c.headline)) return { status: 'empty' };
+  const missing: string[] = [];
+  if (!hasText(c.headline)) missing.push('no headline');
+  if (!hasText(c.narrative)) missing.push('no text');
+  if (wantsArt && !hasImg(c.image_url)) missing.push('no art');
+  if (!hasText(c.fact)) missing.push('no fact');
+  if (missing.length) return { status: 'warn', note: missing.join(' · ') };
+  return { status: 'done' };
+}
+
+function deriveClassicSections(draft: DraftPerson): Section[] {
   const first = (draft.name || '').trim().split(/\s+/)[0] || 'they';
   const at = (id: string) => spreadIndexFor(draft, id);
   const out: Section[] = [];
@@ -142,10 +272,18 @@ function textArtStatus(text: unknown, img: unknown, fact: unknown = 'n/a'):
   return { status: 'done' };
 }
 
-// A row list (timeline/treasures) scored by how many rows carry art.
-function listStatus(rows: { image_url?: string | null }[]): { status: SectionStatus; count?: string } {
+/**
+ * A row list scored by how many of its rows are finished. `filled` defaults to
+ * "carries art", which is what completeness means for the flip-book's timeline
+ * vignettes and treasure spots; the Book Edition passes its own predicate,
+ * since a fun fact with no picture is still a fun fact.
+ */
+function listStatus<T extends { image_url?: string | null }>(
+  rows: T[],
+  filled: (row: T) => boolean = (r) => hasImg(r.image_url),
+): { status: SectionStatus; count?: string } {
   if (!rows.length) return { status: 'empty' };
-  const filled = rows.filter((r) => hasImg(r.image_url)).length;
-  if (filled === rows.length) return { status: 'done' };
-  return { status: 'part', count: `${filled} / ${rows.length}` };
+  const done = rows.filter(filled).length;
+  if (done === rows.length) return { status: 'done' };
+  return { status: 'part', count: `${done} / ${rows.length}` };
 }

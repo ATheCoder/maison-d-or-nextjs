@@ -146,16 +146,49 @@ full-bleed dramatic art and now carries its text over it. Stories generated befo
 this ruling still hold `page_span: "image"` and still render wordless; that is
 decision 1, not a bug.
 
+**4. A Golden Story is read in one of two designs, and the standard covers both.**
+Adopted 2026-08-29. Every rule above — the benchmark, the reading level, the ban
+on generic sentences, the fact per section, and above all factual accuracy — binds
+both, without exception. What differs is the *shape the voice takes*, and only
+that:
+
+| | **Classic flip-book** (`story_format: 'classic'`) | **Book Edition** (`story_format: 'edition'`) |
+|---|---|---|
+| Read as | A leather book of fixed spreads you page through — `GoldenStory.jsx` | One scrolling illustrated read with four rooms — `EditionStory.tsx` |
+| Voice | Picture-book stanzas, 40–70 words a spread, one small idea per page | Editorial prose, 2–3 paragraphs a chapter, 70–120 words |
+| Chapters | 4 | 6, each with an eyebrow and a declarative headline |
+| Its own rooms | A childhood spread; a treasures leaf | Three *fun-fact* cards; a treasure gallery with a "what you can do with it" verb; a scroll-filled timeline; a closing panel on dark paper |
+| Art | Mostly painted on flat white and multiplied into the parchment | Always opaque and edge to edge; the page's CSS masks cut the shape |
+| House prompt | `WRITER_SYSTEM` | `EDITION_WRITER_SYSTEM` |
+
+Two consequences that are not open questions:
+
+- **There are now two house-voice strings, and they are peers.** A rule that
+  belongs to the standard belongs in *both*, and changing the bible means changing
+  both. Neither is derived from the other, and they were deliberately not merged
+  into one prompt with a mode switch: that produced a prompt where half the
+  sentences were conditional and neither book was written well.
+- **A person is never converted between the two.** The formats hold different
+  fields — the Book Edition asks for six chapters, headlines, figure captions,
+  quote attribution, fun facts and a separate legacy panel that the flip-book
+  never wrote — so there is no honest automatic conversion. The format is chosen
+  once, when the person is created, and a book changes design only by being
+  created again. Every person written before this decision is a flip-book and
+  stays one; that is decision 1 applying to a second thing.
+
+New people default to the Book Edition.
+
 ---
 
 ## Where this lives in the code
 
 | The bible says | Enforced in |
 |---|---|
-| House voice, reading level, generic-sentence ban, the arc | `WRITER_SYSTEM` — `lib/golden-story/brief.ts` |
-| A memorable fact on every spread | `fact` on `Brief` chapters/sections (`brief.ts`), `Chapter`/`StorySection` (`src/db/schema.ts`), rendered by `components/dailygold/GoldenStory.jsx`, flagged when missing by `components/admin/personSections.ts` |
-| Factual accuracy | `lib/golden-story/factcheck.ts`, surfaced in `components/admin/PersonEditor.tsx` |
-| Signal the imagining | The *If X Were 10 Today* spread in `GoldenStory.jsx` |
-| Art supports the spread's story | The scene blocks in `lib/golden-story/prompts.ts` |
-| The wooden table | `.wood-table` in `app/globals.css`, worn by `GoldenStory.module.css`, `PersonEditor.module.css` and `BookOpeningCurtain.jsx` |
+| House voice, reading level, generic-sentence ban, the arc | `WRITER_SYSTEM` (flip-book) and `EDITION_WRITER_SYSTEM` (Book Edition) — both in `lib/golden-story/brief.ts`. Peers: change the bible, change both. |
+| Which design a person is read in | `story_format` on `remarkable_person` (`src/db/schema.ts`); chosen at `createPerson`, dispatched by `StorybookView.jsx`, `slotDescriptors` and `runBriefJob` |
+| A memorable fact on every spread | `fact` on `Brief`/`EditionBrief` chapters and sections (`brief.ts`), `Chapter`/`StorySection` (`src/db/schema.ts`), rendered by `GoldenStory.jsx` and `EditionStory.tsx`, flagged when missing by `components/admin/personSections.ts` |
+| Factual accuracy | `lib/golden-story/factcheck.ts` — which walks both books, including the Book Edition's fun facts and legacy panel — surfaced in `components/admin/PersonEditor.tsx` |
+| Signal the imagining | The *If X Were 10 Today* spread in `GoldenStory.jsx`; the same card, with its "But this is true:" line, in `EditionStory.tsx` |
+| Art supports the spread's story | The scene blocks in `lib/golden-story/prompts.ts` — `STYLE` + the flip-book's bleed blocks, `EDITION_STYLE` + the Book Edition's five composition blocks |
+| The wooden table | `.wood-table` in `app/globals.css`, worn by `GoldenStory.module.css`, `PersonEditor.module.css` and `BookOpeningCurtain.jsx`. The Book Edition does not lie on it — it is a magazine, not a book on a table, and floats on its own dark ground. |
 | The seven questions | The publish checklist in `PersonEditor.tsx` |

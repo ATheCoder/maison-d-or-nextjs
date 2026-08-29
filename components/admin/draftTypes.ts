@@ -6,15 +6,19 @@
  * when a person is loaded into the draft, `stripKeys` removes them before save.
  */
 import type { EditorPerson } from '@/app/admin/people/actions';
-import type { Chapter, TimelineEntry, Treasure, Lesson } from '@/src/db/schema';
+import type { Chapter, TimelineEntry, Treasure, Lesson, FunFact } from '@/src/db/schema';
 
 export type Keyed<T> = T & { _key: string };
 
-export type DraftPerson = Omit<EditorPerson, 'chapters' | 'timeline' | 'treasures' | 'lessons'> & {
+export type DraftPerson = Omit<EditorPerson, 'chapters' | 'timeline' | 'treasures' | 'lessons' | 'fun_facts'> & {
   chapters: Keyed<Chapter>[];
   timeline: Keyed<TimelineEntry>[];
   treasures: Keyed<Treasure>[];
   lessons: Keyed<Lesson>[];
+  // Book Edition only, but keyed unconditionally: a flip-book's list is simply
+  // empty, and a draft whose shape depended on the format would need every
+  // reducer case to ask which book it was holding.
+  fun_facts: Keyed<FunFact>[];
 };
 
 function keyed<T>(item: T): Keyed<T> {
@@ -28,6 +32,7 @@ export function withKeys(person: EditorPerson): DraftPerson {
     timeline: person.timeline.map(keyed),
     treasures: person.treasures.map(keyed),
     lessons: person.lessons.map(keyed),
+    fun_facts: (person.fun_facts ?? []).map(keyed),
   };
 }
 
@@ -44,5 +49,6 @@ export function stripKeys(draft: DraftPerson): EditorPerson {
     timeline: draft.timeline.map(unkeyed),
     treasures: draft.treasures.map(unkeyed),
     lessons: draft.lessons.map(unkeyed),
+    fun_facts: draft.fun_facts.map(unkeyed),
   };
 }

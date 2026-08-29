@@ -3,11 +3,17 @@
 // file, delete the marker. Do not add one to a new file.
 'use client';
 /**
- * StorybookView — client chrome for a single Golden Story.
- * The person is fetched on the server (SSR, via Drizzle) and passed in;
- * this component only owns the interactive bits (back navigation, the
- * not-found fallback, the born_today flag earn) and renders the GoldenStory
- * itself.
+ * StorybookView — client chrome for a single Golden Story, in either of the
+ * two designs it may be read in.
+ *
+ * The person is fetched on the server (SSR, via Drizzle) and passed in; this
+ * component only owns the interactive bits (back navigation, the not-found
+ * fallback, the born_today flag earn) and hands the story to the reader its
+ * `story_format` names: <GoldenStory> for the leather flip-book, <EditionStory>
+ * for the Book Edition's scrolling longread (see StoryFormat in
+ * src/db/schema.ts). Everything around the book — the curtain, the earn, the
+ * analytics session — is the same for both, which is the point of the split
+ * living here rather than in the route.
  *
  * This is the single `born_today` earn site (spec R6.6a/R6.9): finishing a
  * person's story — reaching its last page — earns their country, whether the
@@ -29,6 +35,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import GoldenStory, { storyImageUrls } from '@/components/dailygold/GoldenStory';
+import EditionStory, { editionImageUrls } from '@/components/dailygold/EditionStory';
 import BookOpeningCurtain from '@/components/dailygold/BookOpeningCurtain';
 import FlagSealCelebration from '@/components/dailygold/FlagSealCelebration';
 import { useFlagEarn } from '@/components/dailygold/useFlagEarn';
@@ -118,20 +125,33 @@ function StoryReader({ story, onFinished }) {
     onFinished?.();
   }, [track, slug, onFinished]);
 
-  return <GoldenStory story={story} onFinished={handleFinished} />;
+  return isEdition(story)
+    ? <EditionStory story={story} onFinished={handleFinished} />
+    : <GoldenStory story={story} onFinished={handleFinished} />;
 }
+
+/** Which book this person is read as. Anything but 'edition' is the flip-book. */
+const isEdition = (story) => story?.story_format === 'edition';
 
 /** @param {{ story?: any, canEarn?: boolean, childId?: string | null }} props */
 export default function StorybookView({ story, canEarn = false, childId = null }) {
   const router = useRouter();
   const { earn, celebration, dismissCelebration } = useFlagEarn();
+  const edition = isEdition(story);
 
   // The curtain starts raised for everyone: arriving from the shelf it is
   // already up (DGBornToday raised it on the click) and simply stays up, and a
   // deep link gets the same wait rather than a book assembling itself. Both
   // renders — server and hydration — agree on `false`, since the check can only
   // run in an effect.
-  const images = useMemo(() => storyImageUrls(story), [story]);
+  // Each book draws its own set of plates — the flip-book's cover and spreads,
+  // or the Book Edition's hero, margin figures, fun-fact spots and treasure
+  // cards. Waiting on the wrong list would either uncover the book early or
+  // hold it shut on art it never shows.
+  const images = useMemo(
+    () => (isEdition(story) ? editionImageUrls(story) : storyImageUrls(story)),
+    [story],
+  );
   const [imagesReady, setImagesReady] = useState(false);
   // A text-only story (Tier 2, all parchment placeholders) has nothing to wait
   // for, so it is never covered at all.
@@ -173,7 +193,12 @@ export default function StorybookView({ story, canEarn = false, childId = null }
     // Mounted here, not in a layout: it unmounts with the view, and that
     // cleanup flush is what carries the last page back to the paper.
     <DGInstrumentationProvider childId={childId} staticSection="story">
-      <div style={{ minHeight: '100vh', background: '#F5F0E7' }}>
+      {/* The two books sit on different grounds: the flip-book lies open on the
+          parchment the reader arrived from, and the Book Edition's page floats
+          on its own dark table. Painting the cream under both would put a pale
+          band around the Book Edition wherever its page is narrower than the
+          window. */}
+      <div style={{ minHeight: '100vh', background: edition ? '#241C16' : '#F5F0E7' }}>
         {/* Fixed and above everything, so the book, the back button and the
             story's own scroll all stay hidden until the art is here. */}
         {curtain && (
@@ -190,7 +215,10 @@ export default function StorybookView({ story, canEarn = false, childId = null }
           />
         )}
 
-        {/* Back to the edition */}
+        {/* Back to the edition. The Book Edition draws its own Back inside the
+            hero, where the design puts it, so a second floating one would sit
+            on top of it. */}
+        {!edition && (
         <button
           onClick={() => router.back()}
           aria-label="Back to Daily Gold"
@@ -210,6 +238,7 @@ export default function StorybookView({ story, canEarn = false, childId = null }
         >
           <span style={{ fontSize: '0.9rem', lineHeight: 1 }}>‹</span> Back
         </button>
+        )}
 
         {story ? (
           <StoryReader story={story} onFinished={handleFinished} />

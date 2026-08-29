@@ -1,5 +1,5 @@
 import { pgTable, pgEnum, serial, integer, smallint, boolean, char, text, date, timestamp, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core';
-import type { Brief } from '@/lib/golden-story/brief';
+import type { AnyBrief } from '@/lib/golden-story/brief';
 
 // ── Identity ─────────────────────────────────────────────────────────────────
 // Better Auth-managed tables (see docs/auth-plan.md §3). Only admins and
@@ -154,6 +154,20 @@ export type Chapter = {
   blend?: string;
   fade?: boolean; // legibility wash behind overlaid text (single/both spans)
   title?: string;
+  // Book Edition only (story_format 'edition'): the declarative sentence the
+  // chapter opens with, set large in Fraunces under the eyebrow. `title` is the
+  // eyebrow's tail ("Chapter one · A little child in London"); this is the line
+  // that makes the reader keep going ("A little girl who was never meant to be
+  // queen."). The flip-book has no such line and ignores it.
+  headline?: string;
+  // Book Edition only: how this chapter's art sits in the running text —
+  // 'tall' floats right behind a soft radial mask, 'round' floats left as a
+  // circle, 'band' is a full-width strip with a caption under it, 'none' means
+  // the chapter runs as unbroken text. Absent behaves as 'none'.
+  figure?: 'tall' | 'round' | 'band' | 'none';
+  // Book Edition only: the italic line under a 'band' figure. Ignored by the
+  // other shapes, which sit inside the text column with no room for one.
+  caption?: string;
   narrative?: string;
   // The one specific, verifiable thing a child could tell somebody after this
   // spread (docs/golden-stories-bible.md). Optional in the type because the
@@ -167,6 +181,11 @@ export type Chapter = {
 export type Treasure = {
   name?: string;
   description?: string;
+  // Book Edition only: the card's kicker — the verb that tells a child what
+  // they can DO with this treasure today ('Watch', 'Listen', 'Read', 'Visit',
+  // 'Explore'). The whole point of the Book Edition's gallery is that these are
+  // real things still in the world, so the card leads with the doing.
+  action?: string;
   image_url?: string | null;
 };
 
@@ -180,6 +199,18 @@ export type TimelineEntry = {
 export type Lesson = {
   icon_name?: string;
   lesson?: string;
+};
+
+// ── FunFact ──────────────────────────────────────────────────────────────────
+// Book Edition only: the "Golden details" cards. These are the bible's
+// "Wait — really?" beats pulled out of the narrative and given their own room,
+// which the flip-book cannot do — there, a fact rides along inside its spread.
+// A card is a short title and one paragraph; the first may carry a round spot
+// illustration, the rest are text.
+export type FunFact = {
+  title?: string;
+  detail?: string;
+  image_url?: string | null;
 };
 
 // ── RemarkablePerson ─────────────────────────────────────────────────────────
@@ -196,8 +227,16 @@ export type StorySection = {
   blend?: string;
   fade?: boolean;
   title?: string;
+  // Book Edition only — see Chapter.headline. On `after_treasures` (the closing
+  // dark panel) this is the big Fraunces sentence the legacy paragraphs sit
+  // under; on `modern` it is unused.
+  headline?: string;
   narrative?: string;
   fact?: string; // see Chapter.fact
+  // Book Edition only, `modern` section: the three one-word chips under the
+  // "If X were ten today" card. They are qualities, not facts, and the card is
+  // labelled as imagining, so they carry no accuracy burden.
+  traits?: string[];
   image_url?: string | null;
 };
 
@@ -244,6 +283,33 @@ export type FactCheckReport = {
   sources: { url: string; title: string | null }[];
 };
 
+/**
+ * Which book a person's story is READ as. Two designs live side by side and
+ * neither is a migration target for the other:
+ *
+ * - 'classic'  — the leather-bound flip-book (<GoldenStory>): fixed 1300×866
+ *                spreads you page through, art painted on flat white that
+ *                multiplies into parchment.
+ * - 'edition'  — the Book Edition (<EditionStory>): a scrolling editorial
+ *                longread with a sticky section nav, floated figures, a
+ *                fun-facts room, a treasure gallery and a scroll-driven
+ *                timeline. Art is opaque and edge-to-edge; the CSS masks do
+ *                the feathering the flip-book asks the painter for.
+ *
+ * The format decides three things at once and they must stay in step: which
+ * writer prompt writes the book (EDITION_WRITER_SYSTEM vs WRITER_SYSTEM),
+ * which slot table its art comes from (lib/golden-story/slots.ts), and which
+ * component renders it. Changing a person's format after generation leaves
+ * them holding the other book's fields — the editor says so rather than
+ * silently converting, because there is no honest automatic conversion: the
+ * Book Edition asks for six chapters, headlines, captions and fun facts the
+ * flip-book never wrote.
+ *
+ * Existing people were all written as flip-books and the introducing migration
+ * backfills them 'classic'. New people default to 'edition'.
+ */
+export type StoryFormat = 'classic' | 'edition';
+
 export const remarkablePerson = pgTable('remarkable_person', {
   // Folder name under public/stories/, e.g. 'albert-einstein'. Imports upsert
   // on it, so re-running the importer updates instead of duplicating.
@@ -269,7 +335,12 @@ export const remarkablePerson = pgTable('remarkable_person', {
 
   storyTitle: text('story_title'),
   famousQuote: text('famous_quote'),
-  imageUrl: text('image_url'), // book cover
+  // Book Edition only: who said it, when and where — "Elizabeth, aged twenty
+  // one, on the radio from Cape Town, 1947". The pull-quote prints it as the
+  // blockquote's footer. The flip-book shows the quote unattributed, so this
+  // stays null there.
+  famousQuoteAttribution: text('famous_quote_attribution'),
+  imageUrl: text('image_url'), // book cover / Book Edition hero portrait
 
   storyChildhoodTitle: text('story_childhood_title'),
   childhoodImageUrl: text('childhood_image_url'),
@@ -282,8 +353,17 @@ export const remarkablePerson = pgTable('remarkable_person', {
 
   modern: jsonb('modern').$type<StorySection>(),
   chapters: jsonb('chapters').$type<Chapter[]>().notNull().default([]),
+  // Book Edition only: the "Golden details" cards. Empty for every flip-book.
+  funFacts: jsonb('fun_facts').$type<FunFact[]>().notNull().default([]),
   timeline: jsonb('timeline').$type<TimelineEntry[]>().notNull().default([]),
   afterTreasures: jsonb('after_treasures').$type<StorySection>(),
+  // Book Edition only: the closing dark panel ("Chapter eight · <First>'s
+  // legacy lives on") — its headline sentence and the paragraph under it. Kept
+  // apart from `after_treasures` because in this design those are two different
+  // rooms: after_treasures introduces the treasure gallery ("Things you can
+  // still go and find"), and this closes the book. The flip-book has one such
+  // page and leaves this null.
+  legacy: jsonb('legacy').$type<StorySection>(),
   treasures: jsonb('treasures').$type<Treasure[]>().notNull().default([]),
   lessons: jsonb('lessons').$type<Lesson[]>().notNull().default([]),
 
@@ -293,6 +373,13 @@ export const remarkablePerson = pgTable('remarkable_person', {
   // publishing (Standing decision 2). Kept on the person rather than in the
   // job row so the verdicts survive the job being dismissed.
   factCheck: jsonb('fact_check').$type<FactCheckReport>(),
+
+  // Which of the two book designs this person is read as — see StoryFormat.
+  // Not an enum type at the DB: the set is small, app-owned and likely to grow
+  // by one more design before it settles, and a text column with a check
+  // constraint costs one migration to extend where a pg enum costs a type
+  // rewrite.
+  storyFormat: text('story_format').$type<StoryFormat>().notNull().default('edition'),
 
   // Draft/Published gate for the editor. New rows start unpublished; public
   // readers (getPersonBySlug, the Born Today query) filter on it, admin
@@ -331,7 +418,11 @@ export const storyBrief = pgTable('story_brief', {
   slug: text('slug')
     .primaryKey()
     .references(() => remarkablePerson.slug, { onDelete: 'cascade' }),
-  brief: jsonb('brief').$type<Brief>(),
+  // Either book's brief (Brief | EditionBrief) — the person's story_format says
+  // which, and isEditionBrief() narrows it. One column rather than two because
+  // a person has exactly one book: holding both shapes at once would invite a
+  // stale flip-book brief to keep feeding scenes to a re-formatted person.
+  brief: jsonb('brief').$type<AnyBrief>(),
   promptOverrides: jsonb('prompt_overrides').$type<Record<string, SlotOverride>>().notNull().default({}),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

@@ -13,7 +13,7 @@
  * hold it. Every verb below now ends in a `touch*` from lib/daily-gold-tags, or
  * writes nothing a reader can see.
  */
-import type { Brief } from '@/lib/golden-story/brief';
+import type { AnyBrief } from '@/lib/golden-story/brief';
 import type { SlotOverride } from '@/src/db/schema';
 import { touchDesk, touchPersonBySlug } from '@/lib/daily-gold-tags';
 import { requireAdmin } from '@/lib/dal';
@@ -30,7 +30,7 @@ const okFile = (s: unknown): s is string => typeof s === 'string' && /^[a-z0-9-]
 
 /** Brief scenes + per-slot overrides — the editor builds its slot cards from these. */
 export async function getSlotData(slug: string):
-  Promise<{ brief: Brief | null; overrides: Record<string, SlotOverride> }> {
+  Promise<{ brief: AnyBrief | null; overrides: Record<string, SlotOverride> }> {
   await requireAdmin();
   if (!okSlug(slug)) return { brief: null, overrides: {} };
   return storeGetSlotData(slug);

@@ -24,6 +24,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, sortableKeyb
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { CSS as dndCSS } from '@dnd-kit/utilities';
 import GoldenStory, { spreadCount } from '@/components/dailygold/GoldenStory';
+import EditionStory from '@/components/dailygold/EditionStory';
 import {
   savePerson, setPublished as setPublishedAction,
   startFactCheck, getFactCheck,
@@ -33,12 +34,12 @@ import {
   type EditorPerson, type OpenRouterCredits,
 } from '@/app/admin/people/actions';
 import { getSlotData, getSlotImages, generateImages } from '@/app/admin/people/imageActions';
-import type { Brief } from '@/lib/golden-story/brief';
+import type { AnyBrief } from '@/lib/golden-story/brief';
 import type { Chapter, GenerationJobRow, SlotOverride, FactCheckReport } from '@/src/db/schema';
 import { deriveSections, holdsToFactRule, type Section, type SectionStatus } from './personSections';
 import { withKeys, stripKeys, type DraftPerson, type Keyed } from './draftTypes';
 import { buildSlotViews, type SlotView } from './imageSlots';
-import { toImageSlot } from '@/lib/golden-story/slots';
+import { toImageSlot, figureShape } from '@/lib/golden-story/slots';
 import DatePicker from '@/components/ui/DatePicker';
 import { Button, buttonClasses, Card, Field, Heading, Meter } from '@/components/ds';
 import FactCheckPanel, { FactCheckChip } from './FactCheckPanel';
@@ -99,13 +100,13 @@ const DOT_CLASS: Record<SectionStatus, string> = {
 
 // ── Draft reducer ────────────────────────────────────────────────────────────
 
-type ListKey = 'chapters' | 'timeline' | 'treasures' | 'lessons';
+type ListKey = 'chapters' | 'timeline' | 'treasures' | 'lessons' | 'fun_facts';
 
 type DraftAction =
   | { type: 'replace'; value: DraftPerson }
   | { type: 'field'; key: keyof DraftPerson; value: unknown }
   | { type: 'chapterField'; index: number; key: string; value: unknown }
-  | { type: 'objField'; key: 'modern' | 'after_treasures'; field: string; value: unknown }
+  | { type: 'objField'; key: 'modern' | 'after_treasures' | 'legacy'; field: string; value: unknown }
   | { type: 'listAdd'; list: ListKey }
   | { type: 'listDelete'; list: ListKey; index: number }
   | { type: 'listDuplicate'; list: ListKey; index: number }
@@ -132,6 +133,7 @@ const BLANK: Record<ListKey, () => Record<string, unknown>> = {
   timeline: () => ({ _key: crypto.randomUUID(), year: '', caption: '', blend: 'multiply', image_url: null }),
   treasures: () => ({ _key: crypto.randomUUID(), name: '', image_url: null }),
   lessons: () => ({ _key: crypto.randomUUID(), icon_name: '', lesson: '' }),
+  fun_facts: () => ({ _key: crypto.randomUUID(), title: '', detail: '', image_url: null }),
 };
 
 // Write a list back, renumbering chapters so `number` always matches position.
@@ -441,6 +443,19 @@ const SPAN_OPTIONS: { value: string; name: string }[] = [
 
 // The icon_name words the data uses (rendered as a titleCased label by
 // GoldenStory) — offered as suggestions, but free text is allowed.
+// The five verbs a Book Edition treasure card may lead with. A closed list on
+// purpose: the kicker's whole job is to tell a child what they can DO with the
+// thing, and a free-text field fills up with nouns.
+const TREASURE_ACTIONS = ['Watch', 'Listen', 'Read', 'Visit', 'Explore'];
+
+// The Book Edition's four figure shapes, with the margin each one sits in.
+const FIGURE_OPTIONS: { value: string; name: string; hint: string }[] = [
+  { value: 'tall', name: 'Tall', hint: 'Right margin, text wraps' },
+  { value: 'round', name: 'Round', hint: 'Left margin, text wraps' },
+  { value: 'band', name: 'Band', hint: 'Full width, with a caption' },
+  { value: 'none', name: 'None', hint: 'Unbroken text, no picture' },
+];
+
 const LESSON_ICONS = ['courage', 'creativity', 'curiosity', 'generosity', 'honesty', 'imagination', 'integrity', 'kindness', 'observation', 'patience', 'perseverance', 'persistence', 'wonder'];
 
 // A mini spread diagram for one page_span option, mirroring what GoldenStory
@@ -481,6 +496,70 @@ function SpanDiagram({ value }: { value: string }) {
         <div style={{ position: 'absolute', left: 5, right: 5, top: 17, bottom: 5, opacity: 0.55, background: 'repeating-linear-gradient(180deg, var(--brown3) 0 1.5px, transparent 1.5px 6px)' }} />
       </div>
       <div className={styles.lhArt} />
+    </div>
+  );
+}
+
+/**
+ * The Book Edition's answer to LayoutPicker: where this chapter's picture sits
+ * in the margin, or that it has none.
+ *
+ * It is not cosmetic. `figure` is read by editionSlotDescriptors, so choosing
+ * "None" retires that chapter's image slot entirely and choosing "Band" changes
+ * both the plate's aspect ratio and the composition block its prompt is built
+ * from. The hint under each shape says so, because an admin who does not know
+ * that will wonder where their painting went.
+ */
+function FigurePicker({ value, index, onChange }: {
+  value?: string; index: number; onChange: (v: string) => void;
+}) {
+  // What this chapter falls back to when it has never been told — the design's
+  // own alternation, so the picker shows the shape the book is actually using.
+  const effective = figureShape(value, index);
+  return (
+    <div className={styles.panel} style={{ padding: 16 }}>
+      <div className={styles.kick} style={{ marginBottom: 12 }}>Where the picture sits</div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        {FIGURE_OPTIONS.map((o) => (
+          <Button
+            variant="bare"
+            key={o.value}
+            className={`${styles.lh} ${effective === o.value ? styles.lhOn : styles.lhOff}`}
+            onClick={() => onChange(o.value)}
+          >
+            <FigureDiagram value={o.value} />
+            <div className={styles.lhName}>{o.name}</div>
+          </Button>
+        ))}
+      </div>
+      <div className={styles.muted} style={{ fontSize: 10.5, marginTop: 10, maxWidth: 420 }}>
+        {FIGURE_OPTIONS.find((o) => o.value === effective)?.hint}
+        {effective === 'none'
+          ? ' — this chapter has no image slot, so nothing to generate.'
+          : ' — the slot below paints it.'}
+      </div>
+    </div>
+  );
+}
+
+// A miniature of the column with the figure in it: text lines and the shape,
+// laid out where the page actually puts them.
+function FigureDiagram({ value }: { value: string }) {
+  const lines = (
+    <div style={{
+      position: 'absolute', inset: '5px 5px 5px 5px', opacity: 0.55,
+      background: 'repeating-linear-gradient(180deg, var(--brown3) 0 1.5px, transparent 1.5px 6px)',
+    }} />
+  );
+  const shape = (style: React.CSSProperties) => (
+    <div style={{ position: 'absolute', background: 'linear-gradient(140deg, #d8c48a, #b79a5c)', ...style }} />
+  );
+  return (
+    <div className={styles.lhSpread} style={{ gridTemplateColumns: '1fr', background: '#fffdf8', position: 'relative' }}>
+      {lines}
+      {value === 'tall' && shape({ right: 5, top: 5, width: '42%', height: '62%', borderRadius: 2 })}
+      {value === 'round' && shape({ left: 5, top: 7, width: '38%', aspectRatio: '1', borderRadius: '50%' })}
+      {value === 'band' && shape({ left: 5, right: 5, top: '38%', height: '30%', borderRadius: 2 })}
     </div>
   );
 }
@@ -919,7 +998,7 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   initialPerson: EditorPerson;
   initialBrief: { goldenThread: string; characterSheet: string } | null;
   initialJobs: { brief: GenerationJobRow | null; rewrites: GenerationJobRow[]; slot: GenerationJobRow | null; images: GenerationJobRow | null; factcheck: GenerationJobRow | null };
-  initialSlotData: { brief: Brief | null; overrides: Record<string, SlotOverride> };
+  initialSlotData: { brief: AnyBrief | null; overrides: Record<string, SlotOverride> };
   initialFactCheck: FactCheckReport | null;
 }) {
   const slug = initialPerson.slug;
@@ -991,7 +1070,7 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   // ── Image slots (Phase 6) ──
   // Scenes (from the brief) + per-slot overrides drive the slot cards; live
   // image URLs come straight off the draft, so buildSlotViews takes the draft.
-  const [slotBrief, setSlotBrief] = useState<Brief | null>(initialSlotData.brief);
+  const [slotBrief, setSlotBrief] = useState<AnyBrief | null>(initialSlotData.brief);
   const [overrides, setOverrides] = useState<Record<string, SlotOverride>>(initialSlotData.overrides);
   const [slotJob, setSlotJob] = useState<GenerationJobRow | null>(initialJobs.slot);
   const [imagesJob, setImagesJob] = useState<GenerationJobRow | null>(initialJobs.images);
@@ -1013,7 +1092,16 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   }, [slotViews]);
 
   const sections = useMemo(() => deriveSections(draft), [draft]);
-  const count = useMemo(() => spreadCount(draft), [draft]);
+  // Which book is on the workbench. It picks the preview, the centre panel and
+  // what the strip under the preview means, so it is read once and passed down.
+  const isEdition = draft.story_format === 'edition';
+  // The flip-book counts spreads; the Book Edition has none, so its "pages" are
+  // its rail rows. The number only feeds the clamp on `page` and the readout
+  // under the preview — the Book Edition's preview is scrolled by section id.
+  const count = useMemo(
+    () => (isEdition ? Math.max(1, sections.length) : spreadCount(draft)),
+    [isEdition, sections.length, draft],
+  );
   const active = sections.find((s) => s.id === selectedId) ?? sections[0];
 
   // Keep the preview on the selected section when an edit reshuffles the
@@ -1349,7 +1437,7 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   // publish checklist must not count their empty fact fields as gaps — the same
   // question the rail asks, from the same function.
   const wantsFactsForPublish = holdsToFactRule(draft);
-  const pageLabel = sections.find((s) => s.spreadIndex === page)?.label ?? 'Cover';
+  const pageLabel = (isEdition ? active?.label : sections.find((s) => s.spreadIndex === page)?.label) ?? 'Cover';
 
   const saveDotClass =
     save.status === 'error' ? styles.saveDotError
@@ -1486,6 +1574,12 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
             style={{ margin: '4px 8px 2px', justifyContent: 'flex-start' }}
             onClick={() => { edit({ type: 'listAdd', list: 'chapters' }); setSelectedId(`chapter-${draft.chapters.length}`); }}
           >＋ Add chapter</Button>
+          {isEdition && (
+            <div className={styles.muted} style={{ padding: '0 10px 4px', fontSize: 10.5 }}>
+              The Book Edition is written as six chapters. A seventh is allowed and
+              will render, but the design gives it no picture in the margin.
+            </div>
+          )}
           <div className={styles.hair} style={{ margin: '12px 6px' }} />
           <div className={styles.panel} style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 9 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -1538,23 +1632,35 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
               <Button variant="bare" className={`${styles.chip} ${styles.chipInk}`} onClick={() => setCollapsed(true)}>Collapse ⟩</Button>
             </div>
             <div className={styles.stage} style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-              <GoldenStory story={draft} page={page} onPageChange={setPage} embedded />
+              {/* The two books are previewed the way each is read. The flip-book
+                  is driven by spread index and the editor supplies the flip
+                  controls; the Book Edition is one scroll, so the rail's
+                  selection is handed straight to it and it scrolls itself. */}
+              {isEdition
+                ? <EditionStory story={draft} scrollToSection={active?.id ?? null} embedded />
+                : <GoldenStory story={draft} page={page} onPageChange={setPage} embedded />}
             </div>
             <div className={styles.stage} style={{ padding: '14px 0 18px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <Button variant="bare" onClick={() => goToPage(page - 1)} disabled={page <= 0} aria-label="Previous spread"
-                  style={{ width: 34, height: 34, borderRadius: '50%', border: '1px solid rgba(201,169,110,.5)', color: '#e7d5a8', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</Button>
-                <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-                  {Array.from({ length: count }).map((_, i) => (
-                    <Button variant="bare" key={i} onClick={() => goToPage(i)} aria-label={`Spread ${i + 1}`}
-                      style={{ width: i === page ? 18 : 6, height: 6, borderRadius: 999, border: 'none', background: i === page ? 'var(--gold)' : 'rgba(231,213,168,.35)' }} />
-                  ))}
+              {/* A dot per spread is the flip-book's map of itself. The Book
+                  Edition has no spreads to dot, and a strip of dots that only
+                  scrolls would suggest pages it does not have — so it gets the
+                  readout alone, and the rail is its map. */}
+              {!isEdition && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <Button variant="bare" onClick={() => goToPage(page - 1)} disabled={page <= 0} aria-label="Previous spread"
+                    style={{ width: 34, height: 34, borderRadius: '50%', border: '1px solid rgba(201,169,110,.5)', color: '#e7d5a8', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</Button>
+                  <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                    {Array.from({ length: count }).map((_, i) => (
+                      <Button variant="bare" key={i} onClick={() => goToPage(i)} aria-label={`Spread ${i + 1}`}
+                        style={{ width: i === page ? 18 : 6, height: 6, borderRadius: 999, border: 'none', background: i === page ? 'var(--gold)' : 'rgba(231,213,168,.35)' }} />
+                    ))}
+                  </div>
+                  <Button variant="bare" onClick={() => goToPage(page + 1)} disabled={page >= count - 1} aria-label="Next spread"
+                    style={{ width: 34, height: 34, borderRadius: '50%', border: '1px solid rgba(201,169,110,.5)', color: '#e7d5a8', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</Button>
                 </div>
-                <Button variant="bare" onClick={() => goToPage(page + 1)} disabled={page >= count - 1} aria-label="Next spread"
-                  style={{ width: 34, height: 34, borderRadius: '50%', border: '1px solid rgba(201,169,110,.5)', color: '#e7d5a8', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</Button>
-              </div>
+              )}
               <div style={{ color: 'rgba(231,213,168,.6)', fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase' }}>
-                Spread {page + 1} · {pageLabel}
+                {isEdition ? pageLabel : `Spread ${page + 1} · ${pageLabel}`}
               </div>
             </div>
           </div>
@@ -1731,10 +1837,25 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
 
 // ── Center panel: the selected section's fields ──────────────────────────────
 
-function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpenSlot }: {
+type PanelProps = {
   active: Section; draft: DraftPerson; dispatch: React.Dispatch<DraftAction>; onSelect: (id: string) => void; rw: RewriteApi;
   slotByFile: Record<string, SlotView>; onOpenSlot: (file: string) => void;
-}) {
+};
+
+/**
+ * The centre panel: the fields of whichever section the rail has selected, for
+ * whichever book this person is. The two books are dispatched to separate
+ * builders rather than branched field by field — half these sections do not
+ * exist in the other format, and the ones that do share a name (cover, chapter,
+ * modern, after) ask for genuinely different things.
+ */
+function CenterPanel(props: PanelProps) {
+  return props.draft.story_format === 'edition'
+    ? <EditionCenterPanel {...props} />
+    : <ClassicCenterPanel {...props} />;
+}
+
+function ClassicCenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpenSlot }: PanelProps) {
   const slotChip = (file: string, hint?: string) => {
     const slot = slotByFile[file];
     return slot ? <SlotChip slot={slot} hint={hint} onOpen={() => onOpenSlot(file)} /> : null;
@@ -1962,6 +2083,408 @@ function CenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpen
           />
         </div>
       );
+    default:
+      return null;
+  }
+}
+
+// ── Centre panel: the Book Edition ───────────────────────────────────────────
+//
+// Its rooms, and what each one is for, are in EditionStory.tsx. The shape of
+// this function deliberately mirrors ClassicCenterPanel above so the two can be
+// read side by side: same helpers, same order, same switch.
+
+function EditionCenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile, onOpenSlot }: PanelProps) {
+  const slotChip = (file: string, hint?: string) => {
+    const slot = slotByFile[file];
+    return slot ? <SlotChip slot={slot} hint={hint} onOpen={() => onOpenSlot(file)} /> : null;
+  };
+  const slotMini = (file: string) => {
+    const slot = slotByFile[file];
+    if (!slot) return null;
+    const set = slot.status === 'generated' || slot.status === 'uploaded';
+    return (
+      <Button variant="bare"
+        onClick={() => onOpenSlot(file)}
+        title={`${slot.label} · ${slot.status}`}
+        style={{
+          flex: '0 0 34px', width: 34, aspectRatio: slot.size.replace('x', ' / '), borderRadius: 8, overflow: 'hidden',
+          border: '1px solid var(--line2)', backgroundColor: '#fffdf8', backgroundSize: 'cover', backgroundPosition: 'center',
+          backgroundImage: set && slot.imageUrl ? `url(${slot.imageUrl})` : undefined,
+          color: slot.status === 'failed' ? 'var(--red)' : 'var(--brown2)', fontSize: 13, alignSelf: 'center',
+        }}
+      >{set ? '' : slot.status === 'generating' ? '…' : slot.status === 'failed' ? '↻' : '🖼'}</Button>
+    );
+  };
+  const set = (key: keyof DraftPerson) => (value: string) => dispatch({ type: 'field', key, value });
+  const rowInput = (placeholder: string, value: string, onChange: (v: string) => void, width?: string, list?: string) => (
+    <Field
+      size="sm" label={placeholder} labelHidden list={list} className={width ?? 'flex-1'}
+      placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)}
+    />
+  );
+  const first = (draft.name || '').trim().split(/\s+/)[0] || 'they';
+
+  switch (active.kind) {
+    case 'cover':
+      return (
+        <>
+          <div><Kick>Hero · identity</Kick></div>
+          <TextField label="Name" value={draft.name ?? ''} onChange={set('name')} serif />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 16 }}>
+            {/* Not the flip-book's poetic epithet: this design prints the role
+                as a plain label under the name on the portrait. */}
+            <TextField label="Role (plain designation)" value={draft.role ?? ''} onChange={set('role')} placeholder="Queen of the United Kingdom" />
+            <TextField label="Field" value={draft.field ?? ''} onChange={set('field')} placeholder="Monarchy & public life" />
+            <TextField label="Country" value={draft.country ?? ''} onChange={set('country')} placeholder="United Kingdom" />
+            <CountryCodeField code={draft.country_code ?? null} country={draft.country ?? null} onChange={set('country_code')} />
+            <TextField label="Story title" value={draft.story_title ?? ''} onChange={set('story_title')} placeholder={draft.name ?? ''} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <Kick>Birth date <span style={{ color: 'var(--red)' }}>*</span></Kick>
+              <DatePicker
+                value={draft.birth_date ?? ''}
+                onChange={(v) => dispatch({ type: 'field', key: 'birth_date', value: v })}
+                aria-label="Birth date"
+                invalid={!draft.birth_date}
+                style={{ width: '100%' }}
+              />
+              <div className={styles.muted} style={{ fontSize: 10.5, color: draft.birth_date ? 'var(--brown2)' : 'var(--red)' }}>
+                Required — Born Today surfaces a person by their birth month-day.
+              </div>
+            </div>
+            <DeathDateControl value={draft.death_date ?? ''} onChange={(v) => dispatch({ type: 'field', key: 'death_date', value: v })} />
+          </div>
+
+          {/* The pull-quote and its footer, which the flip-book does not have.
+              They are edited together because a quote without its attribution
+              is the one thing this design cannot print honestly. */}
+          <TextField label="Famous quote" value={draft.famous_quote ?? ''} onChange={set('famous_quote')} placeholder="My whole life shall be devoted to your service." />
+          <TextField
+            label="Quote attribution"
+            value={draft.famous_quote_attribution ?? ''}
+            onChange={set('famous_quote_attribution')}
+            placeholder="Elizabeth, aged twenty one, on the radio from Cape Town, 1947"
+          />
+          <div className={styles.muted} style={{ fontSize: 10.5, marginTop: -10 }}>
+            Who was speaking, how old they were and where. Printed under the quote,
+            in the middle of the story, with no full stop.
+          </div>
+
+          {slotChip('hero.png', 'Full-bleed portrait · 1024×1536 · the title is printed across its lower third.')}
+        </>
+      );
+
+    case 'chapter': {
+      const i = active.chapterIndex!;
+      const ch = draft.chapters[i];
+      const shape = figureShape(ch?.figure, i);
+      const addChapter = () => { dispatch({ type: 'listAdd', list: 'chapters' }); onSelect(`chapter-${draft.chapters.length}`); };
+      const duplicate = () => { dispatch({ type: 'listDuplicate', list: 'chapters', index: i }); onSelect(`chapter-${i + 1}`); };
+      const remove = () => { dispatch({ type: 'listDelete', list: 'chapters', index: i }); onSelect(draft.chapters.length > 1 ? `chapter-${Math.max(0, i - 1)}` : 'cover'); };
+      const chField = (key: string) => (value: unknown) => dispatch({ type: 'chapterField', index: i, key, value });
+      return (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <Kick>Chapter {ch?.number ?? i + 1} of {draft.chapters.length}</Kick>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <Button variant="ghost" size="sm" onClick={addChapter}>＋ Add</Button>
+              <Button variant="ghost" size="sm" onClick={duplicate}>⧉ Duplicate</Button>
+              <Button variant="danger" size="sm" onClick={remove}>🗑 Delete</Button>
+            </div>
+          </div>
+
+          <FigurePicker value={ch?.figure} index={i} onChange={chField('figure')} />
+
+          {/* Eyebrow then headline, in the order the page prints them. */}
+          <TextField
+            label="Eyebrow"
+            value={ch?.title ?? ''}
+            onChange={chField('title')}
+            placeholder="A little child in London"
+          />
+          <div className={styles.muted} style={{ fontSize: 10.5, marginTop: -10 }}>
+            Printed as “Chapter {['one', 'two', 'three', 'four', 'five', 'six'][i] ?? i + 1} · {(ch?.title || '…').trim()}”.
+            Two to five words, sentence case, no full stop.
+          </div>
+
+          <TextField
+            label="Headline"
+            value={ch?.headline ?? ''}
+            onChange={chField('headline')}
+            serif
+            placeholder="A little girl who was never meant to be queen."
+          />
+          <div className={styles.muted} style={{ fontSize: 10.5, marginTop: -10 }}>
+            One declarative sentence that makes the reader want the paragraph under it.
+            If it could sit on somebody else’s chapter, it is not specific enough.
+          </div>
+
+          <NarrativeField
+            label="Narrative"
+            value={ch?.narrative ?? ''}
+            onChange={chField('narrative')}
+            fieldPath={`chapters.${i}.narrative`}
+            rw={rw}
+          />
+          <div className={styles.muted} style={{ fontSize: 10.5, marginTop: -10 }}>
+            Two or three paragraphs, 70–120 words in total, separated by a blank line.
+            This edition runs as prose, not as picture-book stanzas.
+          </div>
+
+          <FactField value={ch?.fact ?? ''} onChange={chField('fact')} fieldPath={`chapters.${i}.fact`} rw={rw} expected />
+
+          {/* Only the band prints a caption — the margin figures have no room
+              for one — so the field is only offered where it is used. */}
+          {shape === 'band' && (
+            <TextField
+              label="Picture caption"
+              value={ch?.caption ?? ''}
+              onChange={chField('caption')}
+              placeholder="Two sisters, one governess, and no other pupils in the room."
+            />
+          )}
+
+          {shape === 'none'
+            ? (
+              <div className={styles.callout} style={{ padding: '10px 12px', fontSize: 11.5, color: 'var(--brown)' }}>
+                This chapter runs as unbroken text, so it has no image slot. Choose a
+                shape above to give it a picture.
+              </div>
+            )
+            : slotChip(`chapter-${i + 1}.png`)}
+        </>
+      );
+    }
+
+    case 'fun-facts':
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Kick>Fun facts · golden details</Kick>
+          <div className={styles.muted} style={{ fontSize: 11.5 }}>
+            The book’s “Wait, really?” cards. A short title and one paragraph of
+            25–55 words. A fun fact a child would shrug at has failed even if it is true.
+          </div>
+          <RowList
+            ids={draft.fun_facts.map((f) => f._key)} addLabel="Add fun fact"
+            onAdd={() => dispatch({ type: 'listAdd', list: 'fun_facts' })}
+            onDelete={(i) => dispatch({ type: 'listDelete', list: 'fun_facts', index: i })}
+            onReorder={(from, to) => dispatch({ type: 'listReorder', list: 'fun_facts', from, to })}
+            renderRow={(i) => (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {rowInput('The handbag code', draft.fun_facts[i].title ?? '', (v) => dispatch({ type: 'listItemField', list: 'fun_facts', index: i, key: 'title', value: v }))}
+                  <NarrativeField
+                    label="Detail"
+                    value={draft.fun_facts[i].detail ?? ''}
+                    onChange={(v) => dispatch({ type: 'listItemField', list: 'fun_facts', index: i, key: 'detail', value: v })}
+                    fieldPath={`fun_facts.${i}.detail`}
+                    rw={rw}
+                  />
+                </div>
+                {slotMini(`fun-fact-${i + 1}.png`)}
+              </div>
+            )}
+          />
+        </div>
+      );
+
+    case 'treasures':
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Kick>Treasures · things still in the world</Kick>
+          <div className={styles.muted} style={{ fontSize: 11.5 }}>
+            Real things a child could go and find today. The verb is the card’s kicker,
+            so it has to be something they can actually do with this one.
+          </div>
+          <datalist id="treasure-actions">
+            {TREASURE_ACTIONS.map((a) => <option key={a} value={a} />)}
+          </datalist>
+          <RowList
+            ids={draft.treasures.map((t) => t._key)} addLabel="Add treasure"
+            onAdd={() => dispatch({ type: 'listAdd', list: 'treasures' })}
+            onDelete={(i) => dispatch({ type: 'listDelete', list: 'treasures', index: i })}
+            onReorder={(from, to) => dispatch({ type: 'listReorder', list: 'treasures', from, to })}
+            renderRow={(i) => (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {rowInput('Watch', draft.treasures[i].action ?? '', (v) => dispatch({ type: 'listItemField', list: 'treasures', index: i, key: 'action', value: v }), 'w-[110px] shrink-0', 'treasure-actions')}
+                    {rowInput('The Imperial State Crown', draft.treasures[i].name ?? '', (v) => dispatch({ type: 'listItemField', list: 'treasures', index: i, key: 'name', value: v }))}
+                  </div>
+                  {rowInput('Kept at the Tower of London, 2,868 diamonds.', draft.treasures[i].description ?? '', (v) => dispatch({ type: 'listItemField', list: 'treasures', index: i, key: 'description', value: v }))}
+                </div>
+                {slotMini(`treasure-${i + 1}.png`)}
+              </div>
+            )}
+          />
+        </div>
+      );
+
+    case 'after':
+      return (
+        <>
+          <div><Kick>Gallery opening · the words above the treasures</Kick></div>
+          <TextField
+            label="Eyebrow"
+            value={draft.after_treasures?.title ?? ''}
+            onChange={(v) => dispatch({ type: 'objField', key: 'after_treasures', field: 'title', value: v })}
+            placeholder="Treasures left behind"
+          />
+          <TextField
+            label="Headline"
+            value={draft.after_treasures?.headline ?? ''}
+            onChange={(v) => dispatch({ type: 'objField', key: 'after_treasures', field: 'headline', value: v })}
+            serif
+            placeholder="Things you can still go and find"
+          />
+          <NarrativeField
+            label="Introduction"
+            value={draft.after_treasures?.narrative ?? ''}
+            onChange={(v) => dispatch({ type: 'objField', key: 'after_treasures', field: 'narrative', value: v })}
+            fieldPath="after_treasures.narrative"
+            rw={rw}
+          />
+          <div className={styles.muted} style={{ fontSize: 10.5, marginTop: -10 }}>
+            One or two sentences, under 40 words, telling the child these are real and reachable.
+          </div>
+        </>
+      );
+
+    case 'timeline':
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Kick>Life timeline · milestones</Kick>
+          {/* No slot minis here: this design draws the timeline as a rule of
+              years that fills as the reader scrolls, with no vignettes. */}
+          <div className={styles.muted} style={{ fontSize: 11.5 }}>
+            Drawn as a gold rule that fills as the reader scrolls — no pictures.
+            Each caption is one past-tense line naming what happened.
+          </div>
+          <RowList
+            ids={draft.timeline.map((t) => t._key)} addLabel="Add milestone"
+            onAdd={() => dispatch({ type: 'listAdd', list: 'timeline' })}
+            onDelete={(i) => dispatch({ type: 'listDelete', list: 'timeline', index: i })}
+            onReorder={(from, to) => dispatch({ type: 'listReorder', list: 'timeline', from, to })}
+            renderRow={(i) => (
+              <div style={{ display: 'flex', gap: 8 }}>
+                {rowInput('Year', draft.timeline[i].year ?? '', (v) => dispatch({ type: 'listItemField', list: 'timeline', index: i, key: 'year', value: v }), 'w-[88px] shrink-0')}
+                {rowInput('Caption', draft.timeline[i].caption ?? '', (v) => dispatch({ type: 'listItemField', list: 'timeline', index: i, key: 'caption', value: v }))}
+              </div>
+            )}
+          />
+        </div>
+      );
+
+    case 'lessons':
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Kick>Life lessons · what can we learn</Kick>
+          <datalist id="lesson-icons">
+            {LESSON_ICONS.map((ic) => <option key={ic} value={ic} />)}
+          </datalist>
+          <RowList
+            ids={draft.lessons.map((l) => l._key)} addLabel="Add lesson"
+            onAdd={() => dispatch({ type: 'listAdd', list: 'lessons' })}
+            onDelete={(i) => dispatch({ type: 'listDelete', list: 'lessons', index: i })}
+            onReorder={(from, to) => dispatch({ type: 'listReorder', list: 'lessons', from, to })}
+            renderRow={(i) => (
+              <div style={{ display: 'flex', gap: 8 }}>
+                {rowInput('persistence', draft.lessons[i].icon_name ?? '', (v) => dispatch({ type: 'listItemField', list: 'lessons', index: i, key: 'icon_name', value: v }), 'w-[130px] shrink-0', 'lesson-icons')}
+                {rowInput('Do the ordinary thing well, on the days nobody claps.', draft.lessons[i].lesson ?? '', (v) => dispatch({ type: 'listItemField', list: 'lessons', index: i, key: 'lesson', value: v }))}
+              </div>
+            )}
+          />
+        </div>
+      );
+
+    case 'modern': {
+      const traits = draft.modern?.traits ?? [];
+      const setTrait = (i: number) => (v: string) => {
+        const next = [...traits];
+        next[i] = v;
+        dispatch({ type: 'objField', key: 'modern', field: 'traits', value: next.filter((t, n) => t.trim() || n < 3) });
+      };
+      return (
+        <>
+          <div><Kick>If {first} were ten today</Kick></div>
+          {/* The one invented page in the book, and the page most at risk of
+              being read as biography. Both devices that stop that are printed,
+              so the editor names them. */}
+          <div className={styles.callout} style={{ padding: '10px 12px', fontSize: 11.5, color: 'var(--brown)' }}>
+            This card is imagination, and the page says so: it is headed
+            <strong style={{ color: 'var(--ink)' }}> If {first} were ten today</strong> and the fact below is
+            introduced with <strong style={{ color: 'var(--ink)' }}>But this is true:</strong> — so write the
+            fact about the real person, never about the daydream. It has no picture by design.
+          </div>
+          <NarrativeField
+            label="The daydream"
+            value={draft.modern?.narrative ?? ''}
+            onChange={(v) => dispatch({ type: 'objField', key: 'modern', field: 'narrative', value: v })}
+            fieldPath="modern.narrative"
+            rw={rw}
+          />
+          <FactField
+            value={draft.modern?.fact ?? ''}
+            onChange={(v) => dispatch({ type: 'objField', key: 'modern', field: 'fact', value: v })}
+            fieldPath="modern.fact" rw={rw} expected
+          />
+          <div>
+            <Kick>Traits · the three chips under the card</Kick>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              {[0, 1, 2].map((i) => (
+                <Field
+                  key={i} size="sm" label={`Trait ${i + 1}`} labelHidden className="flex-1"
+                  placeholder={['Steadiness', 'Curiosity', 'Duty'][i]}
+                  value={traits[i] ?? ''} onChange={(e) => setTrait(i)(e.target.value)}
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    case 'legacy':
+      return (
+        <>
+          <div><Kick>Legacy · the closing panel</Kick></div>
+          <div className={styles.muted} style={{ fontSize: 11.5 }}>
+            Printed on dark paper, at the very end. The takeaway is the last thing
+            the child reads, and it is the line they should still have tomorrow.
+          </div>
+          <TextField
+            label="Eyebrow"
+            value={draft.legacy?.title ?? ''}
+            onChange={(v) => dispatch({ type: 'objField', key: 'legacy', field: 'title', value: v })}
+            placeholder={`${first}'s legacy lives on`}
+          />
+          <NarrativeField
+            label="Headline"
+            value={draft.legacy?.headline ?? ''}
+            onChange={(v) => dispatch({ type: 'objField', key: 'legacy', field: 'headline', value: v })}
+            fieldPath="legacy.headline"
+            rw={rw}
+          />
+          <div className={styles.muted} style={{ fontSize: 10.5, marginTop: -10 }}>
+            One or two sentences, set large. The best ones turn the story’s own opening on its head.
+          </div>
+          <NarrativeField
+            label="Legacy"
+            value={draft.legacy?.narrative ?? ''}
+            onChange={(v) => dispatch({ type: 'objField', key: 'legacy', field: 'narrative', value: v })}
+            fieldPath="legacy.narrative"
+            rw={rw}
+          />
+          <NarrativeField
+            label="Takeaway · the book's last paragraph"
+            value={draft.story_takeaway ?? ''}
+            onChange={set('story_takeaway')}
+            fieldPath="story_takeaway"
+            rw={rw}
+          />
+        </>
+      );
+
     default:
       return null;
   }

@@ -16,9 +16,9 @@ import { inngest } from '@/lib/inngest/client';
 import {
   remarkablePerson, storyBrief,
   type RemarkablePersonRow, type StorySection, type Chapter, type TimelineEntry, type Treasure,
-  type SlotOverride, type GenerationJobRow, type JobProgress, type JobResult,
+  type SlotOverride, type GenerationJobRow, type JobProgress, type JobResult, type FunFact,
 } from '@/src/db/schema';
-import type { Brief } from './brief.ts';
+import type { AnyBrief } from './brief.ts';
 import { renderImage } from './images.ts';
 import { putStoryImage, putStagingImage, promoteStaging, deleteStorageObject } from './storage.ts';
 import {
@@ -42,6 +42,8 @@ async function loadBriefRow(slug: string) {
 // The person row as the slot model reads it (image fields + layout hints).
 function toSlotPerson(row: RemarkablePersonRow): SlotPerson {
   return {
+    // First, because it decides which slot table the rest is read against.
+    story_format: row.storyFormat,
     image_url: row.imageUrl,
     childhood_image_url: row.childhoodImageUrl,
     modern: row.modern,
@@ -49,12 +51,13 @@ function toSlotPerson(row: RemarkablePersonRow): SlotPerson {
     chapters: row.chapters ?? [],
     timeline: row.timeline ?? [],
     treasures: row.treasures ?? [],
+    fun_facts: row.funFacts ?? [],
   };
 }
 
 /** Brief scenes + per-slot overrides for the editor's slot cards. */
 export async function getSlotData(slug: string):
-  Promise<{ brief: Brief | null; overrides: Record<string, SlotOverride> }> {
+  Promise<{ brief: AnyBrief | null; overrides: Record<string, SlotOverride> }> {
   const row = await loadBriefRow(slug);
   return { brief: row?.brief ?? null, overrides: row?.promptOverrides ?? {} };
 }
@@ -100,15 +103,17 @@ async function applyImageUrl(slug: string, personPath: string, url: string | nul
     else if (personPath === 'modern.image_url') set.modern = { ...(row.modern ?? {}), image_url: url } as StorySection;
     else if (personPath === 'after_treasures.image_url') set.afterTreasures = { ...(row.afterTreasures ?? {}), image_url: url } as StorySection;
     else {
-      const m = /^(chapters|timeline|treasures)\.(\d+)\.image_url$/.exec(personPath);
+      const m = /^(chapters|timeline|treasures|fun_facts)\.(\d+)\.image_url$/.exec(personPath);
       if (!m) return;
       const [, list, idxStr] = m;
       const idx = Number(idxStr);
-      const arr = [...((row[list as 'chapters' | 'timeline' | 'treasures'] as { image_url?: string | null }[]) ?? [])];
+      const column = list === 'fun_facts' ? 'funFacts' : (list as 'chapters' | 'timeline' | 'treasures');
+      const arr = [...((row[column] as { image_url?: string | null }[]) ?? [])];
       if (!arr[idx]) return;
       arr[idx] = { ...arr[idx], image_url: url };
       if (list === 'chapters') set.chapters = arr as Chapter[];
       else if (list === 'timeline') set.timeline = arr as TimelineEntry[];
+      else if (list === 'fun_facts') set.funFacts = arr as FunFact[];
       else set.treasures = arr as Treasure[];
     }
     await tx.update(remarkablePerson).set(set).where(eq(remarkablePerson.slug, slug));
@@ -133,9 +138,9 @@ async function mergeOverride(slug: string, file: string, patch: Partial<SlotOver
 }
 
 // Set a string leaf in the brief by dotted path (used by scene edits).
-function setBriefPath(brief: Brief, path: string, value: string): Brief {
+function setBriefPath(brief: AnyBrief, path: string, value: string): AnyBrief {
   const keys = path.split('.');
-  const clone: Brief = structuredClone(brief);
+  const clone: AnyBrief = structuredClone(brief);
   let node: Record<string, unknown> = clone as unknown as Record<string, unknown>;
   for (let i = 0; i < keys.length - 1; i++) {
     const k = keys[i];

@@ -232,6 +232,13 @@
       "when": 1787656996567,
       "tag": "0032_golden_stories_bible",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1788000332319,
+      "tag": "0033_book_edition",
+      "breakpoints": true
     }
   ]
 }

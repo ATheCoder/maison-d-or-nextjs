@@ -99,7 +99,11 @@ if (reuseBrief) {
   console.log(`Reusing brief: ${briefPath}`);
 } else {
   console.log(`Writing story for ${personName} (${WRITER_MODEL} via OpenRouter)...`);
-  brief = await writeBrief(personName);
+  // Explicitly the flip-book. This CLI writes to public/stories/<slug>/ in the
+  // story.json shape <GoldenStory> consumes, and buildSlots/toStoryJson below
+  // both speak that book — the Book Edition is generated from the admin editor,
+  // where its rooms can be edited and its art slots opened.
+  brief = await writeBrief(personName, 'classic');
   await writeFile(briefPath, JSON.stringify(brief, null, 2));
   console.log(`  golden thread: ${brief.golden_thread}`);
 }

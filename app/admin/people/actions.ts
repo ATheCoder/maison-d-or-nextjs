@@ -17,6 +17,8 @@ import {
   type TimelineEntry,
   type Treasure,
   type Lesson,
+  type FunFact,
+  type StoryFormat,
   type RemarkablePersonRow,
   type GenerationJobRow,
   type FactCheckReport,
@@ -30,8 +32,9 @@ import { createJob, failJob, jobsForSlug, deleteJob, personSubject } from '@/lib
 import { initialBriefStages } from '@/lib/golden-story/textStore';
 import { inngest } from '@/lib/inngest/client';
 
-// Expected counts for a "complete" story (mirrors lib/golden-story counts).
-const EXPECTED_CHAPTERS = 4;
+// Expected chapter count for a "complete" story, per format (mirrors the counts
+// in lib/golden-story/prompts.ts).
+const EXPECTED_CHAPTERS: Record<StoryFormat, number> = { classic: 4, edition: 6 };
 
 export type OpenRouterCredits = { totalCredits: number; totalUsage: number; remaining: number };
 
@@ -59,6 +62,9 @@ export async function getOpenRouterCredits(): Promise<
 
 export type PersonListItem = {
   slug: string;
+  // Which book they are — the library badges it, because "6 chapters" and
+  // "4 chapters" mean complete or incomplete depending only on this.
+  storyFormat: StoryFormat;
   name: string;
   // 'MM-DD' or null — Born Today can't surface a person without a birth date.
   monthDay: string | null;
@@ -103,6 +109,7 @@ export async function listPeople(): Promise<PersonListItem[]> {
   const rows = await db
     .select({
       slug: remarkablePerson.slug,
+      storyFormat: remarkablePerson.storyFormat,
       name: remarkablePerson.name,
       published: remarkablePerson.published,
       bornTodayPriority: remarkablePerson.bornTodayPriority,
@@ -117,7 +124,21 @@ export async function listPeople(): Promise<PersonListItem[]> {
       chapterCount: sql<number>`jsonb_array_length(${remarkablePerson.chapters})`,
       timelineCount: sql<number>`jsonb_array_length(${remarkablePerson.timeline})`,
       treasureCount: sql<number>`jsonb_array_length(${remarkablePerson.treasures})`,
-      emptyImages: sql<number>`(
+      funFactCount: sql<number>`jsonb_array_length(${remarkablePerson.funFacts})`,
+      // Counted per format, because the two books have different slots. The
+      // flip-book paints a cover, a childhood strip, the modern spread, the
+      // after-treasures leaf and every chapter, timeline and treasure; the Book
+      // Edition paints a hero, the chapters that carry a figure, the fun-fact
+      // spots and the treasure cards, and nothing else. Counting one book's
+      // slots against the other is how a finished person ends up badged
+      // "incomplete" forever.
+      emptyImages: sql<number>`(case when ${remarkablePerson.storyFormat} = 'edition' then (
+        ${empty(remarkablePerson.imageUrl)}
+        + (select count(*) from jsonb_array_elements(${remarkablePerson.chapters}) e
+             where coalesce(e ->> 'image_url', '') = '' and coalesce(e ->> 'figure', '') <> 'none')
+        + ${emptyInArray(remarkablePerson.funFacts)}
+        + ${emptyInArray(remarkablePerson.treasures)}
+      ) else (
         ${empty(remarkablePerson.imageUrl)}
         + ${empty(remarkablePerson.childhoodImageUrl)}
         + ${sql`(case when coalesce(${remarkablePerson.modern} ->> 'image_url', '') = '' then 1 else 0 end)`}
@@ -125,7 +146,11 @@ export async function listPeople(): Promise<PersonListItem[]> {
         + ${emptyInArray(remarkablePerson.chapters)}
         + ${emptyInArray(remarkablePerson.timeline)}
         + ${emptyInArray(remarkablePerson.treasures)}
-      )::int`,
+      ) end)::int`,
+      // How many chapters actually carry a figure — the Book Edition leaves
+      // some as unbroken text on purpose, and those are not missing art.
+      figuredChapterCount: sql<number>`(select count(*) from jsonb_array_elements(${remarkablePerson.chapters}) e
+        where coalesce(e ->> 'figure', '') <> 'none')::int`,
       hasBrief: sql<boolean>`(${storyBrief.slug} is not null)`,
     })
     .from(remarkablePerson)
@@ -133,12 +158,15 @@ export async function listPeople(): Promise<PersonListItem[]> {
     .orderBy(asc(remarkablePerson.name));
 
   return rows.map((r) => {
-    // Fixed image fields (cover, childhood, modern, after) + the three arrays.
-    const totalImages = 4 + r.chapterCount + r.timelineCount + r.treasureCount;
+    const totalImages = r.storyFormat === 'edition'
+      // The hero + the chapters that carry a figure + fun facts + treasures.
+      ? 1 + r.figuredChapterCount + r.funFactCount + r.treasureCount
+      // Fixed image fields (cover, childhood, modern, after) + the three arrays.
+      : 4 + r.chapterCount + r.timelineCount + r.treasureCount;
     // char(2) never pads a real value, but a legacy one-letter row would.
     const countryCode = r.countryCode?.trim().toUpperCase() || null;
     const missingCountryCode = !countryCode;
-    const incomplete = r.missingBirthDate || r.chapterCount < EXPECTED_CHAPTERS
+    const incomplete = r.missingBirthDate || r.chapterCount < EXPECTED_CHAPTERS[r.storyFormat]
       || r.emptyImages > 0 || missingCountryCode;
     return { ...r, countryCode, missingCountryCode, totalImages, incomplete };
   });
@@ -150,11 +178,16 @@ export async function listPeople(): Promise<PersonListItem[]> {
  * is reset to a fresh draft (its R2 art is left in place — slugs may return —
  * and its brief is cleared). On success the editor is opened.
  */
-export async function createPerson(input: { name?: string; slug?: string; overwrite?: boolean }):
+export async function createPerson(input: { name?: string; slug?: string; overwrite?: boolean; format?: string }):
   Promise<{ ok: false; error?: string; collision?: string }> {
   await requireAdmin();
   const name = typeof input?.name === 'string' ? input.name.trim().slice(0, 120) : '';
   if (name.length < 1) return { ok: false, error: 'Please enter a name.' };
+
+  // The one moment a person's format is chosen. Unrecognised input falls back
+  // to the Book Edition rather than erroring: this is an open endpoint, and the
+  // default is the going-forward design.
+  const format: StoryFormat = input?.format === 'classic' ? 'classic' : 'edition';
 
   const raw = typeof input?.slug === 'string' && input.slug.trim() ? input.slug : name;
   const slug = slugify(raw);
@@ -183,13 +216,18 @@ export async function createPerson(input: { name?: string; slug?: string; overwr
         .update(remarkablePerson)
         .set({
           name,
+          // Overwriting is a re-creation, so it is also the moment the format
+          // may change — and it must, or a slug reused for a Book Edition would
+          // keep writing flip-books.
+          storyFormat: format,
           published: false,
           role: null, field: null, country: null, countryCode: null, birthDate: null, deathDate: null,
-          storyTitle: null, famousQuote: null, imageUrl: null,
+          storyTitle: null, famousQuote: null, famousQuoteAttribution: null, imageUrl: null,
           storyChildhoodTitle: null, childhoodImageUrl: null,
-          storyChildhood: null, storyTakeaway: null,
-          modern: null, chapters: [], timeline: [], afterTreasures: null,
-          treasures: [], lessons: [],
+          storyChildhood: null, storyChildhoodFact: null, storyTakeaway: null,
+          modern: null, chapters: [], timeline: [], afterTreasures: null, legacy: null,
+          treasures: [], lessons: [], funFacts: [],
+          factCheck: null,
           updatedAt: new Date(),
         })
         .where(eq(remarkablePerson.slug, slug));
@@ -198,7 +236,7 @@ export async function createPerson(input: { name?: string; slug?: string; overwr
   } else {
     // A fresh person is unpublished and has no birth date, so no reader query
     // can see them yet — the library alone.
-    await db.insert(remarkablePerson).values({ slug, name, published: false });
+    await db.insert(remarkablePerson).values({ slug, name, storyFormat: format, published: false });
     touchDesk('/admin/people');
   }
 
@@ -231,6 +269,12 @@ export async function deletePerson(slug: string, confirmSlug: string):
 
 export type EditorPerson = {
   slug: string;
+  // Which book this person is read as, and therefore which rail, which centre
+  // panel, which preview and which slot table the editor shows. Immutable in
+  // the editor by design: the two formats hold different fields, so switching
+  // it on a written book would leave the rail pointing at rooms that have no
+  // text in them. A person changes format by being re-created.
+  story_format: StoryFormat;
   name: string;
   role: string | null;
   field: string | null;
@@ -240,6 +284,8 @@ export type EditorPerson = {
   death_date: string | null;
   story_title: string | null;
   famous_quote: string | null;
+  // Book Edition only — the pull-quote's footer.
+  famous_quote_attribution: string | null;
   image_url: string | null;
   story_childhood_title: string | null;
   childhood_image_url: string | null;
@@ -254,6 +300,11 @@ export type EditorPerson = {
   after_treasures: StorySection | null;
   treasures: Treasure[];
   lessons: Lesson[];
+  // Book Edition only. Empty / null on every flip-book, and vice versa for the
+  // childhood columns above — each format simply leaves the other's rooms
+  // alone rather than the editor pruning them.
+  fun_facts: FunFact[];
+  legacy: StorySection | null;
   published: boolean;
   updated_at: string | null;
 };
@@ -261,6 +312,7 @@ export type EditorPerson = {
 function toEditorPerson(row: RemarkablePersonRow): EditorPerson {
   return {
     slug: row.slug,
+    story_format: row.storyFormat,
     name: row.name,
     role: row.role,
     field: row.field,
@@ -270,6 +322,7 @@ function toEditorPerson(row: RemarkablePersonRow): EditorPerson {
     death_date: row.deathDate,
     story_title: row.storyTitle,
     famous_quote: row.famousQuote,
+    famous_quote_attribution: row.famousQuoteAttribution,
     image_url: row.imageUrl,
     story_childhood_title: row.storyChildhoodTitle,
     childhood_image_url: row.childhoodImageUrl,
@@ -282,6 +335,8 @@ function toEditorPerson(row: RemarkablePersonRow): EditorPerson {
     after_treasures: row.afterTreasures,
     treasures: row.treasures ?? [],
     lessons: row.lessons ?? [],
+    fun_facts: row.funFacts ?? [],
+    legacy: row.legacy,
     published: row.published,
     updated_at: row.updatedAt ? new Date(row.updatedAt).toISOString() : null,
   };
@@ -357,6 +412,7 @@ export async function savePerson(slug: string, record: Partial<EditorPerson>):
       deathDate: death,
       storyTitle: str(record?.story_title, 200),
       famousQuote: str(record?.famous_quote, 1000),
+      famousQuoteAttribution: str(record?.famous_quote_attribution, 300),
       imageUrl: str(record?.image_url, 2000),
       storyChildhoodTitle: str(record?.story_childhood_title, 300),
       childhoodImageUrl: str(record?.childhood_image_url, 2000),
@@ -369,6 +425,12 @@ export async function savePerson(slug: string, record: Partial<EditorPerson>):
       afterTreasures: objOrNull<StorySection>(record?.after_treasures),
       treasures: arr<Treasure>(record?.treasures),
       lessons: arr<Lesson>(record?.lessons),
+      funFacts: arr<FunFact>(record?.fun_facts),
+      legacy: objOrNull<StorySection>(record?.legacy),
+      // `story_format` is deliberately NOT written here. It decides which
+      // writer, which slot table and which reader a person gets, so flipping it
+      // through the autosaving draft — where a stray key in a patch is enough —
+      // would silently re-shape a finished book. It is set once, at creation.
       updatedAt,
     })
     .where(eq(remarkablePerson.slug, slug))
@@ -469,15 +531,20 @@ export async function generateBook(slug: string, opts?: { confirm?: boolean }):
   const name = person.name?.trim();
   if (!name) return { ok: false, error: 'Add a name before generating the book.' };
 
+  // What "there is already a book here" means, in either format. The Book
+  // Edition has no childhood columns and does have fun facts, so a check that
+  // only knew the flip-book's rooms would let a written Book Edition be
+  // overwritten with no confirmation.
   const hasContent = (person.chapters?.length ?? 0) > 0
     || hasText(person.storyChildhood) || hasText(person.storyTakeaway)
-    || (person.timeline?.length ?? 0) > 0 || (person.treasures?.length ?? 0) > 0;
+    || (person.timeline?.length ?? 0) > 0 || (person.treasures?.length ?? 0) > 0
+    || (person.funFacts?.length ?? 0) > 0 || hasText(person.legacy?.narrative);
   if (hasContent && !opts?.confirm) return { ok: false, needsConfirm: true };
 
   // The writing runs on Inngest (generateBrief in lib/inngest/functions.ts) — a
   // durable, dashboard-visible run that survives a redeploy. This only creates
   // the job row the editor polls and sends the triggering event.
-  const created = await createJob(personSubject(slug), 'brief', initialBriefStages());
+  const created = await createJob(personSubject(slug), 'brief', initialBriefStages(person.storyFormat));
   if (!created.ok) return { ok: false, error: created.error };
   try {
     await inngest.send({ name: 'story/brief.requested', data: { slug, jobId: created.job.id } });

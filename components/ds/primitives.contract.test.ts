@@ -151,23 +151,32 @@ const COMPOSITE_EXCEPTIONS = ['components/ui/DatePicker.tsx'];
  * Modules a migrated surface RENDERS but does not own, and where the walk
  * therefore stops.
  *
- * There is exactly one, and it is the person editor's live book preview: the
- * admin embeds `GoldenStory` — the very component a family reads at
- * /stories/[name] — so that what the editor shows IS what ships, rather than a
- * second rendering that can drift. That embed makes the reader reachable from
- * an admin route, but it does not make the reader admin chrome: its buttons
- * are the child's page-turners, on the child's surface, and redressing them
- * from here would change what families see in order to satisfy a rule about
- * an editor.
+ * There are exactly two, and they are the same thing twice: the person
+ * editor's live book preview, in each of the two designs a Golden Story may be
+ * read in. The admin embeds `GoldenStory` (the flip-book) or `EditionStory`
+ * (the Book Edition) — the very components a family reads at /stories/[name] —
+ * so that what the editor shows IS what ships, rather than a second rendering
+ * that can drift. That embed makes the reader reachable from an admin route,
+ * but it does not make the reader admin chrome: its controls are the child's
+ * page-turners and section tabs, on the child's surface, and redressing them
+ * from here would change what families see in order to satisfy a rule about an
+ * editor.
  *
  * The distinction the whole list turns on: the admin owns the FURNITURE around
  * the preview and every one of those controls is a primitive; the preview is
  * CONTENT, and it belongs to the migration of its own surface, whenever that
  * happens. Stopping the walk here rather than filtering the file afterwards is
- * deliberate — it also keeps everything only GoldenStory reaches (StorybookView
- * and its siblings) out, which is the same call for the same reason.
+ * deliberate — it also keeps everything only these two reach (StorybookView and
+ * its siblings) out, which is the same call for the same reason.
+ *
+ * A third entry should have to be argued for. These two are one exception, not
+ * a growing list: they are the same component in the same role, and the day a
+ * third reader exists it will be for a third design, not for convenience.
  */
-const PREVIEWED = ['components/dailygold/GoldenStory.jsx'];
+const PREVIEWED = [
+  'components/dailygold/GoldenStory.jsx',
+  'components/dailygold/EditionStory.tsx',
+];
 
 function resolveImport(spec: string, from: string): string | null {
   let base: string;
@@ -301,7 +310,8 @@ describe('Daily Gold, the front door, the admin desk, the landing page and /fami
     // assertion fails first — which is a legible warning that its buttons now
     // need migrating too, rather than a mysterious failure below.
     for (const outsider of [
-      'components/dailygold/GoldenStory.jsx',    // /stories/[name]
+      'components/dailygold/GoldenStory.jsx',    // /stories/[name] · flip-book
+      'components/dailygold/EditionStory.tsx',   // /stories/[name] · Book Edition
       'components/dailygold/StorybookView.jsx',  // /stories/[name]
       'components/auth/GateForm.tsx',            // /gate
       'components/auth/ProfilePicker.tsx',       // /profiles
@@ -315,10 +325,17 @@ describe('Daily Gold, the front door, the admin desk, the landing page and /fami
     // visible diff on this line with a reason beside it — not a quiet addition
     // that makes a failing suite pass.
     expect(COMPOSITE_EXCEPTIONS).toEqual(['components/ui/DatePicker.tsx']);
-    // Same rule for the one previewed module: a second entry has to be argued
-    // for on this line, not added quietly to make a red suite green.
-    expect(PREVIEWED).toEqual(['components/dailygold/GoldenStory.jsx']);
-    expect(existsSync(join(ROOT, PREVIEWED[0]))).toBe(true);
+    // Same rule for the previewed modules. There are two, and they are the two
+    // designs a Golden Story is read in — the editor embeds whichever one the
+    // person's story_format names, so both are reachable from an admin route
+    // and neither is admin chrome. Argued for at PREVIEWED; a THIRD entry has
+    // to be argued for on this line, not added quietly to make a red suite
+    // green.
+    expect(PREVIEWED).toEqual([
+      'components/dailygold/GoldenStory.jsx',
+      'components/dailygold/EditionStory.tsx',
+    ]);
+    for (const previewed of PREVIEWED) expect(existsSync(join(ROOT, previewed))).toBe(true);
     // And it has to still be reachable: an exception for a file that no longer
     // lands on either surface is dead weight that would silently excuse a
     // future file of the same name.

@@ -77,9 +77,14 @@ export function collectUnits(person: RemarkablePersonRow): CheckUnit[] {
     person.deathDate ? `Died: ${person.deathDate}` : '',
   ].filter(Boolean).join('\n'));
 
-  // A quote is the single most misattributed thing in a children's biography.
+  // A quote is the single most misattributed thing in a children's biography,
+  // and the Book Edition prints WHO said it, HOW OLD they were and WHERE — three
+  // more checkable claims that ride along with it, so they are checked with it.
   push('famous_quote', 'Cover · famous quote',
-    person.famousQuote ? `${person.name} is quoted as saying: "${person.famousQuote}"` : '');
+    person.famousQuote
+      ? `${person.name} is quoted as saying: "${person.famousQuote}"${
+        person.famousQuoteAttribution ? `\nThe book attributes this as: ${person.famousQuoteAttribution}` : ''}`
+      : '');
 
   push('story_childhood', 'Childhood page',
     sectionText(person.storyChildhood, person.storyChildhoodFact));
@@ -87,7 +92,21 @@ export function collectUnits(person: RemarkablePersonRow): CheckUnit[] {
   (person.chapters ?? []).forEach((c, i) => {
     push(`chapters.${i}.narrative`,
       `Chapter ${c.number ?? i + 1}${c.title ? ` · ${c.title}` : ''}`,
-      sectionText(c.narrative, c.fact));
+      // The Book Edition's headline is a declarative sentence set large at the
+      // top of the chapter — the most prominent claim on the page and the one a
+      // child is most likely to repeat, so it is checked with the narrative
+      // rather than left out. It is empty on a flip-book and simply drops.
+      [clean(c.headline), sectionText(c.narrative, c.fact)].filter(Boolean).join('\n\n'));
+  });
+
+  // The Book Edition's "Golden details". These are the book's most startling
+  // claims, chosen for exactly that, which makes them the ones most likely to
+  // have drifted from what the record actually supports — each is checked on
+  // its own so a verdict points at one card. Empty on a flip-book.
+  (person.funFacts ?? []).forEach((f, i) => {
+    push(`fun_facts.${i}.detail`,
+      `Fun fact ${i + 1}${f.title ? ` · ${f.title}` : ''}`,
+      sectionText(f.detail, ''));
   });
 
   // The timeline is nothing but dates, which makes it the highest-yield unit in
@@ -107,6 +126,12 @@ export function collectUnits(person: RemarkablePersonRow): CheckUnit[] {
 
   push('after_treasures.narrative', 'Gifts That Live On',
     sectionText(person.afterTreasures?.narrative, person.afterTreasures?.fact));
+
+  // The Book Edition's closing panel. Its headline is usually a claim about
+  // scale ("longer than any king or queen before her") — the kind that is
+  // either exactly right or quietly wrong. Empty on a flip-book.
+  push('legacy.narrative', 'Legacy · the closing panel',
+    sectionText([clean(person.legacy?.headline), clean(person.legacy?.narrative)].filter(Boolean).join('\n\n'), ''));
 
   // The narrative is imagination and is deliberately not here; the fact is.
   push('modern.fact', 'If they were 10 today · the fact',

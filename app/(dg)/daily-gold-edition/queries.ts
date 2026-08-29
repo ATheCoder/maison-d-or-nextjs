@@ -146,6 +146,11 @@ function onThisDayToRecord(row: OnThisDayEventRow) {
 function personToRecord(row: RemarkablePersonRow) {
   return {
     slug: row.slug,
+    // Which of the two books this person is read as. First in the record
+    // because it is the first thing the reader has to know: it picks the
+    // component (<GoldenStory> or <EditionStory>) that everything below is
+    // handed to. See StoryFormat in src/db/schema.ts.
+    story_format: row.storyFormat,
     name: row.name,
     role: row.role,
     field: row.field,
@@ -157,6 +162,8 @@ function personToRecord(row: RemarkablePersonRow) {
     death_date: row.deathDate,
     story_title: row.storyTitle,
     famous_quote: row.famousQuote,
+    // Book Edition only — the pull-quote's footer. Null on every flip-book.
+    famous_quote_attribution: row.famousQuoteAttribution,
     image_url: row.imageUrl,
     story_childhood_title: row.storyChildhoodTitle,
     childhood_image_url: row.childhoodImageUrl,
@@ -172,6 +179,10 @@ function personToRecord(row: RemarkablePersonRow) {
     after_treasures: row.afterTreasures,
     treasures: row.treasures ?? [],
     lessons: row.lessons ?? [],
+    // Book Edition only. Empty / null on every flip-book, which is exactly how
+    // <EditionStory> and <GoldenStory> each ignore the other's rooms.
+    fun_facts: row.funFacts ?? [],
+    legacy: row.legacy,
   };
 }
 
