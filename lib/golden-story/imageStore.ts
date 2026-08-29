@@ -22,7 +22,7 @@ import type { AnyBrief } from './brief.ts';
 import { renderImage } from './images.ts';
 import { putStoryImage, putStagingImage, promoteStaging, deleteStorageObject } from './storage.ts';
 import {
-  slotDescriptors, sceneFor, promptFor, readPath, BOOK_IMAGE_QUALITY,
+  slotDescriptors, sceneFor, promptFor, readPath, parseImageListPath, BOOK_IMAGE_QUALITY,
   type SlotDescriptor, type SlotPerson,
 } from './slots.ts';
 import { createJob, failJob, deleteJob, jobsForSlug, personSubject } from './jobs.ts';
@@ -103,14 +103,13 @@ async function applyImageUrl(slug: string, personPath: string, url: string | nul
     else if (personPath === 'modern.image_url') set.modern = { ...(row.modern ?? {}), image_url: url } as StorySection;
     else if (personPath === 'after_treasures.image_url') set.afterTreasures = { ...(row.afterTreasures ?? {}), image_url: url } as StorySection;
     else {
-      const m = /^(chapters|timeline|treasures|fun_facts)\.(\d+)\.image_url$/.exec(personPath);
-      if (!m) return;
-      const [, list, idxStr] = m;
-      const idx = Number(idxStr);
-      const column = list === 'fun_facts' ? 'funFacts' : (list as 'chapters' | 'timeline' | 'treasures');
+      const hit = parseImageListPath(personPath);
+      if (!hit) return;
+      const { list, index } = hit;
+      const column = list === 'fun_facts' ? 'funFacts' : list;
       const arr = [...((row[column] as { image_url?: string | null }[]) ?? [])];
-      if (!arr[idx]) return;
-      arr[idx] = { ...arr[idx], image_url: url };
+      if (!arr[index]) return;
+      arr[index] = { ...arr[index], image_url: url };
       if (list === 'chapters') set.chapters = arr as Chapter[];
       else if (list === 'timeline') set.timeline = arr as TimelineEntry[];
       else if (list === 'fun_facts') set.funFacts = arr as FunFact[];

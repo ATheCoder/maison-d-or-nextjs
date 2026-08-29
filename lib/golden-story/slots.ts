@@ -217,6 +217,33 @@ function classicSlotDescriptors(person: SlotPerson): SlotDescriptor[] {
   return out;
 }
 
+/**
+ * The four lists on a person whose rows each carry their own `image_url`, and
+ * the parser for a slot's dotted `personPath` into one of them.
+ *
+ * This exists as ONE function because it used to exist as three regexes — in
+ * imageStore (the DB write), imageSlots (the slot card's thumbnail) and
+ * PersonEditor (mirroring a finished render into the live draft) — and adding
+ * the Book Edition's `fun_facts` to two of the three shipped a data-loss bug:
+ * a generated fun-fact image was written to the column correctly, the editor's
+ * draft never learned about it because its copy of the regex did not match, and
+ * the next autosave wrote the whole draft back with `image_url: null` over the
+ * art that had just been paid for.
+ *
+ * Every caller that turns a personPath into a list index must come through
+ * here, so that a fifth list can only be added in one place.
+ */
+export type ImageListKey = 'chapters' | 'timeline' | 'treasures' | 'fun_facts';
+
+const IMAGE_LIST_KEYS: readonly ImageListKey[] = ['chapters', 'timeline', 'treasures', 'fun_facts'];
+
+export function parseImageListPath(personPath: string): { list: ImageListKey; index: number } | null {
+  const m = /^([a-z_]+)\.(\d+)\.image_url$/.exec(personPath);
+  if (!m) return null;
+  const list = m[1] as ImageListKey;
+  return IMAGE_LIST_KEYS.includes(list) ? { list, index: Number(m[2]) } : null;
+}
+
 /** Read a dotted path (numeric indices allowed) out of an object as a string. */
 export function readPath(source: unknown, path: string): string {
   let node: unknown = source;

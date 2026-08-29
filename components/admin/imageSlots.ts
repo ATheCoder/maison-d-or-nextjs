@@ -7,7 +7,7 @@
 import type { AnyBrief } from '@/lib/golden-story/brief';
 import type { GenerationJobRow, SlotOverride } from '@/src/db/schema';
 import {
-  slotDescriptors, sceneFor, promptFor, copyPayload, includesCharacterSheet, slotStatus,
+  slotDescriptors, sceneFor, promptFor, copyPayload, includesCharacterSheet, slotStatus, parseImageListPath,
   type SlotDescriptor, type SlotPerson, type SlotStatus,
 } from '@/lib/golden-story/slots';
 
@@ -77,10 +77,8 @@ function readImage(person: SlotPerson, personPath: string): string | null {
   if (personPath === 'childhood_image_url') return person.childhood_image_url ?? null;
   if (personPath === 'modern.image_url') return person.modern?.image_url ?? null;
   if (personPath === 'after_treasures.image_url') return person.after_treasures?.image_url ?? null;
-  const m = /^(chapters|timeline|treasures|fun_facts)\.(\d+)\.image_url$/.exec(personPath);
-  if (!m) return null;
-  const arr = m[1] === 'fun_facts'
-    ? person.fun_facts ?? []
-    : person[m[1] as 'chapters' | 'timeline' | 'treasures'];
-  return arr[Number(m[2])]?.image_url ?? null;
+  const hit = parseImageListPath(personPath);
+  if (!hit) return null;
+  const arr = hit.list === 'fun_facts' ? person.fun_facts ?? [] : person[hit.list];
+  return arr[hit.index]?.image_url ?? null;
 }

@@ -15,7 +15,9 @@
  *     ever stops reaching the Book Edition's prompts, nothing else fails.
  */
 import { describe, it, expect } from 'vitest';
-import { slotDescriptors, promptFor, figureShape, type SlotPerson } from './slots.ts';
+import {
+  slotDescriptors, promptFor, figureShape, parseImageListPath, type SlotPerson,
+} from './slots.ts';
 import { EDITION_STYLE, STYLE, EDITION_CHAPTER_FIGURES } from './prompts.ts';
 
 const person = (over: Partial<SlotPerson> = {}): SlotPerson => ({
@@ -120,5 +122,62 @@ describe('figureShape', () => {
 
   it('gives a chapter past the design’s six no picture', () => {
     expect(figureShape(undefined, 9)).toBe('none');
+  });
+});
+
+describe('parseImageListPath', () => {
+  /**
+   * This parser is the fix for a data-loss bug, so the test is written against
+   * the loss rather than against the regex.
+   *
+   * The Book Edition added a fourth image-bearing list, `fun_facts`. The path
+   * parser existed in three copies — the DB write, the slot card, and the
+   * editor's mirror-into-the-draft — and only two were updated. The result was
+   * not a missing thumbnail: the image was written to the column, the editor's
+   * draft never learned it, and the next autosave wrote the whole draft back
+   * with `image_url: null` over art that had already been rendered and paid
+   * for. Every list a person can hold must parse, from the one function.
+   */
+  it('parses every image-bearing list a person has', () => {
+    expect(parseImageListPath('chapters.0.image_url')).toEqual({ list: 'chapters', index: 0 });
+    expect(parseImageListPath('timeline.4.image_url')).toEqual({ list: 'timeline', index: 4 });
+    expect(parseImageListPath('treasures.5.image_url')).toEqual({ list: 'treasures', index: 5 });
+    expect(parseImageListPath('fun_facts.2.image_url')).toEqual({ list: 'fun_facts', index: 2 });
+  });
+
+  it('parses the personPath of every slot both books declare', () => {
+    const people: SlotPerson[] = [
+      {
+        story_format: 'edition',
+        chapters: Array.from({ length: 6 }, () => ({ image_url: null })),
+        timeline: Array.from({ length: 5 }, () => ({ image_url: null })),
+        treasures: Array.from({ length: 6 }, () => ({ image_url: null })),
+        fun_facts: Array.from({ length: 3 }, () => ({ image_url: null })),
+      },
+      {
+        story_format: 'classic',
+        modern: { image_url: null },
+        after_treasures: { image_url: null },
+        chapters: Array.from({ length: 4 }, () => ({ image_url: null })),
+        timeline: Array.from({ length: 5 }, () => ({ image_url: null })),
+        treasures: Array.from({ length: 6 }, () => ({ image_url: null })),
+      },
+    ];
+    // A list path that does not parse is art the editor cannot mirror, so the
+    // assertion is over EVERY slot rather than a sample.
+    for (const person of people) {
+      for (const d of slotDescriptors(person)) {
+        const isListPath = /\.\d+\.image_url$/.test(d.personPath);
+        expect(isListPath ? parseImageListPath(d.personPath) !== null : true).toBe(true);
+      }
+    }
+  });
+
+  it('refuses paths that are not one of those lists', () => {
+    expect(parseImageListPath('image_url')).toBeNull();
+    expect(parseImageListPath('modern.image_url')).toBeNull();
+    expect(parseImageListPath('lessons.0.image_url')).toBeNull();
+    expect(parseImageListPath('chapters.0.narrative')).toBeNull();
+    expect(parseImageListPath('chapters.x.image_url')).toBeNull();
   });
 });

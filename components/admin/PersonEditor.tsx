@@ -39,7 +39,7 @@ import type { Chapter, GenerationJobRow, SlotOverride, FactCheckReport } from '@
 import { deriveSections, holdsToFactRule, type Section, type SectionStatus } from './personSections';
 import { withKeys, stripKeys, type DraftPerson, type Keyed } from './draftTypes';
 import { buildSlotViews, type SlotView } from './imageSlots';
-import { toImageSlot, figureShape } from '@/lib/golden-story/slots';
+import { toImageSlot, figureShape, parseImageListPath } from '@/lib/golden-story/slots';
 import DatePicker from '@/components/ui/DatePicker';
 import { Button, buttonClasses, Card, Field, Heading, Meter } from '@/components/ds';
 import FactCheckPanel, { FactCheckChip } from './FactCheckPanel';
@@ -1190,11 +1190,13 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
     else if (personPath === 'modern.image_url') dispatch({ type: 'objField', key: 'modern', field: 'image_url', value: url });
     else if (personPath === 'after_treasures.image_url') dispatch({ type: 'objField', key: 'after_treasures', field: 'image_url', value: url });
     else {
-      const m = /^(chapters|timeline|treasures)\.(\d+)\.image_url$/.exec(personPath);
-      if (!m) return;
-      const [, list, idx] = m;
-      if (list === 'chapters') dispatch({ type: 'chapterField', index: Number(idx), key: 'image_url', value: url });
-      else dispatch({ type: 'listItemField', list: list as 'timeline' | 'treasures', index: Number(idx), key: 'image_url', value: url });
+      // Through the shared parser, never a local regex — see parseImageListPath.
+      // A path this does not recognise means the art is in the database and the
+      // draft does not know it, and the next autosave writes null over it.
+      const hit = parseImageListPath(personPath);
+      if (!hit) return;
+      if (hit.list === 'chapters') dispatch({ type: 'chapterField', index: hit.index, key: 'image_url', value: url });
+      else dispatch({ type: 'listItemField', list: hit.list, index: hit.index, key: 'image_url', value: url });
     }
   }, []);
 
