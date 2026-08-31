@@ -178,6 +178,23 @@ Two consequences that are not open questions:
 
 New people default to the Book Edition.
 
+**5. Every chapter of a Book Edition is illustrated.**
+Adopted 2026-08-31. The design used to leave chapters three, five and six as
+unbroken text, to "let the story close without interruption". The effect was the
+opposite: all four pictures landed in the first four chapters, so the climax, the
+redemption and the ending ran as three consecutive walls of grey and the last
+third read as a blog post. That exception is retired. `EDITION_CHAPTER_FIGURES`
+(`lib/golden-story/prompts.ts`) now gives all six chapters a figure, alternating
+the margin — tall floats right, round floats left, band is full width — so the
+eye is never pulled to the same margin twice running, and the book closes on a
+band, the one shape that prints a caption.
+
+A chapter can still be given `figure: 'none'` by an admin in the editor, which
+retires that chapter's image slot; what changed is that the *design* no longer
+does it by position. Stories written before this ruling keep the four figures
+they were generated with and are not backfilled or regenerated — that is
+decision 1 applying to a third thing.
+
 ---
 
 ## Where this lives in the code
@@ -190,5 +207,6 @@ New people default to the Book Edition.
 | Factual accuracy | `lib/golden-story/factcheck.ts` — which walks both books, including the Book Edition's fun facts and legacy panel — surfaced in `components/admin/PersonEditor.tsx` |
 | Signal the imagining | The *If X Were 10 Today* spread in `GoldenStory.jsx`; the same card, with its "But this is true:" line, in `EditionStory.tsx` |
 | Art supports the spread's story | The scene blocks in `lib/golden-story/prompts.ts` — `STYLE` + the flip-book's bleed blocks, `EDITION_STYLE` + the Book Edition's five composition blocks |
+| Every Book Edition chapter is illustrated | `EDITION_CHAPTER_FIGURES` (`lib/golden-story/prompts.ts`), read by `figureShape`/`slotDescriptors` (`lib/golden-story/slots.ts`) and written onto each chapter at generation time by `textStore.ts`; pinned by `lib/golden-story/editionSlots.test.ts` |
 | The wooden table | `.wood-table` in `app/globals.css`, worn by `GoldenStory.module.css`, `PersonEditor.module.css` and `BookOpeningCurtain.jsx`. The Book Edition does not lie on it — it is a magazine, not a book on a table, and floats on its own dark ground. |
 | The seven questions | The publish checklist in `PersonEditor.tsx` |

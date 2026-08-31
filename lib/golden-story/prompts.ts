@@ -107,12 +107,21 @@ export const EDITION_TRAITS = 3;
 // Which chapters carry a figure, and which shape. Fixed by the design rather
 // than chosen per story: the mock alternates a right-floated tall figure, a
 // full-width band and a left-floated circle so the eye is never pulled to the
-// same margin twice running, and chapters five and six run as unbroken text to
-// let the story close without interruption. slotDescriptors reads this table,
-// so a person with more or fewer chapters than EDITION_CHAPTERS simply gets
-// figures where the table has entries.
+// same margin twice running.
+//
+// Every chapter carries one. The table used to leave chapters three, five and
+// six as unbroken text, which front-loaded the whole book: all the art landed
+// in the first four chapters and the climax, the redemption and the ending were
+// three consecutive walls of grey. Against the bible's benchmark — every spread
+// should feel like an illustrated collectible book — the last third read as a
+// blog post, so that rule is retired (see the bible's Standing decisions). The
+// book now closes on a band, which is also the only shape that prints a caption.
+//
+// slotDescriptors reads this table, so a person with more or fewer chapters
+// than EDITION_CHAPTERS simply gets figures where the table has entries; a
+// chapter's own `figure` still overrides it, including back to 'none'.
 export const EDITION_CHAPTER_FIGURES: readonly ('tall' | 'round' | 'band' | 'none')[] =
-  ['tall', 'band', 'none', 'round', 'none', 'none'];
+  ['tall', 'band', 'round', 'tall', 'round', 'band'];
 
 // How the art meets the page — the fixed bleed block used and the compositing
 // blend the site renders it with (GoldenStory defaults to 'multiply' unless
