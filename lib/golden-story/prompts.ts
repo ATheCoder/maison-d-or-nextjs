@@ -66,14 +66,18 @@ export const EDITION_STYLE = `Cinematic painted editorial illustration in the ma
 // no frame, and the art is cropped hard on both phone and desktop.
 export const HERO_BLEED = `Full-bleed portrait filling the entire frame edge to edge with no blank margins, no vignette, no frame and no border. Compose it as a tall portrait: the subject's head and shoulders sit in the upper half of the frame and the lower third is quiet — background, atmosphere or plain shadow — because the title is printed across it. Keep the top and bottom edges naturally darker than the middle. The image is cropped on both sides at some viewing sizes, so nothing that matters may sit at the extreme left or right edge. No text, no lettering, no signature.`;
 
-// The tall figure floated into the running text (3:4, soft radial mask). The
-// mask eats the corners, so the subject has to be centred and the corners have
-// to be expendable.
-export const VIGNETTE_TALL = `Full-bleed upright scene filling the entire frame edge to edge with no blank margins, no white background, no vignette, no frame and no border. The subject sits centred and slightly high in the frame with generous painted atmosphere all around it; the four corners carry only background, because they are softly faded away when the picture is printed. No text, no lettering, no signature.`;
+// The tall figure floated into the running text (3:4). Since 2026-08-31 the
+// page prints it as a crisp rounded rectangle with a shadow, not a radial
+// fade, so the corners survive and have to be worth printing — the prompt no
+// longer tells the painter they are expendable.
+export const VIGNETTE_TALL = `Full-bleed upright scene filling the entire frame edge to edge with no blank margins, no white background, no vignette, no frame and no border. The subject sits centred and slightly high in the frame with generous painted atmosphere all around it, and the four corners carry quiet background that is still fully painted, because the picture is printed as a clean upright rectangle with every corner visible. No text, no lettering, no signature.`;
 
-// The round spot floated into the text (1:1, circular mask). Everything outside
-// the inscribed circle is discarded, which is the one thing the model must know.
-export const VIGNETTE_ROUND = `Full-bleed square scene filling the entire frame edge to edge with no blank margins, no white background, no frame and no border. The picture is printed as a CIRCLE cut from the middle of the square, so the whole subject must sit well inside the central circular area and the four corners must carry nothing but background — anything painted into a corner is cut away. One clear subject, close in, richly painted. No text, no lettering, no signature.`;
+// The round spot floated into the text, and the fun-fact spot in its card. Both
+// are cut as an upright OVAL since 2026-08-31 — 4:5, not the old circle — so
+// the art is painted 4:5 too and the only thing discarded is the four corners.
+// Everything outside the inscribed ellipse is gone, which is the one thing the
+// model must know.
+export const VIGNETTE_ROUND = `Full-bleed upright scene, taller than it is wide, filling the entire frame edge to edge with no blank margins, no white background, no frame and no border. The picture is printed as an upright OVAL cut from the middle of the frame, so the whole subject must sit well inside that central oval and the four corners must carry nothing but background — anything painted into a corner is cut away. One clear subject, close in, richly painted. No text, no lettering, no signature.`;
 
 // The full-width band between two chapters (wide, with an italic caption under
 // it). It is a horizontal slice of a scene, so it wants a wide subject and a
@@ -84,6 +88,14 @@ export const VIGNETTE_ROUND = `Full-bleed square scene filling the entire frame 
 // throwaway and then shown in full. It is painted at 1536x640, the frame's own
 // ratio, so nothing is cropped either — keep the two in step.
 export const BAND_BLEED = `Full-bleed wide horizontal scene filling the entire frame edge to edge with no blank margins, no white background, no vignette, no frame and no border. Compose it as a wide panoramic slice, 12:5: the subject and all the detail that matters sit across the middle of the frame, and the top, bottom, left and right edges carry quiet background that is still fully painted and worth looking at, because the picture is printed as a clean rectangle with every edge visible. No text, no lettering, no signature.`;
+
+// The fun-fact card's picture: not a cut shape at all, but a panel bleeding to
+// the card's right edge and corners at roughly a third of its width. The panel
+// is upright and its height follows the fact's text, so the crop is unknowable
+// at painting time — hence a square painting with everything kept off the
+// edges. It shared VIGNETTE_ROUND until 2026-08-31, when the card stopped
+// cutting an oval out of it.
+export const SPOT_PANEL = `Full-bleed square scene filling the entire frame edge to edge with no blank margins, no white background, no vignette, no frame and no border. It is printed as a narrow upright panel cropped out of the middle of this square, so the one subject must sit in the centre of the frame and stay well clear of all four edges; nothing is faded, but the left and right of the painting are cropped away. One clear subject, close in, richly painted. No text, no lettering, no signature.`;
 
 // A treasure card's square plate. Unmasked and hard-cropped by the card, so
 // this is the one block that wants the subject to run right to the edges.
@@ -137,7 +149,7 @@ export type SlotPlacement =
   // Flip-book placements.
   | 'cover' | 'strip' | 'single' | 'opaque' | 'paper'
   // Book Edition placements — all opaque; the page's CSS masks do the shaping.
-  | 'hero' | 'vignette-tall' | 'vignette-round' | 'band' | 'card';
+  | 'hero' | 'vignette-tall' | 'vignette-round' | 'band' | 'spot-panel' | 'card';
 export type SlotBlend = 'normal' | 'multiply';
 
 // One image slot: the assembled prompt plus the display metadata screens ②/④

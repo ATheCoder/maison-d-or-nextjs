@@ -55,6 +55,10 @@
   --line: rgba(43, 36, 30, 0.14);
   --line-soft: rgba(43, 36, 30, 0.1);
 
+  /* The tall figure's lift off the paper — the one plate that casts. */
+  --plate-lift: 0 10px 26px -10px rgba(43, 36, 30, 0.5),
+                0 2px 5px rgba(43, 36, 30, 0.16);
+
   --serif: var(--face-display);
   --sans: var(--face-sans);
 
@@ -104,13 +108,31 @@
   background: var(--board);
 }
 
+/* The frame is at most 1040px wide (.page) but the plate is painted 2:3, so the
+   wider the screen the more of the painting's height `cover` throws away. Past
+   the point where the page stops growing sideways, buy the frame back some
+   height so the crop stays a portrait band rather than a letterbox slot. The
+   editor's pane is excluded: its book is narrower than the window it is
+   measured against, so vh there would buy height the frame does not need and
+   the hero would swallow the whole pane. */
+@media (min-width: 900px) {
+  .edition:not(.embedded) .hero { height: clamp(440px, 82vh, 760px); }
+}
+
 /* The parallax plate is inset beyond the frame on the vertical axis so it has
    somewhere to travel without ever showing an edge. */
 .heroArt {
   position: absolute;
   inset: -12% 0;
   background-size: cover;
-  background-position: center;
+  /* Anchored high, not centred. HERO_BLEED asks the painter for head and
+     shoulders in the upper half and a quiet lower third for the title, so a
+     centred crop is a crop through the face — on a wide screen it lands
+     somewhere between the eyebrows and the chin. The percentage is a share of
+     the overflow, so it self-scales: on a phone, where `cover` discards almost
+     nothing, 12% and 50% are a few pixels apart; on a desktop it is the
+     difference between the whole head and half of it. */
+  background-position: 50% 12%;
   will-change: transform;
 }
 
@@ -377,7 +399,8 @@
   .figTall {
     float: right;
     width: 44%;
-    margin: 4px 0 12px 18px;
+    /* 26px, not 18px: the plate now casts a shadow into this gutter. */
+    margin: 4px 0 12px 26px;
   }
 
   .figRound {
@@ -421,26 +444,37 @@
   text-wrap: balance;
 }
 
+/* Crisp with a shadow, chosen 2026-08-31 alongside the band's hard edge — the
+   radial mask this wore ate roughly half the picture and read as a grey blur
+   at reading size, not as a soft landing. The shadow is what now separates the
+   plate from the paper, so the figure still sits ON the page rather than being
+   punched into it. See VIGNETTE_TALL: the corners are printed, not discarded.
+   `.figTall` carries the extra left margin the shadow needs to clear the
+   gutter — do not tighten it back without dropping the lift too. */
 .plateTall {
   aspect-ratio: 3 / 4;
-  -webkit-mask-image: radial-gradient(115% 100% at 45% 45%, #000 52%, transparent 100%);
-  mask-image: radial-gradient(115% 100% at 45% 45%, #000 52%, transparent 100%);
+  border-radius: 8px;
+  box-shadow: var(--plate-lift);
 }
 
+/* A crisp cameo oval rather than the faded circle, chosen 2026-08-31. It is
+   4:5, not 1:1: an upright ellipse is the shape a painted portrait wants, and
+   the round art is now painted 1024x1280 to match (see slots.ts), so `cover`
+   crops nothing. Art from before that date is square and loses ~20% off the
+   sides — survivable, because VIGNETTE_ROUND has always kept the subject well
+   inside the middle. `border-radius: 50%` on a non-square box IS the ellipse;
+   there is no mask here any more. */
 .plateRound {
-  aspect-ratio: 1;
+  aspect-ratio: 4 / 5;
   border-radius: 50%;
-  -webkit-mask-image: radial-gradient(closest-side, #000 72%, transparent 100%);
-  mask-image: radial-gradient(closest-side, #000 72%, transparent 100%);
 }
 
 /* The band is the one figure that does NOT feather — chosen 2026-08-31 over
    nine other edge treatments. It is a crisp rectangle with a small radius: at
-   full column width the four-edge gradient the tall and round figures wear was
-   a wide grey blur rather than a soft landing, and it took the picture's
-   corners with it. The margin figures keep their radial masks; they are small,
-   floated into the text, and the fade is what stops them cutting the measure.
-   The band earns a hard edge because it spans the measure already.
+   full column width the four-edge gradient it used to wear was a wide grey
+   blur rather than a soft landing, and it took the picture's corners with it.
+   The two margin figures lost their radial masks the same day — see
+   .plateTall and .plateRound. No plate in this book fades out any more.
 
    The 12:5 ratio is the band art's own shape — it is painted 1536x640 (see
    slots.ts) — so `cover` crops nothing. It used to be a fixed ~210px slit,
@@ -615,11 +649,22 @@
 
 /* ── Fun facts ────────────────────────────────────────────────────────────── */
 
+/* A two-column card so the picture can bleed. A floated figure lives inside
+   the card's padding and can never reach its edge, so the card carries no
+   padding of its own any more — .factCardText does — and the image column runs
+   full height into the card's own rounded corner. The picture is a third of
+   the card; the text keeps two thirds, which is the ratio the fact's two or
+   three sentences need to stay above four words a line. */
 .factCard {
   background: var(--paper-warm);
   border-radius: 10px;
-  padding: clamp(18px, 5vw, 22px);
+  overflow: hidden;
+  padding: 0;
 }
+
+/* NOT .factText — that name belongs to the chapter's fact line further up this
+   file, and CSS modules hash the two to the same class. */
+.factCardText { padding: clamp(18px, 5vw, 22px); }
 
 .factCard + .factCard { margin-top: 10px; }
 
@@ -641,20 +686,34 @@
 
 .factBody p { margin: 0; text-wrap: pretty; }
 
-/* Same reason as .chapterBlock: the card contains its own round spot rather
-   than clearing after it. */
-.factCard { display: flow-root; }
-
+/* Below the breakpoint the card stacks and the picture bleeds across the foot
+   of it instead — a 33% column on a phone would be a thumbnail beside a text
+   measure three words wide. `display: grid` is what stretches the plate to the
+   figure's height in both layouts. */
 .figFact {
-  float: right;
-  width: 38%;
-  margin: 2px 0 10px 16px;
+  margin: 0;
+  display: grid;
 }
 
+/* The one Book Edition plate that is not a cut shape at all: it bleeds to the
+   card's edges and the card's radius is what corners it. The aspect ratio is
+   for the stacked layout only — in the two-column card the plate takes the
+   row's height instead (see the media query below). */
 .plateFact {
-  aspect-ratio: 1;
-  -webkit-mask-image: radial-gradient(closest-side, #000 68%, transparent 100%);
-  mask-image: radial-gradient(closest-side, #000 68%, transparent 100%);
+  aspect-ratio: 16 / 9;
+}
+
+@media (min-width: 560px) {
+  .factCard {
+    display: grid;
+    grid-template-columns: 1fr minmax(0, 33%);
+    align-items: stretch;
+  }
+
+  .plateFact {
+    aspect-ratio: auto;
+    min-height: 150px;
+  }
 }
 
 /* ── Gallery ──────────────────────────────────────────────────────────────── */

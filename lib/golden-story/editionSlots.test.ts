@@ -81,19 +81,19 @@ describe('the Book Edition slot table', () => {
     const descs = slotDescriptors(person({ chapters }));
     const files = descs.map((d) => d.file);
     expect(files).not.toContain('chapter-1.png');
-    expect(descs.find((d) => d.file === 'chapter-2.png')?.size).toBe('1024x1024');
+    expect(descs.find((d) => d.file === 'chapter-2.png')?.size).toBe('1024x1280');
   });
 
   it('sizes each figure for the shape the page cuts out of it', () => {
     const by = Object.fromEntries(slotDescriptors(person()).map((d) => [d.file, d]));
     expect(by['chapter-1.png'].size).toBe('1024x1536'); // tall, 3:4 radial mask
     expect(by['chapter-2.png'].size).toBe('1536x640'); // band, 12:5 — the frame's own shape
-    expect(by['chapter-3.png'].size).toBe('1024x1024'); // round, circle mask
+    expect(by['chapter-3.png'].size).toBe('1024x1280'); // round, 4:5 cameo oval
     expect(by['chapter-4.png'].size).toBe('1024x1536'); // tall
-    expect(by['chapter-5.png'].size).toBe('1024x1024'); // round
+    expect(by['chapter-5.png'].size).toBe('1024x1280'); // round
     expect(by['chapter-6.png'].size).toBe('1536x640'); // band — the closer
     expect(by['treasure-1.png'].size).toBe('1024x1024');
-    expect(by['fun-fact-1.png'].size).toBe('1024x1024');
+    expect(by['fun-fact-1.png'].size).toBe('1024x1024'); // bleeding panel, crop unknown
   });
 
   it('draws no timeline and no modern art — the design has neither', () => {

@@ -13,7 +13,7 @@
  */
 import {
   STYLE, COVER_BLEED, STRIP_BLEED, SINGLE_BLEED, OPAQUE, PAPER,
-  EDITION_STYLE, HERO_BLEED, VIGNETTE_TALL, VIGNETTE_ROUND, BAND_BLEED, CARD_FILL,
+  EDITION_STYLE, HERO_BLEED, VIGNETTE_TALL, VIGNETTE_ROUND, BAND_BLEED, SPOT_PANEL, CARD_FILL,
   EDITION_CHAPTER_FIGURES,
   type SlotPlacement, type SlotBlend,
 } from './prompts.ts';
@@ -75,6 +75,7 @@ const TAIL: Record<SlotPlacement, string> = {
   'vignette-tall': VIGNETTE_TALL,
   'vignette-round': VIGNETTE_ROUND,
   band: BAND_BLEED,
+  'spot-panel': SPOT_PANEL,
   card: CARD_FILL,
 };
 
@@ -84,7 +85,7 @@ const TAIL: Record<SlotPlacement, string> = {
 const STYLE_FOR: Record<SlotPlacement, string> = {
   cover: STYLE, strip: STYLE, single: STYLE, opaque: STYLE, paper: STYLE,
   hero: EDITION_STYLE, 'vignette-tall': EDITION_STYLE, 'vignette-round': EDITION_STYLE,
-  band: EDITION_STYLE, card: EDITION_STYLE,
+  band: EDITION_STYLE, 'spot-panel': EDITION_STYLE, card: EDITION_STYLE,
 };
 
 const isNormalBlend = (blend?: string): boolean => blend === 'normal' || blend === 'none';
@@ -140,17 +141,20 @@ function editionSlotDescriptors(person: SlotPerson): SlotDescriptor[] {
       // painting dropped into a wide band lost more than half its height to
       // `cover`: BAND_BLEED asks for a panoramic slice, but at 3:2 the painter
       // composed an ordinary scene and the crop took the subject's head off.
-      size: shape === 'band' ? '1536x640' : shape === 'round' ? '1024x1024' : '1024x1536',
+      size: shape === 'band' ? '1536x640' : shape === 'round' ? '1024x1280' : '1024x1536',
       placement,
       blend: 'normal',
       showsProtagonist: true,
     });
   });
 
+  // Square, and its own placement: the card bleeds this one to its edge as an
+  // upright panel whose height follows the text, so it is neither the chapter
+  // spot's cameo oval nor a shape known at painting time. See SPOT_PANEL.
   (person.fun_facts ?? []).forEach((_, i) => out.push({
-    file: `fun-fact-${i + 1}.png`, label: `Fun fact ${i + 1} · spot`, shortLabel: `Fact ${i + 1}`,
+    file: `fun-fact-${i + 1}.png`, label: `Fun fact ${i + 1} · panel`, shortLabel: `Fact ${i + 1}`,
     personPath: `fun_facts.${i}.image_url`, briefField: `fun_facts.${i}.scene`,
-    size: '1024x1024', placement: 'vignette-round', blend: 'normal', showsProtagonist: false,
+    size: '1024x1024', placement: 'spot-panel', blend: 'normal', showsProtagonist: false,
   }));
 
   person.treasures.forEach((_, i) => out.push({

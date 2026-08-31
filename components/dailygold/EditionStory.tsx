@@ -793,18 +793,20 @@ export default function EditionStory({
 
             {funFacts.map((f, i) => (
               <Reveal key={f.key} className={styles.factCard} delay={80 + i * 60}>
-                <div className={styles.factHead}>
-                  <span aria-hidden>{STAR}</span>
-                  <span>{f.title}</span>
+                <div className={styles.factCardText}>
+                  <div className={styles.factHead}>
+                    <span aria-hidden>{STAR}</span>
+                    <span>{f.title}</span>
+                  </div>
+                  <div className={styles.factBody}>
+                    {f.detail && <p>{f.detail}</p>}
+                  </div>
                 </div>
-                <div className={styles.factBody}>
-                  {f.src && (
-                    <figure className={styles.figFact}>
-                      <Plate shape={styles.plateFact} src={f.src} label={f.title || 'Fun fact'} />
-                    </figure>
-                  )}
-                  {f.detail && <p>{f.detail}</p>}
-                </div>
+                {f.src && (
+                  <figure className={styles.figFact}>
+                    <Plate shape={styles.plateFact} src={f.src} label={f.title || 'Fun fact'} />
+                  </figure>
+                )}
               </Reveal>
             ))}
           </section>
