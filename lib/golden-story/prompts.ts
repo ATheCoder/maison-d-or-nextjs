@@ -75,10 +75,15 @@ export const VIGNETTE_TALL = `Full-bleed upright scene filling the entire frame 
 // the inscribed circle is discarded, which is the one thing the model must know.
 export const VIGNETTE_ROUND = `Full-bleed square scene filling the entire frame edge to edge with no blank margins, no white background, no frame and no border. The picture is printed as a CIRCLE cut from the middle of the square, so the whole subject must sit well inside the central circular area and the four corners must carry nothing but background — anything painted into a corner is cut away. One clear subject, close in, richly painted. No text, no lettering, no signature.`;
 
-// The full-width band between two chapters (wide, feathered on all four edges,
-// with an italic caption under it). It is a horizontal slice of a scene, so it
-// wants a wide subject and a middle-weighted composition.
-export const BAND_BLEED = `Full-bleed wide horizontal scene filling the entire frame edge to edge with no blank margins, no white background, no vignette, no frame and no border. Compose it as a wide panoramic slice: the subject and all the detail that matters sit across the middle band of the frame, and the top, bottom, left and right edges carry only background, because all four are softly faded away when the picture is printed. No text, no lettering, no signature.`;
+// The full-width band between two chapters (wide, with an italic caption under
+// it). It is a horizontal slice of a scene, so it wants a wide subject and a
+// middle-weighted composition. Unlike the two margin figures this one is NOT
+// feathered — since 2026-08-31 the page prints it as a crisp 12:5 rectangle
+// (.plateBand), so the prompt no longer promises the painter that the edges
+// dissolve. It used to, and that lie was expensive: the edges were painted as
+// throwaway and then shown in full. It is painted at 1536x640, the frame's own
+// ratio, so nothing is cropped either — keep the two in step.
+export const BAND_BLEED = `Full-bleed wide horizontal scene filling the entire frame edge to edge with no blank margins, no white background, no vignette, no frame and no border. Compose it as a wide panoramic slice, 12:5: the subject and all the detail that matters sit across the middle of the frame, and the top, bottom, left and right edges carry quiet background that is still fully painted and worth looking at, because the picture is printed as a clean rectangle with every edge visible. No text, no lettering, no signature.`;
 
 // A treasure card's square plate. Unmasked and hard-cropped by the card, so
 // this is the one block that wants the subject to run right to the edges.
@@ -115,7 +120,9 @@ export const EDITION_TRAITS = 3;
 // three consecutive walls of grey. Against the bible's benchmark — every spread
 // should feel like an illustrated collectible book — the last third read as a
 // blog post, so that rule is retired (see the bible's Standing decisions). The
-// book now closes on a band, which is also the only shape that prints a caption.
+// book now closes on a band, the widest of the three shapes. Every shape prints
+// the chapter's caption; that was true of the band alone until 2026-08-31, when
+// the tall and round figures stopped dropping theirs.
 //
 // slotDescriptors reads this table, so a person with more or fewer chapters
 // than EDITION_CHAPTERS simply gets figures where the table has entries; a

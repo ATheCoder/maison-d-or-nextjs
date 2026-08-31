@@ -207,6 +207,73 @@ function Para({ children }: { children: React.ReactNode }) {
   return <p>{children}</p>;
 }
 
+/**
+ * The frame and mask each figure shape wears. One table rather than three
+ * branches in the JSX: the caption used to be written out inside the band's
+ * branch alone, so the tall and round figures silently dropped a line the
+ * writer was required to produce for every chapter. A shape that is not in
+ * this table draws nothing, which is what `figure: 'none'` means.
+ */
+const FIGURE_SHAPES: Record<'tall' | 'round' | 'band', { frame: string; plate: string }> = {
+  tall: { frame: styles.figTall, plate: styles.plateTall },
+  round: { frame: styles.figRound, plate: styles.plateRound },
+  band: { frame: styles.figBand, plate: styles.plateBand },
+};
+
+/**
+ * A chapter's illustration and the one line under it. Every shape prints its
+ * caption — the caption says what the picture cannot say on its own, and a
+ * floated portrait earns that as much as a wide band does. On a phone the two
+ * margin figures are not floated at all (see the module CSS), so the caption
+ * always has a full measure to sit on rather than four words a line.
+ *
+ * `reveal` is for the band only: the margin figures are already inside the
+ * prose block's reveal, and a float inside a transformed element is a fight.
+ */
+function ChapterFigure({
+  shape, src, caption, label, reveal = false,
+}: {
+  shape: string;
+  src?: string | null;
+  caption?: string;
+  label: string;
+  reveal?: boolean;
+}) {
+  const spec = FIGURE_SHAPES[shape as keyof typeof FIGURE_SHAPES];
+  if (!spec) return null;
+  const Frame = reveal ? Reveal : 'figure';
+  return (
+    <Frame {...(reveal ? { as: 'figure' as const } : {})} className={spec.frame}>
+      <Plate shape={spec.plate} src={src} label={label} />
+      {caption && <figcaption className={styles.caption}>{caption}</figcaption>}
+    </Frame>
+  );
+}
+
+/**
+ * The one thing from this chapter a child could tell somebody afterwards — the
+ * bible's fact-per-section rule, as it appears in this design. The flip-book
+ * has had its own <Fact> since the rule was adopted; this book carried the
+ * field from the writer all the way into the component and then never printed
+ * it, so six of the best lines in every Book Edition were dead data.
+ *
+ * It is set apart rather than dressed up, and deliberately not a card. The
+ * Fun Facts room is already this book's card-shaped "wait, really?" surface;
+ * six more cards in the story room would not make the facts louder, they would
+ * stop that room being special and turn a six-minute read into a listicle.
+ * What the fact does need is to be unmistakably NOT prose, which is what the
+ * rule above it and the mark beside it are for.
+ */
+function Fact({ text: body }: { text: string }) {
+  if (!body) return null;
+  return (
+    <Reveal className={styles.fact}>
+      <span className={styles.factMark} aria-hidden>{STAR}</span>
+      <p className={styles.factText}>{body}</p>
+    </Reveal>
+  );
+}
+
 // ── The book ─────────────────────────────────────────────────────────────────
 
 export default function EditionStory({
@@ -631,25 +698,30 @@ export default function EditionStory({
                   <Reveal className={styles.prose} delay={i === 0 ? 120 : 0}>
                     {/* The two margin figures sit inside the prose so the text
                         wraps around them; the band is a block after it. */}
-                    {c.shape === 'tall' && (
-                      <figure className={styles.figTall}>
-                        <Plate shape={styles.plateTall} src={c.src} label={figureLabel(c.eyebrow, c.number)} />
-                      </figure>
-                    )}
-                    {c.shape === 'round' && (
-                      <figure className={styles.figRound}>
-                        <Plate shape={styles.plateRound} src={c.src} label={figureLabel(c.eyebrow, c.number)} />
-                      </figure>
+                    {c.shape !== 'band' && (
+                      <ChapterFigure
+                        shape={c.shape}
+                        src={c.src}
+                        caption={c.caption}
+                        label={figureLabel(c.eyebrow, c.number)}
+                      />
                     )}
                     {c.paras.map((p, n) => <Para key={n}>{p}</Para>)}
                   </Reveal>
 
                   {c.shape === 'band' && (
-                    <Reveal as="figure" className={styles.figBand}>
-                      <Plate shape={styles.plateBand} src={c.src} label={figureLabel(c.eyebrow, c.number)} />
-                      {c.caption && <figcaption className={styles.caption}>{c.caption}</figcaption>}
-                    </Reveal>
+                    <ChapterFigure
+                      shape={c.shape}
+                      src={c.src}
+                      caption={c.caption}
+                      label={figureLabel(c.eyebrow, c.number)}
+                      reveal
+                    />
                   )}
+
+                  {/* The chapter's one tellable thing, after the picture so the
+                      chapter closes on it. */}
+                  <Fact text={c.fact} />
                 </div>
 
                 {/* The pull-quote, after the chapter that earns it. */}

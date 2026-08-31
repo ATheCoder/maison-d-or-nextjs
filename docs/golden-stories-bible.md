@@ -187,7 +187,9 @@ third read as a blog post. That exception is retired. `EDITION_CHAPTER_FIGURES`
 (`lib/golden-story/prompts.ts`) now gives all six chapters a figure, alternating
 the margin — tall floats right, round floats left, band is full width — so the
 eye is never pulled to the same margin twice running, and the book closes on a
-band, the one shape that prints a caption.
+band, the widest of the three shapes. Every figure prints the chapter's
+caption, which until 2026-08-31 only the band did — the tall and round
+figures dropped a line the writer is required to produce for every chapter.
 
 A chapter can still be given `figure: 'none'` by an admin in the editor, which
 retires that chapter's image slot; what changed is that the *design* no longer

@@ -353,19 +353,39 @@
 /* Every plate is opaque and fills its frame; these masks are what shape it.
    That is the whole art contract of this format — see prompts.ts. */
 
+/* Mobile first, and here that is not just an ordering: on a phone the reading
+   column is the gutter formula's ~340px, so a 44% float leaves a picture the
+   size of a stamp and a text gutter four or five words wide, with the caption
+   under it breaking every three words. Both margin figures are therefore plain
+   full-measure blocks until the column is wide enough to wrap text around one,
+   and only then do they float. The band is full width at every size. */
+
 .figTall {
-  float: right;
-  width: 44%;
-  margin: 4px 0 12px 18px;
+  margin: clamp(20px, 5vw, 26px) 0;
 }
 
 .figRound {
-  float: left;
-  width: 40%;
-  margin: 4px 16px 10px 0;
+  width: min(100%, 300px);
+  margin: clamp(20px, 5vw, 26px) auto;
 }
 
+.figRound .caption { text-align: center; }
+
 .figBand { margin: clamp(22px, 5vw, 30px) 0 0; }
+
+@media (min-width: 640px) {
+  .figTall {
+    float: right;
+    width: 44%;
+    margin: 4px 0 12px 18px;
+  }
+
+  .figRound {
+    float: left;
+    width: 40%;
+    margin: 4px 16px 10px 0;
+  }
+}
 
 .plate {
   position: relative;
@@ -414,19 +434,30 @@
   mask-image: radial-gradient(closest-side, #000 72%, transparent 100%);
 }
 
-/* Two masks intersected, so the band feathers on all four edges at once — a
-   single gradient can only fade one axis. */
+/* The band is the one figure that does NOT feather — chosen 2026-08-31 over
+   nine other edge treatments. It is a crisp rectangle with a small radius: at
+   full column width the four-edge gradient the tall and round figures wear was
+   a wide grey blur rather than a soft landing, and it took the picture's
+   corners with it. The margin figures keep their radial masks; they are small,
+   floated into the text, and the fade is what stops them cutting the measure.
+   The band earns a hard edge because it spans the measure already.
+
+   The 12:5 ratio is the band art's own shape — it is painted 1536x640 (see
+   slots.ts) — so `cover` crops nothing. It used to be a fixed ~210px slit,
+   which against the 3:2 art the slot table asked for then showed only the
+   middle 45% of the painting: heads were cropped off above the frame and what
+   was left was a torso. Keep frame ratio and slot size in step. `min-height`
+   is for the phone alone, where 12:5 of a ~340px column would be thinner than
+   the art can survive. The upward `object-position` bias is for stories
+   painted before 2026-08-31, whose band art is still 3:2 and whose subject
+   therefore stands high in whatever this frame keeps. */
 .plateBand {
-  height: clamp(180px, 34vw, 210px);
-  -webkit-mask-image:
-    linear-gradient(180deg, transparent 0, #000 22%, #000 82%, transparent 100%),
-    linear-gradient(90deg, transparent 0, #000 12%, #000 88%, transparent 100%);
-  -webkit-mask-composite: source-in;
-  mask-image:
-    linear-gradient(180deg, transparent 0, #000 22%, #000 82%, transparent 100%),
-    linear-gradient(90deg, transparent 0, #000 12%, #000 88%, transparent 100%);
-  mask-composite: intersect;
+  aspect-ratio: 12 / 5;
+  min-height: 170px;
+  border-radius: 8px;
 }
+
+.plateBand .plateImg { object-position: 50% 15%; }
 
 .caption {
   margin: 8px 0 0;
@@ -435,6 +466,35 @@
   font-size: 14px;
   line-height: 1.5;
   color: var(--ink-soft);
+}
+
+/* ── The chapter's fact ───────────────────────────────────────────────────── */
+
+/* The one thing a child could tell somebody afterwards (see <Fact> in
+   EditionStory.tsx). It has to read as a different KIND of sentence from the
+   prose above it or the page has quietly turned the payload back into
+   narrative — the same job the rule above .modernFact does for the daydream,
+   and deliberately the same quiet means rather than a card. */
+.fact {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  margin: clamp(18px, 4vw, 24px) 0 0;
+  padding-top: clamp(12px, 3vw, 15px);
+  border-top: 1px solid var(--line-soft);
+}
+
+.factMark {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--gold-deep);
+}
+
+.factText {
+  margin: 0;
+  font: 400 15px/1.6 var(--sans);
+  color: var(--ink-soft);
+  text-wrap: pretty;
 }
 
 /* ── Pull-quote ───────────────────────────────────────────────────────────── */

@@ -298,7 +298,7 @@ chapters: exactly ${EDITION_CHAPTERS}. Each has:
   - headline: ONE declarative sentence, 5 to 12 words, ending in a full stop, that makes the reader want the paragraph under it. It is a statement about this chapter, never a label and never a question. "A little girl who was never meant to be queen." "She never spent one day at school." "Up a tree a princess, down a queen." A headline that could sit on any other person's chapter is a failed headline.
   - narrative: the 2 or 3 paragraphs described above.
   - fact: as described above.
-  - caption: one italic line, 6 to 14 words, for the picture beside this chapter. It says something the picture cannot say on its own, never what the reader can already see. "Two sisters, one governess, and no other pupils in the room." Write one for every chapter; the design prints it only where the layout gives that chapter a wide picture.
+  - caption: one italic line, 6 to 14 words, for the picture beside this chapter. It says something the picture cannot say on its own, never what the reader can already see. "Two sisters, one governess, and no other pupils in the room." Every chapter has a picture and every caption is printed under it, so write one for every chapter and expect every one of them to be read.
   - scene: the illustration SUBJECT, described below.
 
 fun_facts: exactly ${EDITION_FUN_FACTS}. These are the book's "Wait, really?" cards, and they are where the strangest true things go. Each has:

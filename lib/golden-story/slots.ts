@@ -135,7 +135,12 @@ function editionSlotDescriptors(person: SlotPerson): SlotDescriptor[] {
       shortLabel: `Chapter ${i + 1}`,
       personPath: `chapters.${i}.image_url`,
       briefField: `chapters.${i}.scene`,
-      size: shape === 'band' ? '1536x1024' : shape === 'round' ? '1024x1024' : '1024x1536',
+      // The band is painted 1536x640 — 12:5, the exact shape of the frame the
+      // page cuts (.plateBand). It was 1536x1024 until 2026-08-31, and a 3:2
+      // painting dropped into a wide band lost more than half its height to
+      // `cover`: BAND_BLEED asks for a panoramic slice, but at 3:2 the painter
+      // composed an ordinary scene and the crop took the subject's head off.
+      size: shape === 'band' ? '1536x640' : shape === 'round' ? '1024x1024' : '1024x1536',
       placement,
       blend: 'normal',
       showsProtagonist: true,

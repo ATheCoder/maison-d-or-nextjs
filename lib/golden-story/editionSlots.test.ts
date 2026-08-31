@@ -8,9 +8,11 @@
  *     opaque and full-frame, and the page's CSS masks do the shaping; a
  *     multiply slot or a "painted on flat white" composition block would print
  *     as a pale bruise on cream paper.
- *  2. A chapter that the design gives no picture being offered one anyway. The
- *     Book Edition leaves stretches of unbroken text on purpose, and a slot for
- *     one is a painting the page has nowhere to put.
+ *  2. A chapter losing the picture the design gives it. Every chapter of this
+ *     book is illustrated, and a chapter that silently stops being offered a
+ *     slot is a stretch of grey the reader has to scroll through. The one way
+ *     to retire a slot is an explicit `figure: 'none'` on the chapter, which an
+ *     admin chooses; the design never does it by position.
  *  3. The two styles converging. They are different products; if EDITION_STYLE
  *     ever stops reaching the Book Edition's prompts, nothing else fails.
  */
@@ -56,31 +58,40 @@ describe('the Book Edition slot table', () => {
     for (const d of slotDescriptors(person())) expect(d.blend).toBe('normal');
   });
 
-  it('gives a chapter a slot only where the design gives it a picture', () => {
+  it('gives every chapter a picture', () => {
     const files = slotDescriptors(person()).map((d) => d.file);
     EDITION_CHAPTER_FIGURES.forEach((shape, i) => {
-      const expected = shape === 'none' ? false : true;
-      expect(files.includes(`chapter-${i + 1}.png`)).toBe(expected);
+      expect(shape).not.toBe('none');
+      expect(files.includes(`chapter-${i + 1}.png`)).toBe(true);
     });
     // The design's own alternation, so this test fails if that table is edited
-    // without the layout being reconsidered.
-    expect(EDITION_CHAPTER_FIGURES).toEqual(['tall', 'band', 'none', 'round', 'none', 'none']);
+    // without the layout being reconsidered. Two things it is holding: no
+    // chapter runs as unbroken text, and no two figures in a row sit in the
+    // same margin (tall floats right, round floats left, band is full width).
+    expect(EDITION_CHAPTER_FIGURES).toEqual(['tall', 'band', 'round', 'tall', 'round', 'band']);
   });
 
   it("lets a chapter override its shape, and 'none' retires its slot", () => {
+    // Both indices are ones where the chapter's choice and the design's default
+    // differ, so neither assertion can pass on the default alone: chapter one
+    // is 'tall' by design and chapter two is 'band'.
     const chapters: SlotPerson['chapters'] = person().chapters.map(() => ({ image_url: null }));
     chapters[0] = { image_url: null, figure: 'none' };
-    chapters[2] = { image_url: null, figure: 'round' };
-    const files = slotDescriptors(person({ chapters })).map((d) => d.file);
+    chapters[1] = { image_url: null, figure: 'round' };
+    const descs = slotDescriptors(person({ chapters }));
+    const files = descs.map((d) => d.file);
     expect(files).not.toContain('chapter-1.png');
-    expect(files).toContain('chapter-3.png');
+    expect(descs.find((d) => d.file === 'chapter-2.png')?.size).toBe('1024x1024');
   });
 
   it('sizes each figure for the shape the page cuts out of it', () => {
     const by = Object.fromEntries(slotDescriptors(person()).map((d) => [d.file, d]));
     expect(by['chapter-1.png'].size).toBe('1024x1536'); // tall, 3:4 radial mask
-    expect(by['chapter-2.png'].size).toBe('1536x1024'); // band, feathered strip
-    expect(by['chapter-4.png'].size).toBe('1024x1024'); // round, circle mask
+    expect(by['chapter-2.png'].size).toBe('1536x640'); // band, 12:5 — the frame's own shape
+    expect(by['chapter-3.png'].size).toBe('1024x1024'); // round, circle mask
+    expect(by['chapter-4.png'].size).toBe('1024x1536'); // tall
+    expect(by['chapter-5.png'].size).toBe('1024x1024'); // round
+    expect(by['chapter-6.png'].size).toBe('1536x640'); // band — the closer
     expect(by['treasure-1.png'].size).toBe('1024x1024');
     expect(by['fun-fact-1.png'].size).toBe('1024x1024');
   });
@@ -117,7 +128,8 @@ describe('figureShape', () => {
   it('falls back to the design’s alternation by position', () => {
     expect(figureShape(undefined, 0)).toBe('tall');
     expect(figureShape('', 1)).toBe('band');
-    expect(figureShape(undefined, 2)).toBe('none');
+    expect(figureShape(undefined, 2)).toBe('round');
+    expect(figureShape(undefined, 5)).toBe('band');
   });
 
   it('gives a chapter past the design’s six no picture', () => {
