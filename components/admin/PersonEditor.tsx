@@ -26,6 +26,7 @@ import GoldenStory, { spreadCount } from '@/components/dailygold/GoldenStory';
 import EditionStory from '@/components/dailygold/EditionStory';
 import {
   savePerson, setPublished as setPublishedAction,
+  setArtStyle as setArtStyleAction,
   startFactCheck, getFactCheck,
   getPersonForEditor, getStoryBrief, getPersonJobs,
   generateBook, startRewrite, dismissJob, updateGoldenThread,
@@ -39,7 +40,7 @@ import { withKeys, stripKeys, type DraftPerson, type Keyed } from './draftTypes'
 import { buildSlotViews, type SlotView } from './imageSlots';
 import { toImageSlot, figureShape, parseImageListPath } from '@/lib/golden-story/slots';
 import DatePicker from '@/components/ui/DatePicker';
-import { Button, Card, Field, Heading, Meter } from '@/components/ds';
+import { Button, Card, Confirm, Field, Heading, Meter, SelectPill } from '@/components/ds';
 import FactCheckPanel, { FactCheckChip } from './FactCheckPanel';
 import { factCheckCounts } from '@/lib/golden-story/factCheckCounts';
 import ImageModal from './ImageModal';
@@ -784,6 +785,86 @@ function SortableChapterRow({ s, isActive, onSelect }: { s: Section; isActive: b
   );
 }
 
+/**
+ * The hand the Book Edition is drawn in — the rail's Illustrations panel.
+ *
+ * WHY IT LIVES HERE and not in the cover-identity section with the rest of the
+ * person's properties: it is not a property of the person, it is a property of
+ * their pictures. It changes the style block, the composition block and the
+ * blend of every slot at once and touches no written word, so it belongs beside
+ * the illustration count and the "Generate all missing" button — which is also
+ * the thing an admin reaches for immediately after switching it.
+ *
+ * WHAT IT DOES NOT DO. It does not regenerate, and it does not delete. Existing
+ * art was drawn to the other contract and will look like it — a painted plate in
+ * a pencil book prints as an opaque rectangle where every other picture is a
+ * drawing on the paper — but which of those are worth paying to redraw is the
+ * admin's call. So the confirmation says how many pictures are affected and
+ * then gets out of the way, rather than quietly spending the balance or
+ * quietly throwing the balance away.
+ *
+ * The confirmation is skipped when there is nothing to lose (no art yet), which
+ * is the common case: the style is usually settled before the first render.
+ */
+function ArtStyleControl({
+  name, value, filled, onChange,
+}: {
+  name: string;
+  value: 'painted' | 'pencil';
+  filled: number;
+  onChange: (next: 'painted' | 'pencil') => void;
+}) {
+  const [confirming, setConfirming] = useState<'painted' | 'pencil' | null>(null);
+
+  const pick = (next: 'painted' | 'pencil') => {
+    if (next === value) return;
+    if (filled > 0) { setConfirming(next); return; }
+    onChange(next);
+  };
+
+  const label = (v: 'painted' | 'pencil') => (v === 'pencil' ? 'Pencil' : 'Painted');
+
+  return (
+    <>
+      <div className={styles.hair} style={{ margin: '2px 0 1px' }} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+        <span className={styles.kick}>Art style</span>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {(['painted', 'pencil'] as const).map((v) => (
+            <SelectPill
+              key={v}
+              type="button"
+              aria-pressed={value === v}
+              onClick={() => pick(v)}
+            >{label(v)}</SelectPill>
+          ))}
+        </div>
+        <span className={styles.muted} style={{ fontSize: 10.5, lineHeight: 1.4 }}>
+          {value === 'pencil'
+            ? 'Graphite drawings made on the page — no frames, no shadows, bare paper around them.'
+            : 'Oil and gouache plates, warm and cinematic — the house style.'}
+        </span>
+      </div>
+
+      {confirming && (
+        <Confirm
+          title={`Switch ${name} to the ${label(confirming).toLowerCase()} hand?`}
+          confirmLabel={`Switch to ${label(confirming).toLowerCase()}`}
+          tone="primary"
+          onCancel={() => setConfirming(null)}
+          onConfirm={() => { const next = confirming; setConfirming(null); onChange(next); }}
+        >
+          Every image prompt in the book is rewritten for the new hand. The {filled}{' '}
+          {filled === 1 ? 'picture' : 'pictures'} already on the page {filled === 1 ? 'stays' : 'stay'}{' '}
+          exactly where {filled === 1 ? 'it is' : 'they are'} — nothing is deleted and nothing is
+          redrawn until you ask. They were drawn in the other style, so they will look like it
+          until you regenerate them.
+        </Confirm>
+      )}
+    </>
+  );
+}
+
 // ── AI panel (screen ③) ──────────────────────────────────────────────────────
 // The "Generate the story text" surface: the whole-book job with staged
 // progress on the left, the golden thread + character sheet on the right. Opened
@@ -1278,6 +1359,23 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
     })();
   }, [slug]);
 
+  /**
+   * Change the hand the book is drawn in. The server write is authoritative and
+   * happens first; the draft only mirrors it, so a failure leaves the editor
+   * showing what is actually stored rather than a style the book does not have.
+   *
+   * Nothing is regenerated here and no art is deleted. Flipping the style
+   * re-writes every slot's prompt — the whole book is now "wrong medium" — but
+   * which pictures are worth paying to redraw is the admin's call, and the
+   * control says so before it asks.
+   */
+  const setArt = useCallback((next: 'painted' | 'pencil') => {
+    void (async () => {
+      const res = await setArtStyleAction(slug, next);
+      if (res.ok && res.art_style) dispatch({ type: 'field', key: 'art_style', value: res.art_style });
+    })();
+  }, [slug]);
+
   // A slot card reported a change: refresh scenes/overrides + jobs (so a fresh
   // Path-A job starts polling), and on an accepted/uploaded image mirror the new
   // URL into the draft. Server writes are authoritative; this only reflects them.
@@ -1562,6 +1660,14 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
               title={illus.generatable === 0 ? 'Every renderable slot is filled — add scenes to generate more' : undefined}
             >{illus.batchRunning ? `Generating… ${illus.generating} left` : `Generate all missing${illus.generatable ? ` (${illus.generatable})` : ''}`}</Button>
             <Button variant="link" size="sm" style={{ justifyContent: 'flex-start' }} onClick={() => setShowBoard(true)}>▦ Status board · all {illus.total} slots</Button>
+            {isEdition && (
+              <ArtStyleControl
+                name={draft.name || 'this person'}
+                value={draft.art_style}
+                filled={illus.filled}
+                onChange={setArt}
+              />
+            )}
           </div>
         </div>
 
@@ -2131,7 +2237,14 @@ function EditionCenterPanel({ active, draft, dispatch, onSelect, rw, slotByFile,
             in the middle of the story, with no full stop.
           </div>
 
-          {slotChip('hero.png', 'Full-bleed portrait · 1024×1536 · the title is printed across its lower third.')}
+          {/* The hero's blurb describes how the picture meets the page, and the
+              two hands meet it in opposite ways — one fills the frame, one is
+              drawn on white and multiplied into it. A blurb that only ever said
+              "full-bleed" would be telling an admin the wrong thing to look for
+              in half the books. */}
+          {slotChip('hero.png', draft.art_style === 'pencil'
+            ? 'Pencil portrait on white · 1024×1536 · multiplied into the page, with the title printed across its lower third.'
+            : 'Full-bleed portrait · 1024×1536 · the title is printed across its lower third.')}
         </>
       );
 

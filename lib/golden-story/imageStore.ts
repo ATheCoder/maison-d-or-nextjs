@@ -44,6 +44,10 @@ function toSlotPerson(row: RemarkablePersonRow): SlotPerson {
   return {
     // First, because it decides which slot table the rest is read against.
     story_format: row.storyFormat,
+    // And second, because it decides the hand every slot in that table is
+    // drawn in. Missing it here would render a pencil book in oils and write
+    // the result to the same columns, with nothing to say it had happened.
+    art_style: row.artStyle,
     image_url: row.imageUrl,
     childhood_image_url: row.childhoodImageUrl,
     modern: row.modern,
@@ -189,7 +193,7 @@ export async function startSlotGeneration(slug: string, file: string):
   if (!desc) return { ok: false, error: 'Unknown slot.' };
 
   const { brief, overrides } = await getSlotData(slug);
-  const prompt = promptFor(sceneFor(brief, desc.briefField), desc.placement, overrides[file]);
+  const prompt = promptFor(desc, sceneFor(brief, desc.briefField), overrides[file]);
   if (!prompt) return { ok: false, error: 'Add a scene (or generate the book) before rendering this slot.' };
 
   const created = await createJob(personSubject(slug), 'slot', { slots: { [file]: { state: 'running' } } });
@@ -218,7 +222,7 @@ export async function renderSlotToStaging(slug: string, file: string, jobId: num
   const desc = descriptorFor(toSlotPerson(person), file);
   if (!desc) throw new NonRetriableError('Unknown slot.');
   const { brief, overrides } = await getSlotData(slug);
-  const prompt = promptFor(sceneFor(brief, desc.briefField), desc.placement, overrides[file]);
+  const prompt = promptFor(desc, sceneFor(brief, desc.briefField), overrides[file]);
   if (!prompt) throw new NonRetriableError('No prompt for this slot — add a scene first.');
   const png = await renderImage(prompt, desc.size, BOOK_IMAGE_QUALITY);
   const { url, key } = await putStagingImage(slug, file, jobId, png);
@@ -282,7 +286,7 @@ export async function startBatch(slug: string, files?: string[]):
   const { brief, overrides } = await getSlotData(slug);
 
   const targets = slotDescriptors(slotPerson).filter((d) => {
-    const prompt = promptFor(sceneFor(brief, d.briefField), d.placement, overrides[d.file]);
+    const prompt = promptFor(d, sceneFor(brief, d.briefField), overrides[d.file]);
     if (!prompt) return false;
     if (files && files.length) return files.includes(d.file);
     return !readPath(slotPerson, d.personPath); // only the empty ones
@@ -317,7 +321,7 @@ export async function renderSlotToCanonical(slug: string, file: string, jobId: n
   const d = descriptorFor(toSlotPerson(person), file);
   if (!d) throw new NonRetriableError('Unknown slot.');
   const { brief, overrides } = await getSlotData(slug);
-  const prompt = promptFor(sceneFor(brief, d.briefField), d.placement, overrides[file]);
+  const prompt = promptFor(d, sceneFor(brief, d.briefField), overrides[file]);
   if (!prompt) throw new NonRetriableError('No prompt for this slot — add a scene first.');
   const png = await renderImage(prompt, d.size, BOOK_IMAGE_QUALITY);
   const base = await putStoryImage(slug, file, png);

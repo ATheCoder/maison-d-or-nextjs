@@ -310,6 +310,32 @@ export type FactCheckReport = {
  */
 export type StoryFormat = 'classic' | 'edition';
 
+/**
+ * Which hand draws a person's pictures. Orthogonal to StoryFormat: the format
+ * decides the book's SHAPE (which rooms, which slots, which writer), the art
+ * style decides only the MEDIUM those slots are rendered in.
+ *
+ * 'painted' is the house style every Golden Story has worn since the first one
+ * — oil and gouache for the Book Edition, watercolour and brown ink for the
+ * flip-book. 'pencil' is the second hand, added 2026-08-31: the book is drawn
+ * in graphite on the page itself rather than printed as plates, which inverts
+ * the Book Edition's art contract (see EDITION_PENCIL_STYLE in
+ * lib/golden-story/prompts.ts) and is why it is a property of the person rather
+ * than a per-slot override.
+ *
+ * Unlike `story_format` this IS changeable after creation — it costs a re-render
+ * of the art and nothing else, since no written field depends on it — but it is
+ * changed through its own action rather than the autosaving draft, because
+ * flipping it silently re-writes every image prompt in the book.
+ *
+ * Only the Book Edition renders 'pencil' today. A flip-book row may hold the
+ * value and is simply painted, which is the intended fallback rather than an
+ * error: the flip-book IS a painted picture book by definition (see the
+ * bible's standing decision 4), and pencil is a variant of the editorial
+ * register alone.
+ */
+export type ArtStyle = 'painted' | 'pencil';
+
 export const remarkablePerson = pgTable('remarkable_person', {
   // Folder name under public/stories/, e.g. 'albert-einstein'. Imports upsert
   // on it, so re-running the importer updates instead of duplicating.
@@ -380,6 +406,12 @@ export const remarkablePerson = pgTable('remarkable_person', {
   // constraint costs one migration to extend where a pg enum costs a type
   // rewrite.
   storyFormat: text('story_format').$type<StoryFormat>().notNull().default('edition'),
+
+  // Which hand draws this person's pictures — see ArtStyle. Text, not an enum,
+  // for the same reason story_format is: the set is app-owned and expected to
+  // grow. Defaults to 'painted', so every row that predates the pencil hand
+  // keeps the art it was generated with and needs no backfill.
+  artStyle: text('art_style').$type<ArtStyle>().notNull().default('painted'),
 
   // Draft/Published gate for the editor. New rows start unpublished; public
   // readers (getPersonBySlug, the Born Today query) filter on it, admin

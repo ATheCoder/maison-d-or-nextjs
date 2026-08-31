@@ -43,6 +43,26 @@ const FORMAT_OPTIONS: { value: 'edition' | 'classic'; name: string; hint: string
   },
 ];
 
+// The two hands a Book Edition can be drawn in, in the order the create dialog
+// offers them — the house style first. See ArtStyle in src/db/schema.ts.
+//
+// Only the Book Edition is offered a choice: the flip-book is a painted picture
+// book by definition (the bible's standing decision 4) and has no pencil
+// composition blocks, so the dialog hides this whole group behind the classic
+// design rather than showing a control that would be ignored.
+const ART_OPTIONS: { value: 'painted' | 'pencil'; name: string; hint: string }[] = [
+  {
+    value: 'painted',
+    name: 'Painted',
+    hint: 'Oil and gouache plates, warm and cinematic — the house style every Golden Story wears.',
+  },
+  {
+    value: 'pencil',
+    name: 'Pencil',
+    hint: 'Graphite drawings made on the page itself: hatching, bare paper, no frames and no shadows.',
+  },
+];
+
 // ── House stylesheet (scoped under .lib) ─────────────────────────────────────
 const CSS = `
 .lib {
@@ -274,6 +294,10 @@ function PersonCard({ p, now, onDelete }: { p: PersonListItem; now: Date; onDele
           <span className="chip chip-ink">
             {p.storyFormat === 'edition' ? 'Book Edition' : 'Flip-book'}
           </span>
+          {/* Only when it is not the house style: every book was painted until
+              2026-08-31, so a "Painted" chip on every card in the library would
+              be noise. The pencil hand is the thing worth spotting. */}
+          {p.artStyle === 'pencil' && <span className="chip chip-ink">Pencil</span>}
           {meta && <span className="muted" style={{ fontSize: 11 }}>{flag && `${flag} `}{meta}</span>}
         </div>
 
@@ -309,6 +333,11 @@ function CreateDialog({ onClose, existingNames, initialDate }: {
   // changes it only by being created again. New books default to the Book
   // Edition.
   const [format, setFormat] = useState<'edition' | 'classic'>('edition');
+  // And which hand draws it. Unlike the format this is NOT set once — the
+  // editor can change it later (setArtStyle) — but it is asked here so the
+  // first batch of art is rendered in the style that was wanted rather than in
+  // the default and then paid for twice.
+  const [artStyle, setArtStyle] = useState<'painted' | 'pencil'>('painted');
 
   function runSuggest(dateStr: string) {
     setSugError(null);
@@ -341,7 +370,7 @@ function CreateDialog({ onClose, existingNames, initialDate }: {
   function submit(overwrite: boolean) {
     setError(null);
     start(async () => {
-      const res = await createPerson({ name, slug: effectiveSlug, overwrite, format });
+      const res = await createPerson({ name, slug: effectiveSlug, overwrite, format, artStyle });
       // On success the action redirects to the editor; only failures return.
       if (res?.collision) { setCollision(res.collision); return; }
       if (res?.error) { setError(res.error); setCollision(null); }
@@ -405,6 +434,34 @@ function CreateDialog({ onClose, existingNames, initialDate }: {
             different fields, so a book changes design only by being created again.
           </p>
         </div>
+
+        {format === 'edition' && (
+          <div style={{ marginTop: 18 }}>
+            <p className="kick" style={{ margin: '0 0 9px' }}>Art style</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {ART_OPTIONS.map((o) => (
+                <Button
+                  key={o.value}
+                  variant="bare"
+                  onClick={() => setArtStyle(o.value)}
+                  aria-pressed={artStyle === o.value}
+                  className="block w-full rounded-md border px-3 py-2.5 text-left"
+                  style={{
+                    borderColor: artStyle === o.value ? 'var(--gold-deep)' : 'var(--line)',
+                    background: artStyle === o.value ? 'var(--gold-soft)' : 'var(--surface-raised)',
+                  }}
+                >
+                  <span style={{ fontWeight: 700, color: 'var(--ink)', fontSize: 13 }}>{o.name}</span>
+                  <span style={{ display: 'block', color: 'var(--brown)', fontSize: 12, marginTop: 3 }}>{o.hint}</span>
+                </Button>
+              ))}
+            </div>
+            <p className="muted" style={{ fontSize: 11.5, margin: '9px 0 0' }}>
+              The words are the same either way — only the pictures change, and this can
+              be switched later in the editor.
+            </p>
+          </div>
+        )}
 
         <div className="panel" style={{ marginTop: 18, padding: '14px 15px', background: 'var(--gold-soft)' }}>
           <p className="kick" style={{ margin: 0 }}>✦ Suggest a person born on a date</p>

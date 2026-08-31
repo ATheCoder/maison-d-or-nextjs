@@ -20,7 +20,7 @@ import { describe, it, expect } from 'vitest';
 import {
   slotDescriptors, promptFor, figureShape, parseImageListPath, type SlotPerson,
 } from './slots.ts';
-import { EDITION_STYLE, STYLE, EDITION_CHAPTER_FIGURES } from './prompts.ts';
+import { EDITION_STYLE, EDITION_PENCIL_STYLE, STYLE, EDITION_CHAPTER_FIGURES } from './prompts.ts';
 
 const person = (over: Partial<SlotPerson> = {}): SlotPerson => ({
   story_format: 'edition',
@@ -54,7 +54,7 @@ describe('the Book Edition slot table', () => {
     expect(files).toContain('cover.png');
   });
 
-  it('paints nothing with multiply — every plate is opaque and masked by the page', () => {
+  it('paints nothing with multiply — every painted plate is opaque and masked by the page', () => {
     for (const d of slotDescriptors(person())) expect(d.blend).toBe('normal');
   });
 
@@ -104,7 +104,7 @@ describe('the Book Edition slot table', () => {
 
   it('builds its prompts from the edition style, never the flip-book’s', () => {
     for (const d of slotDescriptors(person())) {
-      const prompt = promptFor('A quiet room at dusk.', d.placement);
+      const prompt = promptFor(d, 'A quiet room at dusk.');
       expect(prompt.startsWith(EDITION_STYLE)).toBe(true);
       expect(prompt).not.toContain(STYLE);
       // The load-bearing sentence: nothing in this book is painted on white.
@@ -114,7 +114,81 @@ describe('the Book Edition slot table', () => {
 
   it('keeps the flip-book’s prompts on the flip-book’s style', () => {
     for (const d of slotDescriptors({ ...person(), story_format: 'classic' })) {
-      expect(promptFor('A quiet room at dusk.', d.placement).startsWith(STYLE)).toBe(true);
+      expect(promptFor(d, 'A quiet room at dusk.').startsWith(STYLE)).toBe(true);
+    }
+  });
+});
+
+/**
+ * The pencil hand (ArtStyle 'pencil').
+ *
+ * The style is one column and a handful of strings, and every way it can fail
+ * is silent: it renders, it costs money, and the mistake only shows up as a
+ * picture that looks wrong on the page. So what is pinned here is the CONTRACT
+ * rather than the wording —
+ *
+ *  1. It changes the medium, never the book. The same slots, the same files,
+ *     the same sizes: a person who switches style must not lose or gain a
+ *     picture, or the art already rendered stops lining up with its slot.
+ *  2. It inverts the blend. A pencil drawing arrives on flat white and is
+ *     multiplied onto the leaf; a plate that stayed `normal` would print as an
+ *     opaque white rectangle on cream paper, and it would look correct in
+ *     isolation.
+ *  3. It never reaches the flip-book. That book has no pencil composition
+ *     blocks, so a classic person carrying the value must resolve to painted
+ *     rather than assembling a prompt out of half a style.
+ */
+describe('the pencil hand', () => {
+  const drawn = (over: Partial<SlotPerson> = {}) => person({ art_style: 'pencil', ...over });
+
+  it('draws the same slots as the painted hand — same files, same sizes', () => {
+    const painted = slotDescriptors(person());
+    const pencil = slotDescriptors(drawn());
+    expect(pencil.map((d) => d.file)).toEqual(painted.map((d) => d.file));
+    expect(pencil.map((d) => d.size)).toEqual(painted.map((d) => d.size));
+    expect(pencil.map((d) => d.personPath)).toEqual(painted.map((d) => d.personPath));
+    expect(pencil.map((d) => d.briefField)).toEqual(painted.map((d) => d.briefField));
+  });
+
+  it('multiplies every plate onto the paper, the inverse of the painted book', () => {
+    for (const d of slotDescriptors(drawn())) {
+      expect(d.blend).toBe('multiply');
+      expect(d.art).toBe('pencil');
+    }
+  });
+
+  it('asks for a drawing on flat white in every slot', () => {
+    for (const d of slotDescriptors(drawn())) {
+      const prompt = promptFor(d, 'A quiet room at dusk.');
+      expect(prompt.startsWith(EDITION_PENCIL_STYLE)).toBe(true);
+      expect(prompt).not.toContain(EDITION_STYLE);
+      // The load-bearing sentence of this hand, and the exact opposite of the
+      // painted book's: the drawing must dissolve into white, not fill its frame.
+      expect(prompt).toContain('flat white (#FFFFFF)');
+      expect(prompt).not.toContain('no blank margins');
+    }
+  });
+
+  it('never reaches the flip-book, whose placements have no pencil block', () => {
+    const classic = slotDescriptors({ ...person(), story_format: 'classic', art_style: 'pencil' });
+    for (const d of classic) {
+      expect(d.art).toBe('painted');
+      expect(promptFor(d, 'A quiet room at dusk.').startsWith(STYLE)).toBe(true);
+    }
+  });
+
+  it('leaves a painted Book Edition exactly as it was', () => {
+    for (const d of slotDescriptors(person({ art_style: 'painted' }))) {
+      expect(d.art).toBe('painted');
+      expect(d.blend).toBe('normal');
+      expect(promptFor(d, 'A quiet room at dusk.').startsWith(EDITION_STYLE)).toBe(true);
+    }
+  });
+
+  it('treats an absent art style as painted, so nothing that predates it moves', () => {
+    for (const d of slotDescriptors(person({ art_style: undefined }))) {
+      expect(d.art).toBe('painted');
+      expect(d.blend).toBe('normal');
     }
   });
 });

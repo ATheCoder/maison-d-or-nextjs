@@ -43,7 +43,7 @@ import { MAX_DURATION_MS } from '@/lib/analytics-events';
 import { formatDate, formatYear } from '@/lib/dates';
 import { flagEmoji, resolvePerson } from '@/lib/countries';
 import { figureShape } from '@/lib/golden-story/slots';
-import type { Chapter, FunFact, Lesson, StorySection, TimelineEntry, Treasure } from '@/src/db/schema';
+import type { ArtStyle, Chapter, FunFact, Lesson, StorySection, TimelineEntry, Treasure } from '@/src/db/schema';
 
 /** The person shape this reads — PersonRecord, and the editor's draft alike. */
 export type EditionPerson = {
@@ -59,6 +59,16 @@ export type EditionPerson = {
   story_title?: string | null;
   famous_quote?: string | null;
   famous_quote_attribution?: string | null;
+  /**
+   * Which hand drew this book — 'painted' (the default, and everything before
+   * 2026-08-31) or 'pencil'. It changes nothing about the layout and everything
+   * about how the pictures meet the paper: a painted book prints opaque plates
+   * that the CSS shapes, a pencil book multiplies drawings onto the page and
+   * frames none of them. See the `.pencil` block in the module CSS, and
+   * EDITION_PENCIL_STYLE in lib/golden-story/prompts.ts for the other half of
+   * the contract.
+   */
+  art_style?: ArtStyle | null;
   image_url?: string | null;
   story_takeaway?: string | null;
   chapters?: Chapter[] | null;
@@ -600,8 +610,15 @@ export default function EditionStory({
 
   if (!story) return null;
 
+  // One flag, read once: every difference the pencil hand makes to this page is
+  // a CSS one, so the component's only job is to say which book it is holding.
+  const pencil = story.art_style === 'pencil';
+
   return (
-    <div ref={rootRef} className={cx(styles.edition, embedded && styles.embedded)}>
+    <div
+      ref={rootRef}
+      className={cx(styles.edition, embedded && styles.embedded, pencil && styles.pencil)}
+    >
       <div className={styles.page}>
 
         {/* ── Hero ── */}
@@ -614,7 +631,9 @@ export default function EditionStory({
           />
           <div className={styles.heroScrim} aria-hidden />
           {!story.image_url && (
-            <div className={styles.heroPlaceholderLabel}>drop art — painted portrait, {name}</div>
+            <div className={styles.heroPlaceholderLabel}>
+              drop art — {pencil ? 'pencil portrait' : 'painted portrait'}, {name}
+            </div>
           )}
 
           {/* Only Back, and only on the reader — see the file docblock. */}

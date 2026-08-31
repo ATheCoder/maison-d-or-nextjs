@@ -101,6 +101,71 @@ export const SPOT_PANEL = `Full-bleed square scene filling the entire frame edge
 // this is the one block that wants the subject to run right to the edges.
 export const CARD_FILL = `Full-bleed square image filling the entire frame edge to edge with no blank margins, no white background, no vignette, no frame and no border. A single object or place, painted large and close so it fills the frame and touches all four edges, lit from one side, set against a simple painted background that does not compete with it. No people unless the subject itself is a person. No text, no lettering, no signature.`;
 
+// ── The pencil hand ──────────────────────────────────────────────────────────
+// A second art style for the Book Edition (ArtStyle 'pencil'), added
+// 2026-08-31. Same book, same slots, same scenes — a different medium.
+//
+// It INVERTS this format's art contract, which is the one thing to hold on to
+// while reading the blocks below. The painted Book Edition asks for opaque
+// plates that fill their frame and lets the page cut the shape; a pencil
+// drawing has no ground to cut, so it goes back to the flip-book's bargain —
+// drawn on flat white, multiplied onto the cream page — and the page stops
+// framing it at all: no plate colour, no rounded corner, no shadow, no cameo
+// oval (see the `.pencil` rules in EditionStory.module.css). What arrives is a
+// drawing that looks made ON the paper the words are printed on, which is the
+// whole point of the style and is lost the moment anything boxes it.
+//
+// So the load-bearing sentence flips too. In the painted blocks it is "no blank
+// margins"; here it is the opposite — the drawing MUST break up and dissolve
+// into untouched white at its edges, because an edge the pencil finishes is an
+// edge the page prints as a hard rectangle of grey.
+
+export const EDITION_PENCIL_STYLE = `A fine graphite pencil drawing on white paper, in the manner of an illustrator's sketchbook page: confident contour lines of varying weight, soft hatching and cross-hatching for shadow, delicate stippling and smudged graphite for soft tone, small unerased construction lines left visible. Warm graphite — soft greys with a faint sepia-brown cast, as if drawn with a graphite and sanguine pencil together. Restrained tone: mostly bare white paper, with the darkest values saved for one or two places. Hand-drawn and unfinished at the edges, never inked, never a flat vector outline, never painted, never coloured in, never photographic, no digital shading or airbrush.`;
+
+// The bargain every pencil block ends on. One string rather than a sentence
+// repeated six times, because it is the rule the whole style stands on: a
+// pencil slot that comes back with a filled background is unusable, and it
+// fails quietly — multiplied onto cream paper it prints as a grey box with the
+// drawing faintly inside it.
+const PENCIL_PAPER = `Drawn directly on plain white paper: the background is a single uniform flat white (#FFFFFF) with no paper texture, no tint, no gradients, no shadows and no fill of any kind behind the subject. The drawing is not enclosed and does not end at a border — toward its outer edges the pencil work becomes progressively looser and lighter, breaking into separate unfinished strokes that thin out and stop, so the drawing dissolves into untouched white. Never a circle, oval, box, panel or medallion shape. No frame, no border, no text, no lettering, no signature.`;
+
+// The peers of HERO_BLEED / VIGNETTE_TALL / VIGNETTE_ROUND / BAND_BLEED /
+// SPOT_PANEL / CARD_FILL, one for one. Each says what the SHAPE asks for; the
+// paper rule is identical in all six on purpose.
+
+export const PENCIL_HERO = `A tall portrait drawing occupying most of the frame: the subject's head and shoulders sit in the upper half, drawn with the most finished detail in the book, and the lower third is left almost bare paper — a few faint construction lines at most — because the title is printed across it. The drawing is cropped on both sides at some viewing sizes, so nothing that matters may sit at the extreme left or right edge.
+
+${PENCIL_PAPER}`;
+
+export const PENCIL_TALL = `An upright drawing occupying most of the frame, the subject centred and standing slightly high in it, with the surrounding scene sketched more lightly the further it gets from the subject.
+
+${PENCIL_PAPER}`;
+
+// The cameo oval is gone in this style — the page prints the drawing as it is —
+// so unlike VIGNETTE_ROUND nothing here is cut away. What replaces that
+// instruction is intimacy: this is the small one of the three chapter figures
+// and it wants one thing seen close, not a scene shrunk down.
+export const PENCIL_ROUND = `A small upright drawing of ONE thing seen close — a face, a pair of hands, a single object — drawn with real detail at its centre and only the faintest suggestion of anything around it. It is printed small, at about a third of the page's width, so it must read at a glance.
+
+${PENCIL_PAPER}`;
+
+export const PENCIL_BAND = `A wide panoramic drawing, about two and a half times as wide as it is tall: the subject and everything that matters sit across the middle of the frame, and the drawing thins out toward the left and right ends rather than filling them.
+
+${PENCIL_PAPER}`;
+
+export const PENCIL_PANEL = `A drawing of one clear subject, close in and centred in a square frame, kept well clear of all four edges: it is printed as a narrow upright panel cropped out of the middle of this square, so the left and right of the drawing are cut away.
+
+${PENCIL_PAPER}`;
+
+// The one pencil block whose frame is a hard crop rather than the open page —
+// a treasure card cuts a square and shows all of it — so this is the only one
+// that asks the drawing to reach toward the edges rather than retreat from
+// them. It still may not FILL them: the corners are what let the card's own
+// paper show through and keep the card from reading as a photograph.
+export const PENCIL_CARD = `A single object or place drawn large and centred in a square frame, filling most of it and reaching toward all four edges without touching them, lit from one side so one flank carries the hatching. No people unless the subject itself is a person.
+
+${PENCIL_PAPER}`;
+
 // Story brief counts — enforced by instruction in WRITER_SYSTEM (structured
 // outputs can't express minItems).
 export const CHAPTERS = 4;

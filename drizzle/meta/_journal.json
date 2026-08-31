@@ -239,6 +239,13 @@
       "when": 1788000332319,
       "tag": "0033_book_edition",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1788182071275,
+      "tag": "0034_fuzzy_tiger_shark",
+      "breakpoints": true
     }
   ]
 }

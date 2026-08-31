@@ -945,3 +945,125 @@
   .heroArt { transform: none !important; }
   .timelineFill { transition: none; }
 }
+
+/* ── The pencil hand ──────────────────────────────────────────────────────── */
+
+/* A Book Edition whose `art_style` is 'pencil' (ArtStyle in src/db/schema.ts).
+   Same book, same rooms, same measure — a different medium, and the medium
+   changes exactly one thing: how a picture meets the paper.
+
+   THE INVERSION. Everything above this block is written for opaque plates. The
+   painted book prints a picture as an object ON the page — its own ground, a
+   rounded corner, a cast shadow, a cameo oval — and the plate's edge is where
+   the picture stops. A pencil drawing has no ground to stop at. It arrives on
+   flat white (see EDITION_PENCIL_STYLE and PENCIL_PAPER in
+   lib/golden-story/prompts.ts), is multiplied into the leaf so the white
+   vanishes and only the graphite prints, and wears no frame at all: what the
+   reader sees is a drawing made ON the paper the words are set in, which is the
+   whole of the style and is undone by any one of those four decorations.
+
+   So almost every rule here REMOVES something. The exceptions are the two that
+   have to restate a colour — the multiply's own ground, and the hero's type —
+   and both are noted where they appear.
+
+   WHY EVERY MULTIPLY CARRIES `isolation: isolate` AND A BACKGROUND. A blended
+   element blends with its backdrop only as far as the nearest ancestor that
+   creates a stacking context, and in this book that ancestor is almost always
+   `.reveal` — which holds a `transform` for its fade-up and paints nothing.
+   Left alone, the drawings would blend against transparency, which is the same
+   as not blending: every picture would print as a white box on cream paper, and
+   it would look correct in a screenshot of the plate alone. The fix is to make
+   the plate itself the isolated group and give it the paper it sits on, so the
+   blend has something real underneath it. That is why the paper colour appears
+   three times below rather than once — the three plates land on three different
+   stocks, and each must be told its own. */
+
+.pencil .plate {
+  /* The story room's leaf. `.plate`'s painted ground (#efe6d6) is the thing a
+     drawing must not have; this is the page showing through instead. */
+  background: var(--paper);
+  isolation: isolate;
+}
+
+.pencil .plateImg {
+  mix-blend-mode: multiply;
+}
+
+/* The fun-fact plate bleeds into a warm card, not onto the leaf. */
+.pencil .plateFact { background: var(--paper-warm); }
+
+/* And a treasure card's square sits on the gallery room's own card stock. */
+.pencil .treasureArt {
+  background: var(--paper-card-lilac);
+  isolation: isolate;
+}
+
+/* The three chapter figures lose their frames. `.plateTall` keeps neither its
+   radius nor its lift — a shadow under a drawing that fades into the page is a
+   shadow cast by nothing — and `.plateRound` loses the cameo ellipse, which
+   would slice through hatching that was drawn to trail off. See PENCIL_ROUND:
+   in this hand the small figure is a small drawing, not a cut-out. */
+.pencil .plateTall {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.pencil .plateRound,
+.pencil .plateBand {
+  border-radius: 0;
+}
+
+/* The tall figure's gutter was widened for the shadow it no longer casts. */
+@media (min-width: 640px) {
+  .pencil .figTall { margin: 4px 0 12px 18px; }
+}
+
+/* The hero, inverted. A dark scrim over a pencil drawing is mud: graphite's
+   whole range lives in the top half of the value scale, so darkening it leaves
+   a grey smear where a portrait was. The hero therefore reads light in this
+   hand — the drawing multiplied onto the leaf, a PALE wash lifting the title
+   off it, and the title itself set in ink instead of cream. This is the second
+   place the pencil book restates colours rather than removing decoration, and
+   it is because the type has to stay legible, not for effect. */
+.pencil .hero {
+  background: var(--paper);
+  isolation: isolate;
+}
+
+.pencil .heroArt {
+  mix-blend-mode: multiply;
+}
+
+.pencil .heroArt.placeholder {
+  background-image: repeating-linear-gradient(140deg, #f1e8d9 0 18px, #e6dbc7 18px 36px);
+}
+
+/* Mirrors .heroScrim's two jobs in reverse: veil the paper under the title
+   rather than the art over it, and land the bottom edge on the leaf so the hero
+   still dissolves into the page instead of ending. */
+.pencil .heroScrim {
+  background: linear-gradient(180deg,
+    rgba(251, 247, 240, 0.5) 0%,
+    rgba(251, 247, 240, 0) 30%,
+    rgba(251, 247, 240, 0.82) 72%,
+    var(--paper) 100%);
+}
+
+.pencil .name {
+  color: var(--ink);
+  text-shadow: 0 1px 14px rgba(251, 247, 240, 0.9);
+}
+
+.pencil .role { color: var(--ink-soft); }
+
+.pencil .born,
+.pencil .origin,
+.pencil .heroPlaceholderLabel { color: var(--ink-mute); }
+
+/* The Back button sat on dark art; on a light hero it needs the opposite coat. */
+.pencil .roundBtn {
+  background: rgba(251, 247, 240, 0.72);
+  color: var(--ink);
+}
+
+.pencil .roundBtn:hover { background: rgba(251, 247, 240, 0.94); }

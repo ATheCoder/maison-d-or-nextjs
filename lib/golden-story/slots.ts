@@ -14,11 +14,12 @@
 import {
   STYLE, COVER_BLEED, STRIP_BLEED, SINGLE_BLEED, OPAQUE, PAPER,
   EDITION_STYLE, HERO_BLEED, VIGNETTE_TALL, VIGNETTE_ROUND, BAND_BLEED, SPOT_PANEL, CARD_FILL,
+  EDITION_PENCIL_STYLE, PENCIL_HERO, PENCIL_TALL, PENCIL_ROUND, PENCIL_BAND, PENCIL_PANEL, PENCIL_CARD,
   EDITION_CHAPTER_FIGURES,
   type SlotPlacement, type SlotBlend,
 } from './prompts.ts';
 import type { AnyBrief } from './brief.ts';
-import type { SlotOverride, StoryFormat } from '@/src/db/schema';
+import type { ArtStyle, SlotOverride, StoryFormat } from '@/src/db/schema';
 import type { ImageQuality, ImageSlot, SlotTreatment } from '@/lib/daily-gold/slots.ts';
 
 /**
@@ -39,6 +40,13 @@ export type SlotPerson = {
    * Edition (and every flip-book row) keeps the table it always had.
    */
   story_format?: StoryFormat | null;
+  /**
+   * Which hand draws the pictures. Absent means 'painted', so every caller that
+   * predates the pencil style keeps the art it has always asked for. It changes
+   * the style block, the composition block and — for the Book Edition — the
+   * blend, but never which slots exist: the two styles paint the same table.
+   */
+  art_style?: ArtStyle | null;
   image_url?: string | null;
   childhood_image_url?: string | null;
   modern?: { image_url?: string | null; blend?: string } | null;
@@ -63,7 +71,22 @@ export type SlotDescriptor = {
   placement: SlotPlacement;
   blend: SlotBlend;    // 'multiply' ⇒ needs a flat-white background
   showsProtagonist: boolean; // whether the scene should carry the character sheet
+  /**
+   * Which hand draws this slot — the person's `art_style`, already resolved
+   * (see artStyleOf). It rides on the descriptor rather than being passed
+   * alongside it because every consumer that assembles a prompt has the
+   * descriptor in hand and none of them should have to remember a second
+   * argument: forgetting it would silently paint a pencil book in oils.
+   */
+  art: ArtStyle;
 };
+
+/**
+ * A slot as the two tables below build it — everything except the art style,
+ * which is stamped on afterwards by `slotDescriptors` because it is a property
+ * of the whole person and not of any one slot.
+ */
+type BaseDescriptor = Omit<SlotDescriptor, 'art'>;
 
 const TAIL: Record<SlotPlacement, string> = {
   cover: COVER_BLEED,
@@ -79,6 +102,20 @@ const TAIL: Record<SlotPlacement, string> = {
   card: CARD_FILL,
 };
 
+// The pencil hand's composition blocks, one per Book Edition placement. Partial
+// on purpose: the flip-book's five placements have no pencil block and never
+// reach here, because `artStyleOf` only ever returns 'pencil' for a Book
+// Edition. A missing entry falls back to the painted block rather than throwing
+// — the wrong picture is recoverable, a story page that will not render is not.
+const PENCIL_TAIL: Partial<Record<SlotPlacement, string>> = {
+  hero: PENCIL_HERO,
+  'vignette-tall': PENCIL_TALL,
+  'vignette-round': PENCIL_ROUND,
+  band: PENCIL_BAND,
+  'spot-panel': PENCIL_PANEL,
+  card: PENCIL_CARD,
+};
+
 // Which style block a placement is painted under. The two books are different
 // products with different paint (see prompts.ts), and the placement is what
 // tells them apart — there is no placement either book shares.
@@ -87,6 +124,29 @@ const STYLE_FOR: Record<SlotPlacement, string> = {
   hero: EDITION_STYLE, 'vignette-tall': EDITION_STYLE, 'vignette-round': EDITION_STYLE,
   band: EDITION_STYLE, 'spot-panel': EDITION_STYLE, card: EDITION_STYLE,
 };
+
+/** The style block a slot is drawn under — the placement's book, in its hand. */
+export function styleFor(placement: SlotPlacement, art: ArtStyle): string {
+  return art === 'pencil' && PENCIL_TAIL[placement] ? EDITION_PENCIL_STYLE : STYLE_FOR[placement];
+}
+
+/** The fixed composition block for a slot — where the picture meets the page. */
+export function tailFor(placement: SlotPlacement, art: ArtStyle): string {
+  return (art === 'pencil' ? PENCIL_TAIL[placement] : undefined) ?? TAIL[placement];
+}
+
+/**
+ * The hand a person's art is drawn in, as the slot model is allowed to use it.
+ *
+ * 'pencil' is a Book Edition style only. A flip-book row carrying the value is
+ * resolved back to 'painted' here rather than anywhere downstream, so there is
+ * exactly one place that decides it and no half-pencil book can be assembled:
+ * the flip-book is a painted picture book by definition (docs/golden-stories-bible.md,
+ * standing decision 4), and its five placements have no pencil composition block.
+ */
+export function artStyleOf(person: SlotPerson): ArtStyle {
+  return person.story_format === 'edition' && person.art_style === 'pencil' ? 'pencil' : 'painted';
+}
 
 const isNormalBlend = (blend?: string): boolean => blend === 'normal' || blend === 'none';
 
@@ -100,7 +160,18 @@ const isNormalBlend = (blend?: string): boolean => blend === 'normal' || blend =
  * the style block, and the two sets have no file name in common.
  */
 export function slotDescriptors(person: SlotPerson): SlotDescriptor[] {
-  return person.story_format === 'edition' ? editionSlotDescriptors(person) : classicSlotDescriptors(person);
+  const art = artStyleOf(person);
+  const table = person.story_format === 'edition' ? editionSlotDescriptors(person) : classicSlotDescriptors(person);
+  // The pencil hand changes how EVERY slot meets the page, not which slots
+  // exist, so it is stamped over the finished table rather than threaded into
+  // both tables. `blend` flips with it: a pencil drawing arrives on flat white
+  // and is multiplied onto the paper (the flip-book's bargain), where a painted
+  // Book Edition plate is opaque and masked. That one field is what makes the
+  // rest follow — the modal previews the multiply, uploads are checked for a
+  // white background, and the reader composites it as ink on the page.
+  return art === 'pencil'
+    ? table.map((d) => ({ ...d, art, blend: 'multiply' as const }))
+    : table.map((d) => ({ ...d, art }));
 }
 
 /**
@@ -116,8 +187,8 @@ export function slotDescriptors(person: SlotPerson): SlotDescriptor[] {
  * of unbroken text by design, and offering art for it would put a painting on
  * the page that the page has nowhere to put.
  */
-function editionSlotDescriptors(person: SlotPerson): SlotDescriptor[] {
-  const out: SlotDescriptor[] = [
+function editionSlotDescriptors(person: SlotPerson): BaseDescriptor[] {
+  const out: BaseDescriptor[] = [
     {
       file: 'hero.png', label: 'Hero portrait', shortLabel: 'Hero',
       personPath: 'image_url', briefField: 'hero_scene',
@@ -183,8 +254,8 @@ const FIGURE_LABEL: Record<'tall' | 'round' | 'band', string> = {
 };
 
 /** The flip-book's slots — the original table, unchanged. */
-function classicSlotDescriptors(person: SlotPerson): SlotDescriptor[] {
-  const out: SlotDescriptor[] = [
+function classicSlotDescriptors(person: SlotPerson): BaseDescriptor[] {
+  const out: BaseDescriptor[] = [
     { file: 'cover.png', label: 'Cover', shortLabel: 'Cover', personPath: 'image_url', briefField: 'cover_scene', size: '1024x1536', placement: 'cover', blend: 'normal', showsProtagonist: true },
     { file: 'strip-childhood.png', label: 'Childhood strip', shortLabel: 'Childhood', personPath: 'childhood_image_url', briefField: 'childhood_scene', size: '1536x640', placement: 'strip', blend: 'multiply', showsProtagonist: false },
   ];
@@ -270,22 +341,34 @@ export function sceneFor(brief: AnyBrief | null, briefField: string): string {
 
 /**
  * The full assembled prompt for a slot: the "Edit full prompt" override
- * verbatim if present, otherwise STYLE + the scene + the placement's fixed
- * bleed block — byte-identical to `buildSlots`. Empty when there is no scene
- * and no override (nothing to generate yet).
+ * verbatim if present, otherwise the style block + the scene + the fixed
+ * composition block — byte-identical to `buildSlots` for a painted flip-book.
+ * Empty when there is no scene and no override (nothing to generate yet).
+ *
+ * It takes the descriptor rather than a loose placement so that the art style
+ * cannot be dropped on the way in. It used to take `(scene, placement)`, and a
+ * fourth optional argument for the hand would have been forgotten by exactly
+ * one of the five callers — which does not fail, it just quietly renders the
+ * wrong medium and bills for it.
  */
-export function promptFor(scene: string, placement: SlotPlacement, override?: SlotOverride): string {
+export function promptFor(
+  slot: Pick<SlotDescriptor, 'placement' | 'art'>,
+  scene: string,
+  override?: SlotOverride,
+): string {
   if (override?.fullPrompt) return override.fullPrompt;
   if (!scene.trim()) return '';
-  return `${STYLE_FOR[placement]}\n\nNew scene: ${scene}\n\n${TAIL[placement]}`;
+  const { style, composition } = fixedBlocksFor(slot);
+  return `${style}\n\nNew scene: ${scene}\n\n${composition}`;
 }
 
 /**
  * The fixed style + composition blocks a slot always carries, shown collapsed
  * as a read-only preamble (the scene is the editable part between them).
  */
-export function fixedBlocksFor(placement: SlotPlacement): { style: string; composition: string } {
-  return { style: STYLE_FOR[placement], composition: TAIL[placement] };
+export function fixedBlocksFor(slot: Pick<SlotDescriptor, 'placement' | 'art'>):
+  { style: string; composition: string } {
+  return { style: styleFor(slot.placement, slot.art), composition: tailFor(slot.placement, slot.art) };
 }
 
 /**
@@ -330,26 +413,31 @@ export function slotStatus(o: {
 // pipeline, a descriptor is *projected* onto the shared interface here. The
 // modal sees one type; the book keeps its own.
 
-/** How the page composites a book slot — the modal previews through this. */
-function treatmentFor(blend: SlotBlend): SlotTreatment {
-  return blend === 'multiply'
-    // Spot art multiplies onto the leaf's parchment, which is what makes the
-    // flat-white background rule load-bearing rather than cosmetic.
-    ? { kind: 'multiply', paper: '#F5F0E7' }
-    : { kind: 'none' };
+/**
+ * How the page composites a book slot — the modal previews through this.
+ *
+ * The paper under the multiply is the paper the picture actually lands on, so a
+ * pencil slot is previewed on the Book Edition's leaf (#FBF7F0) and a flip-book
+ * spot on the parchment (#F5F0E7). Getting this wrong is not cosmetic: the
+ * preview is where an admin decides whether a drawing's whites are clean.
+ */
+function treatmentFor(d: SlotDescriptor): SlotTreatment {
+  if (d.blend !== 'multiply') return { kind: 'none' };
+  return { kind: 'multiply', paper: d.art === 'pencil' ? '#FBF7F0' : '#F5F0E7' };
 }
 
 /** Project a book slot onto the shared image-slot interface. */
 export function toImageSlot(d: SlotDescriptor): ImageSlot {
+  const { style, composition } = fixedBlocksFor(d);
   return {
     key: d.file,
     label: d.label,
     shortLabel: d.shortLabel,
     size: d.size,
     quality: BOOK_IMAGE_QUALITY,
-    style: STYLE_FOR[d.placement],
-    composition: TAIL[d.placement],
-    treatment: treatmentFor(d.blend),
+    style,
+    composition,
+    treatment: treatmentFor(d),
     sceneSource: d.briefField,
     // A multiply slot vanishes into the page anywhere its background is not
     // pure white, so uploads are checked at the corner pixels.

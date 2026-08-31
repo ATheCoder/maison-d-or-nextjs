@@ -311,7 +311,11 @@ export default function ImageModal({
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
               {staged
                 ? <span className="chip chip-amber">Staged · not accepted</span>
-                : imageUrl ? <span className="chip chip-green">Painted</span>
+                /* "Rendered", not "Painted": this chip reports that the slot
+                   HAS art, and since 2026-08-31 a book can be drawn in pencil
+                   — where a green "Painted" beside a pencil drawing reads as
+                   the art style rather than as the slot's state. */
+                : imageUrl ? <span className="chip chip-green">Rendered</span>
                   : <span className="chip chip-ink">Empty</span>}
               <span className="chip chip-ink">{slot.size.replace('x', ' × ')}</span>
               <span className="chip chip-ink">{slot.quality} quality</span>

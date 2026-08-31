@@ -197,6 +197,39 @@ does it by position. Stories written before this ruling keep the four figures
 they were generated with and are not backfilled or regenerated — that is
 decision 1 applying to a third thing.
 
+**6. A Book Edition is drawn in one of two hands, and the words do not change.**
+Adopted 2026-08-31. `art_style` on the person (`ArtStyle` in `src/db/schema.ts`)
+chooses the medium its pictures are rendered in:
+
+| | **Painted** (`art_style: 'painted'`) | **Pencil** (`art_style: 'pencil'`) |
+|---|---|---|
+| The picture | Oil and gouache over a warm ground, one clear focal point, cinematic light | A graphite drawing on white paper: contour lines, hatching, smudged tone, construction lines left in |
+| How it meets the page | Opaque, fills its frame; the page's CSS cuts the shape and frames it — rounded corner, cast shadow, cameo oval | Drawn on flat white and multiplied into the leaf; the page frames nothing, so the drawing sits *on* the paper the words are set in |
+| Style prompt | `EDITION_STYLE` | `EDITION_PENCIL_STYLE` |
+| Composition prompts | `HERO_BLEED`, `VIGNETTE_TALL`, `VIGNETTE_ROUND`, `BAND_BLEED`, `SPOT_PANEL`, `CARD_FILL` | `PENCIL_HERO`, `PENCIL_TALL`, `PENCIL_ROUND`, `PENCIL_BAND`, `PENCIL_PANEL`, `PENCIL_CARD` |
+| The load-bearing sentence | "no blank margins" — a white margin under a CSS mask is a pale bruise on cream paper | its exact opposite: the drawing must break up and dissolve into untouched white, or the page prints a hard rectangle of grey |
+
+Four consequences that are not open questions:
+
+- **The hand changes nothing a writer wrote.** Same chapters, same facts, same
+  scenes, same slot table, same file names and sizes. Everything above in this
+  bible binds both hands identically; only the medium moves.
+- **Unlike the format, the hand may be changed after creation.** Nothing written
+  depends on it, so the cost of switching is a re-render of the art and nothing
+  else. It goes through its own action (`setArtStyle`) rather than the editor's
+  autosaving draft, because it rewrites every image prompt in the book at once
+  and the admin should be told that before it happens. Existing art is never
+  deleted and never silently regenerated: it stays, drawn in the other hand,
+  until someone decides which pictures are worth redrawing.
+- **Pencil is a Book Edition style.** The flip-book is a painted picture book by
+  definition — decision 4's Art row — and has no pencil composition blocks. A
+  flip-book row carrying the value resolves back to painted in one place
+  (`artStyleOf`, `lib/golden-story/slots.ts`), so no half-pencil prompt can be
+  assembled.
+- **Painted is the default and every existing person is painted.** The column
+  defaults to `'painted'`, nothing is backfilled and nothing is regenerated —
+  decision 1 applying to a fourth thing.
+
 ---
 
 ## Where this lives in the code
@@ -208,7 +241,8 @@ decision 1 applying to a third thing.
 | A memorable fact on every spread | `fact` on `Brief`/`EditionBrief` chapters and sections (`brief.ts`), `Chapter`/`StorySection` (`src/db/schema.ts`), rendered by `GoldenStory.jsx` and `EditionStory.tsx`, flagged when missing by `components/admin/personSections.ts` |
 | Factual accuracy | `lib/golden-story/factcheck.ts` — which walks both books, including the Book Edition's fun facts and legacy panel — surfaced in `components/admin/PersonEditor.tsx` |
 | Signal the imagining | The *If X Were 10 Today* spread in `GoldenStory.jsx`; the same card, with its "But this is true:" line, in `EditionStory.tsx` |
-| Art supports the spread's story | The scene blocks in `lib/golden-story/prompts.ts` — `STYLE` + the flip-book's bleed blocks, `EDITION_STYLE` + the Book Edition's five composition blocks |
+| Art supports the spread's story | The scene blocks in `lib/golden-story/prompts.ts` — `STYLE` + the flip-book's bleed blocks, `EDITION_STYLE` + the Book Edition's six composition blocks |
+| Which hand a Book Edition is drawn in | `art_style` on `remarkable_person` (`src/db/schema.ts`); offered at `createPerson`, changed by `setArtStyle`, resolved once by `artStyleOf` and stamped onto every slot by `slotDescriptors` (`lib/golden-story/slots.ts`); rendered by the `.pencil` block in `EditionStory.module.css`; pinned by `lib/golden-story/editionSlots.test.ts` |
 | Every Book Edition chapter is illustrated | `EDITION_CHAPTER_FIGURES` (`lib/golden-story/prompts.ts`), read by `figureShape`/`slotDescriptors` (`lib/golden-story/slots.ts`) and written onto each chapter at generation time by `textStore.ts`; pinned by `lib/golden-story/editionSlots.test.ts` |
 | The wooden table | `.wood-table` in `app/globals.css`, worn by `GoldenStory.module.css`, `PersonEditor.module.css` and `BookOpeningCurtain.jsx`. The Book Edition does not lie on it — it is a magazine, not a book on a table, and floats on its own dark ground. |
 | The seven questions | The publish checklist in `PersonEditor.tsx` |

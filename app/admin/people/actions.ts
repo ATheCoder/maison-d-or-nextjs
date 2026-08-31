@@ -19,6 +19,7 @@ import {
   type Lesson,
   type FunFact,
   type StoryFormat,
+  type ArtStyle,
   type RemarkablePersonRow,
   type GenerationJobRow,
   type FactCheckReport,
@@ -65,6 +66,9 @@ export type PersonListItem = {
   // Which book they are — the library badges it, because "6 chapters" and
   // "4 chapters" mean complete or incomplete depending only on this.
   storyFormat: StoryFormat;
+  // And which hand draws them — badged beside the format, because a pencil book
+  // and a painted one look like different products on the shelf.
+  artStyle: ArtStyle;
   name: string;
   // 'MM-DD' or null — Born Today can't surface a person without a birth date.
   monthDay: string | null;
@@ -110,6 +114,7 @@ export async function listPeople(): Promise<PersonListItem[]> {
     .select({
       slug: remarkablePerson.slug,
       storyFormat: remarkablePerson.storyFormat,
+      artStyle: remarkablePerson.artStyle,
       name: remarkablePerson.name,
       published: remarkablePerson.published,
       bornTodayPriority: remarkablePerson.bornTodayPriority,
@@ -178,7 +183,9 @@ export async function listPeople(): Promise<PersonListItem[]> {
  * is reset to a fresh draft (its R2 art is left in place — slugs may return —
  * and its brief is cleared). On success the editor is opened.
  */
-export async function createPerson(input: { name?: string; slug?: string; overwrite?: boolean; format?: string }):
+export async function createPerson(
+  input: { name?: string; slug?: string; overwrite?: boolean; format?: string; artStyle?: string },
+):
   Promise<{ ok: false; error?: string; collision?: string }> {
   await requireAdmin();
   const name = typeof input?.name === 'string' ? input.name.trim().slice(0, 120) : '';
@@ -188,6 +195,14 @@ export async function createPerson(input: { name?: string; slug?: string; overwr
   // to the Book Edition rather than erroring: this is an open endpoint, and the
   // default is the going-forward design.
   const format: StoryFormat = input?.format === 'classic' ? 'classic' : 'edition';
+
+  // Which hand draws them. Unlike the format this is not a one-time choice —
+  // setArtStyle can change it later — but it is asked for here so the very
+  // first batch of art is rendered in the style the admin wanted rather than in
+  // the default and then thrown away. Pencil is a Book Edition style; a
+  // flip-book asked for it is created painted (see artStyleOf in
+  // lib/golden-story/slots.ts, which resolves the same way for existing rows).
+  const artStyle: ArtStyle = input?.artStyle === 'pencil' && format === 'edition' ? 'pencil' : 'painted';
 
   const raw = typeof input?.slug === 'string' && input.slug.trim() ? input.slug : name;
   const slug = slugify(raw);
@@ -220,6 +235,9 @@ export async function createPerson(input: { name?: string; slug?: string; overwr
           // may change — and it must, or a slug reused for a Book Edition would
           // keep writing flip-books.
           storyFormat: format,
+          // Re-creation is also where the hand may change, and the art it
+          // applies to is being cleared on the next lines anyway.
+          artStyle,
           published: false,
           role: null, field: null, country: null, countryCode: null, birthDate: null, deathDate: null,
           storyTitle: null, famousQuote: null, famousQuoteAttribution: null, imageUrl: null,
@@ -236,7 +254,7 @@ export async function createPerson(input: { name?: string; slug?: string; overwr
   } else {
     // A fresh person is unpublished and has no birth date, so no reader query
     // can see them yet — the library alone.
-    await db.insert(remarkablePerson).values({ slug, name, storyFormat: format, published: false });
+    await db.insert(remarkablePerson).values({ slug, name, storyFormat: format, artStyle, published: false });
     touchDesk('/admin/people');
   }
 
@@ -275,6 +293,9 @@ export type EditorPerson = {
   // it on a written book would leave the rail pointing at rooms that have no
   // text in them. A person changes format by being re-created.
   story_format: StoryFormat;
+  // Which hand draws this person's pictures. Editable, unlike the format —
+  // through setArtStyle, never through the autosaving draft (see savePerson).
+  art_style: ArtStyle;
   name: string;
   role: string | null;
   field: string | null;
@@ -313,6 +334,7 @@ function toEditorPerson(row: RemarkablePersonRow): EditorPerson {
   return {
     slug: row.slug,
     story_format: row.storyFormat,
+    art_style: row.artStyle,
     name: row.name,
     role: row.role,
     field: row.field,
@@ -431,6 +453,11 @@ export async function savePerson(slug: string, record: Partial<EditorPerson>):
       // writer, which slot table and which reader a person gets, so flipping it
       // through the autosaving draft — where a stray key in a patch is enough —
       // would silently re-shape a finished book. It is set once, at creation.
+      //
+      // `art_style` is left out for the same reason and a different one: it may
+      // legitimately change over a book's life, but changing it invalidates
+      // every image prompt in the book, so it goes through setArtStyle where
+      // the editor can say that out loud first.
       updatedAt,
     })
     .where(eq(remarkablePerson.slug, slug))
@@ -463,6 +490,50 @@ export async function setPublished(slug: string, published: boolean):
   // and to the navigator's day list at once.
   touchPerson(slug, [monthDayOf(result[0].birthDate)]);
   return { ok: true, published: value };
+}
+
+/**
+ * Change which hand draws a person's pictures.
+ *
+ * Its own action rather than a key in the autosaving draft, because it is not a
+ * field edit: it re-writes the style block, the composition block and the blend
+ * of every image slot in the book at once, so art already on the page was drawn
+ * to a contract that no longer holds. The art is deliberately NOT cleared —
+ * deleting paid-for pictures on a toggle would be the worse failure, and a
+ * half-restyled book still reads — so the caller is expected to say what the
+ * change means and offer a re-render. The editor does (see PersonEditor).
+ *
+ * Pencil is a Book Edition style. Asking for it on a flip-book is refused here
+ * rather than stored and quietly ignored downstream, so the column never holds
+ * a value the book cannot honour.
+ */
+export async function setArtStyle(slug: string, artStyle: string):
+  Promise<{ ok: boolean; error?: string; art_style?: ArtStyle }> {
+  await requireAdmin();
+  if (typeof slug !== 'string' || !slug) return { ok: false, error: 'Missing slug.' };
+  if (artStyle !== 'painted' && artStyle !== 'pencil') {
+    return { ok: false, error: 'Unknown art style.' };
+  }
+
+  const before = await db
+    .select({ storyFormat: remarkablePerson.storyFormat, birthDate: remarkablePerson.birthDate })
+    .from(remarkablePerson)
+    .where(eq(remarkablePerson.slug, slug))
+    .limit(1);
+  if (!before[0]) return { ok: false, error: 'This person no longer exists.' };
+  if (artStyle === 'pencil' && before[0].storyFormat !== 'edition') {
+    return { ok: false, error: 'The pencil style is drawn for the Book Edition only.' };
+  }
+
+  await db
+    .update(remarkablePerson)
+    .set({ artStyle, updatedAt: new Date() })
+    .where(eq(remarkablePerson.slug, slug));
+
+  // The reader composites pencil art differently from painted art, so the
+  // published page changes the moment this does.
+  touchPerson(slug, [monthDayOf(before[0].birthDate)]);
+  return { ok: true, art_style: artStyle };
 }
 
 /**

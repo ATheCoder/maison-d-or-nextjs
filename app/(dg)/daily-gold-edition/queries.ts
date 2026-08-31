@@ -151,6 +151,10 @@ function personToRecord(row: RemarkablePersonRow) {
     // component (<GoldenStory> or <EditionStory>) that everything below is
     // handed to. See StoryFormat in src/db/schema.ts.
     story_format: row.storyFormat,
+    // Which hand drew the pictures. Second, because it is the other half of the
+    // same question: the format picks the component, this picks how that
+    // component composites every picture in it. See ArtStyle in schema.ts.
+    art_style: row.artStyle,
     name: row.name,
     role: row.role,
     field: row.field,

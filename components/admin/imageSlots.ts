@@ -49,7 +49,7 @@ export function buildSlotViews(
   return slotDescriptors(person).map((d) => {
     const override = overrides[d.file];
     const scene = sceneFor(brief, d.briefField);
-    const prompt = promptFor(scene, d.placement, override);
+    const prompt = promptFor(d, scene, override);
     const imageUrl = readImage(person, d.personPath);
     const needsWhiteBg = d.blend === 'multiply';
     const charSheetIncluded = d.showsProtagonist && characterSheet
