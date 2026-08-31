@@ -85,6 +85,15 @@ export type DeskCoverage = {
   almanacDaysCovered: number;
   peopleMissingCountryCode: number;
   peopleTotal: number;
+  /** Unpublished people — the library's own backlog, counted here so the admin
+   *  front page can state it without loading every row via listPeople(). */
+  peopleDrafts: number;
+  /** Month-days with SOMEBODY on them, draft or published. Deliberately not
+   *  derivable from `almanac[].peopleCount`, which counts published people
+   *  only: the library's "uncovered days" tile means "no one is written for
+   *  this day at all", and the admin front page has to state the same number
+   *  the library does or the two disagree in the reader's face. */
+  peopleDaysCovered: number;
 };
 
 /**
@@ -179,10 +188,15 @@ export async function getDeskCoverage(): Promise<DeskCoverage> {
 
   const liveDatesList = dates.filter((d) => d.status === 'ready').map((d) => d.date);
 
-  const [{ missing, total }] = await db
+  const [{ missing, total, drafts, daysCovered }] = await db
     .select({
       missing: sql<number>`count(*) filter (where ${remarkablePerson.countryCode} is null)::int`,
       total: sql<number>`count(*)::int`,
+      // Rides the aggregate that was already running rather than adding a
+      // round trip, which is the whole reason /admin can state the library's
+      // backlog without touching listPeople().
+      drafts: sql<number>`count(*) filter (where not ${remarkablePerson.published})::int`,
+      daysCovered: sql<number>`count(distinct to_char(${remarkablePerson.birthDate}, 'MM-DD'))::int`,
     })
     .from(remarkablePerson);
 
@@ -194,6 +208,8 @@ export async function getDeskCoverage(): Promise<DeskCoverage> {
     almanacDaysCovered: almanac.filter((c) => c.historyYears > 0 || c.momentsFilled > 0).length,
     peopleMissingCountryCode: missing,
     peopleTotal: total,
+    peopleDrafts: drafts,
+    peopleDaysCovered: daysCovered,
   };
 }
 

@@ -1,5 +1,4 @@
 import { requireAdmin } from '@/lib/dal';
-import { getOpenRouterCredits } from '@/app/admin/people/actions';
 import DailyGoldDesk from '@/components/admin/DailyGoldDesk';
 import { findDuplicateEditions, getDeskCoverage, getWeekAhead } from './actions';
 
@@ -13,13 +12,14 @@ export default async function DailyGoldDeskPage() {
   // the server too — deriving it from the browser clock could disagree.
   const today = new Date().toISOString().slice(0, 10);
 
-  const [coverage, week, duplicates, credits] = await Promise.all([
+  // The OpenRouter balance is no longer fetched here. It used to be, and the
+  // desk drew its own chip from it, but the number is an account fact rather
+  // than a fact about this page — AdminChrome shows it on all six admin screens
+  // now, which also takes an external call off this route's critical path.
+  const [coverage, week, duplicates] = await Promise.all([
     getDeskCoverage(),
     getWeekAhead(today),
     findDuplicateEditions(),
-    // The credit balance is a fact, not a forecast (R6.5) — and never a reason
-    // to fail the page if OpenRouter is unreachable.
-    getOpenRouterCredits(),
   ]);
 
   return (
@@ -27,7 +27,6 @@ export default async function DailyGoldDeskPage() {
       coverage={coverage}
       week={week}
       duplicates={duplicates}
-      credit={credits.ok ? credits.credits.remaining : null}
       today={today}
     />
   );

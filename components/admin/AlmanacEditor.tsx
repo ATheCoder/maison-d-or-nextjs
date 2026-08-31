@@ -51,7 +51,7 @@ const CSS = `
   --gold:var(--accent); --gold-deep:var(--accent-readable); --gold-soft:color-mix(in srgb, var(--accent) 14%, transparent);
   --green:#7d8a4e; --amber:#c08a2e; --red:var(--danger-readable);
   --serif:var(--face-display); --sans:var(--face-sans);
-  min-height:100vh; font-family:var(--sans); color:var(--ink); background:var(--ground);
+  min-height:calc(100dvh - var(--admin-chrome-h)); font-family:var(--sans); color:var(--ink); background:var(--ground);
   display:flex; flex-direction:column; -webkit-font-smoothing:antialiased;
 }
 .alm * { box-sizing:border-box; }
@@ -240,8 +240,9 @@ export default function AlmanacEditor({ day }: { day: AlmanacDay }) {
       {/* ── Topbar ─────────────────────────────────────────────── */}
       <div className="topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          <Link className={buttonClasses({ variant: 'link', size: 'sm', className: 'pl-0' })} href="/admin/daily-gold">‹ Desk</Link>
-          <div className="vhair" style={{ height: 30 }} />
+          {/* ‹ Desk and its hairline are gone — AdminChrome's Daily Gold tab is
+              the way up from every admin screen now. The link to this month-day
+              as a real DATE, below, stays: that is a move sideways. */}
           <div>
             <Heading level={1} variant="story">{fmtMonthDay(day.monthDay)}</Heading>
             <div className="kick" style={{ marginTop: 4 }}>The almanac · recurring content</div>

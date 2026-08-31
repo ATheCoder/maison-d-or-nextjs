@@ -13,8 +13,34 @@
   --sans: var(--face-sans);
   --script: "Great Vibes", cursive;
 
+  /* Still a fixed app shell — the editor's whole scrolling model depends on the
+     page never scrolling and its own panes doing it instead. The only change is
+     where its top edge is: below AdminChrome rather than over it. Converting
+     this to flow layout would have been the tidier-looking edit and a much
+     riskier one. Its modals and scrims are `position: fixed` in their own
+     right, so they stay anchored to the viewport either way. */
   position: fixed;
-  inset: 0;
+  inset: var(--admin-chrome-h) 0 0 0;
+  /* Load-bearing, and the least obvious line in this file. `position: fixed`
+     creates a stacking context, so this editor's modals — the publish confirm,
+     ImageModal, FactCheckPanel, at z-index 60/80 — are sealed inside THIS
+     element's layer and cannot out-stack anything outside it. AdminChrome is
+     z-50, so without this the bar would paint over every one of them: a scrim
+     covering the viewport except for a live, clickable strip along the top.
+     Lifting the whole editor above the bar costs nothing, because the two do
+     not overlap — the editor starts where the bar ends.
+
+     Stated in terms of the bar's own level rather than as a bigger magic
+     number: AdminChrome publishes --admin-chrome-z, and +1 is the whole
+     requirement. A literal here (it was `1`, which is LOWER than the bar's 50)
+     is how this got shipped broken the first time — the scrim covered the
+     viewport correctly and the bar still painted over it, leaving Sign out
+     live behind a modal.
+
+     The other four admin shells need no equivalent: they are static flow, they
+     create no stacking context, and their overlays compete with the bar
+     directly and win on their own z-index. */
+  z-index: calc(var(--admin-chrome-z, 50) + 1);
   display: flex;
   flex-direction: column;
   background: var(--ground);

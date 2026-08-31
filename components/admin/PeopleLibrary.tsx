@@ -53,7 +53,7 @@ const CSS = `
   --green:#7d8a4e; --amber:#c08a2e; --red:var(--danger-readable);
   --serif:var(--face-display); --sans:var(--face-sans); --script:"Great Vibes",cursive;
   --noise:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.05'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
-  min-height:100vh; font-family:var(--sans); color:var(--ink); -webkit-font-smoothing:antialiased;
+  min-height:calc(100dvh - var(--admin-chrome-h)); font-family:var(--sans); color:var(--ink); -webkit-font-smoothing:antialiased;
   background: var(--noise), radial-gradient(ellipse 120% 80% at 50% -10%, rgba(201,169,110,.10), transparent 55%), var(--ground);
 }
 .lib * { box-sizing:border-box; }
@@ -777,9 +777,12 @@ export default function PeopleLibrary({ people }: { people: PersonListItem[] }) 
         {/* Masthead */}
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
           <div>
-            <Link href="/admin" style={{ textDecoration: 'none' }}>
-              <div className="kick">Daily Gold Edition · Admin</div>
-            </Link>
+            {/* The eyebrow used to be wrapped in an unstyled <Link href="/admin">
+                — no underline, no hover, no focus ring. That is not an
+                affordance, it is a rumour, and it was this room's ONLY way home.
+                AdminChrome carries the real one now, so the eyebrow goes back to
+                being what it looks like: a label. */}
+            <div className="kick">Daily Gold Edition · Admin</div>
             <Heading level={1} variant="section" className="mt-2">
               The library of remarkable people
             </Heading>

@@ -16,6 +16,17 @@ import { user, session, account, verification, family } from '@/src/db/schema';
 import { sendEmail, brandedEmail } from '@/lib/email';
 
 export const auth = betterAuth({
+  /**
+   * Better Auth rejects a sign-in whose Origin is not the base URL
+   * (INVALID_ORIGIN, 403 — before the password is ever checked). In
+   * development the dev server may sit on whatever port was free, which is
+   * rarely the one BETTER_AUTH_URL names, so trust any loopback origin there.
+   * Production keeps the default: BETTER_AUTH_URL and nothing else.
+   */
+  trustedOrigins: process.env.NODE_ENV === 'production'
+    ? []
+    : ['http://localhost:*', 'http://127.0.0.1:*'],
+
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema: { user, session, account, verification },

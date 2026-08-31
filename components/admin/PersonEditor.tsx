@@ -15,7 +15,6 @@
  * placeholders until Phase 6.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, useTransition } from 'react';
-import Link from 'next/link';
 import {
   DndContext, PointerSensor, KeyboardSensor, closestCenter,
   useSensor, useSensors, type DragEndEvent,
@@ -30,8 +29,7 @@ import {
   startFactCheck, getFactCheck,
   getPersonForEditor, getStoryBrief, getPersonJobs,
   generateBook, startRewrite, dismissJob, updateGoldenThread,
-  getOpenRouterCredits,
-  type EditorPerson, type OpenRouterCredits,
+  type EditorPerson,
 } from '@/app/admin/people/actions';
 import { getSlotData, getSlotImages, generateImages } from '@/app/admin/people/imageActions';
 import type { AnyBrief } from '@/lib/golden-story/brief';
@@ -41,12 +39,13 @@ import { withKeys, stripKeys, type DraftPerson, type Keyed } from './draftTypes'
 import { buildSlotViews, type SlotView } from './imageSlots';
 import { toImageSlot, figureShape, parseImageListPath } from '@/lib/golden-story/slots';
 import DatePicker from '@/components/ui/DatePicker';
-import { Button, buttonClasses, Card, Field, Heading, Meter } from '@/components/ds';
+import { Button, Card, Field, Heading, Meter } from '@/components/ds';
 import FactCheckPanel, { FactCheckChip } from './FactCheckPanel';
 import { factCheckCounts } from '@/lib/golden-story/factCheckCounts';
 import ImageModal from './ImageModal';
 import SlotChip from './SlotChip';
 import ImageStatusBoard from './ImageStatusBoard';
+import { useAdminCredits } from './AdminChrome';
 import styles from './PersonEditor.module.css';
 import { COUNTRIES, countryByCode, flagEmoji, resolveNationality } from '@/lib/countries';
 
@@ -957,41 +956,6 @@ function AIPanel({
   );
 }
 
-// ── OpenRouter credits chip (top bar) ────────────────────────────────────────
-// The balance behind the AI writer/renderer. Tone warms from green → amber →
-// red as it drains; click to refresh. A quiet dashed placeholder while loading,
-// and a muted "unavailable" if the account can't be reached.
-
-function fmtUSD(n: number): string {
-  return `$${n.toFixed(2)}`;
-}
-
-function CreditsChip({ credits, error, onRefresh }: {
-  credits: OpenRouterCredits | null; error: boolean; onRefresh: () => void;
-}) {
-  if (error) {
-    return (
-      <Button variant="bare"
-        className={`${styles.chip} ${styles.chipInk}`}
-        onClick={onRefresh}
-        title="Couldn’t reach OpenRouter — click to retry"
-      >OpenRouter · unavailable ↻</Button>
-    );
-  }
-  if (!credits) {
-    return <span className={`${styles.chip} ${styles.chipInk}`} style={{ opacity: 0.6, borderStyle: 'dashed' }}>OpenRouter · …</span>;
-  }
-  const { remaining } = credits;
-  const tone = remaining <= 1 ? styles.chipRed : remaining <= 10 ? styles.chipAmber : styles.chipGreen;
-  return (
-    <Button variant="bare"
-      className={`${styles.chip} ${tone}`}
-      onClick={onRefresh}
-      title={`OpenRouter credits — ${fmtUSD(credits.totalUsage)} used of ${fmtUSD(credits.totalCredits)}. Click to refresh.`}
-    >OpenRouter · {fmtUSD(remaining)} left</Button>
-  );
-}
-
 // ── Editor ───────────────────────────────────────────────────────────────────
 
 export default function PersonEditor({ initialPerson, initialBrief, initialJobs, initialSlotData, initialFactCheck }: {
@@ -1032,18 +996,13 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
   // Rail chapter reordering (dnd-kit): pointer-only, drag starts from the grip.
   const railSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
-  // ── OpenRouter credits (top bar) ──
-  // The AI writer/renderer spends OpenRouter credits; show the balance in the
-  // top bar. Fetched on mount and refreshed after a whole-book generation.
-  const [credits, setCredits] = useState<OpenRouterCredits | null>(null);
-  const [creditsError, setCreditsError] = useState(false);
-  const refreshCredits = useCallback(() => {
-    return getOpenRouterCredits().then((res) => {
-      if (res.ok) { setCredits(res.credits); setCreditsError(false); }
-      else { setCreditsError(true); }
-    });
-  }, []);
-  useEffect(() => { void refreshCredits(); }, [refreshCredits]);
+  // ── OpenRouter credits ──
+  // The AI writer/renderer spends OpenRouter credits, and this editor is where
+  // most of that money goes — but the balance is an account fact, not a fact
+  // about this person, so the chip lives in AdminChrome and is equally true on
+  // all six admin screens. What stays here is the one thing only this screen
+  // knows: that a job just finished and the number on the bar is now stale.
+  const { refresh: refreshCredits } = useAdminCredits();
 
   // ── AI generation state (Phase 5) ──
   const [showAI, setShowAI] = useState(false);
@@ -1466,8 +1425,9 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <Link href="/admin/people" className={buttonClasses({ variant: 'link', size: 'sm', className: 'pl-0' })}>‹ Library</Link>
-          <div className={styles.vhair} style={{ height: 30, alignSelf: 'center' }} />
+          {/* ‹ Library and its hairline are gone — AdminChrome's People tab is
+              the way up, and it is in the same place on all six admin screens
+              instead of only on this one. */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Heading level={1} variant="story">{draft.name || 'Untitled'}</Heading>
@@ -1477,7 +1437,6 @@ export default function PersonEditor({ initialPerson, initialBrief, initialJobs,
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <CreditsChip credits={credits} error={creditsError} onRefresh={refreshCredits} />
           {/* No inline colours. They used to force a gold-deep ink and a gold
               hairline onto a ghost button, and inline styles outrank the coat:
               on hover `btn-ghost` filled the box with espresso while the label

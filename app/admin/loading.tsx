@@ -26,7 +26,7 @@ export default function Loading() {
       // The ground is the theme's, not a hex: the admin layout scopes
       // data-theme="parchment" above this, so bg-surface-page here IS the
       // parchment the desk lands on, and it follows the token if it ever moves.
-      className="mdo-anim min-h-dvh bg-surface-page px-6 py-12 font-sans sm:px-10 lg:px-16"
+      className="mdo-anim min-h-[calc(100dvh-var(--admin-chrome-h))] bg-surface-page px-6 py-12 font-sans sm:px-10 lg:px-16"
       style={{ animation: 'mdoSkelFade 0.3s ease-out' }}
     >
       {/* The masthead every admin screen wears: the editorial-label eyebrow and

@@ -48,7 +48,7 @@ const CSS = `
   --gold:var(--accent); --gold-deep:var(--accent-readable); --gold-soft:color-mix(in srgb, var(--accent) 14%, transparent);
   --green:#7d8a4e; --amber:#c08a2e; --red:var(--danger-readable);
   --serif:var(--face-display); --sans:var(--face-sans);
-  min-height:100vh; font-family:var(--sans); color:var(--ink); background:var(--ground);
+  min-height:calc(100dvh - var(--admin-chrome-h)); font-family:var(--sans); color:var(--ink); background:var(--ground);
   display:flex; flex-direction:column; -webkit-font-smoothing:antialiased;
 }
 .dge * { box-sizing:border-box; }
@@ -93,7 +93,7 @@ const CSS = `
 .dge .seg > button.on.draft { color:#96681f; }
 
 .dge .body { display:flex; flex:1; min-height:0; align-items:flex-start; }
-.dge .rail { width:262px; flex:0 0 262px; padding:16px 12px; border-right:1px solid var(--line); display:flex; flex-direction:column; gap:2px; position:sticky; top:0; }
+.dge .rail { width:262px; flex:0 0 262px; padding:16px 12px; border-right:1px solid var(--line); display:flex; flex-direction:column; gap:2px; position:sticky; top:var(--admin-chrome-h); }
 .dge .navrow { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:9px; font-size:12.5px; color:var(--brown); border:none; background:transparent; width:100%; text-align:left; }
 .dge .navrow:hover { background:var(--gold-soft); }
 .dge .navrow.on { background:#fffdf8; box-shadow:0 1px 6px rgba(40,26,12,.08); color:var(--ink); font-weight:700; }
@@ -337,9 +337,9 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
     return (
       <div className="dge">
         <style dangerouslySetInnerHTML={{ __html: CSS }} />
-        <div className="topbar">
-          <Link className={buttonClasses({ variant: 'link', size: 'sm' })} href="/admin/daily-gold">‹ Desk</Link>
-        </div>
+        {/* No topbar on this branch any more: the only thing it ever held was a
+            ‹ Desk link, and AdminChrome's Daily Gold tab goes to the same place
+            from every admin screen. */}
         <div className="pane" style={{ maxWidth: 620 }}>
           <div className="kick">Daily Gold edition</div>
           <Heading level={1} variant="story">{fmtDate(day.date)}</Heading>
@@ -367,8 +367,10 @@ export default function DayEditor({ day }: { day: DayForEditor }) {
       {/* ── Topbar ─────────────────────────────────────────────── */}
       <div className="topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <Link className={buttonClasses({ variant: 'link', size: 'sm', className: 'pl-0' })} href="/admin/daily-gold">‹ Desk</Link>
-          <div className="vhair" style={{ height: 30 }} />
+          {/* The ‹ Desk link and the hairline that separated it from the title
+              are gone: AdminChrome's Daily Gold tab is the way up now, from
+              here and from every other admin screen alike. The ‹ › arrows below
+              stay — those move sideways, not up, and no tab replaces them. */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <Heading level={1} variant="story">{fmtDate(day.date)}</Heading>

@@ -290,6 +290,12 @@ describe('Daily Gold, the front door, the admin desk, the landing page and /fami
     expect(SCOPE).toContain('components/admin/DayEditor.tsx');
     expect(SCOPE).toContain('components/admin/AlmanacEditor.tsx');
     expect(SCOPE).toContain('components/admin/PersonEditor.tsx');
+    // The admin's shared chrome, reached from app/admin/layout.tsx and so
+    // above all five of those. It is the one file on this surface whose whole
+    // job is consistency, which makes it the last place a private .btn should
+    // ever reappear.
+    expect(SCOPE).toContain('components/admin/AdminChrome.tsx');
+    expect(SCOPE).toContain('components/admin/AdminAccount.tsx');
     // The observatory's ledger and its skeleton — the surface migrated last,
     // and the one whose stylesheet used to carry a palette of its own.
     expect(SCOPE).toContain('components/observatory/ObservatoryLedger.tsx');

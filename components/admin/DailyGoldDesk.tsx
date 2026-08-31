@@ -31,7 +31,7 @@ const CSS = `
   --green:#7d8a4e; --amber:#c08a2e; --red:var(--danger-readable);
   --serif:var(--face-display); --sans:var(--face-sans);
   --noise:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.05'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
-  min-height:100vh; font-family:var(--sans); color:var(--ink); -webkit-font-smoothing:antialiased;
+  min-height:calc(100dvh - var(--admin-chrome-h)); font-family:var(--sans); color:var(--ink); -webkit-font-smoothing:antialiased;
   background: var(--noise), radial-gradient(ellipse 120% 80% at 50% -10%, rgba(201,169,110,.10), transparent 55%), var(--ground);
 }
 .dgd * { box-sizing:border-box; }
@@ -167,11 +167,10 @@ function relativeLabel(date: string, today: string): string {
 
 type Filter = 'all' | 'live' | 'draft' | 'work';
 
-export default function DailyGoldDesk({ coverage, week, duplicates, credit, today }: {
+export default function DailyGoldDesk({ coverage, week, duplicates, today }: {
   coverage: DeskCoverage;
   week: WeekDay[];
   duplicates: DuplicateEdition[];
-  credit: number | null;
   today: string;
 }) {
   const router = useRouter();
@@ -242,12 +241,12 @@ export default function DailyGoldDesk({ coverage, week, duplicates, credit, toda
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 9 }}>
+            {/* The flat "$4.12 credit" chip that used to sit here is gone. It
+                was the desk's own copy of a balance PersonEditor already drew
+                better — with tone thresholds and a retry — and the balance is an
+                account fact, true on every admin screen at once. AdminChrome
+                carries the one chip now. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {credit != null && (
-                <span className="chip chip-ink mono" title="OpenRouter balance">
-                  ${credit.toFixed(2)} credit
-                </span>
-              )}
               <Button variant="link" size="sm" onClick={runPrepareWeek} loading={pending}>
                 Prepare next 7 days
               </Button>
